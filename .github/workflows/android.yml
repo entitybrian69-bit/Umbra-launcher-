@@ -13,6 +13,7 @@ jobs:
   apk:
     name: Build APK (arm64 + x86_64)
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     outputs:
       version: ${{ steps.meta.outputs.version }}
     steps:
@@ -127,6 +128,7 @@ jobs:
     name: Emulator smoke test + screenshot
     needs: apk
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     permissions:
       contents: write
     steps:
