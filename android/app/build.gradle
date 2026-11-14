@@ -5,7 +5,13 @@ plugins {
 android {
     namespace 'org.umbra.client'
     compileSdk 35
-    ndkVersion '27.2.12479018'
+    // The NDK version comes from the machine: CI exports the newest installed
+    // one, and a developer needs nothing but ANDROID_NDK_HOME. Nothing here
+    // assumes a version that may not exist on the runner.
+    def ndkFromEnv = System.getenv('UMBRA_NDK_VERSION')
+    if (ndkFromEnv != null && !ndkFromEnv.isEmpty()) {
+        ndkVersion ndkFromEnv
+    }
 
     defaultConfig {
         applicationId 'org.umbra.client'

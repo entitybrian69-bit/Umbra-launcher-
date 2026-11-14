@@ -33,14 +33,20 @@ jobs:
       - name: Generate the Goose core as C
         run: GOOSE=build/bin/goose tools/gen_core.sh
 
-      - name: Install the NDK version the build file pins
+      - name: Report and pick the NDK
         run: |
-          set -e
-          NDK=27.2.12479018
-          if [ ! -d "$ANDROID_HOME/ndk/$NDK" ]; then
-            yes | sdkmanager --install "ndk;$NDK" > /dev/null
+          echo "installed NDKs:"
+          ls "$ANDROID_HOME/ndk" || true
+          NDK=$(ls -d "$ANDROID_HOME"/ndk/* 2>/dev/null | sort -V | tail -1)
+          if [ -z "$NDK" ]; then
+            echo "no NDK installed; installing with sdkmanager"
+            yes | sdkmanager --licenses > /dev/null 2>&1 || true
+            sdkmanager --install "ndk;27.2.12479018"
+            NDK=$(ls -d "$ANDROID_HOME"/ndk/* | sort -V | tail -1)
           fi
-          ls "$ANDROID_HOME/ndk/$NDK" | head -3
+          echo "using NDK at $NDK"
+          echo "UMBRA_NDK_VERSION=$(basename "$NDK")" >> "$GITHUB_ENV"
+          ls "$NDK" | head -5
 
       - name: Set build metadata
         id: meta
@@ -48,14 +54,17 @@ jobs:
           echo "commit=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
           echo "version=0.1.0-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
       - name: Gradle assembleRelease
         working-directory: android
         env:
           GOOSE: ${{ github.workspace }}/build/bin/goose
         run: |
           chmod +x ../tools/gen_core.sh
-          gradle wrapper --gradle-version 8.11.1 --no-daemon > /dev/null 2>&1 || true
-          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tail -40
+          gradle assembleRelease --no-daemon --stacktrace --info 2>&1 | tail -60
 
       - name: Locate the APK and hash it
         id: apk

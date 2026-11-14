@@ -14,15 +14,7 @@
 #include <android/asset_manager.h>
 #endif
 
-// The vertex layout Goose emits: 12 packed f32 per vertex (48 bytes).
-// Mirror of `struct Vertex` in goose/core/mesh.goose.
-typedef struct __attribute__((packed)) {
-    float x, y, z;
-    float nx, ny, nz;
-    float u, v;
-    float r, g, b;
-    float ao;
-} umbra_vertex;
+#include "umbra_vertex.h"
 
 typedef enum {
     UMBRA_SCREEN_HOME = 0,

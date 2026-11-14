@@ -554,7 +554,9 @@ int umbra_app_init(umbra_app *app) {
 
     log_open(app);
     umbra_log(app, "---- Umbra starting, build %s ----", UMBRA_GIT_COMMIT);
-    umbra_log(app, "core: %.*s", 40, umbra_core_selftest_name() ? "loaded" : "missing");
+    int64_t name_len = 0;
+    const uint8_t *core_name = umbra_core_selftest_name(&name_len);
+    umbra_log(app, "core: %.*s", (int)(name_len < 120 ? name_len : 120), (const char *)core_name);
 
     // Crash marker: a clean shutdown rewrites this file; a crash leaves it.
     FILE *m = fopen(app->marker_path, "rb");
@@ -839,7 +841,11 @@ void umbra_app_frame(umbra_app *app) {
             char dev[128];
             snprintf(dev, sizeof dev, "%s", app->gl_renderer);
             int64_t len = 0;
-            const uint8_t *text = umbra_bench_summary("bench", dev, app->gl_version, &len);
+            // Slice arguments are (pointer, length) structs across the boundary.
+            sl_u8 label = {(uint8_t *)"bench", 5};
+            sl_u8 devs = {(uint8_t *)dev, (int64_t)strlen(dev)};
+            sl_u8 andr = {(uint8_t *)app->gl_version, (int64_t)strlen(app->gl_version)};
+            const uint8_t *text = umbra_bench_summary(label, devs, andr, &len);
             snprintf(app->bench_text, sizeof app->bench_text, "%.*s", (int)len, (const char *)text);
             umbra_log(app, "%s", app->bench_text);
         }
