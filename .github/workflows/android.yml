@@ -63,20 +63,30 @@ jobs:
         env:
           GOOSE: ${{ github.workspace }}/build/bin/goose
         run: |
+          set -o pipefail
           chmod +x ../tools/gen_core.sh
-          gradle assembleRelease --no-daemon --stacktrace --info 2>&1 | tail -60
+          gradle assembleRelease --no-daemon --stacktrace > /tmp/gradle.log 2>&1 || {
+            # The log is the evidence, and this session cannot fetch job logs,
+            # so the tail goes out as an annotation where the API can read it.
+            tail -30 /tmp/gradle.log | while IFS= read -r line; do
+              echo "::error title=gradle::${line//\%/%25}"
+            done
+            exit 1
+          }
+          tail -12 /tmp/gradle.log
+          echo "::notice title=gradle::assembleRelease succeeded"
 
       - name: Locate the APK and hash it
         id: apk
         run: |
           set -e
           echo "== outputs tree =="
-          find android/app/build -maxdepth 5 -type d -name outputs -o -maxdepth 5 -name '*.apk' | head -20 || true
+          find android/app/build -name '*.apk' | head -20 || true
           echo "== native libraries on disk =="
-          find android/app/build -name 'libumbra.so' | tee natives.txt
-          [ -s natives.txt ] || { echo "no libumbra.so was built: the native build did not run"; exit 1; }
-          APK=$(find android -name '*.apk' -not -path '*/intermediates/*' | head -1)
-          [ -n "$APK" ] || { echo "no release APK produced"; find android -name '*.apk' | head; exit 1; }
+          find android/app/build -name 'libumbra.so' | tee natives.txt || true
+          [ -s natives.txt ] || { echo "::error title=native::no libumbra.so was built"; exit 1; }
+          APK=$(find android -name '*.apk' | head -1)
+          [ -n "$APK" ] || { echo "::error title=apk::no APK produced by gradle"; exit 1; }
           echo "apk=$APK" >> "$GITHUB_OUTPUT"
           ls -l "$APK"
           sha256sum "$APK" | tee apk.sha256
