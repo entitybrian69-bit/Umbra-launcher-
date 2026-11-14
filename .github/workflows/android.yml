@@ -68,7 +68,9 @@ jobs:
           gradle assembleRelease --no-daemon --stacktrace > /tmp/gradle.log 2>&1 || {
             # The log is the evidence, and this session cannot fetch job logs,
             # so the tail goes out as an annotation where the API can read it.
-            tail -30 /tmp/gradle.log | while IFS= read -r line; do
+            { grep -A15 "What went wrong" /tmp/gradle.log | head -30
+              grep -nE "error:|undefined reference|FAILED|Cannot locate|not found" /tmp/gradle.log | head -25
+            } | while IFS= read -r line; do
               echo "::error title=gradle::${line//\%/%25}"
             done
             exit 1
