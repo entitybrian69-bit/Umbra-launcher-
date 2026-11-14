@@ -1,0 +1,39 @@
+name: core
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  core-tests:
+    name: Goose core tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain versions
+        run: |
+          cmake --version | head -1
+          cc --version | head -1
+          python3 --version
+          nproc
+      - name: Build the pinned Goose compiler
+        run: tools/pin_goose.sh
+      - name: Core tests (Goose -> C -> native)
+        run: tools/run_tests.sh | tee build/core-tests.log
+      - name: Gate self-test (a corrupted fixture must fail the gate)
+        run: |
+          set -o pipefail
+          cp goose/test/fixtures/inflate/text.zlib /tmp/keep.zlib
+          printf 'X' | dd of=goose/test/fixtures/inflate/text.zlib bs=1 seek=10 conv=notrunc status=none
+          if tools/run_tests.sh > build/negative.log 2>&1; then
+            echo "GATE IS BROKEN: a corrupted inflate fixture still passed"; exit 1
+          fi
+          echo "gate self-test passed: corruption detected"
+          grep -E "FAIL" build/negative.log | head -5
+          cp /tmp/keep.zlib goose/test/fixtures/inflate/text.zlib
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: core-test-logs
+          path: |
+            build/core-tests.log
+            build/negative.log
