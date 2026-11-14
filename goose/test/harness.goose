@@ -38,6 +38,14 @@ fn check_bytes(got: const u8[:], want: const u8[:], what: const u8[:]) {
     }
 }
 
+fn check_f64(got: f64, want: f64, what: const u8[:]) {
+    checks += 1;
+    if got != want {
+        failures += 1;
+        print("FAIL: ", what, " got ", got, " want ", want);
+    }
+}
+
 fn test_summary(module: u8[:]) {
     if failures == 0 {
         print("PASS ", module, " (", checks, " checks)");

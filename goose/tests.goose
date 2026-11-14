@@ -3,6 +3,7 @@ import test.mem_test;
 import test.inflate_test;
 import test.zip_test;
 import test.png_test;
+import test.nbt_test;
 
 fn main() {
     print("umbra core tests");
@@ -10,6 +11,7 @@ fn main() {
     run_inflate();
     run_zip();
     run_png();
+    run_nbt();
     print("all modules passed");
 }
 
