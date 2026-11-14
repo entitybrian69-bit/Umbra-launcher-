@@ -98,6 +98,7 @@ jobs:
           echo "apk=$APK" >> "$GITHUB_OUTPUT"
           ls -l "$APK"
           sha256sum "$APK" | tee apk.sha256
+          echo "::notice title=apk-sha256::$(cat apk.sha256)"
 
       - name: Gate 2 - APK integrity
         run: |
@@ -126,48 +127,64 @@ jobs:
     name: Emulator smoke test + screenshot
     needs: apk
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+
       - uses: actions/download-artifact@v4
         with:
           name: umbra-apk
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-          ls -l /dev/kvm || echo "no /dev/kvm (emulator will be slow)"
-      - name: Run the app on an emulator and capture screenshots
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 30
-          arch: x86_64
-          target: google_apis
-          force-avd-creation: false
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -accel on
-          disable-animations: true
-          script: |
-            set -x
-            APK=$(find . -name '*.apk' | head -1)
-            adb install -r "$APK"
-            adb shell am start -n org.umbra.client/android.app.NativeActivity
-            sleep 25
-            adb shell pidof org.umbra.client
-            adb logcat -d -s umbra:* > logcat-umbra.txt || true
-            # Fresh screenshot 1: the home screen as it starts.
-            adb exec-out screencap -p > shot1.png
-            # Tap the self-test button and capture the result screen.
-            adb shell input tap 400 520
-            sleep 6
-            adb exec-out screencap -p > shot2.png
-            adb shell dumpsys meminfo org.umbra.client | head -20 > meminfo.txt || true
-            # 60 s soak: the process must stay alive with no fatal exception.
-            sleep 60
-            adb shell pidof org.umbra.client
-            adb logcat -d > logcat-full.txt || true
-            ! grep -q "FATAL EXCEPTION" logcat-full.txt
+          ls -l /dev/kvm || echo "no /dev/kvm (the emulator will be slow)"
+
+      # The smoke test annotates every phase as it goes, so its result can be
+      # read from the check-run API even when the job log cannot be downloaded.
+      - name: Install, launch, self test, soak
+        run: |
+          chmod +x tools/emulator_smoke.sh
+          tools/emulator_smoke.sh
+
       - name: Screenshot gate (fresh, non-blank, similar to the reference)
         run: python3 tools/check_screenshot.py shot1.png shot2.png --reference docs/reference/emulator_home.png
+
+      # Evidence has to travel back through git: job logs and artifact
+      # downloads are both unavailable to the environment that drives this
+      # project, and a screenshot nobody can look at proves nothing.
+      - name: Commit the evidence to the branch
+        if: always()
+        run: |
+          mkdir -p evidence/ci
+          for f in shot1.png shot2.png logcat-umbra.txt logcat-umbra2.txt logcat-full.txt meminfo.txt emulator.log launch.log install.log; do
+            [ -f "$f" ] && cp -f "$f" evidence/ci/ || true
+          done
+          {
+            echo "run: $GITHUB_RUN_ID"
+            echo "attempt: $GITHUB_RUN_ATTEMPT"
+            echo "commit: $GITHUB_SHA"
+            echo "date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "apk: $(sha256sum umbra.apk 2>/dev/null | cut -d' ' -f1)"
+          } > evidence/ci/run.txt
+          # Trim the noisiest files so the repository does not grow unbounded.
+          [ -f evidence/ci/logcat-full.txt ] && tail -c 400000 evidence/ci/logcat-full.txt > evidence/ci/logcat-full.tmp && mv evidence/ci/logcat-full.tmp evidence/ci/logcat-full.txt || true
+          git config user.name "umbra ci"
+          git config user.email "ci@umbra.invalid"
+          git add -f evidence/ci
+          if git diff --cached --quiet; then
+            echo "::notice title=evidence::nothing new to commit"
+            exit 0
+          fi
+          git commit -m "ci: emulator evidence from run $GITHUB_RUN_ID [skip ci]"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -176,5 +193,7 @@ jobs:
             shot1.png
             shot2.png
             logcat-umbra.txt
+            logcat-umbra2.txt
             logcat-full.txt
             meminfo.txt
+            emulator.log
