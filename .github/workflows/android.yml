@@ -163,9 +163,14 @@ jobs:
         if: always()
         run: |
           mkdir -p evidence/ci
-          for f in shot1.png shot2.png logcat-umbra.txt logcat-umbra2.txt logcat-full.txt meminfo.txt emulator.log launch.log install.log avd.log avds.log sdk-image.log sdk-packages.log; do
-            [ -f "$f" ] && cp -f "$f" evidence/ci/ || true
+          # Everything the smoke test wrote, whatever it got as far as doing.
+          for f in *; do
+            [ -f "$f" ] || continue
+            case "$f" in
+              *.png|*.txt|*.log) cp -f "$f" evidence/ci/ || true ;;
+            esac
           done
+          rm -f evidence/ci/logcat-full.txt.tmp
           {
             echo "run: $GITHUB_RUN_ID"
             echo "attempt: $GITHUB_RUN_ATTEMPT"

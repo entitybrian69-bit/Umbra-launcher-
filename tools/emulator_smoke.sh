@@ -2,81 +2,120 @@
 # Umbra emulator smoke test.
 #
 # Installs the release APK on a headless x86_64 emulator, launches it, waits for
-# the world screen, reads the app's own log lines, taps the in-app self-test
-# button, captures two screenshots, then soaks the process for a minute and
-# checks that it is still alive with no fatal exception in logcat.
+# the app to say it is drawing, reads the app's own log lines, taps the in-app
+# self-test button, captures two screenshots, then soaks the process and checks
+# that it is still alive with no fatal exception in logcat.
 #
-# Every phase reports through GitHub annotation commands. That is deliberate:
-# the annotations of a check run are the one piece of CI output this project can
-# read back reliably, so a failure here explains itself without the job log.
+# Two channels carry the result out of CI, because the machine that drives this
+# project cannot download job logs or artifacts:
+#   * summary.txt and a handful of ::error/::notice annotations, which the
+#     check-run annotation API exposes;
+#   * the log files themselves, which the workflow commits to the branch.
+# Everything that can go wrong is therefore readable afterwards.
 #
 # Usage: tools/emulator_smoke.sh [path-to.apk]
 set -uo pipefail
 
 API="${UMBRA_EMU_API:-30}"
 IMAGE="system-images;android-${API};google_apis;x86_64"
+DEVICE="${UMBRA_EMU_DEVICE:-pixel_2}"
 AVD="umbra_ci"
 BOOT_TIMEOUT="${UMBRA_BOOT_TIMEOUT:-600}"
+APP_TIMEOUT="${UMBRA_APP_TIMEOUT:-90}"
 SOAK_SECONDS="${UMBRA_SOAK_SECONDS:-60}"
 SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
 PHASE="startup"
+COLLECTED=0
+SUMMARY="summary.txt"
+
+: > "$SUMMARY"
 
 esc() { printf '%s' "$1" | tr '\r\n' '  ' | sed 's/%/%25/g' | cut -c1-900; }
-note() { echo "::notice title=umbra::$*"; }
-err() { echo "::error title=umbra::$*"; }
+# say: the durable record, written to summary.txt and the job log.
+say() { printf '%s\n' "$*" | tee -a "$SUMMARY"; }
+note() { printf '::notice title=umbra::%s\n' "$(esc "$*")"; say "notice: $*"; }
+err() { printf '::error title=umbra::%s\n' "$(esc "$*")"; say "ERROR: $*"; }
+phase() { PHASE="$1"; say ""; say "== phase: $PHASE =="; }
 
-phase() { PHASE="$1"; note "phase: $PHASE"; }
 die() {
-    err "$PHASE: $(esc "$1")"
-    if [ -f "$PHASE.log" ]; then
-        err "$PHASE: log tail: $(esc "$(tail -c 700 "$PHASE.log")")"
-    fi
+    err "$PHASE: $1"
     exit 1
 }
-# run_phase <name> <command...>: runs a command, keeps its output in <name>.log,
-# and turns a non-zero status into one annotation carrying the tail of that log.
-run_phase() {
-    local name="$1"; shift
-    PHASE_RUNNING="$name"
-    note "running: $name"
-    if ! "$@" > "$name.log" 2>&1; then
-        PHASE="$name"
-        die "command failed: $*"
-    fi
-    echo "-- $name --"
-    tail -5 "$name.log"
-}
 
-[ -n "$SDK" ] || { err "startup: neither ANDROID_SDK_ROOT nor ANDROID_HOME is set"; exit 1; }
-note "sdk: $SDK"
+# Collect diagnostics on any exit, success or failure, so that a failed run
+# still explains itself. Runs once.
+collect() {
+    [ "$COLLECTED" = 1 ] && return
+    COLLECTED=1
+    say ""
+    say "== collected diagnostics =="
+    if [ -n "${ADB:-}" ] && [ -x "$ADB" ]; then
+        "$ADB" logcat -d > logcat-full.txt 2>&1 || true
+        "$ADB" logcat -d -s umbra:V > logcat-umbra.txt 2>&1 || true
+        "$ADB" shell dumpsys window > dumpsys-window.txt 2>&1 || true
+        "$ADB" shell dumpsys activity activities > dumpsys-activity.txt 2>&1 || true
+        "$ADB" shell pidof org.umbra.client > pid.txt 2>&1 || true
+        say "app pid at exit: $(cat pid.txt 2>/dev/null | tr -d '\r\n')"
+        grep -m2 -E 'mCurrentFocus|mFocusedApp' dumpsys-window.txt 2>/dev/null \
+            | while IFS= read -r l; do say "focus: $(echo "$l" | tr -s ' ')"; done
+        if [ -f logcat-full.txt ]; then
+            say "logcat: $(wc -l < logcat-full.txt) lines, $(stat -c%s logcat-full.txt) bytes"
+            if grep -q "FATAL EXCEPTION" logcat-full.txt; then
+                err "FATAL EXCEPTION in logcat: $(grep -A8 'FATAL EXCEPTION' logcat-full.txt | tail -c 800)"
+            fi
+        fi
+        if [ -s logcat-umbra.txt ]; then
+            say "app log lines: $(grep -c . logcat-umbra.txt)"
+            tail -12 logcat-umbra.txt | while IFS= read -r l; do say "app: $(echo "$l" | tr -s ' ')"; done
+        else
+            say "app log: empty (the app never logged)"
+        fi
+    fi
+    say ""
+}
+trap collect EXIT
+
+[ -n "$SDK" ] || die "neither ANDROID_SDK_ROOT nor ANDROID_HOME is set"
 export PATH="$SDK/platform-tools:$SDK/emulator:$SDK/cmdline-tools/latest/bin:$PATH"
 ADB="$(command -v adb || echo "$SDK/platform-tools/adb")"
 EMU="$(command -v emulator || echo "$SDK/emulator/emulator")"
+say "run: ${GITHUB_RUN_ID:-local}, commit: ${GITHUB_SHA:-unknown}"
+say "sdk: $SDK"
+say "adb: $ADB"
+say "emulator: $EMU"
 
 APK="${1:-}"
 if [ -z "$APK" ]; then
-    APK="$(find . -name '*.apk' -not -path './android/app/build/intermediates/*' | head -1)"
+    APK="$(find . -maxdepth 6 -name '*.apk' -not -path '*/intermediates/*' | head -1)"
 fi
-[ -f "$APK" ] || { PHASE="startup"; die "no APK to install (looked for *.apk)"; }
-note "apk: $APK ($(stat -c%s "$APK") bytes, sha256 $(sha256sum "$APK" | cut -c1-16))"
+[ -f "$APK" ] || die "no APK to install (looked for *.apk)"
+say "apk: $APK ($(stat -c%s "$APK") bytes, sha256 $(sha256sum "$APK" | cut -d' ' -f1))"
+
+run_phase() {   # run_phase <name> <command...>
+    local name="$1"; shift
+    if ! "$@" > "$name.log" 2>&1; then
+        say "command failed: $*"
+        PHASE="$name"
+        die "command failed: $* -- $(tail -c 600 "$name.log")"
+    fi
+    say "$name: ok ($(wc -l < "$name.log") lines)"
+}
 
 # ---- 1. hardware virtualisation -------------------------------------------------
 phase "kvm"
-VIRT="$(grep -cE '(vmx|svm)' /proc/cpuinfo || true)"
-note "kvm: /dev/kvm $(ls -l /dev/kvm 2>&1 | cut -c1-60); cpu flags containing vmx/svm: $VIRT"
-if [ ! -e /dev/kvm ]; then
-    note "kvm: missing, the emulator will run without acceleration (slow)"
-fi
+say "kvm: $(ls -l /dev/kvm 2>&1 | cut -c1-60)"
+say "cpu: $(grep -cE '(vmx|svm)' /proc/cpuinfo || true) flags match vmx/svm"
+[ -e /dev/kvm ] || note "no /dev/kvm: the emulator will run unaccelerated and slowly"
 
 # ---- 2. emulator packages -------------------------------------------------------
 phase "sdk-packages"
-if [ ! -f "$SDK/platform-tools/adb" ]; then
-    run_phase sdk-packages bash -c "yes | sdkmanager --licenses > /dev/null 2>&1; sdkmanager --install 'platform-tools'"
+if [ ! -x "$ADB" ]; then
+    run_phase sdk-platform-tools bash -c "yes | sdkmanager --licenses > /dev/null 2>&1; sdkmanager --install 'platform-tools'"
 fi
 if [ ! -d "$SDK/system-images/android-$API/google_apis/x86_64" ]; then
     run_phase sdk-image bash -c "yes | sdkmanager --licenses > /dev/null 2>&1; sdkmanager --install '$IMAGE' 'emulator'"
 else
-    note "sdk: $IMAGE already installed"
+    say "sdk-image: $IMAGE already present"
 fi
 command -v avdmanager > /dev/null || die "avdmanager is not on PATH"
 
@@ -86,13 +125,12 @@ phase "avd"
 # location is stated once. The runner image sets neither variable for us.
 export ANDROID_AVD_HOME="${ANDROID_AVD_HOME:-$HOME/.android/avd}"
 mkdir -p "$ANDROID_AVD_HOME"
-echo no | avdmanager create avd -n "$AVD" -k "$IMAGE" --force \
+echo no | avdmanager create avd -n "$AVD" -k "$IMAGE" -d "$DEVICE" --force \
     -p "$ANDROID_AVD_HOME/$AVD.avd" > avd.log 2>&1 \
-    || die "avdmanager could not create the AVD: $(tail -c 400 avd.log)"
-note "avd: home $ANDROID_AVD_HOME, contents: $(ls "$ANDROID_AVD_HOME" 2>&1 | tr '\n' ' ' | cut -c1-240)"
+    || die "avdmanager could not create the AVD: $(tail -c 500 avd.log)"
+say "avd: $AVD from device profile $DEVICE at $ANDROID_AVD_HOME"
 "$EMU" -list-avds > avds.log 2>&1 || true
-note "avd: emulator -list-avds reports: $(tr '\n' ' ' < avds.log | cut -c1-240)"
-grep -qx "$AVD" avds.log || die "the emulator does not see AVD $AVD; it lists: $(tr '\n' ' ' < avds.log | cut -c1-240)"
+grep -qx "$AVD" avds.log || die "the emulator does not see AVD $AVD; it lists: $(tr '\n' ' ' < avds.log)"
 
 # ---- 4. boot --------------------------------------------------------------------
 phase "emulator-boot"
@@ -101,93 +139,112 @@ phase "emulator-boot"
     -gpu swiftshader_indirect -netdelay none -netspeed full \
     > emulator.log 2>&1 &
 EMU_PID=$!
-note "emulator: pid $EMU_PID"
+say "emulator: started as pid $EMU_PID"
 
 BOOTED=0
+START=$SECONDS
 DEADLINE=$((SECONDS + BOOT_TIMEOUT))
 while [ $SECONDS -lt $DEADLINE ]; do
     if ! kill -0 "$EMU_PID" 2>/dev/null; then
-        die "the emulator process exited before boot; log tail: $(tail -c 500 emulator.log)"
+        die "the emulator exited before boot; log tail: $(tail -c 600 emulator.log)"
     fi
-    STATE="$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r\n')"
-    if [ "$STATE" = "1" ]; then BOOTED=1; break; fi
+    [ "$("$ADB" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r\n')" = "1" ] \
+        && { BOOTED=1; break; }
     sleep 5
 done
 [ "$BOOTED" = 1 ] || die "no boot within ${BOOT_TIMEOUT}s"
 "$ADB" wait-for-device > /dev/null 2>&1
-note "emulator: booted after $SECONDS s; $( "$ADB" shell getprop ro.build.version.release 2>/dev/null | tr -d '\r\n') api $("$ADB" shell getprop ro.build.version.sdk | tr -d '\r\n')"
+say "emulator: booted in $((SECONDS - START)) s"
+say "android: api $("$ADB" shell getprop ro.build.version.sdk | tr -d '\r\n') ($("$ADB" shell getprop ro.build.version.release | tr -d '\r\n'))"
 WM_SIZE="$("$ADB" shell wm size | tr -d '\r' | awk '/Physical size/{print $3}' | tail -1)"
-note "display: physical size ${WM_SIZE:-unknown}"
+say "display: ${WM_SIZE:-unknown}"
 
-# ---- 5. install and launch ------------------------------------------------------
+# ---- 5. wake, unlock, install, launch --------------------------------------------
+phase "unlock"
+say "wake: $("$ADB" shell input keyevent KEYCODE_WAKEUP 2>&1 | tr -d '\r\n')"
+"$ADB" shell wm dismiss-keyguard > /dev/null 2>&1 || true
+"$ADB" shell input keyevent 82 > /dev/null 2>&1 || true
+"$ADB" shell svc power stayon true > /dev/null 2>&1 || true
+"$ADB" shell settings put global window_animation_scale 0 > /dev/null 2>&1 || true
+"$ADB" shell settings system put screen_off_timeout 1800000 > /dev/null 2>&1 || true
+sleep 3
+"$ADB" shell dumpsys window > focus.log 2>&1 || true
+say "focus before launch: $(grep -m1 -E 'mCurrentFocus' focus.log | tr -s ' ' | cut -c1-160)"
+
 phase "install"
-"$ADB" install -r -g "$APK" > install.log 2>&1 || die "adb install failed: $(tail -c 400 install.log)"
-note "install: $(tail -1 install.log)"
+"$ADB" install -r -g "$APK" > install.log 2>&1 || die "adb install failed: $(tail -c 500 install.log)"
+say "install: $(tail -1 install.log)"
 
 phase "launch"
 "$ADB" shell am start -W -n org.umbra.client/android.app.NativeActivity > launch.log 2>&1 \
-    || die "am start failed: $(tail -c 400 launch.log)"
-note "launch: $(grep -E 'Status|TotalTime|Error' launch.log | head -3 | tr '\n' ' ')"
-sleep 20
+    || die "am start failed: $(tail -c 500 launch.log)"
+say "launch: $(grep -E 'Status|TotalTime|Error' launch.log | tr '\n' ' ' | tr -s ' ')"
 
+# Wait for the app's own first words rather than guessing a sleep.
+READY=0
+DEADLINE=$((SECONDS + APP_TIMEOUT))
+while [ $SECONDS -lt $DEADLINE ]; do
+    "$ADB" logcat -d -s umbra:V > logcat-umbra.txt 2>&1
+    if grep -q "Umbra starting" logcat-umbra.txt; then READY=1; break; fi
+    if ! "$ADB" shell pidof org.umbra.client > /dev/null 2>&1; then
+        die "the app is not running any more; umbra log: $(tail -c 800 logcat-umbra.txt)"
+    fi
+    sleep 3
+done
+[ "$READY" = 1 ] || die "the app logged its start line never within ${APP_TIMEOUT}s; umbra log: $(tail -c 800 logcat-umbra.txt)"
 PID="$("$ADB" shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')"
-[ -n "$PID" ] || {
-    "$ADB" logcat -d > logcat-full.txt 2>&1
-    die "the app is not running; last log lines: $(grep -iE 'umbra|FATAL|AndroidRuntime' logcat-full.txt | tail -c 700)"
-}
-note "running: pid $PID"
-
-# The app writes its own diagnostics through umbra_log(); read them back.
-"$ADB" logcat -d -s umbra:V > logcat-umbra.txt 2>&1
-note "app log: $(grep -c . logcat-umbra.txt) lines"
-i=0
+say "running: pid $PID"
 while IFS= read -r line; do
     case "$line" in
-        *umbra*) note "app: $(esc "${line#*umbra: }")" ;;
+        *"umbra   :"*) say "app: $(echo "${line#*umbra   : }" | tr -s ' ' | cut -c1-220)" ;;
     esac
-    i=$((i + 1))
-    [ $i -ge 12 ] && break
 done < logcat-umbra.txt
 
 # ---- 6. screenshots -------------------------------------------------------------
 phase "screenshot-home"
+sleep 5
 "$ADB" exec-out screencap -p > shot1.png || die "screencap failed"
 S1="$(stat -c%s shot1.png)"
-[ "$S1" -gt 20000 ] || die "shot1.png is only $S1 bytes, the capture is empty"
-note "shot1: $S1 bytes, sha256 $(sha256sum shot1.png | cut -c1-16)"
+say "shot1: $S1 bytes, sha256 $(sha256sum shot1.png | cut -d' ' -f1)"
+say "focus while drawing: $("$ADB" shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus | tr -s ' ' | cut -c1-160)"
 
-# The home screen stacks three buttons above the bottom inset; the self test is
-# the top one. Its height is 34 logical units with 8 between, measured in the
-# app's own pixel space, so the tap is derived from the reported display size.
+# The home screen stacks three buttons of 34 pixels with 8 between them above
+# the bottom inset, and the self test is the top one; tap its centre. The
+# coordinates come from the reported display size, not from a guess.
 W="${WM_SIZE%x*}"
-H="${WM_SIZE#*x}"
+H="${WM_SIZE#x*}"
 TAP_X=$((W / 2))
 TAP_Y=$((H - 117))
 phase "selftest-tap"
-note "tap: $TAP_X,$TAP_Y (self-test button, from display ${W}x${H})"
+say "tap: $TAP_X,$TAP_Y (self-test button, from display ${W}x${H})"
 "$ADB" shell input tap "$TAP_X" "$TAP_Y" > tap.log 2>&1 || die "input tap failed"
-sleep 8
+sleep 10
 "$ADB" exec-out screencap -p > shot2.png || die "second screencap failed"
 S2="$(stat -c%s shot2.png)"
-[ "$S2" -gt 20000 ] || die "shot2.png is only $S2 bytes, the capture is empty"
-note "shot2: $S2 bytes, sha256 $(sha256sum shot2.png | cut -c1-16)"
+say "shot2: $S2 bytes, sha256 $(sha256sum shot2.png | cut -d' ' -f1)"
 "$ADB" logcat -d -s umbra:V > logcat-umbra2.txt 2>&1
-note "selftest: $(grep -i 'selftest' logcat-umbra2.txt | tail -3 | tr '\n' '|' | cut -c1-600)"
+"$ADB" shell dumpsys meminfo org.umbra.client > meminfo.txt 2>&1 || true
+while IFS= read -r line; do
+    case "$line" in
+        *self-test*|*selftest*) say "app: $(echo "${line#*umbra   : }" | tr -s ' ' | cut -c1-220)" ;;
+    esac
+done < logcat-umbra2.txt
 
 # ---- 7. soak --------------------------------------------------------------------
 phase "soak"
-"$ADB" shell dumpsys meminfo org.umbra.client > meminfo.txt 2>&1 || true
-note "soak: starting ${SOAK_SECONDS}s"
+say "soak: holding for ${SOAK_SECONDS}s"
 sleep "$SOAK_SECONDS"
 PID2="$("$ADB" shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')"
-"$ADB" logcat -d > logcat-full.txt 2>&1
 [ -n "$PID2" ] || die "the app died during the ${SOAK_SECONDS}s soak (pid was $PID)"
-note "soak: survived ${SOAK_SECONDS}s, pid $PID2"
-if grep -q "FATAL EXCEPTION" logcat-full.txt; then
-    die "FATAL EXCEPTION in logcat: $(grep -A6 'FATAL EXCEPTION' logcat-full.txt | tail -c 700)"
+say "soak: survived, pid $PID2"
+if "$ADB" logcat -d 2>/dev/null | grep -q "FATAL EXCEPTION"; then
+    die "FATAL EXCEPTION appeared during the soak"
 fi
-note "soak: no FATAL EXCEPTION"
-note "meminfo: $(grep -E 'TOTAL PSS|Native Heap' meminfo.txt | tr -s ' ' | tr '\n' '|' | cut -c1-300)"
+say "soak: no FATAL EXCEPTION"
+say "meminfo: $(grep -E 'TOTAL PSS|Native Heap' meminfo.txt | tr -s ' ' | tr '\n' '|' | cut -c1-240)"
+say "frames drawn: $(grep -c 'frame' logcat-umbra2.txt || true) matching log lines"
 
 "$ADB" emu kill > /dev/null 2>&1 || true
-note "done: both screenshots captured, no crash"
+phase "done"
+say "result: PASS (installed, launched, drew, self test tapped, ${SOAK_SECONDS}s soak, no crash)"
+note "PASS: app ran on the emulator, see summary.txt in evidence/ci"

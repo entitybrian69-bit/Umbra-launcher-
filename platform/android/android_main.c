@@ -180,6 +180,9 @@ static void handle_cmd(struct android_app *state, int32_t cmd) {
             break;
         case APP_CMD_TERM_WINDOW:
             destroy_egl(st);
+            // The GL objects died with the context; the app is rebuilt from
+            // umbra_app_init() when a window comes back.
+            st->pending_restart = 1;
             break;
         case APP_CMD_WINDOW_RESIZED:
         case APP_CMD_CONFIG_CHANGED:
@@ -211,16 +214,32 @@ void android_main(struct android_app *state) {
     ALOGI("android_main: files %s", g_st.files_dir);
 
     bool started = false;
+    bool announced_wait = false;
     while (!state->destroyRequested) {
         int events;
-        struct android_app *source;
-        // Poll for events; android_app_glue dispatches them to handle_cmd and
-        // handle_input. No timeout keeps this a tight frame loop.
-        int timeout = 0;
+        struct android_app *source = NULL;
+        // android_app_glue dispatches events to handle_cmd/handle_input. With a
+        // window the loop polls without waiting so it stays a tight frame loop;
+        // without one there is nothing to draw, so it blocks instead of
+        // spinning a core (a paused game must not burn the battery).
+        int timeout = g_st.egl_ready ? 0 : -1;
         while (ALooper_pollOnce(timeout, NULL, &events, (void **)&source) >= 0) {
             timeout = 0;
         }
-        if (!g_st.egl_ready) continue;
+        if (!g_st.egl_ready) {
+            if (!announced_wait) {
+                ALOGI("no window yet: waiting for the activity to become visible");
+                announced_wait = true;
+            }
+            continue;
+        }
+        announced_wait = false;
+        if (started && g_st.pending_restart) {
+            umbra_app_shutdown(&g_st.app);
+            started = false;
+            g_st.app_ready = false;
+            g_st.pending_restart = 0;
+        }
         if (!started) {
             g_st.app.width = g_st.width;
             g_st.app.height = g_st.height;
