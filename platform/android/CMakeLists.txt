@@ -18,7 +18,8 @@ add_library(umbra SHARED
 
 target_include_directories(umbra PRIVATE
     ${UMBRA_GEN_DIR}
-    ../../platform/shared)
+    ../../platform/shared
+    ${ANDROID_NDK}/sources/android/native_app_glue)
 
 target_compile_definitions(umbra PRIVATE
     UMBRA_GIT_COMMIT="${UMBRA_GIT_COMMIT}")
