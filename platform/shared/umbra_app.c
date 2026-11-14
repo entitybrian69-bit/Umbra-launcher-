@@ -13,6 +13,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <time.h>
+#include <math.h>
 
 #ifdef __ANDROID__
 #include <GLES3/gl3.h>
