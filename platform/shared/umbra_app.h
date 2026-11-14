@@ -78,6 +78,12 @@ struct umbra_app {
 #endif
 };
 
+// The app's own entry points, called by whichever platform shell is hosting it.
+int umbra_app_init(umbra_app *app);
+void umbra_app_shutdown(umbra_app *app);
+void umbra_app_frame(umbra_app *app);
+void umbra_app_touch(umbra_app *app, int32_t x, int32_t y, bool down);
+
 // Implemented per platform.
 void umbra_log(umbra_app *app, const char *fmt, ...);
 void umbra_share_log(umbra_app *app);
