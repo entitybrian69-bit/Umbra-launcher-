@@ -183,3 +183,6 @@ fn u64_to_hex(v: u64, digits: i64) -> u8[>..] {
     }
     return out;
 }
+
+// A stable hash of a float's bits, for mesh hashes and golden tests.
+fn f32_hash(v: f32) -> u32 { return umbra_c_bits_of_f32(v); }

@@ -1,0 +1,147 @@
+name: android
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      release:
+        description: 'Publish a release from this run'
+        type: boolean
+        default: false
+
+jobs:
+  apk:
+    name: Build APK (arm64 + x86_64)
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Toolchain versions
+        run: |
+          java -version 2>&1 | head -2
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls "$ANDROID_HOME/ndk" 2>/dev/null || true
+          cmake --version | head -1
+
+      - name: Build the pinned Goose compiler
+        run: tools/pin_goose.sh
+
+      - name: Generate the Goose core as C
+        run: GOOSE=build/bin/goose tools/gen_core.sh
+
+      - name: Install the NDK version the build file pins
+        run: |
+          set -e
+          NDK=27.2.12479018
+          if [ ! -d "$ANDROID_HOME/ndk/$NDK" ]; then
+            yes | sdkmanager --install "ndk;$NDK" > /dev/null
+          fi
+          ls "$ANDROID_HOME/ndk/$NDK" | head -3
+
+      - name: Set build metadata
+        id: meta
+        run: |
+          echo "commit=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "version=0.1.0-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Gradle assembleRelease
+        working-directory: android
+        env:
+          GOOSE: ${{ github.workspace }}/build/bin/goose
+        run: |
+          chmod +x ../tools/gen_core.sh
+          gradle wrapper --gradle-version 8.11.1 --no-daemon > /dev/null 2>&1 || true
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tail -40
+
+      - name: Locate the APK and hash it
+        id: apk
+        run: |
+          set -e
+          APK=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
+          echo "apk=$APK" >> "$GITHUB_OUTPUT"
+          ls -l "$APK"
+          sha256sum "$APK" | tee apk.sha256
+
+      - name: Gate 2 - APK integrity
+        run: |
+          set -e
+          APK="${{ steps.apk.outputs.apk }}"
+          echo "== unzip -t =="
+          unzip -t "$APK" | tail -2
+          echo "== aapt2 dump badging =="
+          AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" | head -8
+          echo "== apksigner verify =="
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --verbose --print-certs "$APK" | head -12
+          echo "== native libraries per ABI =="
+          unzip -l "$APK" | grep -E 'lib/(arm64-v8a|x86_64)/libumbra\.so' || {
+            echo "missing a native library for an ABI"; exit 1; }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: umbra-apk
+          path: |
+            ${{ steps.apk.outputs.apk }}
+            apk.sha256
+
+  emulator:
+    name: Emulator smoke test + screenshot
+    needs: apk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: umbra-apk
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm || echo "no /dev/kvm (emulator will be slow)"
+      - name: Run the app on an emulator and capture screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          target: google_apis
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -accel on
+          disable-animations: true
+          script: |
+            set -x
+            APK=$(find . -name '*.apk' | head -1)
+            adb install -r "$APK"
+            adb shell am start -n org.umbra.client/android.app.NativeActivity
+            sleep 25
+            adb shell pidof org.umbra.client
+            adb logcat -d -s umbra:* > logcat-umbra.txt || true
+            # Fresh screenshot 1: the home screen as it starts.
+            adb exec-out screencap -p > shot1.png
+            # Tap the self-test button and capture the result screen.
+            adb shell input tap 400 520
+            sleep 6
+            adb exec-out screencap -p > shot2.png
+            adb shell dumpsys meminfo org.umbra.client | head -20 > meminfo.txt || true
+            # 60 s soak: the process must stay alive with no fatal exception.
+            sleep 60
+            adb shell pidof org.umbra.client
+            adb logcat -d > logcat-full.txt || true
+            ! grep -q "FATAL EXCEPTION" logcat-full.txt
+      - name: Screenshot gate (fresh, non-blank, similar to the reference)
+        run: python3 tools/check_screenshot.py shot1.png shot2.png --reference docs/reference/emulator_home.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: emulator-evidence
+          path: |
+            shot1.png
+            shot2.png
+            logcat-umbra.txt
+            logcat-full.txt
+            meminfo.txt

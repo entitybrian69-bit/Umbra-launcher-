@@ -1,0 +1,72 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'org.umbra.client'
+    compileSdk 35
+    ndkVersion '27.2.12479018'
+
+    defaultConfig {
+        applicationId 'org.umbra.client'
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName '0.1.0'
+        ndk {
+            // arm64 is what phones run; x86_64 is what the CI emulator runs.
+            abiFilters 'arm64-v8a', 'x86_64'
+        }
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_STL=none'
+                cppFlags ''
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+            version '3.22.1'
+        }
+    }
+
+    signingConfigs {
+        release {
+            // A persistent key so releases can be upgraded in place. The
+            // keystore and its password are part of the repository on purpose;
+            // see DECISIONS.md (D-013) for what that does and does not protect.
+            storeFile file('../../../ci/umbra-release.p12')
+            storePassword 'umbra-release'
+            keyAlias 'umbra'
+            keyPassword 'umbra-release'
+            storeType 'PKCS12'
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            ndk { debugSymbolLevel 'none' }
+        }
+        debug {
+            applicationIdSuffix '.debug'
+        }
+    }
+
+    buildFeatures { prefab false }
+}
+
+// The Goose core is generated before Gradle configures CMake.
+tasks.register('buildGooseCore', Exec) {
+    workingDir rootProject.projectDir.parentFile
+    commandLine 'bash', 'tools/gen_core.sh'
+}
+tasks.configureEach { task ->
+    if (task.name.startsWith('configureCMake') || task.name.startsWith('buildCMake')
+        || task.name.startsWith('externalNativeBuild')) {
+        task.dependsOn 'buildGooseCore'
+    }
+}

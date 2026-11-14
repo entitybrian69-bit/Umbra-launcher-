@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- No permissions at all: Umbra does not touch the network or read the
+         owner's files unless an Umbmod asks for a permission at load time. -->
+    <uses-feature android:glEsVersion="0x00030000" android:required="true" />
+    <application
+        android:label="Umbra"
+        android:hasCode="false"
+        android:allowBackup="false"
+        android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+        <activity
+            android:name="android.app.NativeActivity"
+            android:exported="true"
+            android:configChanges="orientation|keyboardHidden|screenSize|screenLayout|uiMode"
+            android:screenOrientation="landscape"
+            android:launchMode="singleTask">
+            <meta-data android:name="android.app.lib_name" android:value="umbra" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
