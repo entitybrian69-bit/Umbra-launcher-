@@ -4,6 +4,7 @@ import test.inflate_test;
 import test.zip_test;
 import test.png_test;
 import test.nbt_test;
+import test.region_test;
 
 fn main() {
     print("umbra core tests");
@@ -12,6 +13,7 @@ fn main() {
     run_zip();
     run_png();
     run_nbt();
+    run_region();
     print("all modules passed");
 }
 

@@ -8,3 +8,6 @@ float umbra_c_f32_from_bits(uint32_t bits) { float f; memcpy(&f, &bits, 4); retu
 double umbra_c_f64_from_bits(uint64_t bits) { double d; memcpy(&d, &bits, 8); return d; }
 uint32_t umbra_c_bits_of_f32(float v) { uint32_t b; memcpy(&b, &v, 4); return b; }
 uint64_t umbra_c_bits_of_f64(double v) { uint64_t b; memcpy(&b, &v, 8); return b; }
+
+#include <time.h>
+uint32_t umbra_c_time_seconds(void) { return (uint32_t)time(NULL); }
