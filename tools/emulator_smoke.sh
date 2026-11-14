@@ -82,9 +82,17 @@ command -v avdmanager > /dev/null || die "avdmanager is not on PATH"
 
 # ---- 3. AVD ---------------------------------------------------------------------
 phase "avd"
-echo no | avdmanager create avd -n "$AVD" -k "$IMAGE" --force > avd.log 2>&1 \
+# avdmanager and the emulator binary only agree on where an AVD lives if the
+# location is stated once. The runner image sets neither variable for us.
+export ANDROID_AVD_HOME="${ANDROID_AVD_HOME:-$HOME/.android/avd}"
+mkdir -p "$ANDROID_AVD_HOME"
+echo no | avdmanager create avd -n "$AVD" -k "$IMAGE" --force \
+    -p "$ANDROID_AVD_HOME/$AVD.avd" > avd.log 2>&1 \
     || die "avdmanager could not create the AVD: $(tail -c 400 avd.log)"
-note "avd: $AVD created"
+note "avd: home $ANDROID_AVD_HOME, contents: $(ls "$ANDROID_AVD_HOME" 2>&1 | tr '\n' ' ' | cut -c1-240)"
+"$EMU" -list-avds > avds.log 2>&1 || true
+note "avd: emulator -list-avds reports: $(tr '\n' ' ' < avds.log | cut -c1-240)"
+grep -qx "$AVD" avds.log || die "the emulator does not see AVD $AVD; it lists: $(tr '\n' ' ' < avds.log | cut -c1-240)"
 
 # ---- 4. boot --------------------------------------------------------------------
 phase "emulator-boot"

@@ -163,7 +163,7 @@ jobs:
         if: always()
         run: |
           mkdir -p evidence/ci
-          for f in shot1.png shot2.png logcat-umbra.txt logcat-umbra2.txt logcat-full.txt meminfo.txt emulator.log launch.log install.log; do
+          for f in shot1.png shot2.png logcat-umbra.txt logcat-umbra2.txt logcat-full.txt meminfo.txt emulator.log launch.log install.log avd.log avds.log sdk-image.log sdk-packages.log; do
             [ -f "$f" ] && cp -f "$f" evidence/ci/ || true
           done
           {
