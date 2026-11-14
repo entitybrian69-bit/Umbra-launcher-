@@ -11,8 +11,8 @@ fn run_inflate() {
     var listing: u8[>..] = [];
     let dir = "goose/test/fixtures/inflate";
     if !list_dir(dir, listing) {
-        fail("cannot list fixture directory; run tools/gen_inflate_fixtures.py");
-        summary("inflate");
+        test_fail("cannot list fixture directory; run tools/gen_inflate_fixtures.py");
+        test_summary("inflate");
         return;
     }
     var good = 0;
@@ -32,7 +32,7 @@ fn run_inflate() {
             want_path.append(path[0..path.len - 8]);
             want_path.append(".plain");
             if !read_file(path, raw) || !read_file(want_path, want) {
-                fail("cannot read deflate fixture");
+                test_fail("cannot read deflate fixture");
                 return;
             }
             var out: u8[>..] = [];
@@ -50,7 +50,7 @@ fn run_inflate() {
         } else if ends_with(it, ".zlib") {
             var raw: u8[>..] = [];
             if !read_file(path, raw) {
-                fail("cannot read zlib fixture");
+                test_fail("cannot read zlib fixture");
                 return;
             }
             var out: u8[>..] = [];
@@ -71,7 +71,7 @@ fn run_inflate() {
                 want_path.append(path[0..path.len - 5]);
                 want_path.append(".zplain");
                 if !read_file(want_path, want) {
-                    fail("cannot read zplain fixture");
+                    test_fail("cannot read zplain fixture");
                     return;
                 }
                 checks += 1;
@@ -90,7 +90,7 @@ fn run_inflate() {
     };
     print("inflate: ", good, " streams matched zlib byte for byte, ",
           bad_rejected, " corrupt streams rejected");
-    ok(bad_rejected == 4, "all four corrupt fixtures rejected");
-    ok(good >= 70, "at least 70 good streams decoded");
-    summary("inflate");
+    check(bad_rejected == 4, "all four corrupt fixtures rejected");
+    check(good >= 70, "at least 70 good streams decoded");
+    test_summary("inflate");
 }

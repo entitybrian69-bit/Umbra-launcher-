@@ -4,25 +4,17 @@ import core.mem;
 var failures = 0;
 var checks = 0;
 
-fn fail(what: u8[:]) {
+fn test_fail(what: const u8[:]) {
     failures += 1;
     print("FAIL: ", what);
 }
 
-fn ok(cond: bool, what: u8[:]) {
+fn check(cond: bool, what: const u8[:]) {
     checks += 1;
-    if !cond { fail(what); }
+    if !cond { test_fail(what); }
 }
 
-fn eq_i64(got: i64, want: i64, what: u8[:]) {
-    checks += 1;
-    if got != want {
-        failures += 1;
-        print("FAIL: ", what, " got ", got, " want ", want);
-    }
-}
-
-fn eq_u32(got: u32, want: u32, what: u8[:]) {
+fn check_i64(got: i64, want: i64, what: const u8[:]) {
     checks += 1;
     if got != want {
         failures += 1;
@@ -30,7 +22,15 @@ fn eq_u32(got: u32, want: u32, what: u8[:]) {
     }
 }
 
-fn eq_bytes(got: const u8[:], want: const u8[:], what: u8[:]) {
+fn check_u32(got: u32, want: u32, what: const u8[:]) {
+    checks += 1;
+    if got != want {
+        failures += 1;
+        print("FAIL: ", what, " got ", got, " want ", want);
+    }
+}
+
+fn check_bytes(got: const u8[:], want: const u8[:], what: const u8[:]) {
     checks += 1;
     if !eq_bytes(got, want) {
         failures += 1;
@@ -38,7 +38,7 @@ fn eq_bytes(got: const u8[:], want: const u8[:], what: u8[:]) {
     }
 }
 
-fn summary(module: u8[:]) {
+fn test_summary(module: u8[:]) {
     if failures == 0 {
         print("PASS ", module, " (", checks, " checks)");
     } else {

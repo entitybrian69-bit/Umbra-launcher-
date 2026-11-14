@@ -149,7 +149,7 @@ fn inflate_raw(src: const u8[:], out: u8[>..]&) -> bool, u8[>..] {
                 }
                 let len = length_base[li] + (bits(r, length_extra[li]) as i64);
                 let dsym = huff_decode(r, dist);
-                if dsym < 0 || dsym >= 29 {
+                if dsym < 0 || dsym >= 30 {
                     ok = false;
                     format(err, "deflate: invalid distance code at ", r.pos);
                     return;

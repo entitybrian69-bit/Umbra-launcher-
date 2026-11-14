@@ -1,11 +1,15 @@
 import std;
 import test.mem_test;
 import test.inflate_test;
+import test.zip_test;
+import test.png_test;
 
 fn main() {
     print("umbra core tests");
     run_mem();
     run_inflate();
+    run_zip();
+    run_png();
     print("all modules passed");
 }
 
