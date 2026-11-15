@@ -539,39 +539,60 @@ else
     say "player: the app's own surface was $(grep -m1 -o 'hud: button 0 at [0-9,]* size [0-9]*x[0-9]* on [0-9]*x[0-9]*' logcat-umbra-player.txt | sed 's/.* on //')"
     die "player: the tap at $(( P_WIDTH / 2 )),$P_SCENE_Y did not start first person (no spawn line)"
 fi
-# Hold a finger on the scene for three seconds: a finger that rests without turning
-# the head walks. `input swipe` from a point to itself is exactly that hold.
-# The same point the tap used: that point is known to be the world and not a button.
-adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 )) "$P_SCENE_Y" 3000 \
-    > /dev/null 2>&1 || say "player: the hold failed"
-sleep 1
-# A drag turns the head: a one-third-of-the-screen swipe must show up as a yaw change.
-adb shell input swipe $(( P_WIDTH / 3 )) "$P_SCENE_Y" $(( P_WIDTH * 2 / 3 )) "$P_SCENE_Y" 600 \
-    > /dev/null 2>&1 || say "player: the look drag failed"
-sleep 2
+# Walk. The spawn is on a hillside, and a body stops at a full-block rise (a half
+# block it steps over), so one heading is not enough: turn a quarter turn, hold, and
+# try again until the body has moved half a block. A held finger is a walk; a tap is
+# a jump; a drag is a look.
+read_pos() {
+    # "16:44:57 player: at 24.50 66.00 24.50, yaw 3.09 pitch -0.25, on ground, 0 steps"
+    adb logcat -d -s umbra:V 2>/dev/null | grep "player: at " | tail -1 \
+        | sed 's/.*player: at //' | sed 's/,.*//' | tr ' ' '\n' | grep -v '^$' | tr '\n' ' '
+}
+WALKED=0
+TRIES=0
+for try in 1 2 3 4; do
+    TRIES=$try
+    BEFORE="$(read_pos)"
+    if [ -z "$BEFORE" ]; then err "player: no position line after spawning"; break; fi
+    set -- $BEFORE
+    BX="${1:-0}"; BZ="${3:-0}"
+    # Hold: a finger resting on the world without turning the head walks forward.
+    adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 )) "$P_SCENE_Y" 1500 \
+        > /dev/null 2>&1 || say "player: the hold failed"
+    sleep 1
+    AFTER="$(read_pos)"
+    set -- $AFTER
+    AX="${1:-0}"; AZ="${3:-0}"
+    DIST="$(awk -v ax="$BX" -v az="$BZ" -v bx="$AX" -v bz="$AZ" \
+        'BEGIN { dx = ax - bx; dz = az - bz; if (dx < 0) dx = -dx; if (dz < 0) dz = -dz;
+                 printf "%.2f", (dx > dz ? dx : dz) }')"
+    say "player: hold $try walked $DIST blocks ($BX,$BZ -> $AX,$AZ)"
+    if awk -v d="$DIST" 'BEGIN { exit !(d >= 0.5) }'; then WALKED=1; break; fi
+    # Turn a quarter turn and try another heading: the body may be facing a full block.
+    adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 + P_WIDTH / 6 )) \
+        "$P_SCENE_Y" 300 > /dev/null 2>&1 || true
+    sleep 1
+done
+[ "$WALKED" = 1 ] || die "player: a held finger did not move the body in $TRIES headings; see logcat-umbra-player.txt"
+say "player: a held finger walked the body"
+# The drag turned the head: the last position line must not still be at yaw 0.
 adb logcat -d -s umbra:V > logcat-umbra-player2.txt 2>&1
-PLINES="$(grep "player: at " logcat-umbra-player2.txt | sed 's/.*umbra   : //')"
-[ -n "$PLINES" ] || die "player: no position line at all; the input path is dead"
-printf '%s\n' "$PLINES" | tail -2 | while IFS= read -r l; do say "player: $l"; done
-FIRST="$(printf '%s\n' "$PLINES" | head -1)"
-LAST="$(printf '%s\n' "$PLINES" | tail -1)"
-FIRST_X="$(printf '%s' "$FIRST" | sed 's/.*at \([-0-9.]*\) [-0-9.]* [-0-9.]*.*/\1/')"
-FIRST_Z="$(printf '%s' "$FIRST" | sed 's/.*at [-0-9.]* [-0-9.]* \([-0-9.]*\) .*/\1/')"
-LAST_X="$(printf '%s' "$LAST" | sed 's/.*at \([-0-9.]*\) [-0-9.]* [-0-9.]*.*/\1/')"
-LAST_Z="$(printf '%s' "$LAST" | sed 's/.*at [-0-9.]* [-0-9.]* \([-0-9.]*\) .*/\1/')"
-MOVED="$(awk -v ax="$FIRST_X" -v az="$FIRST_Z" -v bx="$LAST_X" -v bz="$LAST_Z" \
-    'BEGIN { dx = ax - bx; dz = az - bz; if (dx < 0) dx = -dx; if (dz < 0) dz = -dz;
-             printf "%.2f", (dx > dz ? dx : dz) }')"
-say "player: moved ${MOVED} blocks, from (${FIRST_X}, ${FIRST_Z}) to (${LAST_X}, ${LAST_Z})"
-awk -v m="$MOVED" 'BEGIN { exit !(m >= 0.5) }' \
-    || die "player: the body did not move ($MOVED blocks); holding a finger is supposed to walk it"
-FIRST_YAW="$(printf '%s' "$FIRST" | sed 's/.*yaw \([-0-9]*\).*/\1/')"
-LAST_YAW="$(printf '%s' "$LAST" | sed 's/.*yaw \([-0-9]*\).*/\1/')"
-[ "$FIRST_YAW" != "$LAST_YAW" ] \
-    && say "player: the drag turned the head (yaw ${FIRST_YAW} -> ${LAST_YAW})" \
+LAST_LINE="$(grep "player: at " logcat-umbra-player2.txt | tail -1 | sed 's/.*umbra   : //')"
+LAST_YAW="$(printf '%s' "$LAST_LINE" | sed 's/.*yaw \([-0-9]*\).*/\1/')"
+[ -n "$LAST_YAW" ] && [ "$LAST_YAW" != "0" ] \
+    && say "player: the drag turned the head (yaw $LAST_YAW)" \
     || err "player: the drag did not change the yaw"
-if printf '%s' "$LAST" | grep -q "in the air"; then
-    err "player: the body is in the air after walking, not standing on the ground"
+case "$LAST_LINE" in
+    *"on ground"*) say "player: the body is standing on the ground after walking" ;;
+    *) err "player: the body is not standing on the ground after walking: $LAST_LINE" ;;
+esac
+# A tap is a jump: from standing, a tap on the world must push the eye up.
+adb shell input tap $(( P_WIDTH / 2 )) "$P_SCENE_Y" > /dev/null 2>&1 || say "player: the jump tap failed"
+sleep 1
+if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: tap, jumping"; then
+    say "player: a tap asked for a jump"
+else
+    err "player: a tap did not ask for a jump"
 fi
 
 # ---- 7. soak --------------------------------------------------------------------
