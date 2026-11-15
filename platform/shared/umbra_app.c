@@ -672,6 +672,13 @@ void umbra_app_shutdown(umbra_app *app) {
 
 // --- self test ----------------------------------------------------------
 
+// Every step of the self-test reports its own GL error, because "black screen"
+// on its own does not say which call the driver refused.
+static void selftest_gl_check(umbra_app *app, const char *where) {
+    GLenum e = glGetError();
+    if (e != GL_NO_ERROR) umbra_log(app, "self-test: gl error 0x%x at %s", (unsigned)e, where);
+}
+
 // A colour texture plus a depth renderbuffer that the self-test draws into.
 // Returns 0 if the driver refuses, in which case the window's back buffer is
 // used and the log says so.
@@ -708,40 +715,47 @@ static int selftest_begin_target(umbra_app *app, int w, int h) {
 static void run_selftest(umbra_app *app) {
     umbra_log(app, "self-test: begin (%dx%d)", app->width, app->height);
     umbra_selftest_reset();
+    (void)glGetError();  // clear anything the last frame left behind
     int offscreen = selftest_begin_target(app, app->width, app->height);
     glViewport(0, 0, app->width, app->height);
     glDisable(GL_DEPTH_TEST);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    selftest_gl_check(app, "clearing the target");
 
     // 1. Fullscreen pattern: the fragment colour is a pure function of
     //    gl_FragCoord, so any viewport or attribute-layout error shows.
     glUseProgram(app->prog_pattern);
+    selftest_gl_check(app, "binding the pattern program");
     glUniform1i(glGetUniformLocation(app->prog_pattern, "u_w"), app->width);
     glUniform1i(glGetUniformLocation(app->prog_pattern, "u_h"), app->height);
     glBindVertexArray(app->vao_full);
     glDrawArrays(GL_TRIANGLES, 0, 3);
+    selftest_gl_check(app, "drawing the pattern");
     glFinish();
 
     int w = app->width, h = app->height;
-    unsigned char *px = (unsigned char *)malloc((size_t)w * h * 3);
+    // RGBA, not RGB: the target is RGBA8 and a four-channel readback is the
+    // one every driver accepts.
+    unsigned char *px = (unsigned char *)malloc((size_t)w * h * 4);
     if (!px) {
         umbra_log(app, "self-test: out of memory");
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
         return;
     }
     glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, px);
+    glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    selftest_gl_check(app, "reading the pattern back");
     // The verdict is Goose's: hand it every pixel and let it compare.
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
-            const unsigned char *p = px + ((size_t)y * w + x) * 3;
+            const unsigned char *p = px + ((size_t)y * w + x) * 4;
             umbra_selftest_pattern_pixel(x, y, w, h, p[0], p[1], p[2]);
         }
     }
-    umbra_log(app, "self-test: gl error after the pattern draw 0x%x", (unsigned)glGetError());
     umbra_log(app, "self-test: target %s, pixel(0,0) = %d,%d,%d, pixel(w-1,0) = %d,%d,%d",
               offscreen ? "offscreen" : "window", px[0], px[1], px[2],
-              px[(size_t)(w - 1) * 3 + 0], px[(size_t)(w - 1) * 3 + 1], px[(size_t)(w - 1) * 3 + 2]);
+              px[(size_t)(w - 1) * 4 + 0], px[(size_t)(w - 1) * 4 + 1], px[(size_t)(w - 1) * 4 + 2]);
     glEnable(GL_DEPTH_TEST);
     int64_t pattern_mismatches = umbra_selftest_mismatches();
     int64_t pattern_checked = umbra_selftest_checked();
@@ -765,11 +779,13 @@ static void run_selftest(umbra_app *app) {
     glUniformMatrix4fv(glGetUniformLocation(app->prog_cube, "u_viewproj"), 1, GL_FALSE, vp);
     glBindVertexArray(app->vao_cube);
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
+    selftest_gl_check(app, "drawing the cube");
     glFinish();
-    glReadPixels(0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, px);
+    glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, px);
+    selftest_gl_check(app, "reading the cube back");
     for (int y = 0; y < h; y++) {
         for (int x = 0; x < w; x++) {
-            const unsigned char *p = px + ((size_t)y * w + x) * 3;
+            const unsigned char *p = px + ((size_t)y * w + x) * 4;
             umbra_selftest_cube_pixel(x, y, w, h, p[0], p[1], p[2]);
         }
     }
