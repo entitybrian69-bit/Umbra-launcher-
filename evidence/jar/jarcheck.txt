@@ -1,9 +1,9 @@
-goose/jarcheck.goose:103: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+goose/jarcheck.goose:110: warning: redundant `as u32`: a u8 converts to u32 implicitly here
         h = (h ^ (s[i] as u32)) * 16777619;
                   ^~~~~~~~~~~
-goose/jarcheck.goose:105: warning: redundant `as i64`: a u32 converts to i64 implicitly here
-    return (h & (JC_TABLE_SIZE - 1) as u32) as i64;
-            ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/jarcheck.goose:112: warning: redundant `as i64`: (h & (JC_TABLE_SIZE - 1)) is already i64
+    return (h & (JC_TABLE_SIZE - 1)) as i64;
+            ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 goose/core/png.goose:58: warning: redundant `as i64`: a u8 converts to i64 implicitly here
             raw[i] = (raw[i] as i64 + add) as u8;
                       ^~~~~~~~~~~~~
@@ -117,47 +117,52 @@ goose/core/mem.goose:125: warning: redundant `as u32`: a u8 converts to u32 impl
                   ^~~~~~~~
 jar: read 41483720 bytes from build/jar/client.jar
 jar: 34227 entries
-jar: blockstates 1288
-jar: models 4192
-jar: textures 3964
+jar: blockstates 1288, models 4192, textures 3964
 jar: blockstates 0/1288
 jar: blockstates 500/1288
 jar: blockstates 1000/1288
-jar: models 0/4192
-jar: models 1000/4192
-jar: models 2000/4192
-jar: models 3000/4192
-jar: models 4000/4192
-jar: model references 10290, parents resolved 3886, builtin parents 1
-jar: texture references 6833, variables 245
-jar: boxes 1205, faces 4300, faces with four UVs 4300
-jar: multipart blockstates 104, weighted variants 75
-jar: textures decoded 159, square and 16..256 px 123
-jar: problems 767
+jar: used models 0/2603
+jar: used models 500/2603
+jar: used models 1000/2603
+jar: used models 1500/2603
+jar: used models 2000/2603
+jar: used models 2500/2603
+jar: blockstate model references 10290, distinct models used 2603 (1589 unused)
+jar: parent links followed 4176, parents that exist 4176, builtin parents 0
+jar: used models with elements 2544, boxes 6128, faces 25048, faces whose texture resolved to a PNG 24678, uv sets 20908
+jar: texture variable hops 2740, inverted boxes (legal) 16
+jar: multipart blockstates 104, weighted variant lists 75
+jar: textures decoded 159, whole square frames 129 (6 animated strips), tallest 512 px
+jar: problems 452
 jar: first problems
-assets/minecraft/models/block/air.json: a texture file that does not exist
-assets/minecraft/models/block/button.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/button_inventory.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/button_pressed.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/carpet.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/coral_fan.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/coral_wall_fan.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/crop.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cross.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cross_emissive.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cube_all.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cube_all.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cube_all.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cube_all.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cube_all.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cube_all.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cube_all.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cube_all_inner_faces.json: a box with from > to on an axis
-assets/minecraft/models/block/cube_bottom_top.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cube_bottom_top.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cube_bottom_top.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cube_bottom_top.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cube_bottom_top.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cube_bottom_top.json: a texture variable that resolves nowhere
-assets/minecraft/models/block/cube_bottom_top.json: a texture variable that resolves nowhere
-FAILED: 767 problems in the jar's model data
+assets/minecraft/models/block/acacia_hanging_sign_rot_3.json: a box rotation without a numeric angle
+assets/minecraft/models/block/acacia_hanging_sign_rot_3.json: a box rotation without an axis
+assets/minecraft/models/block/acacia_hanging_sign_rot_3.json: a box rotation without a numeric angle
+assets/minecraft/models/block/acacia_hanging_sign_rot_3.json: a box rotation without an axis
+assets/minecraft/models/block/bamboo_hanging_sign_rot_3.json: a box rotation without a numeric angle
+assets/minecraft/models/block/bamboo_hanging_sign_rot_3.json: a box rotation without an axis
+assets/minecraft/models/block/bamboo_hanging_sign_rot_3.json: a box rotation without a numeric angle
+assets/minecraft/models/block/bamboo_hanging_sign_rot_3.json: a box rotation without an axis
+assets/minecraft/models/block/birch_hanging_sign_rot_3.json: a box rotation without a numeric angle
+assets/minecraft/models/block/birch_hanging_sign_rot_3.json: a box rotation without an axis
+assets/minecraft/models/block/birch_hanging_sign_rot_3.json: a box rotation without a numeric angle
+assets/minecraft/models/block/birch_hanging_sign_rot_3.json: a box rotation without an axis
+assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass_pane_post.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass_pane_post.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: a face texture key that no model in the chain defines
+assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: a face texture key that no model in the chain defines
+FAILED: 452 problems in the jar's model data
