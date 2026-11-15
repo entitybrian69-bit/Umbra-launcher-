@@ -106,3 +106,19 @@ are no parity numbers to publish.
 The checker also does not read `data/` (loot tables, worldgen, recipes), the asset
 index's 487 MB of objects, block `states` beyond `variants`/`multipart`, or
 `item_components`. Only what the renderer will need first.
+
+### The emulator is not the phone
+
+- The emulator reports density bucket 420 (scale 2.62) where the owner's phone is
+  3.5, so the overlay's scale and the free band on the phone are the host-test
+  numbers, not the emulator's. `platform/pc/headless_main.c` checks the phone's
+  numbers; nothing but the phone can prove the result.
+- The emulator has no display cutout. The cutout branch of `fill_insets()` has
+  never run on a device that has one; it is covered by a host test with a 112 px
+  left inset and by the code path alone.
+- `debug.umbra.insets` is a system property, so CI can simulate a status bar the
+  emulator does not have. On a real phone `adb shell setprop` needs a PC, which the
+  owner does not have: the property exists for CI and for a developer's device.
+- The emulator's SwiftShader reports 10-20 fps for a 370k-vertex scene where the
+  owner's Mali-G57 reported 59 fps. Frame-rate numbers from CI mean nothing about
+  the phone; they are there to catch a regression, not to predict one.
