@@ -5,6 +5,7 @@ import test.zip_test;
 import test.png_test;
 import test.nbt_test;
 import test.region_test;
+import test.json_test;
 import test.mesh_test;
 
 fn main() {
@@ -15,6 +16,7 @@ fn main() {
     run_png();
     run_nbt();
     run_region();
+    run_json();
     run_mesh();
     print("all modules passed");
 }
