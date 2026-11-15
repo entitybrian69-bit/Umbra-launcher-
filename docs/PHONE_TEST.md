@@ -5,13 +5,16 @@ Umbra is **not** an official Minecraft product.
 ## What you are installing
 
 ```
-https://github.com/entitybrian69-bit/Umbra-launcher-/releases/tag/v0.3.2-pre
-umbra-0.3.2-pre-arm64.apk
+https://github.com/entitybrian69-bit/Umbra-launcher-/releases/tag/v0.3.4-pre
+umbra-0.3.4-pre-arm64.apk
 ```
 
-This is a **pre-release**. It draws a demo world with the real renderer and the
-real mesher, and it is not Minecraft: there are no textures yet, and you cannot
-walk around or open a world.
+This is a **pre-release**. It draws a demo world with the real renderer, the real
+mesher and a texture atlas, and you can walk around in it. It is not Minecraft: the
+textures are placeholder art drawn by this project (no Mojang assets), the world is a
+demo island rather than a world from your game files, only one block shape yet comes
+from a block *model* (a plank slab), and there are no mobs, no survival mode and no
+multiplayer.
 
 Umbra is **not** an official Minecraft product. It ships no Mojang code or
 assets; it reads your own game files from the app's private storage.
@@ -20,7 +23,7 @@ assets; it reads your own game files from the app's private storage.
 
 1. Open the release page linked above **on the phone** (GitHub → the repo →
    Releases; or the link in the release notes).
-2. Download the file ending in `.apk` (`umbra-0.3.2-pre-arm64.apk`).
+2. Download the file ending in `.apk` (`umbra-0.3.4-pre-arm64.apk`).
 3. When Android blocks the install, tap **Settings** on the prompt and allow
    installing from this source (the browser or Files app), then tap the download
    again and choose **Install**. Android 8 and newer shows this per-app, once.
@@ -29,6 +32,19 @@ assets; it reads your own game files from the app's private storage.
 4. If the phone asks about a Play Protect scan, choose **Install anyway** — the
    APK is signed by this project's own key, not by Google.
 5. Open **Umbra** from the app drawer.
+
+## What is new in 0.3.4
+
+* **Textures.** The world is textured, from a 128x128 atlas of twelve placeholder
+  tiles packed by this project. Leaves have holes, water is blended, and a missing
+  texture would show as magenta and be counted rather than hidden.
+* **Walking.** Tap the world to drop into first person. Drag to look, rest a finger
+  for about half a second to walk forward, tap to jump. The HUD line `you x y z yaw`
+  is your body; `ground` or `air` says whether you are standing.
+* **A real block model.** The half-height plank path in the world is drawn from a
+  block model (a JSON box with its own uv rects and a `cullface`), not from a cube,
+  and you walk on it at half height. That is the same path the game's own 4192 block
+  models take — CI parses all of them with the same parser and refuses none.
 
 ## What changed in 0.3.2 — the three numbers your last run produced
 
@@ -50,12 +66,13 @@ plain background with that one line on it instead of crashing.
 | Step | What to do | What "passing" looks like |
 |---|---|---|
 | 1 | Just open it | Sky-blue screen, `UMBRA - not an official Minecraft product`, then `LOADING WORLD nn%` (never above 100) for a few seconds, then an island of blocks |
-| 2 | Look at the text block, top-left | `Umbra 0.3.2  build <7 hex digits>`, `gl OpenGL ES 3.x …`, `renderer …`, `depth 24 bits  highp vs …`, `mesh … verts  n draws  frame … ms  worst … ms`, `cam …`, and **nothing under the status bar, the notch or the navigation bar**. A red `fallback: …` line means a device check failed; that line is the reason |
+| 2 | Look at the text block, top-left | `Umbra 0.3.4  build <7 hex digits>`, `gl OpenGL ES 3.x …`, `renderer …`, `depth 24 bits  highp vs …`, `mesh … verts  n draws  frame … ms  worst … ms`, `cam …`, and **nothing under the status bar, the notch or the navigation bar**. A red `fallback: …` line means a device check failed; that line is the reason |
 | 3 | Tap **RUN GPU SELF-TEST** | After a moment: `SELFTEST PASS (0 bad of N px, … ms, offscreen)` in green, with N in the millions. `SELFTEST FAIL` shows the first mismatch as `at x,y got r,g,b want r,g,b` |
 | 4 | Tap **RUN 60 s BENCHMARK** | A live line, then a six-line block: `bench: N frames  avg X.XX ms (Y fps)`, `1% low …`, `median … worst …`, the device line, `gpu avg X.XX ms over N frames` (or `gpu n/a (no GPU timer results)`), and `vsync: uncapped requested`, `refused` or `capped by the platform` |
 | 5 | Close the app from the app switcher and open it again | The home screen comes back with a `LAST RUN` block containing the self-test verdict and the benchmark numbers from steps 3 and 4 — **and no `previous run crashed` line** |
 | 6 | Tap **SHARE LOG** | The Android share sheet, offering `umbra.log` |
-| 7 | Rotate the phone, then reopen | Still inside the screen, no text under the bar; the app survives being backgrounded and reopened |
+| 7 | Tap the world, drag, then hold a finger still | First person: the HUD line changes to `you …` with `ground` underfoot, dragging turns the view, and a held finger walks (the numbers move). A tap jumps |
+| 8 | Rotate the phone, then reopen | Still inside the screen, no text under the bar; the app survives being backgrounded and reopened |
 
 **Screenshots to take:** the home screen with the text block after steps 3 and 4
 (step 2 and the `LAST RUN` block in one frame), and anything that looks wrong.
