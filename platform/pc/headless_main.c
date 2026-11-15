@@ -326,7 +326,7 @@ int main(int argc, char **argv) {
             check(f.look[1] < mx[1], "just below the highest block");
             check(f.eye[1] > mx[1] - 20.0f, "the eye is up with the peaks, not down in the rock");
             check(f.fog_near > f.dist - f.fitted_height, "the fog starts beyond the near face of the world");
-            check(f.fog_near < f.dist, "but in front of the point the eye is aimed at");
+            check(f.fog_near >= f.dist, "and behind the point the eye is aimed at, so the rock is not greyed");
             check(f.fog_far > f.dist + f.fitted_height, "and ends past the far side of the world");
             check(f.fog_far > f.fog_near * 2.0f, "with a long enough fall-off to see depth");
 
