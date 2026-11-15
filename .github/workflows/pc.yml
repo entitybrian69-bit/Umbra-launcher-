@@ -16,8 +16,13 @@ jobs:
     name: Linux x64 build + headless self-test
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
       - name: Build the pinned Goose compiler
         run: tools/pin_goose.sh
       - name: Generate the Goose core as C
@@ -35,6 +40,26 @@ jobs:
           cat dist/SHA256SUMS
           file dist/umbra-linux-x64
           echo "::notice title=linux-x64::$(cat dist/SHA256SUMS)"
+      # The numbers go out as annotations and as a file committed to the
+      # branch: job logs and artifact downloads are both unreadable to the
+      # environment that drives this project.
+      - name: Publish the self-test text
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/ci
+          [ -f pc-selftest.txt ] && cp pc-selftest.txt evidence/ci/pc-linux-x64.txt || true
+          [ -f core-tests.txt ] && cp core-tests.txt evidence/ci/core-tests.txt || true
+          [ -f dist/SHA256SUMS ] && cp dist/SHA256SUMS evidence/ci/pc-linux-x64.sha256 || true
+          grep -E "^(PASS|FAILED): " pc-selftest.txt 2>/dev/null | while IFS= read -r l; do
+            echo "::notice title=linux-x64::$l"; done
+          git config user.name "umbra ci"
+          git config user.email "ci@umbra.invalid"
+          git add -f evidence/ci
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "ci: pc evidence (linux x64) from run $GITHUB_RUN_ID [skip ci]"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+
       - uses: actions/upload-artifact@v4
         with:
           name: umbra-linux-x64
@@ -48,8 +73,13 @@ jobs:
     name: Windows x64 build + headless self-test
     runs-on: windows-latest
     timeout-minutes: 40
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
@@ -72,6 +102,23 @@ jobs:
           (cd dist && sha256sum umbra-windows-x64.exe > SHA256SUMS)
           cat dist/SHA256SUMS
           echo "::notice title=windows-x64::$(cat dist/SHA256SUMS)"
+      - name: Publish the self-test text
+        if: always()
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/ci
+          [ -f pc-selftest.txt ] && cp pc-selftest.txt evidence/ci/pc-windows-x64.txt || true
+          [ -f dist/SHA256SUMS ] && cp dist/SHA256SUMS evidence/ci/pc-windows-x64.sha256 || true
+          grep -E "^(PASS|FAILED): " pc-selftest.txt 2>/dev/null | while IFS= read -r l; do
+            echo "::notice title=windows-x64::$l"; done
+          git config user.name "umbra ci"
+          git config user.email "ci@umbra.invalid"
+          git add -f evidence/ci
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "ci: pc evidence (windows x64) from run $GITHUB_RUN_ID [skip ci]"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+
       - uses: actions/upload-artifact@v4
         with:
           name: umbra-windows-x64
