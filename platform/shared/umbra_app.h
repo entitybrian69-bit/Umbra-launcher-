@@ -98,6 +98,7 @@ struct umbra_app {
     int64_t frames_drawn;
     int64_t long_frames;       // frames over 250 ms, i.e. visible stalls
     int64_t selftest_us;
+    int32_t hud_logged_width;  // the width the HUD layout was last logged at
 
 #ifdef __ANDROID__
     ANativeWindow *window;

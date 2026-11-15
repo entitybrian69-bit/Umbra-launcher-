@@ -348,6 +348,23 @@ void android_main(struct android_app *state) {
             g_st.app_ready = true;
             started = true;
         }
+        // Ask the surface for its size every frame. On run 43687356640 the
+        // surface came up at 1x1 and no resize event ever arrived, so the app
+        // drew into a one-pixel viewport and the screenshot gate saw a blank
+        // screen. eglQuerySurface is cheap and it cannot go stale.
+        if (g_st.egl_ready) {
+            EGLint w = 0, h = 0;
+            eglQuerySurface(g_st.display, g_st.surface, EGL_WIDTH, &w);
+            eglQuerySurface(g_st.display, g_st.surface, EGL_HEIGHT, &h);
+            if (w != g_st.width || h != g_st.height) {
+                ALOGI("surface is now %dx%d (was %dx%d)", w, h, g_st.width, g_st.height);
+                g_st.width = w;
+                g_st.height = h;
+                g_st.app.width = w;
+                g_st.app.height = h;
+                fill_insets(&g_st);
+            }
+        }
         g_st.app.width = g_st.width;
         g_st.app.height = g_st.height;
         umbra_app_frame(&g_st.app);

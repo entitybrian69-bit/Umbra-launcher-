@@ -278,6 +278,22 @@ else
     say "mesh: the startup line did not report a longest frame"
 fi
 
+# ---- 6a-2. the surface really is the screen, not a 1x1 stub ---------------------
+# Run 43687356640 came up at 1x1, never got a resize event, and drew nothing but
+# the clear colour; the screenshot gate caught the blank screen, but nothing said
+# why. This phase says why.
+phase "display-size"
+BUTTON="$(grep -m1 "hud: button 0 at" logcat-umbra-mesh.txt | sed 's/.*umbra   : //')"
+if [ -z "$BUTTON" ]; then
+    die "the app never logged a HUD layout, so it never had a real surface"
+fi
+say "size: $BUTTON"
+DISPLAY_W="$(printf '%s' "$BUTTON" | sed -n 's/.* on \([0-9]*\)x[0-9]* (insets.*/\1/p')"
+if [ -z "$DISPLAY_W" ] || [ "$DISPLAY_W" -lt 320 ]; then
+    die "the app drew into a ${DISPLAY_W:-unknown}-pixel-wide surface: ${BUTTON}"
+fi
+say "size: the HUD was laid out for a ${DISPLAY_W} pixel wide surface"
+
 # ---- 6b. screenshots ------------------------------------------------------------
 phase "screenshot-home"
 sleep 3

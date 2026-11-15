@@ -22,6 +22,11 @@ is a bug we have not found yet. Nothing in this file is fixed by claiming it is.
 * **The 1% low is a CPU frame-time statistic**, measured between `glFinish`-bounded
   frame boundaries in `umbra_app.c`. It is not a GPU timestamp query and not a
   present-to-present number; on a phone with a compositor those differ.
+* **The EGL surface can come up before the window has buffers.** It did on run
+  `43687356640` (`EGL up: 1x1`) and the whole run drew a blank screen. The size is
+  now re-read every frame (D-031) and the smoke test fails on a surface narrower
+  than 320 px, but the underlying race belongs to the platform: `APP_CMD_INIT_WINDOW`
+  can arrive with a window whose buffers are not sized yet.
 * **Insets are read but only tested on an emulator with no insets.** The JNI code
   asks for `getRootWindowInsets()` and the display density, and the HUD lays itself
   out from them, but the CI emulator reports zero insets, so a real status bar,

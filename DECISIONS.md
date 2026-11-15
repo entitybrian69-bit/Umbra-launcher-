@@ -2,6 +2,36 @@
 
 Newest first. Each entry says what was decided, why, and what it costs.
 
+## D-031 A frame is only drawn into a surface that is at least 16 pixels wide
+
+Run `43687356640` shipped a blank screenshot: `EGL up: 1x1 ... hud: button 0 at
+25,-269 size -49x63 on 1x1`. The EGL surface had been created before the window
+had buffers, `eglQuerySurface` said 1x1, no resize event ever followed, and the
+app faithfully cleared and drew into a one-pixel viewport for the whole run. The
+screenshot gate caught it as a blank screen; nothing said why.
+
+Three changes, each cheap and each about not trusting a single event:
+
+* `android_main` re-reads the surface size **every frame** with
+  `eglQuerySurface` and re-reads the insets when it changed. A size that arrives
+  in no lifecycle callback cannot go stale.
+* `umbra_app_frame` returns without drawing when the surface is under 16 px, so a
+  stub surface produces no frame instead of a wrong one, and `hud_button_rect`
+  returns an empty rectangle instead of a negative one.
+* the HUD layout is logged from the frame loop, once a real size is known, instead
+  of from `umbra_app_init` where the surface may still be a stub. The emulator
+  smoke test now has a `display-size` phase that fails the run if the app drew
+  into a surface narrower than 320 px.
+
+Also in this entry, because the same screenshot exposed it: `hud_rect()` sampled
+UV (0,0) of the glyph atlas -- the first pixel of the space glyph, which is
+transparent -- so every panel and button background was invisible and the text
+floated in the sky. Flat rectangles now sample a reserved opaque texel at the
+atlas's bottom-right corner.
+
+Cost: one `eglQuerySurface` pair per frame (microseconds) and one 8-bit texel of
+the font atlas.
+
 ## D-030 The HUD is laid out in display pixels, scaled by the display density
 
 The first 0.3.0 emulator screenshot showed why this could not wait: the overlay was

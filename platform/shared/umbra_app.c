@@ -382,6 +382,11 @@ static void hud_button_rect(const umbra_app *app, int i, float *x, float *y, flo
     float margin = 8.0f * s;
     *h = bh;
     *x = margin + (float)app->insets[0];
+    if (app->width < 16 || app->height < 16) {
+        // No surface yet: a negative rectangle is worse than none.
+        *x = *y = *w = *h = 0.0f;
+        return;
+    }
     // The right inset matters: in landscape the navigation bar is a strip on the
     // right (1920-1794 = 126 px on the emulator), and a button that reaches into
     // it steals touches from the system.
@@ -739,16 +744,9 @@ int umbra_app_init(umbra_app *app) {
                               // geometry and the HUD share this state; culling
                               // comes back with the real renderer.
     app->last_frame_time = 0.0;
-    // The button rectangles go into the log: the automated emulator run taps
-    // the self-test by reading these coordinates back, so a layout change
-    // cannot silently make the test tap empty space.
-    for (int i = 0; i < 3; i++) {
-        float bx, by, bw, bh;
-        hud_button_rect(app, i, &bx, &by, &bw, &bh);
-        umbra_log(app, "hud: button %d at %d,%d size %dx%d on %dx%d (insets %d,%d,%d,%d)", i,
-                  (int)bx, (int)by, (int)bw, (int)bh, app->width, app->height, app->insets[0],
-                  app->insets[1], app->insets[2], app->insets[3]);
-    }
+    // The button rectangles are logged from the frame loop instead of here: at
+    // this point the surface may still be 1x1, and a layout computed from that
+    // is nonsense (run 43687356640 logged "button 0 at 25,-269 size -49x63").
     return 1;
 }
 
@@ -1065,6 +1063,26 @@ void umbra_app_frame(umbra_app *app) {
     }
     app->last_frame_time = (double)t0;
 
+    if (app->width < 16 || app->height < 16) {
+        // The EGL surface can come up at 1x1 when the window has no buffers yet
+        // (run 43687356640 did exactly that and drew nothing but the clear
+        // colour). Drawing into a 1-pixel viewport is not a frame, so don't.
+        app->last_frame_time = (double)umbra_now_us();
+        return;
+    }
+    if (app->hud_logged_width != app->width) {
+        // Logged from the frame loop, when a real surface size is known: the
+        // automated emulator run taps the self-test by reading these numbers
+        // back, so a layout change cannot silently make it tap empty space.
+        for (int i = 0; i < 3; i++) {
+            float bx, by, bw, bh;
+            hud_button_rect(app, i, &bx, &by, &bw, &bh);
+            umbra_log(app, "hud: button %d at %d,%d size %dx%d on %dx%d (insets %d,%d,%d,%d)",
+                      i, (int)bx, (int)by, (int)bw, (int)bh, app->width, app->height,
+                      app->insets[0], app->insets[1], app->insets[2], app->insets[3]);
+        }
+        app->hud_logged_width = app->width;
+    }
     if (app->frame_us > app->max_frame_us) app->max_frame_us = app->frame_us;
     if (app->frame_us > 250000) {
         app->long_frames++;
