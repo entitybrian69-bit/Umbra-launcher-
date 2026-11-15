@@ -480,22 +480,53 @@ fi
 # the world reports, a held finger walks it, a drag turns the head, and none of it
 # ANRs or crashes. Positions are compared, not lines: a changed yaw is not a walk.
 phase "player"
-P_WIDTH="${WM_SIZE%x*}"
-P_HEIGHT="${WM_SIZE#*x}"
+# Input coordinates are in the *current* orientation, not the physical panel: the
+# activity is landscape-locked, so when the emulator is rotated a coordinate taken
+# from `wm size` can be off the display and the tap disappears without an error.
+# Ask the window manager what the display is right now, and say so in the log.
+CUR_SIZE="$(adb shell dumpsys window displays 2>/dev/null | grep -o 'cur=[0-9]*x[0-9]*' | head -1 | cut -d= -f2)"
+if [ -z "$CUR_SIZE" ]; then
+    CUR_SIZE="$(adb shell wm size 2>/dev/null | awk '/Physical size/{print $3}' | tr -d '\r' | tail -1)"
+fi
+P_WIDTH="${CUR_SIZE%x*}"
+P_HEIGHT="${CUR_SIZE#*x}"
+case "$P_WIDTH" in ''|*[!0-9]*) P_WIDTH="${WM_SIZE%x*}" ;; esac
+case "$P_HEIGHT" in ''|*[!0-9]*) P_HEIGHT="${WM_SIZE#*x}" ;; esac
 case "$P_WIDTH" in ''|*[!0-9]*) P_WIDTH=1080 ;; esac
 case "$P_HEIGHT" in ''|*[!0-9]*) P_HEIGHT=1920 ;; esac
+say "player: physical display ${WM_SIZE:-unknown}, current display ${P_WIDTH}x${P_HEIGHT}"
 # 60% down the screen is the middle of the free band in both orientations: above the
 # buttons, below the overlay.
 P_SCENE_Y=$(( P_HEIGHT * 3 / 5 ))
-say "player: screen ${P_WIDTH}x${P_HEIGHT}, touching the world at y=$P_SCENE_Y"
+say "player: touching the world at $(( P_WIDTH / 2 )),$P_SCENE_Y"
 adb shell input tap $(( P_WIDTH / 2 )) "$P_SCENE_Y" > /dev/null 2>&1 \
     || say "player: the tap into the world failed"
+# The activity is landscape-locked and the emulator can be rotated either way, so if
+# the first coordinate produces nothing, try the other orientation before calling the
+# input path dead. Whichever one works is logged.
+wait_for_spawn() {
+    local deadline=$((SECONDS + 20))
+    while [ $SECONDS -lt $deadline ]; do
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: spawned at"; then return 0; fi
+        sleep 2
+    done
+    return 1
+}
 SPAWNED=0
-DEADLINE=$((SECONDS + 20))
-while [ $SECONDS -lt $DEADLINE ]; do
-    if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: spawned at"; then SPAWNED=1; break; fi
-    sleep 2
-done
+if wait_for_spawn; then SPAWNED=1; fi
+if [ "$SPAWNED" = 0 ]; then
+    say "player: no spawn from ${P_WIDTH}x${P_HEIGHT}; trying the other orientation"
+    adb shell input tap $(( P_HEIGHT / 2 )) $(( P_WIDTH * 3 / 5 )) > /dev/null 2>&1 \
+        || say "player: the second tap failed"
+    if wait_for_spawn; then
+        SPAWNED=1
+        say "player: the display is ${P_HEIGHT}x${P_WIDTH} for input, not ${P_WIDTH}x${P_HEIGHT}"
+        P_WIDTH_SAVED="$P_WIDTH"
+        P_WIDTH="$P_HEIGHT"
+        P_HEIGHT="$P_WIDTH_SAVED"
+        P_SCENE_Y=$(( P_HEIGHT * 3 / 5 ))
+    fi
+fi
 adb logcat -d -s umbra:V > logcat-umbra-player.txt 2>&1
 if [ "$SPAWNED" = 1 ]; then
     grep -m1 "player: spawned at" logcat-umbra-player.txt | sed 's/.*umbra   : //' \
@@ -504,7 +535,9 @@ if [ "$SPAWNED" = 1 ]; then
         && say "player: standing on the floor the world reported" \
         || err "player: spawned but the first position line is not on the ground"
 else
-    die "player: the tap did not start first person (no spawn line)"
+    say "player: focus at failure: $(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus | tr -s ' ' | cut -c1-120)"
+    say "player: the app's own surface was $(grep -m1 -o 'hud: button 0 at [0-9,]* size [0-9]*x[0-9]* on [0-9]*x[0-9]*' logcat-umbra-player.txt | sed 's/.* on //')"
+    die "player: the tap at $(( P_WIDTH / 2 )),$P_SCENE_Y did not start first person (no spawn line)"
 fi
 # Hold a finger on the scene for three seconds: a finger that rests without turning
 # the head walks. `input swipe` from a point to itself is exactly that hold.
