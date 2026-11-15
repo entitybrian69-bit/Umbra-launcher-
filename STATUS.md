@@ -35,7 +35,7 @@ parity table is empty.
 | 2. APK checks (unzip/aapt2/apksigner/lib per ABI) | PASSING | same run, step `Gate 2 - APK integrity` success; annotations: `package: name='org.umbra.client' versionCode='1' versionName='0.1.0' compileSdkVersion='35'`, `native-code: 'arm64-v8a' 'x86_64'`, `apksigner … v1 scheme: false` (v2/v3 cover minSdk 24) |
 | 3. Emulator smoke + fresh screenshot | PASSING (once caught a blank screen) | run `43671700216`: every step of `Emulator smoke test + screenshot` is `success`, including `Screenshot gate (fresh, non-blank, similar to the reference)`. That run's own capture differs from the reference byte for byte (`evidence/ci/shot1.png` sha256 `26e81928eb09aea9`, reference `ea2a1be5…`) and still measures `mean absolute difference 0.00 (of 255)` |
 | 4. Core tests on x86_64 | PASSING | run `43674038711`, step `Core test suite (formats, mesher)`: `PASS mem (19) inflate (97) zip (137) png (153) nbt (196) region (237) json (302) mesh (340)`, `all modules passed` (`evidence/ci/core-tests.txt`) |
-| 4. Core tests on arm64 | JOB WRITTEN, FIRST RUN NOT READ | `.github/workflows/core.yml` gained `core-tests-arm64` on `ubuntu-24.04-arm`; the job parses (PyYAML) but has not run yet, so it is not a result. The APK's own arm64 `.so` is still compiled and never executed -- an arm64 runner running the *host* suite does not change that |
+| 4. Core tests on arm64 | PASSING (host suite; the Android `.so` is still never executed) | run `43689588892`, job `Goose core tests (arm64)` on `ubuntu-24.04-arm`: `host: aarch64`, `compiler: cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0`, then `PASS mem (19) inflate (97) zip (137) png (153) nbt (196) region (237) json (302) mesh (340)`, `all modules passed`, `c-host: goose_exit returned 0` (`evidence/ci/core-tests-arm64.txt`, committed by the job). **This is the host suite built for aarch64 Linux, not the APK's `libumbra.so`** -- that one is NDK clang, bionic, and is compiled by the `android` job and never run |
 | 5. PC builds (Windows x64, Linux x64) + headless self-test | PASSING | run `43674038711`: `Linux x64 build + headless self-test` and `Windows x64 build + headless self-test` both `completed success`; the Windows binary ran under MSYS2 UCRT64 on `windows-latest`, not under Wine. `evidence/ci/pc-linux-x64.txt` and `pc-windows-x64.txt` both end `PASS: 19 checks, 0 failures`; sha256 `1a1c76665f5a013b…` (linux) and `0190ba968e53b943…` (windows) |
 | 6a. The jar's model data is self-consistent | PASSING | run `43680833198`: `PASS: every model a blockstate can render resolves through its chain (2603 models, 25048 faces, 3964 textures)`; jar `26.3`, 41 483 720 bytes, sha1 `e877b6a07acd633f…`, verified against Mojang's manifest at test time (`evidence/jar/pin.txt`, `evidence/jar/jarcheck.txt`) |
 | 6b. World parity against the real client | NOT DONE | nothing renders the jar's models yet; the mesher still uses a demo world |
@@ -212,6 +212,18 @@ that is the cost of not freezing the window, and it is paid once at start-up.
 The insets are also real now: the emulator reports `0,0,126,0` and a density of
 2.62, and the buttons moved from `y 946` under the navigation bar to a layout
 that respects it.
+
+### The emulator, at the commit this release is tagged from (CI, run 43689588854)
+
+```
+app: 07:26:46 startup: meshed in 5507.8 ms over 596 calls (worst call 71.7 ms, worst unit 69.5 ms), longest frame 182.1 ms, frames over 250 ms: 0
+mesh: longest frame 182.1 ms (under the 1000 ms budget)
+size: the HUD was laid out for a 1920 pixel wide surface
+result: PASS (installed, launched, drew, self test tapped, 60s soak, no crash)
+```
+
+Four runs in a row now end `PASS` with zero frames over 250 ms and a longest
+frame under a quarter of a second.
 
 ### The emulator, after the overlay and surface fixes (CI, run 43688102045)
 
