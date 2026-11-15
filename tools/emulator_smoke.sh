@@ -412,6 +412,28 @@ if [ "$TAPPED" != 1 ]; then
     err "tap: the self-test never ran, so the input path is unverified; see logcat-umbra2.txt"
 fi
 
+# A self-test that runs and fails is not a pass. The verdict has to be PASS, and
+# the counts in it have to be the counts of a comparison that happened: run
+# 43720791540 reported "SELFTEST FAIL (3854519 bad of 0 px)" and this script
+# still called the run a success, because it only checked that the test ran.
+VERDICT="$(grep -o 'SELFTEST [A-Z]*.*' logcat-umbra2.txt | tail -1)"
+if [ -z "$VERDICT" ]; then
+    err "self-test: no verdict in the log after the tap; see logcat-umbra2.txt"
+fi
+case "$VERDICT" in
+    SELFTEST\ PASS*)
+        say "self-test: $VERDICT"
+        ;;
+    *)
+        err "self-test: the device reported '$VERDICT'"
+        ;;
+esac
+# "0 px" checked is the signature of a comparison that never read the target.
+CHECKED="$(printf '%s' "$VERDICT" | sed -n 's/.* of \([0-9]*\) px.*/\1/p')"
+if [ -n "$CHECKED" ] && [ "$CHECKED" -lt 100000 ]; then
+    err "self-test: only $CHECKED pixels were compared, which is not a full frame"
+fi
+
 # ---- 6d. the benchmark, on the emulator, with numbers that are logged ----------
 # The owner's gate-7 list asks for average FPS, 1% lows and frame times shown on
 # the device. Tapping the button here means the harness checks that they appear

@@ -84,6 +84,8 @@ struct umbra_app {
     unsigned char *st_tile;    // one step's readback
     size_t st_frame_bytes, st_tile_bytes;
     char st_reason[160];       // why the test was skipped, when it was
+    char st_bad_text[128];     // the first mismatch, copied out of Goose
+    int st_steps;              // steps taken, so the log can say how many
 
     // What the device answered at start-up, and what the app did about it.
     bool render_fallback;      // drawing without the full pipeline

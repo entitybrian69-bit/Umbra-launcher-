@@ -1166,16 +1166,15 @@ static void selftest_end(umbra_app *app, bool ok, const char *why) {
         umbra_log(app, "self-test: skipped because %s", why);
     }
     if (bad > 0) {
-        int64_t len = 0;
-        const uint8_t *t = umbra_selftest_first_bad_text(&len);
-        umbra_log(app, "self-test: first mismatch %.*s", (int)len, (const char *)t);
+        umbra_log(app, "self-test: first mismatch %s",
+                  app->st_bad_text[0] ? app->st_bad_text : "(not recorded)");
     }
     if (app->st_skip_px > 0) {
         umbra_log(app, "self-test: %lld px not compared (under the overlay)",
                   (long long)app->st_skip_px);
     }
     umbra_log(app, "self-test: end after %.0f ms, %d steps",
-              app->selftest_us / 1000.0, app->st_row);
+              app->selftest_us / 1000.0, app->st_steps);
     remember_selftest(app);
     selftest_free_buffers(app);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -1243,6 +1242,8 @@ static void selftest_begin(umbra_app *app) {
     app->st_offscreen = 0;
     app->st_fbo_status = 0;
     app->st_reason[0] = 0;
+    app->st_bad_text[0] = 0;
+    app->st_steps = 0;
     umbra_selftest_reset();
     (void)glGetError();  // clear anything the last frame left behind
     umbra_log(app, "self-test: begin (%dx%d), tile %d rows", app->st_w, app->st_h,
@@ -1299,6 +1300,11 @@ static int selftest_compare_step(umbra_app *app, int is_pattern) {
     size_t bytes = (size_t)w * (size_t)rows * 4;
 
     if (app->st_offscreen) {
+        // Every compare step runs in its own frame, and the frame loop binds the
+        // window again after each one. Without this the readback would come from
+        // the window and compare the scene against the pattern -- which is what
+        // the emulator did before this line existed: "2073600 of 2073600 differ".
+        glBindFramebuffer(GL_FRAMEBUFFER, app->fbo_selftest);
         glReadPixels(x0, app->st_row, w, rows, GL_RGBA, GL_UNSIGNED_BYTE, app->st_tile);
         if (glGetError() != GL_NO_ERROR) {
             selftest_abort(app, "glReadPixels failed on the offscreen target");
@@ -1339,16 +1345,30 @@ static int selftest_compare_step(umbra_app *app, int is_pattern) {
     return app->st_row >= h;
 }
 
-static int64_t selftest_take_mismatches(umbra_app *app) {
-    (void)app;
-    int64_t n = umbra_selftest_mismatches();
+// Reads every counter of a finished pass, then clears them. The first version
+// read the mismatch count, reset, and then asked for the checked count -- which
+// had just been zeroed, so the log said "2073600 of 0 px differ".
+static void selftest_take_pass(umbra_app *app, int64_t *bad, int64_t *checked,
+                               int64_t *max_diff) {
+    *bad = umbra_selftest_mismatches();
+    *checked = umbra_selftest_checked();
+    *max_diff = umbra_selftest_max_diff();
+    if (!app->st_bad_text[0]) {
+        int64_t len = 0;
+        const uint8_t *t = umbra_selftest_first_bad_text(&len);
+        if (len > 0) {
+            if (len > (int64_t)sizeof app->st_bad_text - 1) len = (int64_t)sizeof app->st_bad_text - 1;
+            memcpy(app->st_bad_text, t, (size_t)len);
+            app->st_bad_text[len] = 0;
+        }
+    }
     umbra_selftest_reset();
-    return n;
 }
 
 // One bounded step, called once per frame while the test is running.
 static void selftest_step(umbra_app *app) {
     if (app->st_state <= ST_IDLE || app->st_state >= ST_DONE) return;
+    app->st_steps++;
     int64_t elapsed = umbra_now_us() - app->st_start_us;
     if (elapsed > UMBRA_SELFTEST_WATCHDOG_US) {
         char why[128];
@@ -1401,14 +1421,12 @@ static void selftest_step(umbra_app *app) {
             break;
         case ST_COMPARE_PATTERN:
             if (selftest_compare_step(app, 1)) {
-                app->st_pattern_bad = selftest_take_mismatches(app);
-                app->st_pattern_checked = umbra_selftest_checked();
-                umbra_selftest_reset();
+                int64_t max_diff = 0;
+                selftest_take_pass(app, &app->st_pattern_bad, &app->st_pattern_checked, &max_diff);
                 umbra_log(app, "self-test: pattern compared, %lld of %lld px differ, max channel "
                                "diff %lld",
                           (long long)app->st_pattern_bad, (long long)app->st_pattern_checked,
-                          (long long)umbra_selftest_max_diff());
-                umbra_selftest_reset();
+                          (long long)max_diff);
                 app->st_state = ST_DRAW_CUBE;
             }
             break;
@@ -1454,11 +1472,10 @@ static void selftest_step(umbra_app *app) {
             break;
         case ST_COMPARE_CUBE:
             if (selftest_compare_step(app, 0)) {
-                app->st_cube_bad = selftest_take_mismatches(app);
-                app->st_cube_checked = umbra_selftest_checked();
+                int64_t max_diff = 0;
+                selftest_take_pass(app, &app->st_cube_bad, &app->st_cube_checked, &max_diff);
                 umbra_log(app, "self-test: cube compared, %lld of %lld px differ",
                           (long long)app->st_cube_bad, (long long)app->st_cube_checked);
-                umbra_selftest_reset();
                 glEnable(GL_DEPTH_TEST);
                 selftest_end(app, app->st_pattern_bad == 0 && app->st_cube_bad == 0, NULL);
             }
