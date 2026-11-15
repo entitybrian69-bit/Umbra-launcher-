@@ -56,6 +56,25 @@ came back with screenshots, and all four are fixed in 0.3.1:
 | only sky behind the overlay | the camera was framed by a formula that put it 55 blocks out on a 2.2:1 screen, and the overlay covered the top half | the distance is computed by fitting the world to the visible part of the screen, the 3D view is shifted out from under the overlay, and the HUD now prints `mesh … verts, … draws` and `cam eye -> look` so "only sky" is diagnosable from a screenshot |
 | one screenshot did not show the results | the self-test and benchmark numbers lived only in the session | both are written to `last_selftest.txt` / `last_bench.txt` beside the log, read back at start-up, and drawn as a `LAST RUN` block; the smoke test restarts the app and fails if that block does not come back |
 
+Run 43709489473, the emulator at 1920x1080 with `debug.umbra.insets "0,63,126,0"`:
+
+    insets: L,T,R,B = 0,63,126,0 (modern 0,63,126,0, legacy 0,0,126,0, cutout 0,0,0,0,
+            source debug.umbra.insets override) on 1920x1080, density bucket 420 (scale 2.62)
+    overlay: button 0 starts at y=999, below the 63 px top inset
+    overlay: hud: 11 rows, content ends at 484 px inside a 486 px panel, fits
+    camera: eye 47.2 105.2 32.1 look 24.0 88.0 8.0, 37.6 blocks out, fov 55
+    benchmark: bench: 653 frames  avg 92.18 ms (10 fps)  1% low 7 fps (135.45 ms)
+    relaunch: the previous self-test verdict is on the home screen
+    relaunch: the previous benchmark numbers are on the home screen
+    crash-detect: kill -9 6368 / the killed run was reported on the next start
+    result: PASS (installed, launched, drew, self test tapped, 60s soak, no crash)
+
+`modern 0,63,126,0` beside `legacy 0,0,126,0` on the same frame is the whole bug:
+the call the app used answers zero on a window drawn edge to edge, and the one it
+uses now answers 63. **None of this has been seen on the owner's phone yet** - it is
+CI evidence on an emulator, and the four fixes are `owner-must-confirm` until the
+`v0.3.1-pre` build runs on the phone.
+
 ## The reference screenshot, and why it changed
 
 `docs/reference/emulator_home.png` is now the frame from run 43709489473: the
