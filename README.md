@@ -9,6 +9,11 @@ graphics context, input, audio, files) is C.
 Mojang or Microsoft. Umbra ships no Mojang code or assets: you use your own
 copy of the game files, which stay in the app's private storage.
 
+The official client jar is downloaded by CI (never committed) and its model data
+is checked against itself: every model a blockstate can render resolves through
+its parent chain to textures that exist. That is where the renderer gets its
+blocks from next.
+
 Umbra is **not** Minecraft yet. Every parity claim in this repository is a
 measured match rate with the test that produced it, kept in
 [STATUS.md](STATUS.md). Where there is no number, there is no claim.
@@ -33,6 +38,8 @@ platform/*          --(cc)-------------------------->  the executable / APK
 * Linux/macOS/Windows developer build: `tools/build_pc.sh`
 * Android: `.github/workflows/android.yml` (Gradle + CMake + NDK)
 * Core tests: `tools/run_tests.sh` (Goose → C → native, real assertions)
+* The jar checker: `tools/check_jar.sh` (synthetic jar, no network) and
+  `tools/fetch_jar.sh` (the official jar, downloaded at test time)
 
 A `goose` binary is required. `tools/pin_goose.sh` builds the pinned commit
 (see DECISIONS.md) from source with CMake.
