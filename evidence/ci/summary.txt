@@ -1,12 +1,12 @@
-run: 43680833053, commit: 5e3219b7193a2362c43d9789eade0b74af66ba6d
+run: 43681790173, commit: 6dbda11e85a9ac93905c1c852cf7714f1c45c28b
 sdk: /usr/local/lib/android/sdk
 adb: /usr/local/lib/android/sdk/platform-tools/adb
 emulator: /usr/local/lib/android/sdk/emulator/emulator
-apk: ./android/app/build/outputs/apk/release/app-release.apk (190223 bytes, sha256 f361cfa30bbd45e078ce30d10fd12070e0c29e3c4219063968159bdaf9081f7c)
+apk: ./android/app/build/outputs/apk/release/app-release.apk (190223 bytes, sha256 3938f857d04fcddfbbe1eba3d8c159b2033782c37e1b0ff6eb02da740aff0691)
 
 == phase: kvm ==
-kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 15 05:26 /dev/kvm
-cpu: 8 flags match vmx/svm
+kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 15 05:39 /dev/kvm
+cpu: 4 flags match vmx/svm
 
 == phase: sdk-packages ==
 sdk-platform-tools: ok (3 lines)
@@ -16,66 +16,67 @@ sdk-image: ok (3 lines)
 avd: umbra_ci from device profile pixel_2 at /home/runner/.android/avd
 
 == phase: emulator-boot ==
-emulator: started as pid 2861
-emulator: booted in 46 s
+emulator: started as pid 2995
+emulator: booted in 31 s
 android: api 30 (11)
 display: 1080x1920
 
 == phase: unlock ==
 wake: 
-focus before launch:  mCurrentFocus=Window{35b4b37 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
+focus before launch:  mCurrentFocus=Window{394d368 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
 
 == phase: install ==
 install: Success
 
 == phase: launch ==
-launch: Status: ok TotalTime: 1150 
-running: pid 3654
+launch: Status: ok TotalTime: 854 
+running: pid 3432
 app: android_main: files /data/user/0/org.umbra.client/files
 app: goose core initialised
 app: app cmd 10, window 0x0
-app: no window yet: waiting for the activity to become visible
 app: app cmd 11, window 0x0
+app: no window yet: waiting for the activity to become visible
 app: app cmd 0, window 0x0
-app: app cmd 1, window 0x7415718fe4c0
+app: app cmd 1, window 0x7a1b409270a0
 app: EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-app: app cmd 3, window 0x7415718fe4c0
-app: app cmd 5, window 0x7415718fe4c0
-app: app cmd 4, window 0x7415718fe4c0
-app: 05:28:12 ---- Umbra starting, build 5e3219b ----
-app: 05:28:12 core: umbra core: formats and meshing
-app: 05:28:12 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
-app: 05:28:12 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-app: 05:28:12 GL_VENDOR Google (Google Inc.)
-app: 05:28:12 depth bits 24, vertex highp 127^23, fragment highp 127^23
-app: 05:28:15 mesh bounds x 0.0..48.0 y -64.0..76.0 z 0.0..48.0, camera 55.2 blocks out
-app: 05:28:15 demo world built in 5.9 ms, meshed in 3193.1 ms
-app: 05:28:15 mesh: 370488 vertices, 555732 indices; batches 542910/12822/0
-app: 05:28:15 hud: button 0 at 8,946 size 1904x34 on 1920x1080 (insets 0,0,0,0)
-app: 05:28:15 hud: button 1 at 8,988 size 1904x34 on 1920x1080 (insets 0,0,0,0)
-app: 05:28:15 hud: button 2 at 8,1030 size 1904x34 on 1920x1080 (insets 0,0,0,0)
-app: app cmd 6, window 0x7415718fe4c0
+app: app cmd 3, window 0x7a1b409270a0
+app: app cmd 5, window 0x7a1b409270a0
+app: app cmd 4, window 0x7a1b409270a0
+app: app cmd 4, window 0x7a1b409270a0
+app: app cmd 6, window 0x7a1b409270a0
+app: 05:41:03 ---- Umbra starting, build 6dbda11 ----
+app: 05:41:03 core: umbra core: formats and meshing
+app: 05:41:04 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
+app: 05:41:04 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+app: 05:41:04 GL_VENDOR Google (Google Inc.)
+app: 05:41:04 depth bits 24, vertex highp 127^23, fragment highp 127^23
+app: 05:41:09 mesh bounds x 0.0..48.0 y -64.0..76.0 z 0.0..48.0, camera 55.2 blocks out
+app: 05:41:09 demo world built in 2.7 ms, meshed in 5304.1 ms
+app: 05:41:09 mesh: 370488 vertices, 555732 indices; batches 542910/12822/0
+app: 05:41:09 hud: button 0 at 8,946 size 1904x34 on 1920x1080 (insets 0,0,0,0)
+app: 05:41:09 hud: button 1 at 8,988 size 1904x34 on 1920x1080 (insets 0,0,0,0)
+app: 05:41:09 hud: button 2 at 8,1030 size 1904x34 on 1920x1080 (insets 0,0,0,0)
 
 == phase: screenshot-home ==
-shot1: 213288 bytes, sha256 89910edaccad0e91f43e82204bedeb76820d9b04f37f17cce24cb12ec44e468c
-focus while drawing:  mCurrentFocus=Window{b30b7b6 u0 org.umbra.client/android.app.NativeActivity}
+shot1: 213228 bytes, sha256 e534ff6aabbb20dc3ed8f43a80b377f8d5401dedf6fd9ff3044c8b9eb88d39e4
+focus while drawing:  mCurrentFocus=Window{813cea8 u0 org.umbra.client/android.app.NativeActivity}
 
 == phase: selftest-tap ==
 tap: self-test button at 8,946 size 1904x34, tapping 960,963
 tap: attempt 1 at 960,963
 tap: the app reported a self-test
-shot2: 213467 bytes, sha256 3533f06b158b61a7603b9cb46175b2154b042c1d112fe505d519d12f1319b1c9
-app: 05:29:02 self-test: requested
-app: 05:29:02 self-test: begin (1920x1080)
-app: 05:29:02 self-test: target offscreen, pixel(0,0) = 0,0,64, pixel(w-1,0) = 255,255,64
-app: 05:29:02 self-test: pattern 2073600 pixels checked, 0 mismatched, max channel diff 0
-app: 05:29:02 self-test: cube 2073600 pixels checked, 0 mismatched
+shot2: 213360 bytes, sha256 225294eb6df8991c1407a683815be9cd2ddc539b3caa9fc9b2324c502323ad6d
+app: 05:41:53 self-test: requested
+app: 05:41:53 self-test: begin (1920x1080)
+app: 05:41:53 self-test: target offscreen, pixel(0,0) = 0,0,64, pixel(w-1,0) = 255,255,64
+app: 05:41:53 self-test: pattern 2073600 pixels checked, 0 mismatched, max channel diff 0
+app: 05:41:53 self-test: cube 2073600 pixels checked, 0 mismatched
 
 == phase: soak ==
 soak: holding for 60s
-soak: survived, pid 3654
+soak: survived, pid 3432
 soak: no FATAL EXCEPTION
-meminfo:  Native Heap 30132 30108 0 53 31500 39460 33709 1298| Native Heap: 30108 31500| TOTAL PSS: 80859 TOTAL RSS: 176860 TOTAL SWAP PSS: 271|
+meminfo:  Native Heap 30154 30128 0 46 31448 39460 33713 1295| Native Heap: 30128 31448| TOTAL PSS: 80940 TOTAL RSS: 178444 TOTAL SWAP PSS: 260|
 
 == phase: done ==
 result: PASS (installed, launched, drew, self test tapped, 60s soak, no crash)
