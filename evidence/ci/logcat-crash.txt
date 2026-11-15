@@ -1,1 +1,69 @@
-- waiting for device -
+--------- beginning of crash
+11-15 10:34:25.448  3747  3778 F libc    : Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 3778 (Thread-2), pid 3747 (rg.umbra.client)
+11-15 10:34:25.717  3796  3796 F DEBUG   : *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+11-15 10:34:25.717  3796  3796 F DEBUG   : Build fingerprint: 'google/sdk_gphone_x86_64/generic_x86_64_arm64:11/RSR1.240422.006/12134477:userdebug/dev-keys'
+11-15 10:34:25.717  3796  3796 F DEBUG   : Revision: '0'
+11-15 10:34:25.717  3796  3796 F DEBUG   : ABI: 'x86_64'
+11-15 10:34:25.719  3796  3796 F DEBUG   : Timestamp: 2026-11-15 10:34:25+0000
+11-15 10:34:25.719  3796  3796 F DEBUG   : pid: 3747, tid: 3778, name: Thread-2  >>> org.umbra.client <<<
+11-15 10:34:25.719  3796  3796 F DEBUG   : uid: 10167
+11-15 10:34:25.719  3796  3796 F DEBUG   : signal 6 (SIGABRT), code -1 (SI_QUEUE), fault addr --------
+11-15 10:34:25.719  3796  3796 F DEBUG   : Abort message: 'Throwing new exception 'no non-static method "Landroid/graphics/Insets;.getTop()I"' with unexpected pending exception: java.lang.NoSuchMethodError: no non-static method "Landroid/graphics/Insets;.getLeft()I"
+11-15 10:34:25.719  3796  3796 F DEBUG   : (Throwable with empty stack trace)
+11-15 10:34:25.719  3796  3796 F DEBUG   : '
+11-15 10:34:25.719  3796  3796 F DEBUG   :     rax 0000000000000000  rbx 0000000000000ea3  rcx 00007750e325f298  rdx 0000000000000006
+11-15 10:34:25.719  3796  3796 F DEBUG   :     r8  00007750e73aebd1  r9  00007750e73aebd1  r10 0000774dfacbf550  r11 0000000000000246
+11-15 10:34:25.719  3796  3796 F DEBUG   :     r12 0000000000000000  r13 0000774dfacbf620  r14 0000774dfacbf548  r15 0000000000000ec2
+11-15 10:34:25.719  3796  3796 F DEBUG   :     rdi 0000000000000ea3  rsi 0000000000000ec2
+11-15 10:34:25.719  3796  3796 F DEBUG   :     rbp 0000774f12da7f10  rsp 0000774dfacbf538  rip 00007750e325f298
+11-15 10:34:25.722  3796  3796 F DEBUG   : backtrace:
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #00 pc 000000000005a298  /apex/com.android.runtime/lib64/bionic/libc.so (syscall+24) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #01 pc 000000000005d202  /apex/com.android.runtime/lib64/bionic/libc.so (abort+194) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #02 pc 0000000000634927  /apex/com.android.art/lib64/libart.so (art::Runtime::Abort(char const*)+2375) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #03 pc 0000000000019cfc  /system/lib64/libbase.so (android::base::SetAborter(std::__1::function<void (char const*)>&&)::$_3::__invoke(char const*)+60) (BuildId: 7101d4565a51dea09dc23901546cbb64)
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #04 pc 00000000000192a0  /system/lib64/libbase.so (android::base::LogMessage::~LogMessage()+368) (BuildId: 7101d4565a51dea09dc23901546cbb64)
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #05 pc 000000000069d96a  /apex/com.android.art/lib64/libart.so (art::Thread::AssertNoPendingExceptionForNewException(char const*) const+1770) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #06 pc 00000000006a2454  /apex/com.android.art/lib64/libart.so (art::Thread::ThrowNewExceptionF(char const*, char const*, ...)+244) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #07 pc 000000000042f633  /apex/com.android.art/lib64/libart.so (art::FindMethodJNI(art::ScopedObjectAccess const&, _jclass*, char const*, char const*, bool)+403) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #08 pc 000000000043cafd  /apex/com.android.art/lib64/libart.so (art::JNI<false>::GetMethodID(_JNIEnv*, _jclass*, char const*, char const*)+685) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #09 pc 0000000000015418  /data/app/~~7eqrckNMGEoF8B_dXPRK7A==/org.umbra.client-FM-Ol1djrTs6cIC9qKbzvg==/base.apk!libumbra.so (offset 0x1c000) (BuildId: 1b2df35c220c1ed8f8cebcb8d323a2410f24194c)
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #10 pc 0000000000014beb  /data/app/~~7eqrckNMGEoF8B_dXPRK7A==/org.umbra.client-FM-Ol1djrTs6cIC9qKbzvg==/base.apk!libumbra.so (offset 0x1c000) (BuildId: 1b2df35c220c1ed8f8cebcb8d323a2410f24194c)
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #11 pc 0000000000016c5b  /data/app/~~7eqrckNMGEoF8B_dXPRK7A==/org.umbra.client-FM-Ol1djrTs6cIC9qKbzvg==/base.apk!libumbra.so (offset 0x1c000) (BuildId: 1b2df35c220c1ed8f8cebcb8d323a2410f24194c)
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #12 pc 00000000000149c1  /data/app/~~7eqrckNMGEoF8B_dXPRK7A==/org.umbra.client-FM-Ol1djrTs6cIC9qKbzvg==/base.apk!libumbra.so (offset 0x1c000) (android_main+433) (BuildId: 1b2df35c220c1ed8f8cebcb8d323a2410f24194c)
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #13 pc 0000000000016b1c  /data/app/~~7eqrckNMGEoF8B_dXPRK7A==/org.umbra.client-FM-Ol1djrTs6cIC9qKbzvg==/base.apk!libumbra.so (offset 0x1c000) (BuildId: 1b2df35c220c1ed8f8cebcb8d323a2410f24194c)
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #14 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
+11-15 10:34:25.722  3796  3796 F DEBUG   :       #15 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
+11-15 10:34:43.562  5350  5379 F libc    : Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 5379 (Thread-2), pid 5350 (rg.umbra.client)
+11-15 10:34:43.702  5385  5385 F DEBUG   : *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+11-15 10:34:43.702  5385  5385 F DEBUG   : Build fingerprint: 'google/sdk_gphone_x86_64/generic_x86_64_arm64:11/RSR1.240422.006/12134477:userdebug/dev-keys'
+11-15 10:34:43.702  5385  5385 F DEBUG   : Revision: '0'
+11-15 10:34:43.702  5385  5385 F DEBUG   : ABI: 'x86_64'
+11-15 10:34:43.702  5385  5385 F DEBUG   : Timestamp: 2026-11-15 10:34:43+0000
+11-15 10:34:43.702  5385  5385 F DEBUG   : pid: 5350, tid: 5379, name: Thread-2  >>> org.umbra.client <<<
+11-15 10:34:43.702  5385  5385 F DEBUG   : uid: 10167
+11-15 10:34:43.702  5385  5385 F DEBUG   : signal 6 (SIGABRT), code -1 (SI_QUEUE), fault addr --------
+11-15 10:34:43.702  5385  5385 F DEBUG   : Abort message: 'Throwing new exception 'no non-static method "Landroid/graphics/Insets;.getTop()I"' with unexpected pending exception: java.lang.NoSuchMethodError: no non-static method "Landroid/graphics/Insets;.getLeft()I"
+11-15 10:34:43.702  5385  5385 F DEBUG   : (Throwable with empty stack trace)
+11-15 10:34:43.702  5385  5385 F DEBUG   : '
+11-15 10:34:43.702  5385  5385 F DEBUG   :     rax 0000000000000000  rbx 00000000000014e6  rcx 00007750e325f298  rdx 0000000000000006
+11-15 10:34:43.702  5385  5385 F DEBUG   :     r8  00007750e73aebd1  r9  00007750e73aebd1  r10 0000774dfabd3550  r11 0000000000000246
+11-15 10:34:43.702  5385  5385 F DEBUG   :     r12 0000000000000000  r13 0000774dfabd3620  r14 0000774dfabd3548  r15 0000000000001503
+11-15 10:34:43.702  5385  5385 F DEBUG   :     rdi 00000000000014e6  rsi 0000000000001503
+11-15 10:34:43.702  5385  5385 F DEBUG   :     rbp 0000774f12d83ad0  rsp 0000774dfabd3538  rip 00007750e325f298
+11-15 10:34:43.705  5385  5385 F DEBUG   : backtrace:
+11-15 10:34:43.705  5385  5385 F DEBUG   :       #00 pc 000000000005a298  /apex/com.android.runtime/lib64/bionic/libc.so (syscall+24) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
+11-15 10:34:43.705  5385  5385 F DEBUG   :       #01 pc 000000000005d202  /apex/com.android.runtime/lib64/bionic/libc.so (abort+194) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
+11-15 10:34:43.705  5385  5385 F DEBUG   :       #02 pc 0000000000634927  /apex/com.android.art/lib64/libart.so (art::Runtime::Abort(char const*)+2375) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
+11-15 10:34:43.705  5385  5385 F DEBUG   :       #03 pc 0000000000019cfc  /system/lib64/libbase.so (android::base::SetAborter(std::__1::function<void (char const*)>&&)::$_3::__invoke(char const*)+60) (BuildId: 7101d4565a51dea09dc23901546cbb64)
+11-15 10:34:43.705  5385  5385 F DEBUG   :       #04 pc 00000000000192a0  /system/lib64/libbase.so (android::base::LogMessage::~LogMessage()+368) (BuildId: 7101d4565a51dea09dc23901546cbb64)
+11-15 10:34:43.705  5385  5385 F DEBUG   :       #05 pc 000000000069d96a  /apex/com.android.art/lib64/libart.so (art::Thread::AssertNoPendingExceptionForNewException(char const*) const+1770) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
+11-15 10:34:43.705  5385  5385 F DEBUG   :       #06 pc 00000000006a2454  /apex/com.android.art/lib64/libart.so (art::Thread::ThrowNewExceptionF(char const*, char const*, ...)+244) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
+11-15 10:34:43.705  5385  5385 F DEBUG   :       #07 pc 000000000042f633  /apex/com.android.art/lib64/libart.so (art::FindMethodJNI(art::ScopedObjectAccess const&, _jclass*, char const*, char const*, bool)+403) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
+11-15 10:34:43.706  5385  5385 F DEBUG   :       #08 pc 000000000043cafd  /apex/com.android.art/lib64/libart.so (art::JNI<false>::GetMethodID(_JNIEnv*, _jclass*, char const*, char const*)+685) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
+11-15 10:34:43.706  5385  5385 F DEBUG   :       #09 pc 0000000000015418  /data/app/~~7eqrckNMGEoF8B_dXPRK7A==/org.umbra.client-FM-Ol1djrTs6cIC9qKbzvg==/base.apk!libumbra.so (offset 0x1c000) (BuildId: 1b2df35c220c1ed8f8cebcb8d323a2410f24194c)
+11-15 10:34:43.706  5385  5385 F DEBUG   :       #10 pc 0000000000014beb  /data/app/~~7eqrckNMGEoF8B_dXPRK7A==/org.umbra.client-FM-Ol1djrTs6cIC9qKbzvg==/base.apk!libumbra.so (offset 0x1c000) (BuildId: 1b2df35c220c1ed8f8cebcb8d323a2410f24194c)
+11-15 10:34:43.706  5385  5385 F DEBUG   :       #11 pc 0000000000016c5b  /data/app/~~7eqrckNMGEoF8B_dXPRK7A==/org.umbra.client-FM-Ol1djrTs6cIC9qKbzvg==/base.apk!libumbra.so (offset 0x1c000) (BuildId: 1b2df35c220c1ed8f8cebcb8d323a2410f24194c)
+11-15 10:34:43.706  5385  5385 F DEBUG   :       #12 pc 00000000000149c1  /data/app/~~7eqrckNMGEoF8B_dXPRK7A==/org.umbra.client-FM-Ol1djrTs6cIC9qKbzvg==/base.apk!libumbra.so (offset 0x1c000) (android_main+433) (BuildId: 1b2df35c220c1ed8f8cebcb8d323a2410f24194c)
+11-15 10:34:43.706  5385  5385 F DEBUG   :       #13 pc 0000000000016b1c  /data/app/~~7eqrckNMGEoF8B_dXPRK7A==/org.umbra.client-FM-Ol1djrTs6cIC9qKbzvg==/base.apk!libumbra.so (offset 0x1c000) (BuildId: 1b2df35c220c1ed8f8cebcb8d323a2410f24194c)
+11-15 10:34:43.706  5385  5385 F DEBUG   :       #14 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
+11-15 10:34:43.706  5385  5385 F DEBUG   :       #15 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
