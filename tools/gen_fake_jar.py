@@ -88,6 +88,8 @@ def build(path: str, broken: bool) -> None:
     # since 26.3: {"sprite": "...", "force_translucent": true}.
     spr = model_text("sprite", "block/fake_2")
     spr["textures"] = {"all": {"sprite": "minecraft:block/fake_2", "force_translucent": True}}
+    # ...and a face that names its key without the '#' (26.3's heavy_core does).
+    spr["elements"][0]["faces"]["up"]["texture"] = "all"
     z.writestr("assets/minecraft/models/block/fake_sprite.json", json.dumps(spr))
 
     # An inverted box, like the real block/cube_all_inner_faces.json: legal.

@@ -58,6 +58,7 @@ var jc_inverted_boxes: i64 = 0;
 var jc_multipart: i64 = 0;
 var jc_weighted: i64 = 0;
 var jc_uv_present: i64 = 0;
+var jc_bare_keys: i64 = 0;
 var jc_rotations: i64 = 0;
 var jc_rot_no_angle: i64 = 0;
 var jc_rot_no_origin: i64 = 0;
@@ -425,11 +426,18 @@ fn jc_check_box(el: i64) {
         if tex < 0 || json_kind(tex) != J_STR {
             jc_problem("a face without a texture key");
         } else {
+            // The '#' is optional: 26.3's heavy_core model says "texture": "all".
             let key = json_str(tex);
-            if key.len < 2 || key[0] != 35 {
-                jc_problem("a face texture key that is not #name");
+            var skip: i64 = 0;
+            if key.len > 0 && key[0] == 35 {
+                skip = 1;
             } else {
-                let pinned = jc_pin(key[1 ..]);
+                jc_bare_keys += 1;
+            }
+            if key.len - skip < 1 {
+                jc_problem("a face whose texture key is empty");
+            } else {
+                let pinned = jc_pin(key[skip ..]);
                 if jc_resolve_face_tex(jc_pinned(pinned)) >= 0 { jc_faces_resolved += 1; }
             }
         }
@@ -668,11 +676,21 @@ fn main() {
                 if info.height > longest { longest = info.height; }
                 let w = info.width;
                 let h = info.height;
-                if w >= 16 && w <= 1024 && h >= w && h <= 4096 && h % w == 0 {
+                // Only block textures are atlas sources with frames. GUI, entity,
+                // painting and panorama sprites are any size, so they only have to
+                // be sane.
+                let is_block = jc_starts_with(jc_cur[..], "assets/minecraft/textures/block/");
+                if is_block {
+                    if w >= 16 && w <= 1024 && h >= w && h <= 4096 && h % w == 0 {
+                        sane += 1;
+                        if h > w { animated += 1; }
+                    } else {
+                        jc_problem("a block texture that is not a whole number of square frames");
+                    }
+                } else if w >= 1 && w <= 4096 && h >= 1 && h <= 4096 {
                     sane += 1;
-                    if h > w { animated += 1; }
                 } else {
-                    jc_problem("a texture that is not a whole number of square frames");
+                    jc_problem("a texture with an implausible size");
                 }
             } else {
                 jc_problem(perr);
@@ -689,13 +707,14 @@ fn main() {
     print("jar: used models with elements ", jc_used_with_elements,
           ", boxes ", jc_elements, ", faces ", jc_faces,
           ", faces whose texture resolved to a PNG ", jc_faces_resolved,
-          ", uv sets ", jc_uv_present);
+          ", uv sets ", jc_uv_present,
+          ", faces naming a key without '#' ", jc_bare_keys);
     print("jar: texture variable hops ", jc_var_hops,
           ", inverted boxes (legal) ", jc_inverted_boxes,
           ", box rotations ", jc_rotations, " (", jc_rot_no_angle, " with no angle, ",
           jc_rot_no_origin, " with no origin)");
     print("jar: multipart blockstates ", jc_multipart, ", weighted variant lists ", jc_weighted);
-    print("jar: textures decoded ", decoded, ", whole square frames ", sane,
+    print("jar: textures decoded ", decoded, ", sane sizes ", sane,
           " (", animated, " animated strips), tallest ", longest, " px");
     print("jar: problems ", jc_problem_count);
     if jc_reported > 0 {
