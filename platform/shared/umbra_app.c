@@ -1048,6 +1048,14 @@ static void device_note(umbra_app *app, const char *what, const char *answer, in
     umbra_log(app, "check: %-28s %s%s", what, answer, ok ? "" : "  <-- failed");
 }
 
+// Some answers are informational: a driver without timer queries cannot provide
+// GPU times, and that is worth a line in the log, not a "<-- failed" beside a
+// verdict that says every check passed.
+static void device_note_optional(umbra_app *app, const char *what, const char *answer,
+                                 int present) {
+    umbra_log(app, "check: %-28s %s%s", what, answer, present ? "" : "  (not available)");
+}
+
 static void set_fallback(umbra_app *app, const char *reason) {
     if (app->render_fallback && app->fallback_reason[0]) return;
     app->render_fallback = true;
@@ -1078,7 +1086,7 @@ static void device_checks(umbra_app *app) {
     app->gpu_timer_supported = timer_ext;
     snprintf(app->gpu_timer_note, sizeof app->gpu_timer_note, "%s",
              timer_ext ? "EXT_disjoint_timer_query" : "none");
-    device_note(app, "gpu timer query", app->gpu_timer_note, timer_ext);
+    device_note_optional(app, "gpu timer query", app->gpu_timer_note, timer_ext);
 
     // Every program that linked is reported by name: a shader that fails on one
     // driver and not another is the single most likely device-specific failure.

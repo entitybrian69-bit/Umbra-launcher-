@@ -236,6 +236,22 @@ static void fill_insets(android_state *st) {
           source, app->width, app->height, dpi, app->dpi_scale);
 }
 
+// The benchmark's request for an uncapped swap interval. eglSwapInterval returns
+// EGL_TRUE when EGL accepted it, which on Android says nothing about the
+// compositor: the platform still throttles to the display's refresh rate in many
+// configurations. The app logs what it got and reports the frame rate as capped
+// unless it can prove otherwise.
+static int android_swap_interval(void *ctx, int interval) {
+    android_state *st = (android_state *)ctx;
+    if (!st || !st->display || st->display == EGL_NO_DISPLAY ||
+        !st->surface || st->surface == EGL_NO_SURFACE) {
+        return 0;
+    }
+    EGLBoolean ok = eglSwapInterval(st->display, interval);
+    ALOGI("swap interval %d: %s", interval, ok ? "accepted by EGL" : "refused by EGL");
+    return ok ? 1 : 0;
+}
+
 static int init_egl(android_state *st) {
     st->display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (st->display == EGL_NO_DISPLAY) { ALOGE("no EGL display"); return 0; }
@@ -478,6 +494,9 @@ void android_main(struct android_app *state) {
         if (!started) {
             g_st.app.width = g_st.width;
             g_st.app.height = g_st.height;
+            // Before init: umbra_app_init keeps these across its memset.
+            g_st.app.swap_interval_fn = android_swap_interval;
+            g_st.app.swap_interval_ctx = &g_st;
             fill_insets(&g_st);
             if (!umbra_app_init(&g_st.app)) {
                 ALOGE("app init failed");
