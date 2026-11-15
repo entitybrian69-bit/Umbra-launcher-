@@ -16,17 +16,20 @@ installs on the CI emulator, draws a meshed world, passes its own pixel-exact GP
 self-test and survives a soak**, and the screenshot gate has a committed
 reference to compare against.
 
-There is still **no download link**, no PC release binary, and no parity numbers.
-Umbra is not Minecraft, and the parity table is empty.
+Both PC binaries are built and executed in CI on their own platforms, with
+checksums committed as evidence. There is still **no download link** (no GitHub
+release has been published), no parity numbers, and no ARM execution: the arm64
+APK is built but never run. Umbra is not Minecraft, and the parity table is
+empty.
 
 | Gate | State | Evidence |
 |---|---|---|
-| 1. CI builds from a clean checkout | PASSING | run `43670787000`: `Build APK (arm64 + x86_64)` job `completed success` |
-| 2. APK checks (unzip/aapt2/apksigner/lib per ABI) | PASSING | same run, step `Gate 2 - APK integrity` success; annotations: `package: name='org.umbra.client' versionCode='1' versionName='0.1.0' compileSdkVersion='35'`, `native-code: 'arm64-v8a' 'x86_64'`, `apksigner … v1 scheme: false` (v2/v3 cover minSdk 24), `sha256 172983ea…` |
-| 3. Emulator smoke + fresh screenshot | PASSING the smoke test; reference committed 2026-11-15 | run `43670787000` (`evidence/ci/summary.txt`): install, launch, `EGL up: 1920x1080`, self-test `2073600 pixels checked, 0 mismatched`, tap accepted, 60 s soak survived, no FATAL EXCEPTION; screenshots committed as `docs/reference/emulator_home.png` and `emulator_selftest.png` |
-| 4. Core tests on x86_64 | PASSING locally | `PASS mem (19)`, `inflate (97)`, `zip (137)`, `png (153)`, `nbt (196)`, `region (237)`, `mesh (275)` |
-| 4. Core tests on arm64 | NOT DONE | no ARM runner yet |
-| 5. PC builds (Windows x64, Linux x64) + headless self-test | Linux x64 local PASS; Windows and CI NOT DONE | `PASS: 19 checks, 0 failures` (below) |
+| 1. CI builds from a clean checkout | PASSING | run `43671700216`: `Build APK (arm64 + x86_64)` job `completed success` |
+| 2. APK checks (unzip/aapt2/apksigner/lib per ABI) | PASSING | same run, step `Gate 2 - APK integrity` success; annotations: `package: name='org.umbra.client' versionCode='1' versionName='0.1.0' compileSdkVersion='35'`, `native-code: 'arm64-v8a' 'x86_64'`, `apksigner … v1 scheme: false` (v2/v3 cover minSdk 24) |
+| 3. Emulator smoke + fresh screenshot | PASSING | run `43671700216`: every step of `Emulator smoke test + screenshot` is `success`, including `Screenshot gate (fresh, non-blank, similar to the reference)`. That run's own capture differs from the reference byte for byte (`evidence/ci/shot1.png` sha256 `26e81928eb09aea9`, reference `ea2a1be5…`) and still measures `mean absolute difference 0.00 (of 255)` |
+| 4. Core tests on x86_64 | PASSING | run `43674038711`, step `Core test suite (formats, mesher)`: `PASS mem (19) inflate (97) zip (137) png (153) nbt (196) region (237) json (302) mesh (340)`, `all modules passed` (`evidence/ci/core-tests.txt`) |
+| 4. Core tests on arm64 | NOT DONE | no ARM runner; the APK's arm64 build is compiled, never executed |
+| 5. PC builds (Windows x64, Linux x64) + headless self-test | PASSING | run `43674038711`: `Linux x64 build + headless self-test` and `Windows x64 build + headless self-test` both `completed success`; the Windows binary ran under MSYS2 UCRT64 on `windows-latest`, not under Wine. `evidence/ci/pc-linux-x64.txt` and `pc-windows-x64.txt` both end `PASS: 19 checks, 0 failures`; sha256 `1a1c76665f5a013b…` (linux) and `0190ba968e53b943…` (windows) |
 | 6. Parity tests against the real game | NOT DONE | no jar has been downloaded yet |
 | 7. Release assets verified by re-download | NOT DONE | — |
 
@@ -45,6 +48,21 @@ with the colour the fragment shader must produce for that `gl_FragCoord`; the
 cube test compares the centre of the screen with the shaded cube and the outside
 with the clear colour. The same formulas are checked on the CPU (below), so a
 broken checker cannot pass the GPU test.
+
+### The PC builds, in CI (run 43674038711)
+
+```
+Linux x64 build + headless self-test      completed/success
+Windows x64 build + headless self-test    completed/success
+```
+
+The Windows job installs MSYS2 UCRT64, builds the pinned Goose compiler from
+source, generates the core, compiles `platform/pc/headless_main.c` with
+`gcc -O2`, and **runs the resulting .exe on the Windows runner** — so this is a
+real Windows x64 execution, not a cross-compile that nobody started. Both jobs
+then commit their self-test text and checksums back to the branch
+(`evidence/ci/pc-linux-x64.*`, `pc-windows-x64.*`), because job logs and artifact
+downloads are not readable from the environment that drives this project.
 
 ### The PC headless host (`build/pc/umbra_headless`, rebuilt 2026-11-15)
 
@@ -66,7 +84,7 @@ The machine is `e2b.local`: x86_64, 2 cores, 3 GB, no GPU. 62 fps here is a
 CPU-side number — the headless host runs a fixed 16 ms step with no GPU work — and
 says nothing about a phone GPU.
 
-### The Goose core, on this machine (gcc 12.2.0, Goose v2026.4 `6c1fbc78`)
+### The Goose core, in CI (run 43674038711, gcc on ubuntu-latest, Goose v2026.4 `6c1fbc78`)
 
 ```
 PASS mem (19 checks)
@@ -75,7 +93,8 @@ PASS zip (137 checks)
 PASS png (153 checks)
 PASS nbt (196 checks)
 PASS region (237 checks)
-PASS mesh (275 checks)
+PASS json (302 checks)
+PASS mesh (340 checks)
 ```
 
 ### The APK (CI run 43670787000)
@@ -134,17 +153,20 @@ number quoted above from CI came through one of those channels.
 
 ## Next steps, in order
 
-1. Prove gate 3 end to end: the run after the reference was committed must pass
-   the screenshot gate against it (the reference was chosen by looking at the
-   capture, not by blessing whatever the run produced).
-2. Feed the real block models and textures from the pinned jar into the mesher
-   (atlas, blockstates, models) and replace the demo world in the app.
+1. Read the real jar: download the pinned client jar at test time (from the
+   official version manifest, never committed), open it with the core's zip
+   reader, parse its `blockstates` and `models` with the JSON reader, and check
+   the results against the jar's own contents (every blockstate must resolve to a
+   model that exists, every texture a model names must exist, every box UV must
+   fit its texture).
+2. Feed those models and a texture atlas into the mesher, and replace the
+   untextured demo world in the app with real block models.
 3. Move meshing off the window thread and make it faster: 4.6 s to mesh 370k
    vertices on the emulator is the dominant start-up cost.
-4. PC: Windows x64 cross-build in CI plus a Linux release binary, both gated by
-   the headless self-test; publish SHA256SUMS.
-5. Stage 3 world gates against the official server jar (downloaded at test time,
-   never committed), then fill in the parity table with measured match rates.
+4. Publish a GitHub release with the APK and both PC binaries, then re-download
+   the assets and verify their checksums (gate 7).
+5. Stage 3 world gates against the official server jar, then fill in the parity
+   table with measured match rates.
 
 ## Blockers
 

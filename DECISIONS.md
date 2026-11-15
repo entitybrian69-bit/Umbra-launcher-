@@ -27,6 +27,29 @@ also requires the two captures of a run to differ, so a stale file cannot pass.
 Cost: when the home screen legitimately changes, a human must look at the new
 capture and commit it; the gate is a regression detector, not an oracle.
 
+## D-022 JSON is parsed strictly, by our own reader
+
+The model data in the jar is JSON, so the core needs a JSON reader
+(`goose/core/json.goose`, 302 checks). It is strict: trailing commas, unquoted
+names, raw control characters in strings, unknown escapes, leading zeroes,
+lone surrogates and trailing bytes are all errors with a byte offset, and nesting
+past 48 levels is refused rather than overflowing the stack. Rationale: a model
+file the game would reject must not be half-accepted here, because the failure
+then shows up as wrong geometry far from its cause. Numbers are parsed by hand
+(sign, fraction, exponent) so no locale-dependent `strtod` sits in the path.
+Cost: about 480 lines of Goose, and no support for JSON5-style leniency.
+
+## D-021 CI runs Windows binaries on Windows
+
+Gate 5 needs a Windows build that is actually executed. `pc.yml` builds the
+Windows x64 binary inside MSYS2 UCRT64 on `windows-latest` and runs it there
+(MINGW64 was the first choice; MSYS2 deprecated it in favour of UCRT64). The
+alternative — cross-compiling with mingw-w64 on Linux and running under Wine —
+would prove the binary formats but not that it starts on Windows. Cost: the
+Windows job takes ~6 minutes and installs a toolchain each run; publishing its
+evidence must happen in Git Bash rather than MSYS2, because the checkout's git
+credentials belong to the Windows git that Git Bash uses.
+
 ## D-018 The home screen is a fixed view, so the screenshot gate compares like with like
 
 The first device screenshots showed the scene drifting: the camera orbited with
