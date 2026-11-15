@@ -151,6 +151,30 @@ static float umbra_hud_scene_shift(float panel_height, int height) {
     return -covered;
 }
 
+// Is this pixel inside something the overlay draws -- its backdrop panel or one
+// of its buttons? The self-test compares the window when it cannot have an
+// offscreen target, and the overlay is part of that window; a comparison that
+// includes it fails on the app's own interface, which is what a phone screenshot
+// of "2458665 bad" could have been. This is the predicate the comparison uses and
+// the host suite checks.
+static int umbra_hud_covers(int x, int y, int rows, float scale, const int32_t insets[4],
+                            int width, int height) {
+    if (width < 16 || height < 16 || x < 0 || y < 0 || x >= width || y >= height) return 0;
+    float panel = umbra_hud_panel_height(rows, scale, insets[1]);
+    if ((float)y < panel) return 1;                 // the backdrop spans the full width
+    for (int i = 0; i < 3; i++) {
+        // Overlap, not containment: a button whose edge falls at x = 775.3 covers
+        // part of pixel 775, and a comparison that kept that pixel would be
+        // comparing the interface. A pixel counts as covered if any of it is.
+        umbra_rect r = umbra_hud_button(i, width, height, insets, scale);
+        if ((float)(x + 1) > r.x && (float)x < r.x + r.w &&
+            (float)(y + 1) > r.y && (float)y < r.y + r.h) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 // Copy src into dst, turning newlines into spaces and stopping before cap; returns
 // the number of bytes written (excluding the terminator). Used to store the
 // multi-line benchmark block on one line of a one-line-per-result file.

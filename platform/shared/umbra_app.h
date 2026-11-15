@@ -67,6 +67,36 @@ struct umbra_app {
     // has to mean something.
     unsigned fbo_selftest, tex_selftest, rb_selftest;
     bool selftest_requested;
+    // The self-test runs as a state machine, a bounded step per frame: two
+    // full-frame readbacks and five million comparisons in one frame is a stall
+    // long enough for Android to kill the app, which is what "SELF-TEST: BEGIN"
+    // followed by silence was.
+    int st_state;              // see the ST_* constants in umbra_app.c
+    int64_t st_start_us;
+    int st_w, st_h;            // the size the test ran at
+    int st_row;                // first row of the next step
+    int st_tile_rows;
+    int st_offscreen;          // 1: the offscreen target was usable
+    unsigned st_fbo_status;    // its status, for the log when it was not
+    int64_t st_skip_px;        // pixels not compared because the overlay covers them
+    int64_t st_pattern_bad, st_pattern_checked, st_cube_bad, st_cube_checked;
+    unsigned char *st_frame;   // whole-frame readback, window fallback only
+    unsigned char *st_tile;    // one step's readback
+    size_t st_frame_bytes, st_tile_bytes;
+    char st_reason[160];       // why the test was skipped, when it was
+
+    // What the device answered at start-up, and what the app did about it.
+    bool render_fallback;      // drawing without the full pipeline
+    char fallback_reason[160];
+    bool gpu_timer_supported;  // GL_EXT_disjoint_timer_query, i.e. real GPU time
+    char gpu_timer_note[96];
+    int64_t gpu_time_us;       // summed elapsed GPU time during the benchmark
+    int64_t gpu_frames;        // frames that produced a GPU time
+    int bench_vsync;           // 0 capped, 1 uncapped requested, 2 refused
+    // Set by the platform: change the swap interval, returning 1 if it took.
+    // Null when the platform has no such thing.
+    int (*swap_interval_fn)(void *ctx, int interval);
+    void *swap_interval_ctx;
     char gl_renderer[128], gl_vendor[128], gl_version[128];
     int depth_bits;
     char highp_vertex[32], highp_fragment[32];

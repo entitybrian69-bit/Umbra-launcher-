@@ -34,4 +34,16 @@ $CC "${CFLAGS[@]}" -I"$INC" -I"$GEN" -Iplatform/shared "$@" platform/pc/headless
 echo "== android main"
 $CC "${CFLAGS[@]}" -D__ANDROID__ -I"$INC" -I"$GEN" -Iplatform/shared -Iplatform/android "$@" \
     platform/android/android_main.c
+# Finding (a) of 0.3.1 was a shader that compiled, linked and drew the wrong
+# thing: int is mediump (16 bits) by default in a fragment shader on Mali, so
+# x * 255 overflowed and the self-test pattern matched only a 129x129 corner.
+# The declared precision is now part of the contract, and it is checked here
+# because no compiler on a desktop GL driver would ever complain about it.
+if ! grep -A28 '^static const char .FS_PATTERN =' platform/shared/umbra_app.c 2>/dev/null \
+        | grep -q 'precision highp int;';
+then
+    echo "check_c: FS_PATTERN no longer declares precision highp int (0.3.1 finding a)" >&2
+    exit 1
+fi
+echo "check_c: FS_PATTERN declares precision highp int"
 echo "check_c: both branches parse and type-check, and both platform mains do too"

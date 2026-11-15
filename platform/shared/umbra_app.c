@@ -9,6 +9,7 @@
 #include "umbra_vertex.h"
 #include "umbra_font.h"
 #include "umbra_hud.h"
+#include "umbra_selftest.h"
 #include "umbra_core.h"
 
 #include <stdio.h>
@@ -222,6 +223,11 @@ static const char *VS_FULL =
 static const char *FS_PATTERN =
     "#version 300 es\n"
     "precision highp float;\n"
+    // highp int is not the default in a fragment shader -- int is mediump, which
+    // is 16 bits on Mali. x * 255 overflows past x = 128, and the owner's phone
+    // reported "SELF-TEST FAIL: 2458665 bad of 4950720 px": 2475360 minus exactly
+    // the 16695 pixels where neither x nor y reached the overflow.
+    "precision highp int;\n"
     "uniform int u_w;\n"
     "uniform int u_h;\n"
     "out vec4 o_col;\n"
@@ -887,9 +893,280 @@ static void selftest_gl_check(umbra_app *app, const char *where) {
     if (e != GL_NO_ERROR) umbra_log(app, "self-test: gl error 0x%x at %s", (unsigned)e, where);
 }
 
+// --- GPU timing ------------------------------------------------------------
+//
+// A 59 FPS average on a 60 Hz phone is a statement about the display, not about
+// the GPU: every frame is waiting for the vertical blank. Real GPU time needs a
+// timer query, which GLES exposes as an extension, so the pointers are looked up
+// at run time and the benchmark says plainly whether it had them.
+
+#ifndef GL_TIME_ELAPSED_EXT
+#define GL_TIME_ELAPSED_EXT 0x88BF
+#endif
+#ifndef GL_GPU_DISJOINT_EXT
+#define GL_GPU_DISJOINT_EXT 0x8FBB
+#endif
+#ifndef GL_QUERY_RESULT_AVAILABLE
+#define GL_QUERY_RESULT_AVAILABLE 0x8867
+#endif
+#ifndef GL_QUERY_RESULT
+#define GL_QUERY_RESULT 0x8866
+#endif
+
+typedef void (*pfn_gen_queries)(GLsizei, GLuint *);
+typedef void (*pfn_delete_queries)(GLsizei, const GLuint *);
+typedef void (*pfn_begin_query)(GLenum, GLuint);
+typedef void (*pfn_end_query)(GLenum);
+typedef void (*pfn_get_query_uiv)(GLuint, GLenum, GLuint *);
+typedef void (*pfn_get_query_ui64v)(GLuint, GLenum, uint64_t *);
+
+#define UMBRA_GPU_QUERIES 4
+
+typedef struct {
+    int ready;
+    pfn_gen_queries gen;
+    pfn_delete_queries del;
+    pfn_begin_query begin;
+    pfn_end_query end;
+    pfn_get_query_uiv available;
+    pfn_get_query_ui64v result;
+    GLuint ids[UMBRA_GPU_QUERIES];
+    int in_flight[UMBRA_GPU_QUERIES];
+    GLuint active;      // the query that has been begun and not yet ended
+    int next;
+} gpu_timer;
+
+static gpu_timer g_gpu_timer;
+
+static void gpu_timer_reset(umbra_app *app) {
+    app->gpu_time_us = 0;
+    app->gpu_frames = 0;
+    for (int i = 0; i < UMBRA_GPU_QUERIES; i++) g_gpu_timer.in_flight[i] = 0;
+    if (!g_gpu_timer.ready) return;
+    for (int i = 0; i < UMBRA_GPU_QUERIES; i++) {
+        if (g_gpu_timer.ids[i]) g_gpu_timer.del(1, &g_gpu_timer.ids[i]);
+        g_gpu_timer.ids[i] = 0;
+    }
+    g_gpu_timer.gen(UMBRA_GPU_QUERIES, g_gpu_timer.ids);
+    g_gpu_timer.next = 0;
+}
+
+static void gpu_timer_load(umbra_app *app) {
+    if (!app->gpu_timer_supported || g_gpu_timer.ready) return;
+#ifdef __ANDROID__
+    g_gpu_timer.gen = (pfn_gen_queries)eglGetProcAddress("glGenQueriesEXT");
+    g_gpu_timer.del = (pfn_delete_queries)eglGetProcAddress("glDeleteQueriesEXT");
+    g_gpu_timer.begin = (pfn_begin_query)eglGetProcAddress("glBeginQueryEXT");
+    g_gpu_timer.end = (pfn_end_query)eglGetProcAddress("glEndQueryEXT");
+    g_gpu_timer.available = (pfn_get_query_uiv)eglGetProcAddress("glGetQueryObjectuivEXT");
+    g_gpu_timer.result = (pfn_get_query_ui64v)eglGetProcAddress("glGetQueryObjectui64vEXT");
+#endif
+    g_gpu_timer.ready = g_gpu_timer.gen && g_gpu_timer.del && g_gpu_timer.begin &&
+                        g_gpu_timer.end && g_gpu_timer.available && g_gpu_timer.result;
+    umbra_log(app, "gpu timer: %s (EXT_disjoint_timer_query %s)", 
+              g_gpu_timer.ready ? "ready" : "unavailable",
+              app->gpu_timer_supported ? "advertised" : "not advertised");
+}
+
+// Collects any finished queries into the running total. Called once a frame while
+// the benchmark runs; a result that is not ready yet stays in flight.
+static void gpu_timer_collect(umbra_app *app) {
+    if (!g_gpu_timer.ready) return;
+    for (int i = 0; i < UMBRA_GPU_QUERIES; i++) {
+        if (!g_gpu_timer.in_flight[i]) continue;
+        GLuint ready = 0;
+        g_gpu_timer.available(g_gpu_timer.ids[i], GL_QUERY_RESULT_AVAILABLE, &ready);
+        if (!ready) continue;
+        uint64_t ns = 0;
+        g_gpu_timer.result(g_gpu_timer.ids[i], GL_QUERY_RESULT, &ns);
+        app->gpu_time_us += (int64_t)(ns / 1000);
+        app->gpu_frames++;
+        g_gpu_timer.in_flight[i] = 0;
+    }
+}
+
+static void gpu_timer_begin(umbra_app *app) {
+    if (!g_gpu_timer.ready || !app->benching) return;
+    int slot = g_gpu_timer.next;
+    if (!g_gpu_timer.ids[slot] || g_gpu_timer.in_flight[slot]) return;
+    g_gpu_timer.begin(GL_TIME_ELAPSED_EXT, g_gpu_timer.ids[slot]);
+    g_gpu_timer.active = g_gpu_timer.ids[slot];
+    g_gpu_timer.in_flight[slot] = 1;
+    g_gpu_timer.next = (slot + 1) % UMBRA_GPU_QUERIES;
+}
+
+static void gpu_timer_end(umbra_app *app) {
+    (void)app;
+    if (!g_gpu_timer.ready || !g_gpu_timer.active) return;
+    g_gpu_timer.end(GL_TIME_ELAPSED_EXT);
+    g_gpu_timer.active = 0;
+}
+
+// --- device checks ---------------------------------------------------------
+//
+// Everything the app asks the device and every answer: one shared log has to
+// explain a phone nobody here can attach a debugger to. A failure that the app can
+// live with is a fallback and a line of text, never a crash: the owner has no
+// second phone and no PC, so "it closed" is the worst possible outcome.
+
+static void device_note(umbra_app *app, const char *what, const char *answer, int ok) {
+    umbra_log(app, "check: %-28s %s%s", what, answer, ok ? "" : "  <-- failed");
+}
+
+static void set_fallback(umbra_app *app, const char *reason) {
+    if (app->render_fallback && app->fallback_reason[0]) return;
+    app->render_fallback = true;
+    snprintf(app->fallback_reason, sizeof app->fallback_reason, "%s", reason);
+    umbra_log(app, "fallback: %s - drawing with the plain renderer", reason);
+}
+
+// What the driver says about itself, and what this app needs from it.
+static void device_checks(umbra_app *app) {
+    const char *renderer = (const char *)glGetString(GL_RENDERER);
+    const char *version = (const char *)glGetString(GL_VERSION);
+    device_note(app, "renderer", renderer ? renderer : "(null)", renderer != NULL);
+    device_note(app, "gl version", version ? version : "(null)", version != NULL);
+    if (!version || !strstr(version, "OpenGL ES 3")) {
+        set_fallback(app, version ? "not an OpenGL ES 3 context" : "no GL version string");
+    }
+    GLint max_tex = 0;
+    glGetIntegerv(GL_MAX_TEXTURE_SIZE, &max_tex);
+    char buf[128];
+    snprintf(buf, sizeof buf, "%d px", (int)max_tex);
+    // The scene renders into a framebuffer texture the size of the screen.
+    device_note(app, "max texture size", buf, max_tex >= 2048);
+
+    const char *ext = (const char *)glGetString(GL_EXTENSIONS);
+    size_t ext_len = 0;
+    if (ext) ext_len = strlen(ext);
+    int timer_ext = ext && strstr(ext, "GL_EXT_disjoint_timer_query") != NULL;
+    app->gpu_timer_supported = timer_ext;
+    snprintf(app->gpu_timer_note, sizeof app->gpu_timer_note, "%s",
+             timer_ext ? "EXT_disjoint_timer_query" : "none");
+    device_note(app, "gpu timer query", app->gpu_timer_note, timer_ext);
+
+    // Every program that linked is reported by name: a shader that fails on one
+    // driver and not another is the single most likely device-specific failure.
+    snprintf(buf, sizeof buf, "mesh %s, hud %s, pattern %s, cube %s",
+             app->prog_mesh ? "ok" : "FAILED", app->prog_hud ? "ok" : "FAILED",
+             app->prog_pattern ? "ok" : "FAILED", app->prog_cube ? "ok" : "FAILED");
+    int all = app->prog_mesh && app->prog_hud && app->prog_pattern && app->prog_cube;
+    device_note(app, "shader programs", buf, all);
+    if (!app->prog_mesh) set_fallback(app, "the world shader did not compile");
+    if (!app->prog_hud) set_fallback(app, "the text shader did not compile");
+
+    snprintf(buf, sizeof buf, "%d bits", app->depth_bits);
+    device_note(app, "depth buffer", buf, app->depth_bits >= 16);
+    if (app->depth_bits < 16) set_fallback(app, "no depth buffer");
+    snprintf(buf, sizeof buf, "%zu chars", ext_len);
+    device_note(app, "extension string", buf, ext != NULL);
+    if (app->render_fallback) {
+        umbra_log(app, "check: running in fallback: %s", app->fallback_reason);
+    } else {
+        umbra_log(app, "check: all device checks passed");
+    }
+}
+
+// --- self test ----------------------------------------------------------
+//
+// Two passes (a fullscreen pattern and a lit cube), both read back and compared
+// pixel by pixel. The first version did all of that inside one frame -- two
+// full-frame readbacks and five million comparisons -- and the owner's phone
+// logged "SELF-TEST: BEGIN (2292x1080)" and then died: five seconds without a
+// frame is an ANR, and an ANR is a force-stop, which the crash marker then reports
+// as a crash. So the test is a state machine that does one bounded step per frame,
+// logs the start and end of every phase, and gives up with a reason if a phase
+// takes longer than the watchdog.
+
+enum {
+    ST_IDLE = 0,
+    ST_DRAW_PATTERN,
+    ST_READ_PATTERN,
+    ST_COMPARE_PATTERN,
+    ST_DRAW_CUBE,
+    ST_READ_CUBE,
+    ST_COMPARE_CUBE,
+    ST_DONE,
+    ST_ABORTED
+};
+
+#define UMBRA_SELFTEST_WATCHDOG_US (30 * 1000 * 1000)
+
+static const char *st_state_name(int st) {
+    switch (st) {
+        case ST_DRAW_PATTERN: return "draw pattern";
+        case ST_READ_PATTERN: return "read pattern";
+        case ST_COMPARE_PATTERN: return "compare pattern";
+        case ST_DRAW_CUBE: return "draw cube";
+        case ST_READ_CUBE: return "read cube";
+        case ST_COMPARE_CUBE: return "compare cube";
+        case ST_DONE: return "done";
+        case ST_ABORTED: return "aborted";
+        default: return "idle";
+    }
+}
+
+static void selftest_free_buffers(umbra_app *app) {
+    free(app->st_frame);
+    free(app->st_tile);
+    app->st_frame = NULL;
+    app->st_tile = NULL;
+    app->st_frame_bytes = 0;
+    app->st_tile_bytes = 0;
+}
+
+static void selftest_end(umbra_app *app, bool ok, const char *why) {
+    int64_t bad = app->st_pattern_bad + app->st_cube_bad;
+    int64_t checked = app->st_pattern_checked + app->st_cube_checked;
+    app->selftest_ran = true;
+    app->selftest_ok = ok;
+    app->selftest_mismatches = bad;
+    app->selftest_checked = checked;
+    app->selftest_us = umbra_now_us() - app->st_start_us;
+    if (ok) {
+        snprintf(app->selftest_text, sizeof app->selftest_text,
+                 "SELFTEST PASS (0 bad of %lld px, %.0f ms, %s)",
+                 (long long)checked, app->selftest_us / 1000.0,
+                 app->st_offscreen ? "offscreen" : "window");
+    } else if (why && why[0]) {
+        snprintf(app->selftest_text, sizeof app->selftest_text, "SELFTEST SKIPPED - %s", why);
+    } else {
+        snprintf(app->selftest_text, sizeof app->selftest_text,
+                 "SELFTEST FAIL (%lld bad of %lld px, %.0f ms, %s)",
+                 (long long)bad, (long long)checked, app->selftest_us / 1000.0,
+                 app->st_offscreen ? "offscreen" : "window");
+    }
+    umbra_log(app, "%s", app->selftest_text);
+    if (!ok && why && why[0]) {
+        umbra_log(app, "self-test: skipped because %s", why);
+    }
+    if (bad > 0) {
+        int64_t len = 0;
+        const uint8_t *t = umbra_selftest_first_bad_text(&len);
+        umbra_log(app, "self-test: first mismatch %.*s", (int)len, (const char *)t);
+    }
+    if (app->st_skip_px > 0) {
+        umbra_log(app, "self-test: %lld px not compared (under the overlay)",
+                  (long long)app->st_skip_px);
+    }
+    umbra_log(app, "self-test: end after %.0f ms, %d steps",
+              app->selftest_us / 1000.0, app->st_row);
+    remember_selftest(app);
+    selftest_free_buffers(app);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, app->width, app->height);
+    app->st_state = ok ? ST_DONE : ST_ABORTED;
+}
+
+static void selftest_abort(umbra_app *app, const char *why) {
+    umbra_log(app, "self-test: aborting in %s after %.0f ms: %s", st_state_name(app->st_state),
+              (umbra_now_us() - app->st_start_us) / 1000.0, why);
+    snprintf(app->st_reason, sizeof app->st_reason, "%s", why);
+    selftest_end(app, false, why);
+}
+
 // A colour texture plus a depth renderbuffer that the self-test draws into.
-// Returns 0 if the driver refuses, in which case the window's back buffer is
-// used and the log says so.
+// Returns 0 if the driver refuses, and the reason goes in app->st_reason.
 static int selftest_begin_target(umbra_app *app, int w, int h) {
     if (!app->fbo_selftest) {
         glGenFramebuffers(1, &app->fbo_selftest);
@@ -900,127 +1177,269 @@ static int selftest_begin_target(umbra_app *app, int w, int h) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glBindRenderbuffer(GL_RENDERBUFFER, app->rb_selftest);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, w, h);
-    glBindFramebuffer(GL_FRAMEBUFFER, app->fbo_selftest);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->tex_selftest, 0);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, app->rb_selftest);
-    // The colour texture must not stay bound while it is attached to the
-    // framebuffer being drawn into: that feedback loop makes the result
-    // undefined, and SwiftShader throws the draw away.
     glBindTexture(GL_TEXTURE_2D, 0);
-    glBindRenderbuffer(GL_RENDERBUFFER, 0);
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (status != GL_FRAMEBUFFER_COMPLETE) {
-        umbra_log(app, "self-test: offscreen framebuffer incomplete (0x%x), using the window",
-                  (unsigned)status);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        return 0;
+    // 24-bit depth first, because the brief asks for it and the scene uses it;
+    // 16 is the fallback for drivers that will not render to 32-bit depth.
+    const GLenum depth_formats[2] = {GL_DEPTH_COMPONENT24, GL_DEPTH_COMPONENT16};
+    GLenum status = 0;
+    for (int attempt = 0; attempt < 2; attempt++) {
+        glBindRenderbuffer(GL_RENDERBUFFER, app->rb_selftest);
+        glRenderbufferStorage(GL_RENDERBUFFER, depth_formats[attempt], w, h);
+        glBindRenderbuffer(GL_RENDERBUFFER, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, app->fbo_selftest);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+                               app->tex_selftest, 0);
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER,
+                                  app->rb_selftest);
+        status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        if (status == GL_FRAMEBUFFER_COMPLETE) {
+            if (attempt == 1) {
+                umbra_log(app, "self-test: 24-bit depth was refused, using 16-bit");
+            }
+            return 1;
+        }
+        umbra_log(app, "self-test: framebuffer with depth 0x%x is not complete (status 0x%x)",
+                  (unsigned)depth_formats[attempt], (unsigned)status);
     }
-    return 1;
+    app->st_fbo_status = (unsigned)status;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    return 0;
 }
 
-static void run_selftest(umbra_app *app) {
-    int64_t st_start = umbra_now_us();
-    umbra_log(app, "self-test: begin (%dx%d)", app->width, app->height);
+static void selftest_begin(umbra_app *app) {
+    app->st_start_us = umbra_now_us();
+    app->st_w = app->width;
+    app->st_h = app->height;
+    app->st_row = 0;
+    app->st_skip_px = 0;
+    app->st_pattern_bad = app->st_pattern_checked = 0;
+    app->st_cube_bad = app->st_cube_checked = 0;
+    app->st_tile_rows = umbra_selftest_tile_rows(app->st_w, app->st_h);
+    app->st_offscreen = 0;
+    app->st_fbo_status = 0;
+    app->st_reason[0] = 0;
     umbra_selftest_reset();
     (void)glGetError();  // clear anything the last frame left behind
-    int offscreen = selftest_begin_target(app, app->width, app->height);
-    glViewport(0, 0, app->width, app->height);
-    glDisable(GL_DEPTH_TEST);
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    selftest_gl_check(app, "clearing the target");
-
-    // 1. Fullscreen pattern: the fragment colour is a pure function of
-    //    gl_FragCoord, so any viewport or attribute-layout error shows.
-    glUseProgram(app->prog_pattern);
-    selftest_gl_check(app, "binding the pattern program");
-    glUniform1i(glGetUniformLocation(app->prog_pattern, "u_w"), app->width);
-    glUniform1i(glGetUniformLocation(app->prog_pattern, "u_h"), app->height);
-    glBindVertexArray(app->vao_full);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-    selftest_gl_check(app, "drawing the pattern");
-    glFinish();
-
-    int w = app->width, h = app->height;
-    // RGBA, not RGB: the target is RGBA8 and a four-channel readback is the
-    // one every driver accepts.
-    unsigned char *px = (unsigned char *)malloc((size_t)w * h * 4);
-    if (!px) {
-        umbra_log(app, "self-test: out of memory");
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    umbra_log(app, "self-test: begin (%dx%d), tile %d rows", app->st_w, app->st_h,
+              app->st_tile_rows);
+    if (app->st_w < 16 || app->st_h < 16) {
+        selftest_abort(app, "the surface has no size yet");
         return;
     }
-    glPixelStorei(GL_PACK_ALIGNMENT, 1);
-    glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, px);
-    selftest_gl_check(app, "reading the pattern back");
-    // The verdict is Goose's: hand it every pixel and let it compare.
-    for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-            const unsigned char *p = px + ((size_t)y * w + x) * 4;
-            umbra_selftest_pattern_pixel(x, y, w, h, p[0], p[1], p[2]);
+    if (app->render_fallback) {
+        // Comparing pixels proves nothing when the pipeline that draws them is the
+        // reason for the fallback; say that instead of failing the device twice.
+        app->st_skip_px = 0;
+        snprintf(app->st_reason, sizeof app->st_reason, "fallback renderer: %s",
+                 app->fallback_reason);
+        selftest_end(app, false, app->st_reason);
+        return;
+    }
+    app->st_offscreen = selftest_begin_target(app, app->st_w, app->st_h);
+    if (!app->st_offscreen) {
+        umbra_log(app, "self-test: no offscreen target (status 0x%x); comparing the window "
+                       "before this frame draws anything else",
+                  app->st_fbo_status);
+    }
+    // One tile buffer is reused by every step; the window path also needs the whole
+    // frame, read in one go so the next frame cannot overwrite it.
+    app->st_tile_bytes = (size_t)app->st_w * (size_t)app->st_tile_rows * 4;
+    app->st_tile = (unsigned char *)malloc(app->st_tile_bytes);
+    if (!app->st_tile) {
+        selftest_abort(app, "out of memory for the readback buffer");
+        return;
+    }
+    if (!app->st_offscreen) {
+        // Without a framebuffer object the only thing to read is the window, and
+        // the window has to be read in the same step it was drawn in: by the next
+        // frame the scene and the overlay are on top of the pattern and the
+        // comparison would be against the wrong picture entirely.
+        app->st_frame_bytes = (size_t)app->st_w * (size_t)app->st_h * 4;
+        app->st_frame = (unsigned char *)malloc(app->st_frame_bytes);
+        if (!app->st_frame) {
+            selftest_abort(app, "out of memory for the frame readback");
+            return;
         }
     }
-    umbra_log(app, "self-test: target %s, pixel(0,0) = %d,%d,%d, pixel(w-1,0) = %d,%d,%d",
-              offscreen ? "offscreen" : "window", px[0], px[1], px[2],
-              px[(size_t)(w - 1) * 4 + 0], px[(size_t)(w - 1) * 4 + 1], px[(size_t)(w - 1) * 4 + 2]);
-    glEnable(GL_DEPTH_TEST);
-    int64_t pattern_mismatches = umbra_selftest_mismatches();
-    int64_t pattern_checked = umbra_selftest_checked();
-    int64_t pattern_diff = umbra_selftest_max_diff();
-    umbra_log(app, "self-test: pattern %lld pixels checked, %lld mismatched, max channel diff %lld",
-              (long long)pattern_checked, (long long)pattern_mismatches, (long long)pattern_diff);
+    app->st_state = ST_DRAW_PATTERN;
+}
 
-    // 2. A cube through a perspective matrix with a depth test: a transposed
-    //    upload, a wrong depth range or a wrong aspect all fail this.
+// Reads and compares one tile of the current pass. Returns 1 when the pass is
+// finished.
+static int selftest_compare_step(umbra_app *app, int is_pattern) {
+    int x0 = 0, w = app->st_w, h = app->st_h;
+    if (app->st_row >= h) return 1;
+    int rows = app->st_tile_rows;
+    if (app->st_row + rows > h) rows = h - app->st_row;
+    size_t bytes = (size_t)w * (size_t)rows * 4;
+
+    if (app->st_offscreen) {
+        glReadPixels(x0, app->st_row, w, rows, GL_RGBA, GL_UNSIGNED_BYTE, app->st_tile);
+        if (glGetError() != GL_NO_ERROR) {
+            selftest_abort(app, "glReadPixels failed on the offscreen target");
+            return 1;
+        }
+    }
+    const unsigned char *base = app->st_offscreen ? app->st_tile : app->st_frame;
+    if (!base) {
+        selftest_abort(app, "no readback buffer");
+        return 1;
+    }
+    if (!app->st_offscreen) {
+        base += (size_t)app->st_row * (size_t)w * 4;
+    }
+    int hud_rows_now = hud_rows(app);
+    float hud_scale_now = hud_scale(app);
+    for (int y = 0; y < rows; y++) {
+        const unsigned char *row = base + (size_t)y * (size_t)w * 4;
+        int fy = app->st_row + y;
+        for (int x = 0; x < w; x++) {
+            const unsigned char *p = row + (size_t)x * 4;
+            // The overlay is part of the window, not part of the test: in the
+            // fallback path its pixels are counted as skipped, never compared.
+            if (!app->st_offscreen &&
+                !umbra_selftest_compares(x, fy, hud_rows_now, hud_scale_now, app->insets,
+                                         app->st_w, app->st_h, &app->st_skip_px)) {
+                continue;
+            }
+            if (is_pattern) {
+                umbra_selftest_pattern_pixel(x, fy, w, h, p[0], p[1], p[2]);
+            } else {
+                umbra_selftest_cube_pixel(x, fy, w, h, p[0], p[1], p[2]);
+            }
+        }
+    }
+    app->st_row += rows;
+    (void)bytes;
+    return app->st_row >= h;
+}
+
+static int64_t selftest_take_mismatches(umbra_app *app) {
+    (void)app;
+    int64_t n = umbra_selftest_mismatches();
     umbra_selftest_reset();
-    glClearColor(0.02f, 0.03f, 0.06f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    float proj[16], view[16], vp[16];
-    mat4_perspective(proj, 60.0f * 3.14159265f / 180.0f, (float)w / (float)h, 0.1f, 100.0f);
-    float eye[3] = {0.0f, 0.0f, 3.0f};
-    float target[3] = {0.0f, 0.0f, 0.0f};
-    float up[3] = {0.0f, 1.0f, 0.0f};
-    mat4_look_at(view, eye, target, up);
-    mat4_mul(vp, proj, view);
-    glUseProgram(app->prog_cube);
-    glUniformMatrix4fv(glGetUniformLocation(app->prog_cube, "u_viewproj"), 1, GL_FALSE, vp);
-    glBindVertexArray(app->vao_cube);
-    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
-    selftest_gl_check(app, "drawing the cube");
-    glFinish();
-    glReadPixels(0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, px);
-    selftest_gl_check(app, "reading the cube back");
-    for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-            const unsigned char *p = px + ((size_t)y * w + x) * 4;
-            umbra_selftest_cube_pixel(x, y, w, h, p[0], p[1], p[2]);
-        }
-    }
-    int64_t cube_mismatches = umbra_selftest_mismatches();
-    int64_t cube_checked = umbra_selftest_checked();
-    free(px);
-    umbra_log(app, "self-test: cube %lld pixels checked, %lld mismatched",
-              (long long)cube_checked, (long long)cube_mismatches);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glViewport(0, 0, app->width, app->height);
+    return n;
+}
 
-    int64_t total_bad = pattern_mismatches + cube_mismatches;
-    app->selftest_ran = true;
-    app->selftest_ok = total_bad == 0;
-    app->selftest_mismatches = total_bad;
-    app->selftest_checked = pattern_checked + cube_checked;
-    app->selftest_max_diff = pattern_diff;
-    app->selftest_first_bad = umbra_selftest_first_bad();
-    app->selftest_us = umbra_now_us() - st_start;
-    snprintf(app->selftest_text, sizeof app->selftest_text, "SELFTEST %s (%lld bad of %lld px, %.0f ms)",
-             app->selftest_ok ? "PASS" : "FAIL", (long long)total_bad,
-             (long long)app->selftest_checked, app->selftest_us / 1000.0);
-    umbra_log(app, "%s", app->selftest_text);
-    remember_selftest(app);
-    if (!app->selftest_ok) {
-        umbra_log(app, "self-test: first bad pixel index %lld", (long long)app->selftest_first_bad);
+// One bounded step, called once per frame while the test is running.
+static void selftest_step(umbra_app *app) {
+    if (app->st_state <= ST_IDLE || app->st_state >= ST_DONE) return;
+    int64_t elapsed = umbra_now_us() - app->st_start_us;
+    if (elapsed > UMBRA_SELFTEST_WATCHDOG_US) {
+        char why[128];
+        snprintf(why, sizeof why, "watchdog: %.0f s in \"%s\"", elapsed / 1e6,
+                 st_state_name(app->st_state));
+        selftest_abort(app, why);
+        return;
+    }
+    switch (app->st_state) {
+        case ST_DRAW_PATTERN: {
+            int64_t t0 = umbra_now_us();
+            glBindFramebuffer(GL_FRAMEBUFFER, app->st_offscreen ? app->fbo_selftest : 0);
+            glViewport(0, 0, app->st_w, app->st_h);
+            glDisable(GL_DEPTH_TEST);
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glUseProgram(app->prog_pattern);
+            glUniform1i(glGetUniformLocation(app->prog_pattern, "u_w"), app->st_w);
+            glUniform1i(glGetUniformLocation(app->prog_pattern, "u_h"), app->st_h);
+            glBindVertexArray(app->vao_full);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            selftest_gl_check(app, "drawing the pattern");
+            glFinish();
+            umbra_log(app, "self-test: pattern drawn in %.1f ms into the %s", 
+                      (umbra_now_us() - t0) / 1000.0,
+                      app->st_offscreen ? "offscreen target" : "window");
+            if (!app->st_offscreen) {
+                int64_t t1 = umbra_now_us();
+                glReadPixels(0, 0, app->st_w, app->st_h, GL_RGBA, GL_UNSIGNED_BYTE,
+                             app->st_frame);
+                selftest_gl_check(app, "reading the pattern back");
+                umbra_log(app, "self-test: read the window back in %.1f ms (%zu bytes)",
+                          (umbra_now_us() - t1) / 1000.0, app->st_frame_bytes);
+                app->st_row = 0;
+                app->st_state = ST_COMPARE_PATTERN;
+                break;
+            }
+            app->st_state = ST_READ_PATTERN;
+            break;
+        }
+        case ST_READ_PATTERN:
+            // Offscreen only: the tiles are read as they are compared, so the
+            // whole pass arrives here with nothing left to fetch. The window path
+            // read its buffer in the draw step, before the scene could paint
+            // over the pattern.
+            umbra_log(app, "self-test: reading the offscreen target in %d-row tiles",
+                      app->st_tile_rows);
+            app->st_row = 0;
+            app->st_state = ST_COMPARE_PATTERN;
+            break;
+        case ST_COMPARE_PATTERN:
+            if (selftest_compare_step(app, 1)) {
+                app->st_pattern_bad = selftest_take_mismatches(app);
+                app->st_pattern_checked = umbra_selftest_checked();
+                umbra_selftest_reset();
+                umbra_log(app, "self-test: pattern compared, %lld of %lld px differ, max channel "
+                               "diff %lld",
+                          (long long)app->st_pattern_bad, (long long)app->st_pattern_checked,
+                          (long long)umbra_selftest_max_diff());
+                umbra_selftest_reset();
+                app->st_state = ST_DRAW_CUBE;
+            }
+            break;
+        case ST_DRAW_CUBE: {
+            int64_t t0 = umbra_now_us();
+            glBindFramebuffer(GL_FRAMEBUFFER, app->st_offscreen ? app->fbo_selftest : 0);
+            glViewport(0, 0, app->st_w, app->st_h);
+            glEnable(GL_DEPTH_TEST);
+            glClearColor(0.02f, 0.03f, 0.06f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            float proj[16], view[16], vp[16];
+            mat4_perspective(proj, 60.0f * 3.14159265f / 180.0f,
+                             (float)app->st_w / (float)app->st_h, 0.1f, 100.0f);
+            float eye[3] = {0.0f, 0.0f, 3.0f};
+            float target[3] = {0.0f, 0.0f, 0.0f};
+            float up[3] = {0.0f, 1.0f, 0.0f};
+            mat4_look_at(view, eye, target, up);
+            mat4_mul(vp, proj, view);
+            glUseProgram(app->prog_cube);
+            glUniformMatrix4fv(glGetUniformLocation(app->prog_cube, "u_viewproj"), 1, GL_FALSE, vp);
+            glBindVertexArray(app->vao_cube);
+            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
+            selftest_gl_check(app, "drawing the cube");
+            glFinish();
+            umbra_log(app, "self-test: cube drawn in %.1f ms", (umbra_now_us() - t0) / 1000.0);
+            if (!app->st_offscreen) {
+                int64_t t1 = umbra_now_us();
+                glReadPixels(0, 0, app->st_w, app->st_h, GL_RGBA, GL_UNSIGNED_BYTE,
+                             app->st_frame);
+                selftest_gl_check(app, "reading the cube back");
+                umbra_log(app, "self-test: read the window back in %.1f ms (%zu bytes)",
+                          (umbra_now_us() - t1) / 1000.0, app->st_frame_bytes);
+                app->st_row = 0;
+                app->st_state = ST_COMPARE_CUBE;
+                break;
+            }
+            app->st_state = ST_READ_CUBE;
+            break;
+        }
+        case ST_READ_CUBE:
+            app->st_row = 0;
+            app->st_state = ST_COMPARE_CUBE;
+            break;
+        case ST_COMPARE_CUBE:
+            if (selftest_compare_step(app, 0)) {
+                app->st_cube_bad = selftest_take_mismatches(app);
+                app->st_cube_checked = umbra_selftest_checked();
+                umbra_log(app, "self-test: cube compared, %lld of %lld px differ",
+                          (long long)app->st_cube_bad, (long long)app->st_cube_checked);
+                umbra_selftest_reset();
+                glEnable(GL_DEPTH_TEST);
+                selftest_end(app, app->st_pattern_bad == 0 && app->st_cube_bad == 0, NULL);
+            }
+            break;
+        default:
+            break;
     }
 }
 
@@ -1112,7 +1531,10 @@ static float hud_content_rows(const umbra_app *app) {
             if (*q == '\n') bench_lines++;
         }
     }
-    return umbra_hud_rows(bench_lines, app->last_run_lines, app->previous_run_crashed ? 1 : 0);
+    // The fallback line is part of the panel, so the panel is a row taller while
+    // it is shown -- and the self-test's overlay skip uses the same count.
+    return umbra_hud_rows(bench_lines, app->last_run_lines, app->previous_run_crashed ? 1 : 0) +
+           (app->render_fallback ? 1 : 0);
 }
 
 static int hud_rows(const umbra_app *app) {
@@ -1146,6 +1568,14 @@ static void draw_hud(umbra_app *app) {
     snprintf(buf, sizeof buf, "renderer %s", app->gl_renderer);
     hud_text(x, y, s, 0.8f, 0.9f, 1.0f, 1, buf);
     y += line;
+    if (app->render_fallback) {
+        // A check that failed has to be readable on the phone, not only in a log
+        // nobody can reach: one line, in the colour of a warning, and the app
+        // keeps drawing with the plain renderer.
+        snprintf(buf, sizeof buf, "fallback: %s", app->fallback_reason);
+        hud_text(x, y, s, 1.0f, 0.55f, 0.4f, 1, buf);
+        y += line;
+    }
     snprintf(buf, sizeof buf, "depth %d bits  highp vs %s fs %s", app->depth_bits,
              app->highp_vertex, app->highp_fragment);
     hud_text(x, y, s, 0.8f, 0.9f, 1.0f, 1, buf);
@@ -1287,22 +1717,48 @@ void umbra_app_frame(umbra_app *app) {
     }
     pump_mesh(app);
 
+    // The self-test goes first, and one bounded step of it per frame: it draws
+    // into its own target, and in the fallback path (no offscreen target) it reads
+    // the window before this frame's scene and overlay are drawn into it, so the
+    // overlay can never end up inside the comparison.
+    if (app->selftest_requested) {
+        app->selftest_requested = false;
+        selftest_begin(app);
+    }
+    selftest_step(app);
+
+    // Whatever state the self-test stopped in, the scene gets a clean start: the
+    // pattern pass draws with the depth test off, and a watchdog abort can leave
+    // it that way, which would draw the world without depth for a frame.
+    glEnable(GL_DEPTH_TEST);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, app->width, app->height);
     glClearColor(0.55f, 0.70f, 0.92f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    if (app->mesh_uploaded) draw_scene(app);
+    if (app->mesh_uploaded) {
+        gpu_timer_begin(app);
+        draw_scene(app);
+        gpu_timer_end(app);
+    }
     draw_hud(app);
     app->frames_drawn++;
-    if (app->selftest_requested) {
-        app->selftest_requested = false;
-        run_selftest(app);
-    }
+    gpu_timer_collect(app);
 
     if (app->benching) {
         umbra_bench_add(app->frame_us);
         double elapsed = (umbra_now_us() / 1000000.0) - app->bench_start_time;
         if (elapsed >= app->bench_seconds) {
             app->benching = false;
+            gpu_timer_end(app);
+            // Drain what is ready, then give the last queries a few frames' worth of
+            // time by force-syncing once: the benchmark is over, a stall here costs
+            // nothing.
+            glFinish();
+            for (int i = 0; i < UMBRA_GPU_QUERIES; i++) gpu_timer_collect(app);
+            if (app->swap_interval_fn) {
+                app->swap_interval_fn(app->swap_interval_ctx, 1);
+                umbra_log(app, "benchmark: swap interval restored to 1");
+            }
             char dev[128];
             snprintf(dev, sizeof dev, "%s", app->gl_renderer);
             char gles[40];
@@ -1312,7 +1768,11 @@ void umbra_app_frame(umbra_app *app) {
             sl_u8 label = {(uint8_t *)"bench", 5};
             sl_u8 devs = {(uint8_t *)dev, (int64_t)strlen(dev)};
             sl_u8 andr = {(uint8_t *)gles, (int64_t)strlen(gles)};
-            const uint8_t *text = umbra_bench_summary(label, devs, andr, &len);
+            // The total, not the average: Goose divides by the frame count it is
+            // given, and dividing twice turned 4.1 ms into 0.04 ms in the host test.
+            const uint8_t *text = umbra_bench_summary(label, devs, andr, app->gpu_time_us,
+                                                      app->gpu_timer_supported ? 1 : 0,
+                                                      app->bench_vsync, app->gpu_frames, &len);
             snprintf(app->bench_text, sizeof app->bench_text, "%.*s", (int)len, (const char *)text);
             umbra_log(app, "%s", app->bench_text);
             remember_bench(app);
@@ -1345,7 +1805,22 @@ void umbra_app_touch(umbra_app *app, int32_t x, int32_t y, bool down) {
                 app->bench_start_time = umbra_now_us() / 1000000.0;
                 app->bench_text[0] = 0;
                 umbra_bench_reset();
-                umbra_log(app, "benchmark: start, %d seconds", app->bench_seconds);
+                gpu_timer_load(app);
+                gpu_timer_reset(app);
+                // "59 FPS" on a 60 Hz phone is the display, not the GPU. Ask for an
+                // uncapped swap interval, log whether the platform agreed, and never
+                // pretend the frame rate means something it does not.
+                app->bench_vsync = 0;
+                if (app->swap_interval_fn) {
+                    int took = app->swap_interval_fn(app->swap_interval_ctx, 0);
+                    app->bench_vsync = took ? 1 : 2;
+                    umbra_log(app, "benchmark: uncapped swap interval %s",
+                              took ? "requested and accepted" : "refused by the platform");
+                } else {
+                    umbra_log(app, "benchmark: no platform hook for the swap interval");
+                }
+                umbra_log(app, "benchmark: start, %d seconds, gpu timer %s", app->bench_seconds,
+                          g_gpu_timer.ready ? "on" : "off");
             } else {
                 umbra_log(app, "share log: requested");
                 umbra_share_log(app);

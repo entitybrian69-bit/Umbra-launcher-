@@ -249,6 +249,22 @@ var st_checked: i64 = 0;
 var st_max_diff: i64 = 0;
 var st_first_bad: i64 = -1;
 
+// Where and what the first mismatch was. A count alone ("2458665 bad") does not
+// say whether the driver is off by one in a blended corner or drawing something
+// else entirely; these six numbers do, and they travel in the shared log.
+var st_bad_text: u8[>..] = [];
+
+fn st_note_bad(x: i64, y: i64, r: i64, g: i64, b: i64, wr: i64, wg: i64, wb: i64) {
+    if st_first_bad >= 0 { return; }
+    st_first_bad = y * 4096 + x;
+    st_bad_text = [];
+    format(st_bad_text, "at ", x, ",", y, " got ", r, ",", g, ",", b, " want ", wr, ",", wg, ",", wb);
+}
+
+export "umbra_selftest_first_bad_text" fn st_first_bad_text() -> const u8[:] {
+    return st_bad_text;
+}
+
 fn pattern_expected(x: i64, y: i64, w: i64, h: i64) -> i64[3] {
     // Keep this in step with the fragment shader in platform/shared/umbra_app.c.
     let u = (x * 255) / (if w > 1 { w - 1 } else { 1 });
@@ -261,6 +277,7 @@ fn st_reset() {
     st_checked = 0;
     st_max_diff = 0;
     st_first_bad = -1;
+    st_bad_text = [];
 }
 
 // Called once per pixel with the framebuffer's value, bottom-left origin as
@@ -276,7 +293,7 @@ fn st_check_pattern_pixel(x: i64, y: i64, w: i64, h: i64, r: i64, g: i64, b: i64
     // allow one step for rounding on real drivers.
     if d > 1 {
         st_mismatches += 1;
-        if st_first_bad < 0 { st_first_bad = y * w + x; }
+        st_note_bad(x, y, r, g, b, want[0], want[1], want[2]);
     }
 }
 
@@ -301,12 +318,12 @@ fn st_check_cube_pixel(x: i64, y: i64, w: i64, h: i64, r: i64, g: i64, b: i64) {
     let is_background = r < 30 && g < 40 && b < 60;
     if inside && is_background {
         st_mismatches += 1;
-        if st_first_bad < 0 { st_first_bad = y * w + x; }
+        st_note_bad(x, y, r, g, b, 255, 255, 255);
     }
     if outside && !is_background {
         // Beyond the cube's silhouette there must be nothing but the clear colour.
         st_mismatches += 1;
-        if st_first_bad < 0 { st_first_bad = y * w + x; }
+        st_note_bad(x, y, r, g, b, 5, 7, 15);
     }
 }
 
@@ -331,7 +348,8 @@ fn format_ms(out: u8[>..]&, us: i64) {
     format(out, us / 1000, ".", tenths, (us % 100) / 10);
 }
 
-fn bench_summary(out: u8[>..]&, label: const u8[:], device: const u8[:], android: const u8[:]) {
+fn bench_summary(out: u8[>..]&, label: const u8[:], device: const u8[:], android: const u8[:],
+                 gpu_us: i64, gpu_supported: i64, uncapped: i64, gpu_frames: i64) {
     let n = frame_us.len;
     if n == 0 {
         format(out, label, ": no frames measured");
@@ -368,6 +386,26 @@ fn bench_summary(out: u8[>..]&, label: const u8[:], device: const u8[:], android
     format_ms(out, worst);
     format(out, " ms");
     format(out, "\n", device, " | Android ", android);
+    // Frame time and GPU time are different questions: a 60 Hz display caps the
+    // first at 16.7 ms whatever the GPU does, which is why the owner's 59 FPS told
+    // us nothing. The second is measured with a timer query around the draw.
+    if gpu_supported == 0 {
+        format(out, "\ngpu n/a (no EXT_disjoint_timer_query)");
+    } else if gpu_frames <= 0 {
+        format(out, "\ngpu: queried, no result before the end");
+    } else {
+        format(out, "\ngpu avg ");
+        format_ms(out, gpu_us / gpu_frames);
+        format(out, " ms over ", gpu_frames, " frames");
+    }
+    format(out, "\nvsync: ");
+    if uncapped == 1 {
+        format(out, "uncapped requested");
+    } else if uncapped == 2 {
+        format(out, "uncapped refused");
+    } else {
+        format(out, "capped by the platform");
+    }
 }
 
 fn sort_i64(xs: i64[>..]&) {
@@ -415,9 +453,11 @@ export "umbra_bench_frames" fn bench_frames() -> i64 { return frame_us.len }
 var bench_text: u8[>..] = [];
 
 export "umbra_bench_summary" fn bench_summary_export(label: const u8[:], device: const u8[:],
-                                                     android: const u8[:]) -> const u8[:] {
+                                                     android: const u8[:], gpu_us: i64,
+                                                     gpu_supported: i64, uncapped: i64,
+                                                     gpu_frames: i64) -> const u8[:] {
     bench_text = [];
-    bench_summary(bench_text, label, device, android);
+    bench_summary(bench_text, label, device, android, gpu_us, gpu_supported, uncapped, gpu_frames);
     return bench_text;
 }
 

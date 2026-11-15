@@ -25,6 +25,7 @@
 #include "umbra_hud.h"
 #include "umbra_results.h"
 #include "umbra_camera.h"
+#include "umbra_selftest.h"
 
 static int failures = 0;
 static int checks = 0;
@@ -448,6 +449,78 @@ int main(int argc, char **argv) {
         check(whole == 20, "the row count for that overlay is the one the log reports");
     }
 
+    // 4e. The self-test compares the window when it has no offscreen target, so
+    //     the overlay must be outside the compared area -- and the work must be
+    //     sliced, because the version that did it all in one frame is the one the
+    //     owner's phone killed mid-test.
+    //     (The device reported "SELF-TEST FAIL: 2458665 bad of 4950720 px"; the
+    //     arithmetic of a 16-bit mediump int overflow in the pattern shader leaves
+    //     exactly 16641 pixels matching, and 4950720/2 - 2458665 = 16695 were.)
+    {
+        int32_t phone[4] = {0, 63, 126, 0};
+        float sc = umbra_hud_scale(3.5f, 2412, 1080, 11, 63);
+        float panel = umbra_hud_panel_height(11, sc, 63);
+
+        check(umbra_hud_covers(0, 0, 11, sc, phone, 2412, 1080), "the overlay's panel is covered");
+        check(umbra_hud_covers(1205, (int)(panel - 2.0f), 11, sc, phone, 2412, 1080),
+              "the bottom row of the panel is covered");
+        check(!umbra_hud_covers(1205, (int)(panel + 2.0f), 11, sc, phone, 2412, 1080),
+              "the row below the panel is not");
+        umbra_rect b1 = umbra_hud_button(1, 2412, 1080, phone, sc);
+        check(umbra_hud_covers((int)(b1.x + b1.w * 0.5f), (int)(b1.y + b1.h * 0.5f), 11, sc, phone,
+                               2412, 1080), "a button is covered");
+        check(!umbra_hud_covers(1205, (int)((panel + b1.y) * 0.5f), 11, sc, phone, 2412, 1080),
+              "the world's band between them is not");
+
+        int64_t skipped = 0;
+        int64_t compared = umbra_selftest_compared_area(11, sc, phone, 2412, 1080, &skipped);
+        printf("self-test: compared %lld px, skipped %lld px under the overlay\n",
+               (long long)compared, (long long)skipped);
+        check(compared > 0 && skipped > 0, "the comparison skips the overlay, not everything");
+        check(compared + skipped == 2412LL * 1080LL, "the two areas add up to the screen");
+        // Nothing the overlay draws may be inside the compared area: walk the panel
+        // and the three buttons and demand each maps to a skipped pixel.
+        int leaks = 0;
+        // Sample at pixel centres: a rect that starts at y = 999.98 covers the row
+        // whose centre is 1000.5, and (int)999.98 would test a pixel outside it --
+        // which is a mistake in the test, not in the drawing.
+        for (float fy = 0.5f; fy < panel - 0.5f; fy += 7.0f) {
+            for (float fx = 0.5f; fx < 2412.0f; fx += 61.0f) {
+                if (!umbra_hud_covers((int)fx, (int)fy, 11, sc, phone, 2412, 1080)) leaks++;
+            }
+        }
+        for (int i = 0; i < 3; i++) {
+            umbra_rect r = umbra_hud_button(i, 2412, 1080, phone, sc);
+            for (float fy = r.y + 0.5f; fy < r.y + r.h; fy += 5.0f) {
+                for (float fx = r.x + 0.5f; fx < r.x + r.w; fx += 37.0f) {
+                    if (!umbra_hud_covers((int)fx, (int)fy, 11, sc, phone, 2412, 1080)) leaks++;
+                }
+            }
+        }
+        printf("self-test: overlay leaks into the compared area: %d px\n", leaks);
+        // The panel has to be one row taller whenever the app adds a line (the
+        // fallback reason does exactly that), or that line would be drawn on top
+        // of the scene and outside the area the self-test skips.
+        float panel_12 = umbra_hud_panel_height(12, sc, phone[1]);
+        check(panel_12 > panel, "one more row makes the panel taller");
+        check(umbra_hud_panel_height(11, sc, phone[1]) == panel, "the panel height is stable");
+        check(umbra_hud_covers(1205, (int)panel_12 - 2, 12, sc, phone, 2412, 1080),
+              "the extra fallback row is inside the overlay too");
+        check(leaks == 0, "no pixel of the overlay is inside the compared area");
+
+        // The step size: a bounded amount of work per frame, at both extremes.
+        int rows = umbra_selftest_tile_rows(2412, 1080);
+        printf("self-test: %d rows per step at 2412x1080, %d steps\n", rows,
+               (1080 + rows - 1) / rows);
+        check(rows >= 8, "a step is at least eight rows");
+        check(rows <= 1080, "and never more than the screen");
+        check((int64_t)rows * 2412 <= UMBRA_SELFTEST_TILE_PIXELS * 2,
+              "a step reads about 150k pixels, not a whole screen");
+        check((1080 + rows - 1) / rows >= 4, "so the work is spread over several frames");
+        check(umbra_selftest_tile_rows(1, 1) == 1, "a degenerate surface still advances");
+        check(umbra_selftest_tile_rows(1920, 1080) >= 8, "a 1920-wide screen advances too");
+    }
+
     // 5. The benchmark statistics are real arithmetic on real numbers.
     umbra_bench_reset();
     for (int i = 0; i < 1000; i++) umbra_bench_add(16000 + (i % 10));
@@ -455,7 +528,8 @@ int main(int argc, char **argv) {
     sl_u8 label = {(uint8_t *)"bench", 5};
     sl_u8 dev = {(uint8_t *)"headless", 8};
     sl_u8 android = {(uint8_t *)"none", 4};
-    const uint8_t *summary = umbra_bench_summary(label, dev, android, &len);
+    // gpu 0 us, timer unsupported, vsync capped: the honest answer without a GPU.
+    const uint8_t *summary = umbra_bench_summary(label, dev, android, 0, 0, 0, 0, &len);
     printf("%s\n", slice_text(summary, len));
     check(len > 20, "benchmark summary is formatted");
     // The numbers are arithmetic, not decoration: check them digit by digit.
@@ -471,18 +545,36 @@ int main(int argc, char **argv) {
     for (const char *q = text; *q; q++) {
         if (*q == '\n') lines++;
     }
-    check(lines == 4, "the benchmark block is four lines on a phone screen");
+    check(lines == 6, "the benchmark block is six lines: four of numbers and two of honesty");
+    check(strstr(text, "gpu n/a (no EXT_disjoint_timer_query)") != NULL,
+          "without a timer query the gpu time says so instead of guessing");
+    check(strstr(text, "vsync: capped by the platform") != NULL,
+          "and the frame rate is labelled with what capped it");
 
     // A spread of frame times must separate the average from the 1% low.
     umbra_bench_reset();
     for (int i = 0; i < 200; i++) umbra_bench_add(16000);
     for (int i = 0; i < 2; i++) umbra_bench_add(100000);
-    summary = umbra_bench_summary(label, dev, android, &len);
+    summary = umbra_bench_summary(label, dev, android, 0, 0, 0, 0, &len);
     text = slice_text(summary, len);
     printf("%s\n", text);
     check(strstr(text, "avg 16.83 ms") != NULL, "a few slow frames move the average");
     check(strstr(text, "1% low 10 fps (100.00 ms)") != NULL,
           "and the 1% low reports them at their real cost");
+
+    // With a timer query and an accepted uncapped request the block says both, and
+    // the GPU time is a separate number from the frame time.
+    umbra_bench_reset();
+    for (int i = 0; i < 100; i++) umbra_bench_add(16667);
+    summary = umbra_bench_summary(label, dev, android, 410000, 1, 1, 100, &len);
+    text = slice_text(summary, len);
+    printf("%s\n", text);
+    check(strstr(text, "gpu avg 4.10 ms over 100 frames") != NULL,
+          "GPU time is reported separately when the driver supports it");
+    check(strstr(text, "vsync: uncapped requested") != NULL,
+          "and an accepted uncapped request is recorded");
+    check(strstr(text, "avg 16.66 ms (59 fps)") != NULL,
+          "the CPU frame time is still reported next to it");
 
     goose_exit();
     printf("%s: %d checks, %d failures\n", failures ? "FAILED" : "PASS", checks, failures);
