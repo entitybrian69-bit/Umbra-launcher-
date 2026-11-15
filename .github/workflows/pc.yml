@@ -104,23 +104,33 @@ jobs:
           cat dist/SHA256SUMS
           echo "::notice title=windows-x64::$(cat dist/SHA256SUMS)"
       # Publishing runs in Git Bash, not MSYS2: the checkout's credentials are
-      # configured for the Windows git that Git Bash uses.
+      # configured for the Windows git that Git Bash uses. It is non-fatal: the
+      # gate is the self-test above, and a publish failure is reported loudly as
+      # a warning annotation (with the trace) instead of hiding the result.
       - name: Publish the self-test text
         if: always()
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p evidence/ci
-          [ -f pc-selftest.txt ] && cp pc-selftest.txt evidence/ci/pc-windows-x64.txt || true
-          [ -f dist/SHA256SUMS ] && cp dist/SHA256SUMS evidence/ci/pc-windows-x64.sha256 || true
           grep -E "^(PASS|FAILED): " pc-selftest.txt 2>/dev/null | while IFS= read -r l; do
             echo "::notice title=windows-x64::$l"; done
-          git config user.name "umbra ci"
-          git config user.email "ci@umbra.invalid"
-          git add -f evidence/ci
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "ci: pc evidence (windows x64) from run $GITHUB_RUN_ID [skip ci]"
-          git push origin "HEAD:$GITHUB_REF_NAME"
+          publish() {
+            set -x
+            [ -f pc-selftest.txt ] && cp pc-selftest.txt evidence/ci/pc-windows-x64.txt
+            [ -f dist/SHA256SUMS ] && cp dist/SHA256SUMS evidence/ci/pc-windows-x64.sha256
+            git config user.name "umbra ci"
+            git config user.email "ci@umbra.invalid"
+            git add -f evidence/ci
+            if git diff --cached --quiet; then echo "nothing to publish"; return 0; fi
+            git commit -m "ci: pc evidence (windows x64) from run $GITHUB_RUN_ID [skip ci]"
+            git push origin "HEAD:$GITHUB_REF_NAME"
+          }
+          if ! out=$(publish 2>&1); then
+            echo "::warning title=windows-x64 publish::$out"
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
