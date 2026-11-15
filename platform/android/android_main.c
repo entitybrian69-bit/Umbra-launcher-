@@ -172,6 +172,10 @@ static int32_t handle_input(struct android_app *state, AInputEvent *event) {
 
 static void handle_cmd(struct android_app *state, int32_t cmd) {
     android_state *st = (android_state *)state->userData;
+    // Every lifecycle command is logged: when the window never arrives, the
+    // log says which commands did, which is the difference between "the
+    // framework never created a surface" and "we ignored it".
+    ALOGI("app cmd %d, window %p", cmd, (void *)state->window);
     switch (cmd) {
         case APP_CMD_INIT_WINDOW:
             if (state->window && !st->egl_ready) {

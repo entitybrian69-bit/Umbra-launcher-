@@ -58,6 +58,23 @@ collect() {
         adb shell dumpsys activity top > dumpsys-top.txt 2>&1 || true
         adb shell pidof org.umbra.client > pid.txt 2>&1 || true
         adb exec-out screencap -p > shot0.png 2>/dev/null || true
+        # If the app has no window, the question is what its main thread is
+        # doing. Root is available on this non-Play system image, so ask the
+        # native debugger for a backtrace of every thread in the process.
+        PIDV="$(tr -d '\r\n' < pid.txt 2>/dev/null)"
+        if [ -n "$PIDV" ]; then
+            adb root > root.log 2>&1 || true
+            sleep 5
+            adb wait-for-device > /dev/null 2>&1 || true
+            adb shell debuggerd -b "$PIDV" > backtrace.txt 2>&1 || true
+            adb shell "ls -l /data/anr" > anr-list.txt 2>&1 || true
+            adb shell "cat /data/anr/traces.txt" > anr-traces.txt 2>&1 || true
+            say "backtrace: $(grep -c . backtrace.txt) lines, $(stat -c%s backtrace.txt) bytes"
+            grep -m3 -E '^"main"|^"android_main"|^"umbra' backtrace.txt 2>/dev/null \
+                | while IFS= read -r l; do say "thread: $l"; done
+        fi
+        adb shell "dumpsys SurfaceFlinger --list" > layers.txt 2>&1 || true
+        grep -i umbra layers.txt 2>/dev/null | while IFS= read -r l; do say "layer: $(echo "$l" | tr -s ' ')"; done
         say "app pid at exit: $(tr -d '\r\n' < pid.txt 2>/dev/null)"
         grep -m2 -E 'mCurrentFocus|mFocusedApp' dumpsys-window.txt 2>/dev/null \
             | while IFS= read -r l; do say "focus: $(echo "$l" | tr -s ' ')"; done
