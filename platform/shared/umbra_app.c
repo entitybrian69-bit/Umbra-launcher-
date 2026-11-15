@@ -336,7 +336,7 @@ static void hud_text(float x, float y, float scale, float cr, float cg, float cb
             // Multi-line HUD text: the benchmark block needs separate lines to
             // stay readable on a phone.
             cx = x;
-            y += 10.0f * scale;
+            y += 12.0f * scale;
             continue;
         }
         if (c < 32 || c > 126) c = '?';
@@ -354,14 +354,32 @@ static float hud_text_width(const char *text, float scale) {
     return (float)strlen(text) * 6.0f * scale;
 }
 
-// The three HUD buttons are laid out from the bottom inset; the drawing code
-// and the touch test must agree, so both ask this function.
+// The HUD font is an 8-pixel bitmap. At scale 1 on a 420 dpi phone (density
+// 2.62) a capital letter is three density-independent pixels tall, which nobody
+// can read; the emulator's first 0.3.0 screenshot showed exactly that. So the
+// HUD is laid out in display pixels scaled by the density, and the touch rects
+// follow the same number -- the drawing code and the hit test must not disagree.
+static float hud_scale(const umbra_app *app) {
+    float s = (app->dpi_scale > 1.0f) ? app->dpi_scale * 1.2f : 1.0f;
+    if (s < 1.0f) s = 1.0f;
+    if (s > 5.0f) s = 5.0f;
+    return s;
+}
+
+// The three HUD buttons are laid out from the insets; the drawing code and the
+// touch test both ask this function so they cannot disagree.
 static void hud_button_rect(const umbra_app *app, int i, float *x, float *y, float *w, float *h) {
-    float bh = 34.0f;
+    float s = hud_scale(app);
+    float bh = 20.0f * s;
+    float gap = 6.0f * s;
+    float margin = 8.0f * s;
     *h = bh;
-    *x = 8.0f + (float)app->insets[0];
-    *w = (float)app->width - 2 * (*x);
-    *y = (float)app->height - (float)app->insets[3] - 3 * (bh + 8) - 8 + i * (bh + 8);
+    *x = margin + (float)app->insets[0];
+    // The right inset matters: in landscape the navigation bar is a strip on the
+    // right (1920-1794 = 126 px on the emulator), and a button that reaches into
+    // it steals touches from the system.
+    *w = (float)app->width - *x - (float)app->insets[2] - margin;
+    *y = (float)app->height - (float)app->insets[3] - 3 * (bh + gap) - margin + i * (bh + gap);
 }
 
 static void hud_flush(umbra_app *app) {
@@ -926,13 +944,23 @@ static void draw_scene(umbra_app *app) {
 
 static void draw_hud(umbra_app *app) {
     hud_begin();
-    float s = 1.0f;
-    float y = 8.0f + (float)app->insets[1];
-    float x = 8.0f + (float)app->insets[0];
-    float line = 10.0f * s;
+    float s = hud_scale(app);
+    float margin = 8.0f * s;
+    float y = margin + (float)app->insets[1];
+    float x = margin + (float)app->insets[0];
+    float line = 12.0f * s;
     char buf[256];
 
-    hud_rect(0, 0, (float)app->width, (float)(250 + app->insets[1]), 0.0f, 0.0f, 0.0f, 0.55f);
+    // The backdrop is drawn first, so its height has to be known before anything
+    // is drawn: fixed rows, plus the benchmark block, plus the crash tail.
+    int bench_lines = 1;
+    if (app->bench_text[0] && !app->benching) {
+        for (const char *q = app->bench_text; *q; q++) {
+            if (*q == '\n') bench_lines++;
+        }
+    }
+    float rows = 1.6f + 6.0f + (float)bench_lines + (app->previous_run_crashed ? 3.0f : 0.0f);
+    hud_rect(0, 0, (float)app->width, y + rows * line + margin, 0.0f, 0.0f, 0.0f, 0.55f);
     hud_text(x, y, s, 1, 1, 1, 1, "UMBRA - not an official Minecraft product");
     y += line * 1.6f;
     snprintf(buf, sizeof buf, "Umbra %s  build %s", UMBRA_APP_VERSION, UMBRA_GIT_COMMIT);
@@ -982,7 +1010,7 @@ static void draw_hud(umbra_app *app) {
             if (*q == '\n') extra++;
         }
         hud_text(x, y, s, 0.7f, 1.0f, 0.7f, 1, app->bench_text);
-        y += (float)extra * 10.0f * s;
+        y += (float)extra * line;
     }
     y += line;
     if (app->previous_run_crashed) {
@@ -1013,8 +1041,9 @@ static void draw_hud(umbra_app *app) {
         float bx, by, bw, bh;
         hud_button_rect(app, i, &bx, &by, &bw, &bh);
         bool active = (i == 0 && app->selftest_ran) || (i == 1 && app->benching);
+        float label = s * 1.15f;
         hud_rect(bx, by, bw, bh, active ? 0.25f : 0.15f, active ? 0.55f : 0.25f, active ? 0.3f : 0.15f, 0.9f);
-        hud_text(bx + 8, by + bh * 0.3f, 1.3f, 1, 1, 1, 1, buttons[i].label);
+        hud_text(bx + margin * 0.5f, by + (bh - 8.0f * label) * 0.5f, label, 1, 1, 1, 1, buttons[i].label);
     }
     hud_flush(app);
 }
