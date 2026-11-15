@@ -2,6 +2,24 @@
 
 Newest first. Each entry says what was decided, why, and what it costs.
 
+## D-033 The first `v0.3.0-pre` was withdrawn, and why the tag moved
+
+A pre-release was published from commit `5e11a27` and its assets were never
+verified: the verification step of that workflow was broken (D-032), so
+`RELEASE_VERIFY.txt` contained a header and nothing else. A release nobody has
+downloaded back is exactly what gate 7 says not to publish, so it was deleted
+(`gh release delete v0.3.0-pre --cleanup-tag`) and the tag was moved to the commit
+that carries the fixed verifier (`65e02d2`).
+
+The rule this bends is "never replace a working release with a broken one". The
+release being replaced was not working in the sense that matters -- its integrity
+had never been checked -- and it existed for under an hour. The rule it keeps is
+the one that matters: nothing is published as verified until the bytes have been
+downloaded again, hashed, and executed.
+
+Cost: the asset checksums changed with the new build, so anyone who downloaded the
+withdrawn APK has an APK that is no longer in the release. It was never announced.
+
 ## D-032 The release verifier is a script, because the inline version lied
 
 The first real release run (`43691770806`) created the pre-release, then its
