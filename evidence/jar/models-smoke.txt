@@ -1,0 +1,88 @@
+goose/modelcheck.goose:63: warning: redundant `as i64`: mc_jar.len is already i64
+    mc_bytes = mc_jar.len as i64;
+               ^~~~~~~~~~~~~~~~~
+goose/modelcheck.goose:91: warning: redundant `as i64`: mc_buf.len is already i64
+        if (mc_buf.len as i64) > biggest { biggest = mc_buf.len as i64; }
+            ^~~~~~~~~~~~~~~~~
+goose/modelcheck.goose:91: warning: redundant `as i64`: mc_buf.len is already i64
+        if (mc_buf.len as i64) > biggest { biggest = mc_buf.len as i64; }
+                                                     ^~~~~~~~~~~~~~~~~
+goose/core/json.goose:104: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+    if b >= 48 && b <= 57 { return (b - 48) as i64; }
+                                    ^~~~~~~~~~~~~~
+goose/core/json.goose:105: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+    if b >= 97 && b <= 102 { return (b - 97 + 10) as i64; }
+                                     ^~~~~~~~~~~~~~~~~~~
+goose/core/json.goose:106: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+    if b >= 65 && b <= 70 { return (b - 65 + 10) as i64; }
+                                    ^~~~~~~~~~~~~~~~~~~
+goose/core/json.goose:259: warning: redundant `as f64`: a u8 converts to f64 implicitly here
+        v = v * 10.0 + ((s[i] - 48) as f64);
+                         ^~~~~~~~~~~~~~~~~
+goose/core/json.goose:266: warning: redundant `as f64`: a u8 converts to f64 implicitly here
+            v += ((s[i] - 48) as f64) * scale;
+                   ^~~~~~~~~~~~~~~~~
+goose/core/json.goose:280: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+            e = e * 10 + (s[i] - 48) as i64;
+                          ^~~~~~~~~~~~~~~~~
+goose/core/json.goose:296: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+        v = v * 10 + (s[i] - 48) as i64;
+                      ^~~~~~~~~~~~~~~~~
+goose/core/inflate.goose:84: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+        code |= (bits(r, 1) as i64);
+                 ^~~~~~~~~~~~~~~~~
+goose/core/inflate.goose:150: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+                let len = length_base[li] + (bits(r, length_extra[li]) as i64);
+                                             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/inflate.goose:157: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+                let d = dist_base[dsym] + (bits(r, dist_extra[dsym]) as i64);
+                                           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/inflate.goose:301: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+    let hdr = (cmf as u32) * 256 + (flg as u32);
+                                    ^~~~~~~~~~
+goose/core/inflate.goose:303: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+        format(err, "zlib: bad header check 0x", u64_to_hex(hdr as u64, 4));
+                                                            ^~~~~~~~~~
+goose/core/inflate.goose:316: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+        format(err, "zlib: adler32 mismatch: stream says 0x", u64_to_hex(want as u64, 8),
+                                                                         ^~~~~~~~~~~
+goose/core/inflate.goose:317: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+               ", data is 0x", u64_to_hex(got as u64, 8));
+                                          ^~~~~~~~~~
+goose/core/mem.goose:26: warning: redundant `as u16`: a u8 converts to u16 implicitly here
+    return (b[off] as u16 << 8) | (b[off + 1] as u16);
+                                   ^~~~~~~~~~~~~~~~~
+goose/core/mem.goose:29: warning: redundant `as u32`: a u16 converts to u32 implicitly here
+    return (be_u16(b, off) as u32 << 16) | (be_u16(b, off + 2) as u32);
+                                            ^~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/mem.goose:32: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+    return (be_u32(b, off) as u64 << 32) | (be_u32(b, off + 4) as u64);
+                                            ^~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/mem.goose:47: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+    return (b[off] as u32) | (b[off + 1] as u32 << 8) | (b[off + 2] as u32 << 16) |
+            ^~~~~~~~~~~~~
+goose/core/mem.goose:52: warning: redundant `as u16`: a u8 converts to u16 implicitly here
+    return (b[off] as u16) | (b[off + 1] as u16 << 8);
+            ^~~~~~~~~~~~~
+goose/core/mem.goose:115: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+        c = crc_table[(c ^ (b as u32)) & 0xFF] ^ (c >> 8);
+                            ^~~~~~~~
+goose/core/mem.goose:125: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+        a = (a + (x as u32)) % 65521;
+                  ^~~~~~~~
+== a well-formed jar: every model must parse
+model: 591010 bytes in the jar, 2140 entries
+
+model: 1107 block models parsed, 0 refused
+
+model: 1104 elements, 6624 faces
+
+model: 0 faces with an explicit uv, 0 with a cullface, 0 with a tint index, 0 rotated
+
+model: 3 models are templates with no elements of their own
+
+model: largest model is 482 bytes of JSON
+
+PASS: every block model in the jar parses
+
+PASS: the model parser accepts every model in the jar
