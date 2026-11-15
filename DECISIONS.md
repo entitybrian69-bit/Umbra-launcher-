@@ -2,6 +2,26 @@
 
 Newest first. Each entry says what was decided, why, and what it costs.
 
+## D-034 A released Windows binary is statically linked, because the first one was not
+
+The re-download check passed for `v0.3.0-pre` -- three assets, HTTP 200, matching
+hashes -- and then running the downloaded `.exe` under wine failed:
+
+```
+0024:err:module:import_dll Library libwinpthread-1.dll ... not found
+0024:err:module:loader_init Importing dlls ... failed, status c0000135
+```
+
+The MSYS2 UCRT64 build links winpthread dynamically and found it because the
+MSYS2 `bin` directory was on `PATH` on the runner. On any other machine it would
+not start. `tools/build_pc.sh` now adds `-static` when it is running under
+`MINGW*`/`MSYS*`/`CYGWIN*`, so the released `.exe` carries everything it needs,
+and the release job runs the downloaded copy under wine before that release is
+called verified.
+
+This is the whole argument for gate 7 in one finding: a hash proves a file was
+published unchanged, and only execution proves it is a file anybody can run.
+
 ## D-033 The first `v0.3.0-pre` was withdrawn, and why the tag moved
 
 A pre-release was published from commit `5e11a27` and its assets were never
