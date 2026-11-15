@@ -84,6 +84,12 @@ def build(path: str, broken: bool) -> None:
     z.writestr("assets/minecraft/models/block/fake_air.json",
                json.dumps({"textures": {"particle": "block/not_here"}}))
 
+    # A sprite object instead of a bare name, like the real stained glass models
+    # since 26.3: {"sprite": "...", "force_translucent": true}.
+    spr = model_text("sprite", "block/fake_2")
+    spr["textures"] = {"all": {"sprite": "minecraft:block/fake_2", "force_translucent": True}}
+    z.writestr("assets/minecraft/models/block/fake_sprite.json", json.dumps(spr))
+
     # An inverted box, like the real block/cube_all_inner_faces.json: legal.
     inner = model_text("inner", "block/fake_4")
     inner["elements"][0]["from"] = [16, 0, 16]
@@ -132,6 +138,8 @@ def build(path: str, broken: bool) -> None:
             doc = {"variants": {"": {"model": "block/fake_inner_faces"}}}
         elif i % 13 == 0:
             doc = {"variants": {"": {"model": "block/fake_root"}}}
+        elif i % 17 == 0:
+            doc = {"variants": {"": {"model": "block/fake_sprite"}}}
         else:
             doc = {"variants": {f"facing=north,level={j}": {"model": ref} for j in range(4)}}
         z.writestr(f"assets/minecraft/blockstates/fake_{i}.json", json.dumps(doc))

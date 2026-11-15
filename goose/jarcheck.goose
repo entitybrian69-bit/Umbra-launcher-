@@ -60,6 +60,7 @@ var jc_weighted: i64 = 0;
 var jc_uv_present: i64 = 0;
 var jc_rotations: i64 = 0;
 var jc_rot_no_angle: i64 = 0;
+var jc_rot_no_origin: i64 = 0;
 var jc_unused_models: i64 = 0;
 
 var jc_problems: u8[>..] = [];
@@ -242,10 +243,30 @@ fn jc_tex_has(key: const u8[:]) -> bool {
     return false;
 }
 
-fn jc_tex_add(key: const u8[:], val: const u8[:]) {
+// What a `textures` member stands for. Since 26.3 a value may also be an object
+// — {"sprite": "minecraft:block/black_stained_glass", "force_translucent": true}
+// — so the name is either the string itself or its `sprite`.
+fn jc_tex_value(node: i64) -> Sref {
+    if json_kind(node) == J_STR { return jc_pin(json_str(node)); }
+    if json_kind(node) == J_OBJ {
+        let sprite = json_get(node, "sprite");
+        if sprite >= 0 && json_kind(sprite) == J_STR { return jc_pin(json_str(sprite)); }
+    }
+    return Sref { off: -1, len: 0 };
+}
+
+fn jc_tex_add(key: const u8[:], valnode: i64) {
     if jc_tex_has(key) { return; }
-    jc_keys.push(jc_pin(key));
-    jc_vals.push(jc_pin(val));
+    let v = jc_tex_value(valnode);
+    if v.off < 0 {
+        jc_problem("a texture that is neither a name nor a sprite object");
+        return;
+    }
+    // The key is pinned after the value, so no slice of a growing arena is held
+    // while it grows.
+    let k = jc_pin(key);
+    jc_keys.push(k);
+    jc_vals.push(v);
 }
 
 fn jc_tex_get(key: const u8[:]) -> Sref {
@@ -276,8 +297,10 @@ fn jc_merge_chain(entry: i64) -> i64 {
         if textures >= 0 && json_kind(textures) == J_OBJ {
             var c = json_first(textures);
             while c >= 0 {
-                if json_kind(c) == J_STR {
-                    jc_tex_add(json_key(c), json_str(c));
+                if json_kind(c) != J_STR && json_kind(c) != J_OBJ {
+                    jc_problem("a texture that is neither a name nor a sprite object");
+                } else {
+                    jc_tex_add(json_key(c), c);
                 }
                 c = json_next(c);
             }
@@ -362,18 +385,29 @@ fn jc_check_box(el: i64) {
         if json_kind(rotation) != J_OBJ {
             jc_problem("a rotation that is not an object");
         } else {
-            // angle and axis are optional: the hanging-sign models carry a
-            // rotation with neither, and the client accepts that.
+            // All three parts of a box rotation are optional in the real files
+            // (the hanging-sign models leave some out); what is present must have
+            // the right shape.
             jc_rotations += 1;
             let origin = json_get(rotation, "origin");
-            if origin < 0 || json_kind(origin) != J_ARR || json_child_count(origin) != 3 {
-                jc_problem("a box rotation without a three-number origin");
+            if origin >= 0 {
+                if json_kind(origin) != J_ARR || json_child_count(origin) != 3 {
+                    jc_problem("a box rotation whose origin is not three numbers");
+                }
+            } else {
+                jc_rot_no_origin += 1;
             }
             let angle = json_get(rotation, "angle");
-            if angle < 0 {
+            if angle >= 0 {
+                if json_kind(angle) != J_NUM {
+                    jc_problem("a box rotation whose angle is not a number");
+                }
+            } else {
                 jc_rot_no_angle += 1;
-            } else if json_kind(angle) != J_NUM {
-                jc_problem("a box rotation whose angle is not a number");
+            }
+            let raxis = json_get(rotation, "axis");
+            if raxis >= 0 && json_kind(raxis) != J_STR {
+                jc_problem("a box rotation whose axis is not a string");
             }
         }
     }
@@ -658,7 +692,8 @@ fn main() {
           ", uv sets ", jc_uv_present);
     print("jar: texture variable hops ", jc_var_hops,
           ", inverted boxes (legal) ", jc_inverted_boxes,
-          ", box rotations ", jc_rotations, " (", jc_rot_no_angle, " with no angle)");
+          ", box rotations ", jc_rotations, " (", jc_rot_no_angle, " with no angle, ",
+          jc_rot_no_origin, " with no origin)");
     print("jar: multipart blockstates ", jc_multipart, ", weighted variant lists ", jc_weighted);
     print("jar: textures decoded ", decoded, ", whole square frames ", sane,
           " (", animated, " animated strips), tallest ", longest, " px");
