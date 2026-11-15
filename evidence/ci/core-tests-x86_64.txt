@@ -1,0 +1,23 @@
+host: x86_64
+compiler: cc (Ubuntu 15.2.0-16ubuntu1) 15.2.0
+run: 43689588892
+commit: c5211c17ca0317117d6e4bad5a895ae37da8dd20
+
+built build/umbra_tests
+umbra core tests
+PASS mem (19 checks)
+inflate: 72 streams matched zlib byte for byte, 4 corrupt streams rejected
+PASS inflate (97 checks)
+zip: 2 corrupt archives rejected
+zip: 4 archives, 20 entries matched their originals
+PASS zip (137 checks)
+png: 10 images decoded to their expected RGBA, 4 broken refused
+PASS png (153 checks)
+nbt: parsed and rewrote level.dat byte for byte, 4 broken files refused
+PASS nbt (196 checks)
+PASS region (237 checks)
+PASS json (302 checks)
+mesh: real chunk -> 35652 vertices, 53478 indices, fnv1a 6f3c96d5
+PASS mesh (340 checks)
+all modules passed
+c-host: goose_exit returned 0
