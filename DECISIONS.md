@@ -2,6 +2,62 @@
 
 Newest first. Each entry says what was decided, why, and what it costs.
 
+## D-017 The app blocks when it has no window, and rebuilds after a context loss
+
+The first version of the frame loop polled with a zero timeout whatever the
+window state, which burns a whole core while a game is paused, and it kept GL
+objects across an EGL context loss (pause/resume), which is undefined. The loop
+now passes -1 to `ALooper_pollOnce` while there is no window and rebuilds the app
+via `umbra_app_shutdown()`/`umbra_app_init()` when a window returns after an
+`APP_CMD_TERM_WINDOW`. Cost: a pause costs one resume-time rebuild (a few ms of
+world meshing) instead of trusting stale GL names.
+
+## D-016 CI's evidence channel is annotations plus files committed by the job
+
+The environment that drives this project cannot download GitHub job logs
+(`gh run view --log` returns empty) or artifacts (the redirect to
+`productionresultssa*.blob.core.windows.net` is unreachable). Rather than
+declare "CI-only, unknown", the workflow funnels what it learned through two
+readable channels: `::notice`/`::error` annotations (capped at 10 per level per
+step, so only milestones go there) and `evidence/ci/`, which the emulator job
+commits back to the branch with `[skip ci]` — screenshots, logcat, dumpsys and a
+`summary.txt` written as the test proceeds. Cost: CI commits land on the working
+branch, so local work is rebased onto them; `evidence/ci/` keeps only the last
+400 KB of logcat.
+
+## D-015 The toolchain comes from the runner image, not from pinned numbers
+
+The APK build runs on whatever NDK, CMake and JDK the Ubuntu runner ships, with
+two exceptions that are pinned for a stated reason: the JDK is 21 (the image's
+default JDK 25 produces class-file version 69, which Gradle 8.11 and AGP 8.7
+refuse) and the Gradle version is 8.11.1. The NDK version is read from the
+installed NDK and handed to Gradle through `UMBRA_NDK_VERSION`, so `build.gradle`
+never names a version the machine might not have. Cost: the build is only as
+reproducible as the runner image; the log's toolchain step records what was
+actually used per run.
+
+## D-014 The release keystore is in the repository on purpose
+
+`ci/umbra-release.p12` is a self-signed RSA-2048 key (CN=Umbra release, valid
+2026-11-14 to 2056-11-06, password `umbra-release`, alias `umbra`) committed with
+the build, so every build is signed by the same key and an installed Umbra can be
+upgraded in place. This protects nothing: the key is public, so anyone can sign
+an APK that Android will accept as an update to Umbra. It exists to make builds
+consistent, not to authenticate them. A real distribution needs a private key
+outside the repository; that is recorded in `KNOWN_ISSUES.md` as a security
+limitation. Nothing but our own code is redistributed (see D-001).
+
+## D-013 The emulator test is a script with hard timeouts, not an action
+
+`tools/emulator_smoke.sh` creates the AVD, boots the emulator, installs, launches,
+taps the self-test, captures two screenshots, soaks the process and writes
+`summary.txt`. Every device call goes through `timeout`, because the first two
+attempts with `reactivecircus/android-emulator-runner` failed inside the action
+with an unreadable log (87 s, then 17+ minutes with no output), and a hang is
+indistinguishable from a failure when the log cannot be read. Cost: the script
+owns emulator details (system image, AVD home, boot polling) that an action would
+otherwise hide.
+
 ## D-012 The Goose pin is v2026.4 (`6c1fbc788f6eb1f17db4cab998353d7540ed825d`)
 
 Checked out from `https://github.com/aardappel/goose` and built with CMake 4.4.5

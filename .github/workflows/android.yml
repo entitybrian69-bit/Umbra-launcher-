@@ -109,10 +109,22 @@ jobs:
           unzip -t "$APK" | tail -2
           echo "== aapt2 dump badging =="
           AAPT=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
-          "$AAPT" dump badging "$APK" | head -8
+          BADGING="$("$AAPT" dump badging "$APK")"
+          printf '%s\n' "$BADGING" | head -8
+          # The key lines go out as annotations: the job log is not readable
+          # from the environment that drives this project, the check-run API is.
+          printf '%s\n' "$BADGING" | grep -m1 '^package:' | while IFS= read -r l; do
+            echo "::notice title=apk-package::${l//\%/%25}"; done
+          printf '%s\n' "$BADGING" | grep -m1 'native-code' | while IFS= read -r l; do
+            echo "::notice title=apk-abis::${l//\%/%25}"; done
+          printf '%s\n' "$BADGING" | grep -m1 'sdkVersion' | while IFS= read -r l; do
+            echo "::notice title=apk-sdk::${l//\%/%25}"; done
           echo "== apksigner verify =="
           APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
-          "$APKSIGNER" verify --verbose --print-certs "$APK" | head -12
+          SIGNED="$("$APKSIGNER" verify --verbose --print-certs "$APK")"
+          printf '%s\n' "$SIGNED" | head -12
+          printf '%s\n' "$SIGNED" | grep -m1 'Verified using' | while IFS= read -r l; do
+            echo "::notice title=apk-signature::${l//\%/%25}"; done
           echo "== native libraries per ABI =="
           unzip -l "$APK" | grep -E 'lib/(arm64-v8a|x86_64)/libumbra\.so' || {
             echo "missing a native library for an ABI"; exit 1; }

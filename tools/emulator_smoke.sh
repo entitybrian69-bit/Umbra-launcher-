@@ -246,17 +246,47 @@ S1="$(stat -c%s shot1.png)"
 say "shot1: $S1 bytes, sha256 $(sha256sum shot1.png | cut -d' ' -f1)"
 say "focus while drawing: $(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus | tr -s ' ' | cut -c1-160)"
 
-# The home screen stacks three buttons of 34 pixels with 8 between them above
-# the bottom inset, and the self test is the top one; tap its centre. The
-# coordinates come from the reported display size, not from a guess.
-W="${WM_SIZE%x*}"
-H="${WM_SIZE#x*}"
-TAP_X=$((W / 2))
-TAP_Y=$((H - 117))
+# The app logs the rectangle of every HUD button in its own pixel space; the
+# tap is the centre of button 0, the GPU self-test. Reading the coordinates back
+# means a layout change cannot silently make this test tap empty space.
+adbs() { adb logcat -d -s umbra:V 2>/dev/null; }
+adbs > logcat-umbra-pre.txt
+RECT="$(grep -o 'hud: button 0 at [-0-9]*,[-0-9]* size [0-9]*x[0-9]*' logcat-umbra-pre.txt | tail -1)"
 phase "selftest-tap"
-say "tap: $TAP_X,$TAP_Y (self-test button, from display ${W}x${H})"
-adb shell input tap "$TAP_X" "$TAP_Y" > tap.log 2>&1 || die "input tap failed"
-sleep 10
+if [ -n "$RECT" ]; then
+    RECT_NUMS="$(printf '%s' "$RECT" | sed 's/.*at //; s/ size / /; s/x/ /')"
+    set -- $RECT_NUMS
+    BX="${1:-0}"; BY="${2:-0}"; BW="${3:-0}"; BH="${4:-0}"
+    TAP_X=$((BX + BW / 2))
+    TAP_Y=$((BY + BH / 2))
+    say "tap: self-test button at $BX,$BY size ${BW}x${BH}, tapping $TAP_X,$TAP_Y"
+else
+    W="${WM_SIZE%x*}"; H="${WM_SIZE#*x}"
+    TAP_X=$((W / 2)); TAP_Y=$((H - 117))
+    say "tap: no button rectangle in the log, falling back to $TAP_X,$TAP_Y"
+fi
+
+TAPPED=0
+for attempt in 1 2; do
+    say "tap: attempt $attempt at $TAP_X,$TAP_Y"
+    adb shell input tap "$TAP_X" "$TAP_Y" > tap.log 2>&1 || die "input tap failed"
+    WAIT=0
+    while [ $WAIT -lt 20 ]; do
+        if adbs | grep -q "self-test"; then TAPPED=1; break; fi
+        sleep 2
+        WAIT=$((WAIT + 2))
+    done
+    [ "$TAPPED" = 1 ] && break
+    # Second attempt: the display may be rotated relative to the surface.
+    say "tap: no self-test after 20 s, trying the rotated coordinate"
+    OLD_X=$TAP_X; TAP_X=$TAP_Y; TAP_Y=$OLD_X
+done
+if [ "$TAPPED" = 1 ]; then
+    say "tap: the app reported a self-test"
+else
+    say "tap: the app never reported a self-test after two attempts"
+fi
+sleep 4
 adb exec-out screencap -p > shot2.png || die "second screencap failed"
 S2="$(stat -c%s shot2.png)"
 say "shot2: $S2 bytes, sha256 $(sha256sum shot2.png | cut -d' ' -f1)"
@@ -264,9 +294,12 @@ adb logcat -d -s umbra:V > logcat-umbra2.txt 2>&1
 adb shell dumpsys meminfo org.umbra.client > meminfo.txt 2>&1 || true
 while IFS= read -r line; do
     case "$line" in
-        *self-test*|*selftest*) say "app: $(echo "${line#*umbra   : }" | tr -s ' ' | cut -c1-220)" ;;
+        *self-test*) say "app: $(echo "${line#*umbra   : }" | tr -s ' ' | cut -c1-220)" ;;
     esac
 done < logcat-umbra2.txt
+if [ "$TAPPED" != 1 ]; then
+    err "tap: the self-test never ran, so the input path is unverified; see logcat-umbra2.txt"
+fi
 
 # ---- 7. soak --------------------------------------------------------------------
 phase "soak"

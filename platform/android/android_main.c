@@ -221,13 +221,21 @@ void android_main(struct android_app *state) {
     bool announced_wait = false;
     while (!state->destroyRequested) {
         int events;
-        struct android_app *source = NULL;
-        // android_app_glue dispatches events to handle_cmd/handle_input. With a
-        // window the loop polls without waiting so it stays a tight frame loop;
-        // without one there is nothing to draw, so it blocks instead of
-        // spinning a core (a paused game must not burn the battery).
+        struct android_poll_source *source = NULL;
+        // android_app_glue hands out poll sources rather than callbacks: the
+        // loop has to call source->process() itself, which is what turns a
+        // readable command pipe into handle_cmd()/handle_input(). Without that
+        // call no command ever arrives and the app never sees a window.
+        // With a window the loop polls without waiting so it stays a tight
+        // frame loop; without one there is nothing to draw, so it blocks
+        // instead of spinning a core (a paused game must not burn the battery).
         int timeout = g_st.egl_ready ? 0 : -1;
-        while (ALooper_pollOnce(timeout, NULL, &events, (void **)&source) >= 0) {
+        int ident;
+        while ((ident = ALooper_pollOnce(timeout, NULL, &events, (void **)&source)) >= 0) {
+            if (source != NULL) {
+                source->process(state, source);
+                source = NULL;
+            }
             timeout = 0;
         }
         if (!g_st.egl_ready) {

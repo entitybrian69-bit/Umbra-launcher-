@@ -346,6 +346,16 @@ static float hud_text_width(const char *text, float scale) {
     return (float)strlen(text) * 6.0f * scale;
 }
 
+// The three HUD buttons are laid out from the bottom inset; the drawing code
+// and the touch test must agree, so both ask this function.
+static void hud_button_rect(const umbra_app *app, int i, float *x, float *y, float *w, float *h) {
+    float bh = 34.0f;
+    *h = bh;
+    *x = 8.0f + (float)app->insets[0];
+    *w = (float)app->width - 2 * (*x);
+    *y = (float)app->height - (float)app->insets[3] - 3 * (bh + 8) - 8 + i * (bh + 8);
+}
+
 static void hud_flush(umbra_app *app) {
     if (g_hud_count == 0) return;
     glUseProgram(app->prog_hud);
@@ -606,6 +616,16 @@ int umbra_app_init(umbra_app *app) {
                               // geometry and the HUD share this state; culling
                               // comes back with the real renderer.
     app->last_frame_time = 0.0;
+    // The button rectangles go into the log: the automated emulator run taps
+    // the self-test by reading these coordinates back, so a layout change
+    // cannot silently make the test tap empty space.
+    for (int i = 0; i < 3; i++) {
+        float bx, by, bw, bh;
+        hud_button_rect(app, i, &bx, &by, &bw, &bh);
+        umbra_log(app, "hud: button %d at %d,%d size %dx%d on %dx%d (insets %d,%d,%d,%d)", i,
+                  (int)bx, (int)by, (int)bw, (int)bh, app->width, app->height, app->insets[0],
+                  app->insets[1], app->insets[2], app->insets[3]);
+    }
     return 1;
 }
 
@@ -806,16 +826,14 @@ static void draw_hud(umbra_app *app) {
     }
 
     // Three touch targets, big enough for a thumb on a phone.
-    float bw = (float)app->width - 2 * x;
-    float bh = 34.0f;
-    float by = (float)app->height - (float)app->insets[3] - 3 * (bh + 8) - 8;
     struct { const char *label; int id; } buttons[3] = {
         {"RUN GPU SELF-TEST", 0}, {"RUN 60 s BENCHMARK", 1}, {"SHARE LOG", 2}};
     for (int i = 0; i < 3; i++) {
-        float yy = by + i * (bh + 8);
+        float bx, by, bw, bh;
+        hud_button_rect(app, i, &bx, &by, &bw, &bh);
         bool active = (i == 0 && app->selftest_ran) || (i == 1 && app->benching);
-        hud_rect(x, yy, bw, bh, active ? 0.25f : 0.15f, active ? 0.55f : 0.25f, active ? 0.3f : 0.15f, 0.9f);
-        hud_text(x + 8, yy + bh * 0.3f, 1.3f, 1, 1, 1, 1, buttons[i].label);
+        hud_rect(bx, by, bw, bh, active ? 0.25f : 0.15f, active ? 0.55f : 0.25f, active ? 0.3f : 0.15f, 0.9f);
+        hud_text(bx + 8, by + bh * 0.3f, 1.3f, 1, 1, 1, 1, buttons[i].label);
     }
     hud_flush(app);
 }
@@ -856,13 +874,10 @@ void umbra_app_frame(umbra_app *app) {
 void umbra_app_touch(umbra_app *app, int32_t x, int32_t y, bool down) {
     if (!down) return;
     if (app->screen != UMBRA_SCREEN_HOME) return;
-    float bh = 34.0f;
-    float by = (float)app->height - (float)app->insets[3] - 3 * (bh + 8) - 8;
-    float bx = 8.0f + (float)app->insets[0];
-    float bw = (float)app->width - 2 * bx;
     for (int i = 0; i < 3; i++) {
-        float yy = by + i * (bh + 8);
-        if (x >= bx && x <= bx + bw && y >= yy && y <= yy + bh) {
+        float bx, by, bw, bh;
+        hud_button_rect(app, i, &bx, &by, &bw, &bh);
+        if (x >= bx && x <= bx + bw && y >= by && y <= by + bh) {
             if (i == 0) {
                 run_selftest(app);
             } else if (i == 1) {
