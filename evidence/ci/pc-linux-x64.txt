@@ -1,3 +1,6 @@
+goose/main.goose:631: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+        if t > 0.0 { return (y as f32) + t; }
+                             ^~~~~~~~
 goose/core/json.goose:104: warning: redundant `as i64`: a u8 converts to i64 implicitly here
     if b >= 48 && b <= 57 { return (b - 48) as i64; }
                                     ^~~~~~~~~~~~~~
@@ -187,7 +190,7 @@ core version: 0.1.0-stage1
 mesh: 17793984 vertex bytes, 2224248 index bytes
 mesh checks: 0 bad indices, 0 bad normals, 0 positions out of bounds
 progress: worst 997 permille; units 1947, total 1947
-sliced mesh: 655 calls, worst call 6.26 ms, worst unit 6.04 ms
+sliced mesh: 633 calls, worst call 8.36 ms, worst unit 6.77 ms
 batches: 543276 + 12786 + 0 = 556062 of 556062 indices
 layout: phone scale 2.64, desktop scale 1.00
 layout: button 0 21,1006 737x53; button 2 1528,1006
@@ -216,4 +219,6 @@ median 16.66 ms  worst 16.66 ms
 headless | Android none
 gpu avg 4.10 ms over 100 frames
 vsync: uncapped requested
-PASS: 149 checks, 0 failures
+world: floor at 24,24 is 66.00
+world: slab at 12,64,21 with a half-block collision top
+PASS: 174 checks, 0 failures
