@@ -78,10 +78,41 @@ static void parse_override(int32_t insets[4], int *found) {
     *found = 1;
 }
 
+// A failed JNI lookup leaves a pending exception, and the next JNI call with one
+// pending aborts the process -- which is exactly what the emulator run of 0.3.1
+// did ("Throwing new exception ... with unexpected pending exception"). Every
+// lookup clears what it caused, so a missing method costs a wrong inset, never
+// the app.
+static void jni_clear(JNIEnv *env, const char *what) {
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionClear(env);
+        ALOGW("insets: %s is not available on this device", what);
+    }
+}
+
 static int jint_call(JNIEnv *env, jobject obj, jclass cls, const char *name, const char *sig, int *out) {
     jmethodID m = (*env)->GetMethodID(env, cls, name, sig);
-    if (!m) return 0;
+    if (!m) {
+        jni_clear(env, name);
+        return 0;
+    }
     *out = (int)(*env)->CallIntMethod(env, obj, m);
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionClear(env);
+        return 0;
+    }
+    return 1;
+}
+
+// android.graphics.Insets has public int fields and no getters: the first
+// version of this called getLeft() and friends, which do not exist.
+static int insets_field(JNIEnv *env, jobject obj, jclass cls, const char *name, int *out) {
+    jfieldID f = (*env)->GetFieldID(env, cls, name, "I");
+    if (!f) {
+        jni_clear(env, name);
+        return 0;
+    }
+    *out = (int)(*env)->GetIntField(env, obj, f);
     return 1;
 }
 
@@ -138,15 +169,21 @@ static void fill_insets(android_state *st) {
         jmethodID getInsets = (*env)->GetMethodID(env, insets_cls, "getInsets", "(I)Landroid/graphics/Insets;");
         if (getInsets) {
             jobject iobj = (*env)->CallObjectMethod(env, insets_obj, getInsets, (jint)(7 | 128));
+            if ((*env)->ExceptionCheck(env)) {
+                (*env)->ExceptionClear(env);
+                iobj = NULL;
+            }
             if (iobj) {
                 jclass icls = (*env)->GetObjectClass(env, iobj);
-                int ok = jint_call(env, iobj, icls, "getLeft", "()I", &modern[0]);
-                ok &= jint_call(env, iobj, icls, "getTop", "()I", &modern[1]);
-                ok &= jint_call(env, iobj, icls, "getRight", "()I", &modern[2]);
-                ok &= jint_call(env, iobj, icls, "getBottom", "()I", &modern[3]);
+                int ok = insets_field(env, iobj, icls, "left", &modern[0]);
+                ok &= insets_field(env, iobj, icls, "top", &modern[1]);
+                ok &= insets_field(env, iobj, icls, "right", &modern[2]);
+                ok &= insets_field(env, iobj, icls, "bottom", &modern[3]);
                 if (ok) source = "getInsets(systemBars|cutout)";
                 (*env)->DeleteLocalRef(env, icls);
                 (*env)->DeleteLocalRef(env, iobj);
+            } else {
+                ALOGW("insets: getInsets(int) returned nothing");
             }
         }
         // Legacy: what the emulator answered with, and what returns 0 when the
@@ -161,7 +198,12 @@ static void fill_insets(android_state *st) {
         // API 28: the notch, which is not a "system window" at all.
         jmethodID getCutout = (*env)->GetMethodID(env, insets_cls, "getDisplayCutout",
                                                   "()Landroid/view/DisplayCutout;");
+        if (!getCutout) jni_clear(env, "getDisplayCutout");
         jobject cut = getCutout ? (*env)->CallObjectMethod(env, insets_obj, getCutout) : NULL;
+        if ((*env)->ExceptionCheck(env)) {
+            (*env)->ExceptionClear(env);
+            cut = NULL;
+        }
         if (cut) {
             jclass ccls = (*env)->GetObjectClass(env, cut);
             int ok = jint_call(env, cut, ccls, "getSafeInsetLeft", "()I", &cutout[0]);
@@ -171,10 +213,6 @@ static void fill_insets(android_state *st) {
             if (ok) source = "getInsets + displayCutout";
             (*env)->DeleteLocalRef(env, ccls);
             (*env)->DeleteLocalRef(env, cut);
-        }
-        if ((*env)->ExceptionCheck(env)) {
-            (*env)->ExceptionClear(env);
-            ALOGE("insets: a JNI call threw; insets may be wrong");
         }
     }
 

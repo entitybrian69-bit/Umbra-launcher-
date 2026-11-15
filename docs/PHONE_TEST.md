@@ -57,3 +57,17 @@ what a bug report needs.
 
 Send the shared log; it contains the build commit, the GPU strings, the mesh
 timing and the last error.
+
+## 0.3.1 notes
+
+The overlay, the camera and the progress numbers all changed, and the results of
+the previous run are now shown. Two things to look at in the log if a screen is
+still wrong (share the log from the app: `SHARE LOG`):
+
+- `insets: L,T,R,B = …` — the four numbers the overlay is keeping clear of, and
+  which Android call they came from (`getInsets(systemBars|cutout)`,
+  `getSystemWindowInset`, `getInsets + displayCutout` or the override). If the top
+  number is 0 on a phone with a visible status bar, the overlay will still sit
+  under the clock, and that line is the proof.
+- `camera: eye … -> look …` — where the view is pointed. If the screen is sky
+  only, this line says whether the camera or the terrain is at fault.
