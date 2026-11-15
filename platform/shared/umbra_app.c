@@ -766,6 +766,9 @@ static void pump_mesh(umbra_app *app) {
     }
 }
 
+// Defined with the rest of the device checks, called at the end of init.
+static void device_checks(umbra_app *app);
+
 int umbra_app_init(umbra_app *app) {
     // The platform layer fills in where the log and the crash marker live
     // before calling init; the blanket memset below would erase them, and then
@@ -777,6 +780,11 @@ int umbra_app_init(umbra_app *app) {
     // a window to ask for them), so they must survive the memset too.
     int32_t insets[4] = {app->insets[0], app->insets[1], app->insets[2], app->insets[3]};
     float dpi_scale = app->dpi_scale > 0.0f ? app->dpi_scale : 1.0f;
+    // The swap-interval hook is the platform's too, and the memset below erased
+    // it: the emulator logged "no platform hook for the swap interval" while
+    // android_main had set one.
+    int (*swap_fn)(void *, int) = app->swap_interval_fn;
+    void *swap_ctx = app->swap_interval_ctx;
     memcpy(log_path, app->log_path, sizeof log_path);
     memcpy(marker_path, app->marker_path, sizeof marker_path);
     memset(app, 0, sizeof *app);
@@ -788,6 +796,8 @@ int umbra_app_init(umbra_app *app) {
     app->height = height;
     for (int i = 0; i < 4; i++) app->insets[i] = insets[i];
     app->dpi_scale = dpi_scale;
+    app->swap_interval_fn = swap_fn;
+    app->swap_interval_ctx = swap_ctx;
     app->screen = UMBRA_SCREEN_HOME;
     app->bench_seconds = 60;
     // 55 degrees is a phone-friendly vertical field of view; the distance that
@@ -855,6 +865,11 @@ int umbra_app_init(umbra_app *app) {
     // The button rectangles are logged from the frame loop instead of here: at
     // this point the surface may still be 1x1, and a layout computed from that
     // is nonsense (run 43687356640 logged "button 0 at 25,-269 size -49x63").
+    //
+    // What the driver says about itself is written to the log here, once, before
+    // anything can fail on it -- and a check that failed puts the app in the
+    // fallback renderer instead of letting it crash later.
+    device_checks(app);
     return 1;
 }
 

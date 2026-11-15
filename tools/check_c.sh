@@ -46,4 +46,13 @@ then
     exit 1
 fi
 echo "check_c: FS_PATTERN declares precision highp int"
+# Requirement (4): every device-specific check is logged, and a failure falls back.
+# The device checks were written, reviewed and never called for two commits --
+# nothing in a desktop build notices a missing call, so it is checked here.
+if ! sed -n '/^int umbra_app_init/,/^}/p' platform/shared/umbra_app.c | grep -q 'device_checks(app);';
+then
+    echo "check_c: umbra_app_init never calls device_checks (it did not, in 0.3.2)" >&2
+    exit 1
+fi
+echo "check_c: umbra_app_init runs the device checks"
 echo "check_c: both branches parse and type-check, and both platform mains do too"
