@@ -46,6 +46,7 @@ struct umbra_app {
     // a sane near/far range instead of a guess.
     float span[3];
     float cam_dist;
+    float look[3];      // the point the home view is aimed at
 
     // Runtime state
     umbra_screen screen;

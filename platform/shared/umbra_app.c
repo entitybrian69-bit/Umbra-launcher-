@@ -166,9 +166,10 @@ static const char *FS_MESH =
     "precision highp float;\n"
     "in vec3 v_col;\n"
     "in float v_dist;\n"
+    "uniform vec2 u_fog;\n"
     "out vec4 o_col;\n"
     "void main() {\n"
-    "    float fog = clamp((v_dist - 40.0) / 60.0, 0.0, 1.0);\n"
+    "    float fog = clamp((v_dist - u_fog.x) / (u_fog.y - u_fog.x), 0.0, 1.0);\n"
     "    vec3 sky = vec3(0.55, 0.70, 0.92);\n"
     "    o_col = vec4(mix(v_col, sky, fog), 1.0);\n"
     "}\n";
@@ -555,6 +556,11 @@ static void build_scene(umbra_app *app) {
     app->span[2] = umbra_mesh_max_z() - umbra_mesh_min_z();
     float horiz = app->span[0] > app->span[2] ? app->span[0] : app->span[2];
     app->cam_dist = horiz * 0.9f + 12.0f;
+    // Aim at the top of the world, not at the middle of its volume: a demo
+    // world filled from y = -64 has its centre deep inside solid stone.
+    app->look[0] = app->center[0];
+    app->look[1] = umbra_mesh_max_y() - 10.0f;
+    app->look[2] = app->center[2];
     umbra_log(app, "mesh bounds x %.1f..%.1f y %.1f..%.1f z %.1f..%.1f, camera %.1f blocks out",
               umbra_mesh_min_x(), umbra_mesh_max_x(), umbra_mesh_min_y(), umbra_mesh_max_y(),
               umbra_mesh_min_z(), umbra_mesh_max_z(), app->cam_dist);
@@ -761,14 +767,15 @@ static void draw_scene(umbra_app *app) {
     if (near_z < 0.05f) near_z = 0.05f;
     float far_z = app->cam_dist * 4.0f + app->span[0] + app->span[1] + app->span[2];
     mat4_perspective(proj, 62.0f * 3.14159265f / 180.0f, (float)app->width / (float)app->height, near_z, far_z);
-    float eye[3] = {app->center[0] + app->cam_dist * 0.62f, app->center[1] + app->cam_dist * 0.48f,
-                    app->center[2] + app->cam_dist * 0.62f};
-    float target[3] = {app->center[0], app->center[1], app->center[2]};
+    float eye[3] = {app->look[0] + app->cam_dist * 0.55f, app->look[1] + app->cam_dist * 0.45f,
+                    app->look[2] + app->cam_dist * 0.55f};
     float up[3] = {0.0f, 1.0f, 0.0f};
-    mat4_look_at(view, eye, target, up);
+    mat4_look_at(view, eye, app->look, up);
     mat4_mul(vp, proj, view);
     glUseProgram(app->prog_mesh);
     glUniformMatrix4fv(glGetUniformLocation(app->prog_mesh, "u_viewproj"), 1, GL_FALSE, vp);
+    glUniform2f(glGetUniformLocation(app->prog_mesh, "u_fog"), app->cam_dist * 0.85f,
+                app->cam_dist * 2.6f);
     glUniform3f(glGetUniformLocation(app->prog_mesh, "u_center"), app->center[0], app->center[1], app->center[2]);
     glBindVertexArray(app->vao_mesh);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->ibo_mesh);

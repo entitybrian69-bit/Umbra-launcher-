@@ -267,7 +267,7 @@ adbs > logcat-umbra-pre.txt
 RECT="$(grep -o 'hud: button 0 at [-0-9]*,[-0-9]* size [0-9]*x[0-9]*' logcat-umbra-pre.txt | tail -1)"
 phase "selftest-tap"
 if [ -n "$RECT" ]; then
-    RECT_NUMS="$(printf '%s' "$RECT" | sed 's/.*at //; s/ size / /; s/x/ /')"
+    RECT_NUMS="$(printf '%s' "$RECT" | sed 's/.*at //; s/ size / /; s/x/ /; s/,/ /')"
     set -- $RECT_NUMS
     BX="${1:-0}"; BY="${2:-0}"; BW="${3:-0}"; BH="${4:-0}"
     TAP_X=$((BX + BW / 2))
