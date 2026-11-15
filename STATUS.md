@@ -75,6 +75,38 @@ uses now answers 63. **None of this has been seen on the owner's phone yet** - i
 CI evidence on an emulator, and the four fixes are `owner-must-confirm` until the
 `v0.3.1-pre` build runs on the phone.
 
+## 0.3.1-pre is published and verified
+
+`v0.3.1-pre` supersedes `v0.3.0-pre`, which stays published and untouched.
+
+```
+release: https://github.com/entitybrian69-bit/Umbra-launcher-/releases/tag/v0.3.1-pre
+run:     https://github.com/entitybrian69-bit/Umbra-launcher-/actions/runs/43712127908
+commit:  0690ed881cd523abe7a3cd00e5f87089e437847e
+asset: umbra-0.3.1-pre-arm64.apk      226171 bytes  http 200  sha256 e54218e7...  OK
+asset: umbra-0.3.1-pre-linux-x64       76352 bytes  http 200  sha256 9245e7db...  OK
+asset: umbra-0.3.1-pre-windows-x64.exe 172836 bytes http 200  sha256 76f230b7...  OK
+RESULT: PASS - 3 assets re-downloaded and every sha256 matched
+linux: the downloaded binary passed its self-test
+windows: the downloaded .exe ran under wine and passed its self-test
+```
+
+`RELEASE_VERIFY.txt` in the repository root is that file, committed by the release
+workflow after it re-downloaded each asset from its public URL.
+
+**What is verified:** the work builds, the APK installs and runs on an emulator
+with a simulated 63 px status bar, the self-test passes, the benchmark produces the
+four-line block, a restart shows the previous run's results, a kill is still
+reported as a crash, and the published bytes match their checksums.
+
+**What is CI-only:** everything above happened on an x86_64 emulator with
+SwiftShader at density 420. It is not the owner's Mali-G57 at density 3.5.
+
+**What the owner must confirm:** the four fixes on the phone — that the percentage
+stops at 100, that no line sits under the status bar, that the island fills the
+strip between the text and the buttons, and that the `LAST RUN` block comes back
+after closing and reopening the app.
+
 ## The reference screenshot, and why it changed
 
 `docs/reference/emulator_home.png` is now the frame from run 43709489473: the
