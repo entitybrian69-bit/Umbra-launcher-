@@ -195,7 +195,10 @@ jobs:
           } > evidence/ci/run.txt
           # Trim the noisiest files so the repository does not grow unbounded.
           [ -f evidence/ci/logcat-full.txt ] && tail -c 400000 evidence/ci/logcat-full.txt > evidence/ci/logcat-full.tmp && mv evidence/ci/logcat-full.tmp evidence/ci/logcat-full.txt || true
-          bash tools/commit_evidence.sh "ci: emulator evidence from run $GITHUB_RUN_ID [skip ci]"
+          git add -f evidence/ci
+          # run.txt always changes, so this run must produce a commit; if it does
+          # not, that is a bug in this step and it must be visible, not silent.
+          REQUIRE_EVIDENCE=1 bash tools/commit_evidence.sh "ci: emulator evidence from run $GITHUB_RUN_ID [skip ci]"
 
       - uses: actions/upload-artifact@v4
         if: always()

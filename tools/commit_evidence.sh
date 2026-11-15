@@ -22,6 +22,12 @@ git config user.email "ci@umbra.invalid"
 
 if git diff --cached --quiet; then
     echo "commit_evidence: nothing staged, so there is nothing to push"
+    if [ "${REQUIRE_EVIDENCE:-0}" = "1" ]; then
+        # Callers that must always produce evidence set this: a step that
+        # quietly commits nothing looks exactly like a step that worked.
+        echo "commit_evidence: this step was required to commit evidence and staged none"
+        exit 1
+    fi
     exit 0
 fi
 

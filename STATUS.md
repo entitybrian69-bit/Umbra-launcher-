@@ -155,6 +155,11 @@ what the owner asked to see on the device: average frame time and FPS, the 1% lo
 (mean of the slowest 1% of frames) as FPS and as milliseconds, the median and the
 worst frame.
 
+The HUD is drawn in display pixels scaled by the display density (D-030): at
+scale 1 on a 420 dpi screen a capital letter was 3 dp tall and the buttons ran
+under the navigation bar. The next run's numbers replace the ones below; until
+then this build's overlay is the one described here.
+
 Also new: `platform/android/android_main.c` reads the system insets and the display
 density over JNI (`getRootWindowInsets`, `AConfiguration_getDensity`) before
 `umbra_app_init` and again on `APP_CMD_WINDOW_RESIZED` / `APP_CMD_CONFIG_CHANGED`,

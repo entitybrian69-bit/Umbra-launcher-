@@ -79,55 +79,66 @@ jobs:
           name: release-apk
           path: dist/*
 
-  pc:
-    name: Build the PC binaries for the release
+  pc-linux:
+    name: Linux x64 binary for the release
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Build the pinned Goose compiler
         run: tools/pin_goose.sh
-      - name: Linux x64
-        run: GOOSE=build/bin/goose CC=gcc OUT=build/pc/umbra_headless tools/build_pc.sh
-      - name: Windows x64 (mingw-w64)
+      - name: Build and run the self-test
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq mingw-w64 >/dev/null
-          mkdir -p build/gen
-          build/bin/goose --standalone --header build/gen/umbra_core.h -o build/gen/umbra_core.c goose/main.goose
-          x86_64-w64-mingw32-gcc -O2 -o build/umbra-windows-x64.exe platform/pc/headless_main.c \
-            build/gen/umbra_core.c platform/shared/umbra_glue.c -Ibuild/gen -Iplatform/shared -lm -lpthread
-      - name: Collect the binaries and run the Linux one
-        run: |
-          set -e
+          set -o pipefail
           mkdir -p dist
+          GOOSE=build/bin/goose CC=gcc OUT=build/pc/umbra_headless tools/build_pc.sh | tee pc-selftest.txt
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
           cp build/pc/umbra_headless "dist/umbra-${TAG#v}-linux-x64"
-          cp build/umbra-windows-x64.exe "dist/umbra-${TAG#v}-windows-x64.exe"
           chmod +x dist/*
-          (cd dist && sha256sum * | grep -v SHA256SUMS > SHA256SUMS && cat SHA256SUMS)
-          echo "== the Linux binary, run from the release directory =="
-          "dist/umbra-${TAG#v}-linux-x64" | tail -3
-          echo "== the Windows binary, under wine =="
-          sudo apt-get install -y -qq wine64 >/dev/null 2>&1 || sudo apt-get install -y -qq wine >/dev/null 2>&1
-          if command -v wine64 >/dev/null || command -v wine >/dev/null; then
-            WINE=$(command -v wine64 || command -v wine)
-            "$WINE" "dist/umbra-${TAG#v}-windows-x64.exe" > /tmp/wine.log 2>&1 || true
-            tail -4 /tmp/wine.log
-            grep -qE "PASS: [0-9]+ checks, 0 failures" /tmp/wine.log \
-              || { echo "::error title=windows::the released .exe did not pass its self-test under wine"; exit 1; }
-            echo "::notice title=windows::the released .exe ran under wine and passed its self-test"
-          else
-            echo "::error title=windows::no wine available, so the .exe is unproven"
-            exit 1
-          fi
+          (cd dist && sha256sum * | tee SHA256SUMS)
+          echo "::notice title=linux-x64::$(cd dist && sha256sum * | tr '\n' ' ')"
       - uses: actions/upload-artifact@v4
         with:
-          name: release-pc
+          name: release-pc-linux
+          path: dist/*
+
+  pc-windows:
+    # The same commands the `pc` workflow runs, on a Windows runner: the released
+    # .exe is one that executed natively, not a cross-compile nobody started.
+    name: Windows x64 binary for the release
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: false
+          install: >-
+            git
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+      - name: Build and run (MSYS2 UCRT64)
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          export GOOSE_CMAKE_GENERATOR=Ninja
+          tools/pin_goose.sh
+          GOOSE=build/bin/goose.exe tools/gen_core.sh
+          mkdir -p dist
+          GOOSE=build/bin/goose.exe CC=gcc OUT=build/pc/umbra_headless.exe tools/build_pc.sh | tee pc-selftest.txt
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          cp build/pc/umbra_headless.exe "dist/umbra-${TAG#v}-windows-x64.exe"
+          (cd dist && sha256sum * | tee SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-pc-windows
           path: dist/*
 
   publish-and-verify:
     name: Publish, then download every asset again and check it
-    needs: [apk, pc]
+    needs: [apk, pc-linux, pc-windows]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -145,7 +156,8 @@ jobs:
           set -e
           mkdir -p dist
           cp assets/release-apk/* dist/
-          cp assets/release-pc/* dist/
+          cp assets/release-pc-linux/* dist/
+          cp assets/release-pc-windows/* dist/
           rm -f dist/SHA256SUMS
           ls -l dist
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
@@ -234,8 +246,54 @@ jobs:
             fi
           } | tee -a "$OUT"
           exit "$FAILED"
-      - name: Commit the verification to the default branch
+      - name: Run the binaries that were just downloaded
+        run: |
+          set -uo pipefail
+          OUT=RELEASE_VERIFY.txt
+          FAILED=0
+          LINUX=$(ls /tmp/dl-*-linux-x64 2>/dev/null | head -1)
+          WIN=$(ls /tmp/dl-*-windows-x64.exe 2>/dev/null | head -1)
+          if [ -n "$LINUX" ]; then
+            chmod +x "$LINUX"
+            "$LINUX" > /tmp/linux-run.log 2>&1 || true
+            if grep -qE "PASS: [0-9]+ checks, 0 failures" /tmp/linux-run.log; then
+              echo "linux: the downloaded binary passed its self-test" | tee -a "$OUT"
+            else
+              echo "linux: the downloaded binary FAILED" | tee -a "$OUT"
+              tail -5 /tmp/linux-run.log | tee -a "$OUT"
+              FAILED=1
+            fi
+          else
+            echo "linux: no downloaded binary to run" | tee -a "$OUT"; FAILED=1
+          fi
+          if [ -n "$WIN" ]; then
+            # Wine is a coarse stand-in for Windows, but it is execution: a
+            # binary that does not start under wine is not a Windows binary.
+            sudo apt-get install -y -qq wine64 >/dev/null 2>&1 || sudo apt-get install -y -qq wine >/dev/null 2>&1 || true
+            WINE=$(command -v wine64 || command -v wine || true)
+            if [ -n "$WINE" ]; then
+              "$WINE" "$WIN" > /tmp/wine.log 2>&1 || true
+              if grep -qE "PASS: [0-9]+ checks, 0 failures" /tmp/wine.log; then
+                echo "windows: the downloaded .exe ran under wine and passed its self-test" | tee -a "$OUT"
+              else
+                echo "windows: the downloaded .exe did not pass under wine" | tee -a "$OUT"
+                tail -5 /tmp/wine.log | tee -a "$OUT"
+                FAILED=1
+              fi
+            else
+              echo "windows: wine is unavailable, so the .exe is unproven" | tee -a "$OUT"
+              FAILED=1
+            fi
+          else
+            echo "windows: no downloaded .exe to run" | tee -a "$OUT"; FAILED=1
+          fi
+          exit "$FAILED"
+
+      - name: Commit the verification to the branch that holds this release
         if: always()
         run: |
           set -euo pipefail
-          bash tools/commit_evidence.sh "ci: release verification for $TAG from run $GITHUB_RUN_ID [skip ci]" "$EVIDENCE_BRANCH"
+          mkdir -p evidence/release
+          cp RELEASE_VERIFY.txt "evidence/release/${TAG}.txt" 2>/dev/null || true
+          git add -f RELEASE_VERIFY.txt evidence/release
+          REQUIRE_EVIDENCE=1 bash tools/commit_evidence.sh "ci: release verification for $TAG from run $GITHUB_RUN_ID [skip ci]" "$EVIDENCE_BRANCH"

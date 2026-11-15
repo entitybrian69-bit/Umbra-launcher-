@@ -2,6 +2,24 @@
 
 Newest first. Each entry says what was decided, why, and what it costs.
 
+## D-030 The HUD is laid out in display pixels, scaled by the display density
+
+The first 0.3.0 emulator screenshot showed why this could not wait: the overlay was
+drawn at scale 1, which on a 420 dpi screen (density 2.62) makes a capital letter
+three density-independent pixels tall, and the three buttons ran the full width of
+the display into a 126 px navigation-bar strip. Both are the kind of thing that
+looks fine in a 1568 px screenshot and is unusable on a phone.
+
+So: `hud_scale()` returns `dpi_scale * 1.2`, clamped to 1..5; the row height, the
+margins, the button height and the button labels all derive from it, and
+`hud_button_rect()` -- the one function both the drawing code and the touch test
+ask -- subtracts the **right** inset as well as the left one. The backdrop's height
+is computed from the rows it will contain rather than being a constant, because
+the benchmark block is four lines.
+
+Cost: on the emulator the overlay now covers about a third of the height instead
+of a fifth. That is a deliberate trade for text a person can read.
+
 ## D-029 A release is proven by downloading it again, and a tag builds its own assets
 
 Three choices, all made because this project can only see GitHub through a narrow
@@ -30,6 +48,12 @@ A related fix came out of run `43684262551`: the emulator job's "commit the
 evidence" step failed with a rejected push, because the branch moved while the
 emulator ran. All four workflows now call one script, `tools/commit_evidence.sh`,
 which merges and retries up to four times and **never rebases** (D-028).
+
+That script then caught a worse bug in itself: run `43685520182` reported its
+"commit the evidence" step as **success** while committing nothing, because the
+`git add` line had been lost when the step was rewritten. A step that commits
+nothing looks exactly like a step that worked. Steps that must always produce
+evidence now set `REQUIRE_EVIDENCE=1`, and the script fails if nothing is staged.
 
 ## D-020 The GPU self-test draws into its own framebuffer and reads RGBA
 
