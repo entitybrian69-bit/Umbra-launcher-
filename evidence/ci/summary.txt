@@ -1,12 +1,12 @@
-run: 43660636352, commit: 4e6790cb474fcf77da21099a7cb4bf7d5acf7bcd
+run: 43661332529, commit: 45d9cf1af57381eb65c3d13d1cb8a25e9f2f7ffc
 sdk: /usr/local/lib/android/sdk
 adb: /usr/local/lib/android/sdk/platform-tools/adb
 emulator: /usr/local/lib/android/sdk/emulator/emulator
-apk: ./android/app/build/outputs/apk/release/app-release.apk (186759 bytes, sha256 ee68f3bbb1dca159020ffc819f87a5a3826b4cedcbbccb8a518d116d4c95e669)
+apk: ./android/app/build/outputs/apk/release/app-release.apk (186759 bytes, sha256 c6b2a6757c40f3f912f59790de903f98e36ffa6d483dd85cbf900e6918ce52e5)
 
 == phase: kvm ==
-kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 15 00:59 /dev/kvm
-cpu: 8 flags match vmx/svm
+kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 15 01:08 /dev/kvm
+cpu: 4 flags match vmx/svm
 
 == phase: sdk-packages ==
 sdk-platform-tools: ok (3 lines)
@@ -16,24 +16,38 @@ sdk-image: ok (3 lines)
 avd: umbra_ci from device profile pixel_2 at /home/runner/.android/avd
 
 == phase: emulator-boot ==
-emulator: started as pid 3374
-emulator: booted in 76 s
+emulator: started as pid 2774
+emulator: booted in 52 s
 android: api 30 (11)
 display: 1080x1920
 
 == phase: unlock ==
 wake: 
-focus before launch:  mCurrentFocus=Window{650efdf u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
+focus before launch:  mCurrentFocus=Window{98efa42 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
 
 == phase: install ==
 install: Success
 
 == phase: launch ==
 launch: Status: timeout 
-ERROR: launch: the app logged its start line never within 90s; umbra log: --------- beginning of kernel
+launch: the app has not reported drawing yet, nudging it through the launcher
+nudge: data="android.intent.category.LAUNCHER" Events injected: 1 ## Network stats: elapsed time=68ms (0ms mobile, 0ms wifi, 68ms not connected) 
+ERROR: launch: the app logged its start line never within 120s; umbra log: --------- beginning of kernel
 --------- beginning of main
 --------- beginning of system
-11-15 01:01:54.610  3255  3289 I umbra   : android_main: files /data/user/0/org.umbra.client/files
+11-15 01:10:41.170  3330  3387 I umbra   : android_main: files /data/user/0/org.umbra.client/files
 
 == collected diagnostics ==
+app pid at exit: 3330
+focus:  mCurrentFocus=null
+focus:  mFocusedApp=ActivityRecord{3561198 u0 org.umbra.client/android.app.NativeActivity t9}
+logcat: 40287 lines, 4754728 bytes
+activity manager mentions of umbra:
+sys: 11-15 01:10:40.414 501 541 I ActivityManager: Start proc 3330:org.umbra.client/u0a167 for pre-top-activity {org.umbra.client/android.app.NativeActivity}
+sys: 11-15 01:10:41.170 3330 3387 I umbra : android_main: files /data/user/0/org.umbra.client/files
+app log lines: 4
+app: --------- beginning of kernel
+app: --------- beginning of main
+app: --------- beginning of system
+app: 11-15 01:10:41.170 3330 3387 I umbra : android_main: files /data/user/0/org.umbra.client/files
 
