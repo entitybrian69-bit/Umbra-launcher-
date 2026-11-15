@@ -1,16 +1,16 @@
 release verification
 tag: v0.3.0-pre
 base: https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.0-pre
-run: https://github.com/entitybrian69-bit/Umbra-launcher-/actions/runs/43693504331
-commit: 3b2d595209ff6cfaea9dd6742c5b86fc601caf92
-date: 2026-11-15T08:18:00Z
+run: https://github.com/entitybrian69-bit/Umbra-launcher-/actions/runs/43695376328
+commit: 1626ba06f317e9701537f2088e34b0b816f9e6e7
+date: 2026-11-15T08:41:41Z
 
 asset: umbra-0.3.0-pre-arm64.apk
   url: https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.0-pre/umbra-0.3.0-pre-arm64.apk
   http: 200
   size: 214723 bytes
-  sha256: acff4fcfcfb30e14ddf8870cfde2adcc596cfc69eaf0962b5d6cddabfe6b160c
-  expected: acff4fcfcfb30e14ddf8870cfde2adcc596cfc69eaf0962b5d6cddabfe6b160c
+  sha256: 312bd4ba875d9d38abf0ee6f4a216becfb1b17291a22cab7e969e016659b35f1
+  expected: 312bd4ba875d9d38abf0ee6f4a216becfb1b17291a22cab7e969e016659b35f1
   result: OK
 asset: umbra-0.3.0-pre-linux-x64
   url: https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.0-pre/umbra-0.3.0-pre-linux-x64
@@ -22,16 +22,11 @@ asset: umbra-0.3.0-pre-linux-x64
 asset: umbra-0.3.0-pre-windows-x64.exe
   url: https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.0-pre/umbra-0.3.0-pre-windows-x64.exe
   http: 200
-  size: 87130 bytes
-  sha256: 24e1f9fb4b47406eaa97b15bfa5bf8768bae8bc33b5ec1583763f686904dbae7
-  expected: 24e1f9fb4b47406eaa97b15bfa5bf8768bae8bc33b5ec1583763f686904dbae7
+  size: 155881 bytes
+  sha256: b89376bc32dadfed8e069c97a22ec5c952476c3808bf4d75a1ba9fb80f2d6915
+  expected: b89376bc32dadfed8e069c97a22ec5c952476c3808bf4d75a1ba9fb80f2d6915
   result: OK
 
 RESULT: PASS - 3 assets re-downloaded from https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.0-pre and every sha256 matched
 linux: the downloaded binary passed its self-test
-windows: the downloaded .exe did not pass under wine
-0108:err:setupapi:do_file_copyW Unsupported style(s) 0x10
-002c:err:setupapi:do_file_copyW Unsupported style(s) 0x10
-0108:err:setupapi:do_file_copyW Unsupported style(s) 0x10
-0024:err:module:import_dll Library libwinpthread-1.dll (which is needed by L"Z:\\home\\runner\\work\\Umbra-launcher-\\Umbra-launcher-\\dist\\downloaded\\umbra-0.3.0-pre-windows-x64.exe") not found
-0024:err:module:loader_init Importing dlls for L"Z:\\home\\runner\\work\\Umbra-launcher-\\Umbra-launcher-\\dist\\downloaded\\umbra-0.3.0-pre-windows-x64.exe" failed, status c0000135
+windows: the downloaded .exe ran under wine and passed its self-test
