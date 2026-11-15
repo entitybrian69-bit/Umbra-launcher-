@@ -320,8 +320,15 @@ static void hud_quad(float x, float y, float w, float h, float u0, float v0, flo
     g_hud_count += 4;
 }
 
+// Flat rectangles sample one reserved opaque texel of the glyph atlas. Sampling
+// (0,0) -- the first pixel of the space glyph -- made every panel and button
+// background fully transparent, which is why the 0.3.0 home screen had text
+// floating in the sky with nothing behind it.
+#define HUD_WHITE_U (127.5f / 128.0f)
+#define HUD_WHITE_V (63.5f / 64.0f)
+
 static void hud_rect(float x, float y, float w, float h, float r, float g, float b, float a) {
-    hud_quad(x, y, w, h, 0.0f, 0.0f, 0.0f, 0.0f, r, g, b, a);
+    hud_quad(x, y, w, h, HUD_WHITE_U, HUD_WHITE_V, HUD_WHITE_U, HUD_WHITE_V, r, g, b, a);
 }
 
 static void hud_text(float x, float y, float scale, float cr, float cg, float cb, float ca,
@@ -434,6 +441,9 @@ static void create_font_texture(umbra_app *app) {
             }
         }
     }
+    // Reserve the bottom-right texel as solid coverage for hud_rect(); the 95
+    // glyphs use rows 0..5 of the 8-row atlas, so it belongs to no glyph.
+    texels[(H - 1) * W + (W - 1)] = 255;
     glGenTextures(1, &app->tex_font);
     glBindTexture(GL_TEXTURE_2D, app->tex_font);
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
