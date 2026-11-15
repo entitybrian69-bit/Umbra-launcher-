@@ -22,10 +22,21 @@ jobs:
       - name: Build the pinned Goose compiler
         run: tools/pin_goose.sh
       - name: Download the pinned client jar (never committed)
-        run: tools/fetch_jar.sh build/jar/client.jar 2>&1 | tee build/fetch-jar.log
+        run: |
+          set -o pipefail
+          mkdir -p evidence/jar
+          if ! tools/fetch_jar.sh build/jar/client.jar 2>&1 | tee build/fetch-jar.log; then
+            cp build/fetch-jar.log evidence/jar/fetch-jar.log
+            echo "::error title=jar download::$(tail -3 build/fetch-jar.log | tr '\n' ' ')"
+            exit 1
+          fi
+          cp build/fetch-jar.log evidence/jar/fetch-jar.log
+          tail -4 build/fetch-jar.log | while IFS= read -r l; do
+            echo "::notice title=jar download::$l"; done
       - name: Check the jar's model data against itself
         run: |
           set -o pipefail
+          ls -l build/jar/client.jar
           GOOSE=build/bin/goose OUT=build/umbra_jarcheck \
             bash -c 'mkdir -p evidence/jar
                      build/bin/goose --standalone --header build/jarcheck.h -o build/jarcheck.c goose/jarcheck.goose
