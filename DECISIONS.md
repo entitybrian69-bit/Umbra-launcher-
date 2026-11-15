@@ -483,3 +483,36 @@ buttons share one row.
 world's footprint - which is right for a terrain world and wrong for a tall pillar;
 the camera numbers are logged and drawn on screen, so the next complaint can be
 diagnosed from a screenshot.
+
+## D-038 - the self-test is a state machine, and the shader was the bug
+
+**Decision.** The GPU self-test runs as an eight-state machine stepped once per
+frame (draw pattern, read, compare a tile, draw cube, read, compare, end, abort),
+with a 30 s watchdog, a per-step log line, and an offscreen framebuffer target
+that falls back to reading the window if the driver refuses a colour texture plus
+depth renderbuffer. The pattern shader declares `precision highp int`. Pixels under
+the overlay are excluded by overlap, and `tools/check_c.sh` fails if the shader
+loses its precision line.
+
+**Why.** The owner's phone reported `GPU self-test FAIL: 2458665 bad of 4950720 px`
+— two passes of a 2292x1080 surface, so 2475360 pixels per pass. The arithmetic
+says 2475360 - 2458665 = 16695 pixels matched. A fragment shader's `int` defaults
+to mediump, which is 16 bits on Mali; `x * 255` overflows past x = 128, and only
+pixels with both x and y below 129 survive, which is 16641 — within 54 of the
+reported number. The failure was not the overlay contaminating the comparison, and
+not a bad driver: it was a precision declaration nobody wrote. The first version of
+the test then did two full-frame readbacks and five million comparisons inside one
+frame, and the previous run ended at `SELF-TEST: BEGIN (2292x1080)` because Android
+force-stopped the app for not touching the main looper for five seconds. That is an
+ANR, not a crash, and the log could not say so.
+
+**Costs.** A self-test now takes eighteen frames per pass instead of one, so its
+wall-clock duration includes the frames it waits for; the elapsed number is
+honest, the throughput number would not be. The watchdog can end a test that is
+merely slow (30 s at 60 Hz is roughly the full-screen readback budget of a very
+slow driver), and it reports "watchdog: 30 s in compare pattern" rather than a
+verdict. Excluding the overlay by overlap means roughly half a million pixels are
+not compared on the fallback path, where the panel is a quarter of the screen —
+that is a real loss of coverage, and it is logged as `N px not compared (under the
+overlay)` so nobody mistakes it for a full comparison. `precision highp int` costs
+Mali a few cycles per fragment in a shader that only runs during the self-test.
