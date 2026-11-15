@@ -73,3 +73,16 @@ is a bug we have not found yet. Nothing in this file is fixed by claiming it is.
   (fullscreen pattern, textured/coloured geometry, depth). It does not prove the
   world renderer's state at every path, and it is not a substitute for looking at
   a phone's screen.
+
+## The jar work stops at the model data
+
+The jar job proves that 26.3's blockstates and models resolve: 2603 used models,
+25 048 faces, 3964 textures, 0 problems. It says nothing about pixels yet —
+nothing in the client reads those models, packs an atlas, or draws them. The
+mesher still builds its demo world out of single-colour cubes, so the home screen
+shows no textures at all. Until a world is drawn from the jar's own models, there
+are no parity numbers to publish.
+
+The checker also does not read `data/` (loot tables, worldgen, recipes), the asset
+index's 487 MB of objects, block `states` beyond `variants`/`multipart`, or
+`item_components`. Only what the renderer will need first.

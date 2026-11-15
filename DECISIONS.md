@@ -50,6 +50,41 @@ Windows job takes ~6 minutes and installs a toolchain each run; publishing its
 evidence must happen in Git Bash rather than MSYS2, because the checkout's git
 credentials belong to the Windows git that Git Bash uses.
 
+## D-026 What the real jar taught the checker, in one place
+
+Four rules changed after looking at 26.3's own files, each because the first
+version of the checker called correct data broken:
+
+- A model is only checked if a blockstate can render it. `block/cube_all.json`
+  carries `"all": "#all"` as a slot for a child to fill, and `block/air.json`
+  names `block/air`, a texture that does not exist — both are fine precisely
+  because nothing draws them (1589 of 4192 models are unused).
+- Inverted boxes are legal: `block/cube_all_inner_faces.json` has `from` greater
+  than `to` on purpose (16 such boxes in the jar).
+- A texture value may be an object — `{"sprite": "minecraft:block/x",
+  "force_translucent": true}` — which is how every stained glass model names its
+  texture in 26.3.
+- A face's `texture` may omit the `#` (`heavy_core` says `"texture": "all"`), and
+  every part of a box `rotation` is optional.
+- The "whole number of square frames" rule applies to block textures only; GUI,
+  entity, painting and panorama sprites are any size.
+
+Decision: the checker keeps strict rules where the client is strict (models that
+exist, parents that exist, textures that exist, four UV numbers per face) and
+stops inventing rules where the client is lenient. Cost: it can no longer catch a
+"physically odd" box, only a malformed one.
+
+## D-025 The game version is pinned to 26.3, and the jar is fetched, never committed
+
+`MC_VERSION=26.3`, the latest release in Mojang's manifest when this was written
+(released 2026-09-15, java 25, asset index 34). `tools/fetch_jar.sh` verifies the
+version JSON against the manifest's sha1 and the client jar against the sha1 and
+size inside that JSON, so a redirected or truncated download fails loudly. The
+41 MB jar itself is never committed: `evidence/jar/` holds the pin, the
+checksums and the checker's output only. Cost: the jar job needs the network and
+about eight minutes; the sandbox that writes the code cannot reach Mojang at all,
+so the pin can only be confirmed in CI.
+
 ## D-018 The home screen is a fixed view, so the screenshot gate compares like with like
 
 The first device screenshots showed the scene drifting: the camera orbited with

@@ -17,10 +17,15 @@ self-test and survives a soak**, and the screenshot gate has a committed
 reference to compare against.
 
 Both PC binaries are built and executed in CI on their own platforms, with
-checksums committed as evidence. There is still **no download link** (no GitHub
-release has been published), no parity numbers, and no ARM execution: the arm64
-APK is built but never run. Umbra is not Minecraft, and the parity table is
-empty.
+checksums committed as evidence. The official client jar for **26.3** is now
+downloaded in CI (never committed) and its model data is checked against itself:
+every model a blockstate can render resolves through its parent chain to
+textures that exist in the jar. That is the first half of gate 6 — the second
+half, comparing *rendered* worlds with the real client, is not started.
+
+There is still **no download link** (no GitHub release has been published), no
+world-parity numbers, and no ARM execution: the arm64 APK is built but never
+run. Umbra is not Minecraft, and the parity table is empty.
 
 | Gate | State | Evidence |
 |---|---|---|
@@ -30,10 +35,41 @@ empty.
 | 4. Core tests on x86_64 | PASSING | run `43674038711`, step `Core test suite (formats, mesher)`: `PASS mem (19) inflate (97) zip (137) png (153) nbt (196) region (237) json (302) mesh (340)`, `all modules passed` (`evidence/ci/core-tests.txt`) |
 | 4. Core tests on arm64 | NOT DONE | no ARM runner; the APK's arm64 build is compiled, never executed |
 | 5. PC builds (Windows x64, Linux x64) + headless self-test | PASSING | run `43674038711`: `Linux x64 build + headless self-test` and `Windows x64 build + headless self-test` both `completed success`; the Windows binary ran under MSYS2 UCRT64 on `windows-latest`, not under Wine. `evidence/ci/pc-linux-x64.txt` and `pc-windows-x64.txt` both end `PASS: 19 checks, 0 failures`; sha256 `1a1c76665f5a013b…` (linux) and `0190ba968e53b943…` (windows) |
-| 6. Parity tests against the real game | NOT DONE | no jar has been downloaded yet |
+| 6a. The jar's model data is self-consistent | PASSING | run `43680833198`: `PASS: every model a blockstate can render resolves through its chain (2603 models, 25048 faces, 3964 textures)`; jar `26.3`, 41 483 720 bytes, sha1 `e877b6a07acd633f…`, verified against Mojang's manifest at test time (`evidence/jar/pin.txt`, `evidence/jar/jarcheck.txt`) |
+| 6b. World parity against the real client | NOT DONE | nothing renders the jar's models yet; the mesher still uses a demo world |
 | 7. Release assets verified by re-download | NOT DONE | — |
 
 ## Verified results (command output, not claims)
+
+### The official jar's model data (run 43680833198, version 26.3)
+
+```
+jar: read 41483720 bytes from build/jar/client.jar
+jar: 34227 entries
+jar: blockstates 1288, models 4192, textures 3964
+jar: blockstate model references 10290, distinct models used 2603 (1589 unused)
+jar: parent links followed 4176, parents that exist 4176, builtin parents 0
+jar: used models with elements 2544, boxes 6128, faces 25048, faces whose texture resolved to a PNG 25048, uv sets 20908, faces naming a key without '#' 6
+jar: texture variable hops 2740, inverted boxes (legal) 16, box rotations 1918 (26 with no angle, 0 with no origin)
+jar: multipart blockstates 104, weighted variant lists 75
+jar: textures decoded 159, sane sizes 159 (5 animated strips), tallest 512 px
+jar: problems 0
+PASS: every model a blockstate can render resolves through its chain (2603 models, 25048 faces, 3964 textures)
+```
+
+What that means concretely: for each of the 2603 models a blockstate can put on
+screen, the checker merges the textures of the model and its parents (the child
+wins), takes the boxes of the first model in the chain that has any, and resolves
+every one of the 25 048 faces — 2740 of them through `#variable` hops — to a PNG
+that exists in the jar. Zero faces fail. 3964 textures are present; 159 were
+decoded and all are sane sizes (five are animated strips, the tallest 512 px).
+
+The checker runs against a synthetic jar first, on every push, with four planted
+faults that it must name (`tools/check_jar.sh`): a blockstate naming a model that
+does not exist, a face key no model defines, a parent that does not exist, and a
+face texture with no PNG.
+
+
 
 ### The GPU self-test, on the CI emulator (run 43670787000)
 
@@ -153,20 +189,17 @@ number quoted above from CI came through one of those channels.
 
 ## Next steps, in order
 
-1. Read the real jar: download the pinned client jar at test time (from the
-   official version manifest, never committed), open it with the core's zip
-   reader, parse its `blockstates` and `models` with the JSON reader, and check
-   the results against the jar's own contents (every blockstate must resolve to a
-   model that exists, every texture a model names must exist, every box UV must
-   fit its texture).
-2. Feed those models and a texture atlas into the mesher, and replace the
-   untextured demo world in the app with real block models.
-3. Move meshing off the window thread and make it faster: 4.6 s to mesh 370k
+1. Build the atlas and the block model set from the jar (the mesher currently
+   draws an untextured demo world): `blockstates` + `models` + a texture atlas
+   packed from the jar's `textures/block`.
+2. Render a real world with those models on the emulator, and commit a new
+   screenshot reference when the home screen changes legitimately.
+3. World parity (gate 6b): a fixed seed, a fixed world, and a comparison of
+   Umbra's render against the real client's — the parity table starts here.
+4. Move meshing off the window thread and make it faster: 4.6 s to mesh 370k
    vertices on the emulator is the dominant start-up cost.
-4. Publish a GitHub release with the APK and both PC binaries, then re-download
+5. Publish a GitHub release with the APK and both PC binaries, then re-download
    the assets and verify their checksums (gate 7).
-5. Stage 3 world gates against the official server jar, then fill in the parity
-   table with measured match rates.
 
 ## Blockers
 
