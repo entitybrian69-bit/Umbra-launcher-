@@ -1,0 +1,81 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'org.umbra.client'
+    compileSdk 35
+    // The NDK version comes from the machine: CI exports the newest installed
+    // one, and a developer needs nothing but ANDROID_NDK_HOME. Nothing here
+    // assumes a version that may not exist on the runner.
+    def ndkFromEnv = System.getenv('UMBRA_NDK_VERSION')
+    if (ndkFromEnv != null && !ndkFromEnv.isEmpty()) {
+        ndkVersion ndkFromEnv
+    }
+
+    defaultConfig {
+        applicationId 'org.umbra.client'
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName '0.1.0'
+        ndk {
+            // arm64 is what phones run; x86_64 is what the CI emulator runs.
+            abiFilters 'arm64-v8a', 'x86_64'
+        }
+        externalNativeBuild {
+            cmake {
+                // The commit goes into the app so a screenshot or a log can be
+                // matched to the exact source it came from.
+                def gitCommit = (System.getenv('UMBRA_GIT_COMMIT') ?: 'unknown').trim()
+                arguments '-DANDROID_STL=none', "-DUMBRA_GIT_COMMIT=${gitCommit}"
+                cppFlags ''
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path '../../platform/android/CMakeLists.txt'
+            version '3.22.1'
+        }
+    }
+
+    signingConfigs {
+        release {
+            // A persistent key so releases can be upgraded in place. The
+            // keystore and its password are part of the repository on purpose;
+            // see DECISIONS.md (D-013) for what that does and does not protect.
+            storeFile file('../../ci/umbra-release.p12')
+            storePassword 'umbra-release'
+            keyAlias 'umbra'
+            keyPassword 'umbra-release'
+            storeType 'PKCS12'
+        }
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            ndk { debugSymbolLevel 'none' }
+        }
+        debug {
+            applicationIdSuffix '.debug'
+        }
+    }
+
+    buildFeatures { prefab false }
+}
+
+// The Goose core is generated before Gradle configures CMake.
+tasks.register('buildGooseCore', Exec) {
+    workingDir rootProject.projectDir.parentFile
+    commandLine 'bash', 'tools/gen_core.sh'
+}
+tasks.configureEach { task ->
+    if (task.name.startsWith('configureCMake') || task.name.startsWith('buildCMake')
+        || task.name.startsWith('externalNativeBuild')) {
+        task.dependsOn 'buildGooseCore'
+    }
+}

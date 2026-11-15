@@ -1,0 +1,141 @@
+name: pc
+# Gate 5: the same C and Goose the APK ships, built for PC and executed.
+#
+# Linux x64 runs natively on the runner. Windows x64 is built and run inside
+# MSYS2's MINGW64 environment, which is a real 64-bit Windows process on a real
+# Windows runner, not a cross-compiled binary that nobody ever started.
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  linux-x64:
+    name: Linux x64 build + headless self-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+      - name: Build the pinned Goose compiler
+        run: tools/pin_goose.sh
+      - name: Generate the Goose core as C
+        run: GOOSE=build/bin/goose tools/gen_core.sh
+      - name: Core test suite (formats, mesher)
+        run: GOOSE=build/bin/goose tools/run_tests.sh 2>&1 | tee core-tests.txt
+      - name: Build the Linux x64 headless host and run its self-test
+        run: GOOSE=build/bin/goose CC=gcc OUT=build/pc/umbra_headless tools/build_pc.sh 2>&1 | tee pc-selftest.txt
+      - name: Package the binary with a checksum
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cp build/pc/umbra_headless dist/umbra-linux-x64
+          (cd dist && sha256sum umbra-linux-x64 > SHA256SUMS)
+          cat dist/SHA256SUMS
+          file dist/umbra-linux-x64
+          echo "::notice title=linux-x64::$(cat dist/SHA256SUMS)"
+      # The numbers go out as annotations and as a file committed to the
+      # branch: job logs and artifact downloads are both unreadable to the
+      # environment that drives this project.
+      - name: Publish the self-test text
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/ci
+          [ -f pc-selftest.txt ] && cp pc-selftest.txt evidence/ci/pc-linux-x64.txt || true
+          [ -f core-tests.txt ] && cp core-tests.txt evidence/ci/core-tests.txt || true
+          [ -f dist/SHA256SUMS ] && cp dist/SHA256SUMS evidence/ci/pc-linux-x64.sha256 || true
+          grep -E "^(PASS|FAILED): " pc-selftest.txt 2>/dev/null | while IFS= read -r l; do
+            echo "::notice title=linux-x64::$l"; done
+          git config user.name "umbra ci"
+          git config user.email "ci@umbra.invalid"
+          git add -f evidence/ci
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "ci: pc evidence (linux x64) from run $GITHUB_RUN_ID [skip ci]"
+          git push origin "HEAD:$GITHUB_REF_NAME"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: umbra-linux-x64
+          path: |
+            dist/umbra-linux-x64
+            dist/SHA256SUMS
+            pc-selftest.txt
+            core-tests.txt
+
+  windows-x64:
+    name: Windows x64 build + headless self-test
+    runs-on: windows-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+      - uses: msys2/setup-msys2@v2
+        with:
+          # UCRT64 rather than MINGW64: MSYS2 deprecated the latter.
+          msystem: UCRT64
+          update: false
+          install: >-
+            git
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+      - name: Build and run (MSYS2 UCRT64)
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          export GOOSE_CMAKE_GENERATOR=Ninja
+          tools/pin_goose.sh
+          GOOSE=build/bin/goose.exe tools/gen_core.sh
+          GOOSE=build/bin/goose.exe CC=gcc OUT=build/pc/umbra_headless.exe tools/build_pc.sh 2>&1 | tee pc-selftest.txt
+          mkdir -p dist
+          cp build/pc/umbra_headless.exe dist/umbra-windows-x64.exe
+          (cd dist && sha256sum umbra-windows-x64.exe > SHA256SUMS)
+          cat dist/SHA256SUMS
+          echo "::notice title=windows-x64::$(cat dist/SHA256SUMS)"
+      # Publishing runs in Git Bash, not MSYS2: the checkout's credentials are
+      # configured for the Windows git that Git Bash uses. It is non-fatal: the
+      # gate is the self-test above, and a publish failure is reported loudly as
+      # a warning annotation (with the trace) instead of hiding the result.
+      - name: Publish the self-test text
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/ci
+          grep -E "^(PASS|FAILED): " pc-selftest.txt 2>/dev/null | while IFS= read -r l; do
+            echo "::notice title=windows-x64::$l"; done
+          publish() {
+            set -x
+            [ -f pc-selftest.txt ] && cp pc-selftest.txt evidence/ci/pc-windows-x64.txt
+            [ -f dist/SHA256SUMS ] && cp dist/SHA256SUMS evidence/ci/pc-windows-x64.sha256
+            git config user.name "umbra ci"
+            git config user.email "ci@umbra.invalid"
+            git add -f evidence/ci
+            if git diff --cached --quiet; then echo "nothing to publish"; return 0; fi
+            git commit -m "ci: pc evidence (windows x64) from run $GITHUB_RUN_ID [skip ci]"
+            git push origin "HEAD:$GITHUB_REF_NAME"
+          }
+          if ! out=$(publish 2>&1); then
+            echo "::warning title=windows-x64 publish::$out"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: umbra-windows-x64
+          path: |
+            dist/umbra-windows-x64.exe
+            dist/SHA256SUMS
+            pc-selftest.txt
