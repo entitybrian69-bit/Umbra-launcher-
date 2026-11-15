@@ -972,6 +972,26 @@ static void gpu_timer_load(umbra_app *app) {
 // the benchmark runs; a result that is not ready yet stays in flight.
 static void gpu_timer_collect(umbra_app *app) {
     if (!g_gpu_timer.ready) return;
+    int pending = 0;
+    for (int i = 0; i < UMBRA_GPU_QUERIES; i++) pending += g_gpu_timer.in_flight[i] ? 1 : 0;
+    if (!pending) return;
+#ifdef __ANDROID__
+    // A reset of the GPU (a driver recovery, a thermal event) makes every result
+    // in flight a number, but not a measurement. The extension says so, and the
+    // benchmark then reports that it had no GPU time rather than a wrong one.
+    GLint disjoint = 0;
+    glGetIntegerv(GL_GPU_DISJOINT_EXT, &disjoint);
+    if (disjoint) {
+        for (int i = 0; i < UMBRA_GPU_QUERIES; i++) g_gpu_timer.in_flight[i] = 0;
+        g_gpu_timer.active = 0;
+        app->gpu_time_us = 0;
+        app->gpu_frames = 0;
+        app->gpu_timer_disjoint = 1;
+        app->gpu_timer_supported = 0;
+        umbra_log(app, "gpu timer: results discarded, GL_GPU_DISJOINT_EXT was set");
+        return;
+    }
+#endif
     for (int i = 0; i < UMBRA_GPU_QUERIES; i++) {
         if (!g_gpu_timer.in_flight[i]) continue;
         GLuint ready = 0;

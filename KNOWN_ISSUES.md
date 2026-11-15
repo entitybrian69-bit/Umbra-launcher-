@@ -5,13 +5,18 @@ is a bug we have not found yet. Nothing in this file is fixed by claiming it is.
 
 ## Stage 2 (Android shell) — open at the time of writing
 
-* **Nothing has run on a phone GPU.** The only device that has run the app is the
-  CI emulator, x86_64, with SwiftShader as the GLES 3.0 implementation. Frame
-  times measured there (about 60-90 ms per frame) are a software rasteriser's
-  numbers and say nothing about a phone. The `highp` fragment path is reported
-  (`fragment highp 127^23`) but has not been executed on real hardware.
-* **Nothing has run on ARM.** The arm64 slice compiles and is inside the APK, and
-  no arm64 device has executed it.
+* **The phone has run `0.3.1`, and `0.3.2` has not.** The owner's Mali-G57 MC2 ran
+  `0.3.1` and produced the three numbers this release is built on: `GPU self-test
+  FAIL: 2458665 bad of 4950720 px`, a previous run that ended at `SELF-TEST: BEGIN
+  (2292x1080)`, and a benchmark of 59 FPS. The fixes for all three are in `0.3.2`
+  and are **unconfirmed on hardware** -- confirming them is what the owner's next
+  run is for. The CI emulator (x86_64, SwiftShader) frame times, about 60-90 ms,
+  are a software rasteriser's numbers and say nothing about a phone.
+* **The self-test has never taken its fallback path on a device.** The new state
+  machine has run on the CI emulator, which provides a complete framebuffer object
+  (RGBA8 + depth). A driver that refuses depth 24 falls back to depth 16 and then
+  to reading the window; that third path exists for a reason but no device has
+  taken it.
 * **Meshing is sliced, not threaded.** It used to be one 5.3 s call
   (`demo world built in 2.7 ms, meshed in 5304.1 ms`); it is now stepped from the
   frame loop at `UMBRA_MESH_BUDGET_MS 6`, and one step can overrun by a single mesh
@@ -20,8 +25,23 @@ is a bug we have not found yet. Nothing in this file is fixed by claiming it is.
   screen instead of freezing, but initial start-up is not faster. Moving it to a
   worker thread is Stage 3.
 * **The 1% low is a CPU frame-time statistic**, measured between `glFinish`-bounded
-  frame boundaries in `umbra_app.c`. It is not a GPU timestamp query and not a
-  present-to-present number; on a phone with a compositor those differ.
+  frame boundaries in `umbra_app.c`. GPU time comes from
+  `EXT_disjoint_timer_query` when the driver has it, and the two are reported on
+  separate lines; neither is a present-to-present number, and on a phone with a
+  compositor all three differ.
+* **"Uncapped requested" is not "uncapped".** The benchmark calls `eglSwapInterval(0)`
+  and logs whether EGL accepted it, but Android's compositor still throttles to the
+  display's refresh rate in many configurations. The benchmark line says which of
+  `uncapped requested`, `refused` or `capped by the platform` happened; it never
+  presents the 59 FPS of `0.3.1` as a GPU limit when it was the 60 Hz cap.
+* **The overlay is excluded from the comparison, by overlap.** Every pixel any part
+  of the panel or a button touches is skipped, and the count is logged. On the
+  fallback path (no framebuffer object) that is a large fraction of a landscape
+  phone screen -- about half of 2412x1080, because the panel is a quarter of the
+  height. On the offscreen path nothing is skipped.
+* **The 30 s self-test watchdog can end a merely slow test.** It reports
+  `watchdog: 30 s in compare pattern` instead of a verdict: honest, but a very slow
+  driver then gets no pixel verdict at all.
 * **The EGL surface can come up before the window has buffers.** It did on run
   `43687356640` (`EGL up: 1x1`) and the whole run drew a blank screen. The size is
   now re-read every frame (D-031) and the smoke test fails on a surface narrower
@@ -55,9 +75,10 @@ is a bug we have not found yet. Nothing in this file is fixed by claiming it is.
 * **The released Windows `.exe` is verified under wine, not on Windows.** The `pc`
   workflow runs a natively built `.exe` on `windows-latest`; the release job runs
   the shipped one under wine because no Windows machine is available to it.
-* **No download link yet.** `.github/workflows/release.yml` builds the APK and both
-  PC binaries from a tag, publishes a pre-release and re-downloads every asset to
-  check it, but no tag has been pushed, so nothing is published and gate 7 is open.
+* **The published builds are pre-releases, and the only one that has ever run on a
+  phone is `0.3.1`.** `v0.3.0-pre` and `v0.3.1-pre` stay published; every asset of
+  both was downloaded again and hashed. Nothing published has been installed by
+  anyone but the owner.
 * **No world from the real game has been opened.** No parity numbers exist. Umbra
   is not Minecraft and the parity table is empty.
 * **No Umbmod loader, no shader pipeline, no multiplayer.** Stages 6-9 are not
@@ -92,7 +113,10 @@ is a bug we have not found yet. Nothing in this file is fixed by claiming it is.
 * The GPU self-test proves the GLES pipeline used by the shaders it runs
   (fullscreen pattern, textured/coloured geometry, depth). It does not prove the
   world renderer's state at every path, and it is not a substitute for looking at
-  a phone's screen.
+  a phone's screen. The `0.3.1` failure is the proof: the test linked, drew and
+  compared, and its own shader was wrong -- `int` was mediump. A desktop driver
+  defaults `int` to highp and would never reproduce it, which is why the source
+  check in `tools/check_c.sh` exists.
 
 ## The jar work stops at the model data
 
