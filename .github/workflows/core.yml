@@ -7,6 +7,8 @@ jobs:
   core-tests:
     name: Goose core tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Toolchain versions
@@ -34,6 +36,23 @@ jobs:
         run: GOOSE=build/bin/goose tools/check_jar.sh 2>&1 | tee build/jar-check.log
       - name: Compile-check the shared C without the NDK (both branches)
         run: GOOSE=build/bin/goose tools/gen_core.sh && bash tools/check_c.sh
+      - name: Commit the numbers
+        # Artifacts and job logs cannot be read from the machine that drives this
+        # project, so the evidence goes into the branch (D-016).
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/ci
+          {
+            echo "host: $(uname -m)"
+            echo "compiler: $(cc --version | head -1)"
+            echo "run: $GITHUB_RUN_ID"
+            echo "commit: $GITHUB_SHA"
+            echo
+            tail -20 build/core-tests.log
+          } > evidence/ci/core-tests-x86_64.txt
+          git add -f evidence/ci
+          bash tools/commit_evidence.sh "ci: x86_64 core-test evidence from run $GITHUB_RUN_ID [skip ci]"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -50,6 +69,8 @@ jobs:
     # from the host) and it is only compiled, never run, by the android job.
     name: Goose core tests (arm64)
     runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Toolchain versions
@@ -69,6 +90,22 @@ jobs:
             echo "::notice title=arm64::$l"; done
           tail -3 build/arm64-tests.log | while IFS= read -r l; do
             echo "::notice title=arm64::$l"; done
+      - name: Commit the numbers
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/ci
+          {
+            echo "host: $(uname -m)"
+            echo "compiler: $(cc --version | head -1)"
+            echo "run: $GITHUB_RUN_ID"
+            echo "commit: $GITHUB_SHA"
+            echo "note: this is the host test suite on ARM, not the Android arm64 .so"
+            echo
+            tail -20 build/arm64-tests.log
+          } > evidence/ci/core-tests-arm64.txt
+          git add -f evidence/ci
+          bash tools/commit_evidence.sh "ci: arm64 core-test evidence from run $GITHUB_RUN_ID [skip ci]"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
