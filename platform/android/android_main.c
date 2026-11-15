@@ -36,6 +36,80 @@ typedef struct {
 
 static android_state g_st;
 
+// --- system insets and density -----------------------------------------
+//
+// The app draws edge to edge, which since Android 15 is not a choice, so the
+// HUD has to stay inside the status bar, the navigation bar and the cutout. The
+// NDK exposes none of that: the values come from the framework through JNI.
+// WindowInsets.getSystemWindowInset* is deprecated but still implemented on
+// every API level this app supports (24 and up), and it is the only variant that
+// exists on all of them, so it is what is used. Failures are not fatal: zero
+// insets means the HUD moves under the bars, which is bad but not a crash.
+static JNIEnv *activity_env(android_state *st) {
+    if (!st->state || !st->state->activity || !st->state->activity->vm) return NULL;
+    JavaVM *vm = st->state->activity->vm;
+    JNIEnv *env = NULL;
+    if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
+        if ((*vm)->AttachCurrentThread(vm, &env, NULL) != JNI_OK) return NULL;
+    }
+    return env;
+}
+
+static void fill_insets(android_state *st) {
+    umbra_app *app = &st->app;
+    for (int i = 0; i < 4; i++) app->insets[i] = 0;
+    // Density: the configuration carries the bucket, and the HUD's text is
+    // scaled by it so a 6-inch phone and a 4-inch phone look alike.
+    int dpi = 0;
+    if (st->state && st->state->config) {
+        dpi = AConfiguration_getDensity(st->state->config);
+    }
+    if (dpi <= 0) dpi = 320;
+    app->dpi_scale = (float)dpi / 160.0f;
+
+    JNIEnv *env = activity_env(st);
+    if (!env) { ALOGI("insets: no JNI environment, using zero"); return; }
+    jobject activity = st->state->activity->clazz;
+    jclass cls = (*env)->GetObjectClass(env, activity);
+    if (!cls) return;
+
+    jmethodID getWindow = (*env)->GetMethodID(env, cls, "getWindow", "()Landroid/view/Window;");
+    if (!getWindow) { ALOGI("insets: no getWindow"); return; }
+    jobject window = (*env)->CallObjectMethod(env, activity, getWindow);
+    if (!window) { ALOGI("insets: no window"); return; }
+    jclass window_cls = (*env)->GetObjectClass(env, window);
+    jmethodID getDecorView = (*env)->GetMethodID(env, window_cls, "getDecorView", "()Landroid/view/View;");
+    if (!getDecorView) return;
+    jobject decor = (*env)->CallObjectMethod(env, window, getDecorView);
+    if (!decor) return;
+    jclass view_cls = (*env)->GetObjectClass(env, decor);
+    jmethodID getRootWindowInsets = (*env)->GetMethodID(env, view_cls, "getRootWindowInsets",
+                                                        "()Landroid/view/WindowInsets;");
+    if (!getRootWindowInsets) {
+        ALOGI("insets: getRootWindowInsets missing (API < 23?)");
+        return;
+    }
+    jobject insets = (*env)->CallObjectMethod(env, decor, getRootWindowInsets);
+    if (!insets) { ALOGI("insets: the decor view has no insets yet"); return; }
+    jclass insets_cls = (*env)->GetObjectClass(env, insets);
+    struct { const char *name; int slot; } fields[4] = {
+        {"getSystemWindowInsetLeft", 0}, {"getSystemWindowInsetTop", 1},
+        {"getSystemWindowInsetRight", 2}, {"getSystemWindowInsetBottom", 3},
+    };
+    for (int i = 0; i < 4; i++) {
+        jmethodID m = (*env)->GetMethodID(env, insets_cls, fields[i].name, "()I");
+        if (!m) continue;
+        app->insets[fields[i].slot] = (*env)->CallIntMethod(env, insets, m);
+    }
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionClear(env);
+        ALOGE("insets: a JNI call threw; insets may be wrong");
+    }
+    ALOGI("insets: %d,%d,%d,%d on %dx%d, density bucket %d (scale %.2f)",
+          app->insets[0], app->insets[1], app->insets[2], app->insets[3],
+          app->width, app->height, dpi, app->dpi_scale);
+}
+
 static int init_egl(android_state *st) {
     st->display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (st->display == EGL_NO_DISPLAY) { ALOGE("no EGL display"); return 0; }
@@ -191,6 +265,9 @@ static void handle_cmd(struct android_app *state, int32_t cmd) {
             break;
         case APP_CMD_WINDOW_RESIZED:
         case APP_CMD_CONFIG_CHANGED:
+            // Rotation, a fold, the bars appearing or a different density all
+            // land here; the HUD has to be re-laid out with the new insets.
+            fill_insets(st);
             if (st->egl_ready) {
                 EGLint w = 0, h = 0;
                 eglQuerySurface(st->display, st->surface, EGL_WIDTH, &w);
@@ -263,6 +340,7 @@ void android_main(struct android_app *state) {
         if (!started) {
             g_st.app.width = g_st.width;
             g_st.app.height = g_st.height;
+            fill_insets(&g_st);
             if (!umbra_app_init(&g_st.app)) {
                 ALOGE("app init failed");
                 return;

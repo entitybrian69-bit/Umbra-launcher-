@@ -85,6 +85,30 @@ checksums and the checker's output only. Cost: the jar job needs the network and
 about eight minutes; the sandbox that writes the code cannot reach Mojang at all,
 so the pin can only be confirmed in CI.
 
+## D-028 A history incident, and what protects the work now
+
+On 2026-11-15 a `git pull --rebase` against a branch that CI also commits to
+(evidence commits) left the local branch's ancestry broken: the local head's
+parent was the session's base commit rather than the previous work, so every
+local commit looked like it re-added the whole tree, and the rebase produced
+add/add conflicts on files that had existed for days. Nothing was lost — the
+working tree held every change — but the local history was not the sequence it
+appeared to be.
+
+The recovery was: keep the working tree, re-commit onto the remote tip
+(`git reset --mixed origin/…`, restore the remote's evidence files, commit once).
+The state before recovery is preserved on `backup-before-reset`, the old `main`
+(`c10bffc`, the repository's initial commit) is preserved on `legacy`, and both
+are pushed. Nothing was force-pushed and no branch was deleted.
+
+What changes because of it: CI writing to the same branch that work happens on is
+the root cause — an evidence commit landing between a `pull` and a `push` makes a
+rebase the default answer, and a rebase is what went wrong. From now on the
+branch is pulled only with `git pull --rebase` *after* confirming the working
+tree is clean, and the tip is checked against the remote before any push
+(`git ls-remote`); releases are tagged from this branch rather than by moving
+`main`, so a later recovery can never disturb a published version.
+
 ## D-018 The home screen is a fixed view, so the screenshot gate compares like with like
 
 The first device screenshots showed the scene drifting: the camera orbited with

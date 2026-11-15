@@ -11,3 +11,23 @@ uint64_t umbra_c_bits_of_f64(double v) { uint64_t b; memcpy(&b, &v, 8); return b
 
 #include <time.h>
 uint32_t umbra_c_time_seconds(void) { return (uint32_t)time(NULL); }
+
+// Monotonic microseconds. Goose asks for this to measure how much of a frame's
+// meshing budget it has used; the sliced mesher cannot be timed from C without
+// handing the loop back and forth once per section.
+#ifdef _WIN32
+#include <windows.h>
+int64_t umbra_c_now_us(void) {
+    static LARGE_INTEGER freq;
+    LARGE_INTEGER now;
+    if (!freq.QuadPart) QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&now);
+    return (int64_t)((double)now.QuadPart * 1000000.0 / (double)freq.QuadPart);
+}
+#else
+int64_t umbra_c_now_us(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+}
+#endif

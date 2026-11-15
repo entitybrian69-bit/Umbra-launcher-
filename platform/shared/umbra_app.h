@@ -23,6 +23,15 @@ typedef enum {
     UMBRA_SCREEN_LOADING,
 } umbra_screen;
 
+// The app's own version, next to the git commit the build records. Bumped with
+// the tag that publishes it (see .github/workflows/release.yml).
+#define UMBRA_APP_VERSION "0.3.0"
+
+// How much meshing a frame may do before it must draw and poll input again.
+// Android starts warning about an unresponsive app after about five seconds; six
+// milliseconds leaves the loop responsive by three orders of magnitude.
+#define UMBRA_MESH_BUDGET_MS 6
+
 typedef struct umbra_app umbra_app;
 
 struct umbra_app {
@@ -74,10 +83,21 @@ struct umbra_app {
     char tail_text[1024];
     bool previous_run_crashed;
 
+    // Meshing is time-sliced: the frame loop lends it a few milliseconds per
+    // frame instead of blocking for seconds, so the activity never looks dead
+    // enough for the system to show "app isn't responding".
+    int mesh_state;            // 0 idle, 1 running, 2 done
+    int mesh_progress;         // permille
+    int64_t mesh_calls, mesh_worst_call_us, mesh_total_us;
+    bool mesh_uploaded;
+
     // Frame timing
     double last_frame_time;
     int64_t frame_us;
+    int64_t max_frame_us;      // the longest frame this run has drawn
     int64_t frames_drawn;
+    int64_t long_frames;       // frames over 250 ms, i.e. visible stalls
+    int64_t selftest_us;
 
 #ifdef __ANDROID__
     ANativeWindow *window;

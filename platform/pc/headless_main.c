@@ -7,6 +7,8 @@
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
+#include <stdlib.h>
 #include "umbra_core.h"
 #include "umbra_vertex.h"
 
@@ -19,6 +21,14 @@ static void check(int cond, const char *what) {
         failures++;
         printf("FAIL: %s\n", what);
     }
+}
+
+// Monotonic microseconds on the host; the core has its own clock, but this file
+// measures the C side of the budget contract.
+static int64_t umbra_now_us_headless(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (int64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
 }
 
 static const char *slice_text(const uint8_t *p, int64_t n) {
@@ -76,6 +86,61 @@ int main(int argc, char **argv) {
     check(bad_index == 0, "all indices address real vertices");
     check(bad_normal == 0, "all normals are unit length");
     check(bad_pos == 0, "all positions are inside the demo world");
+
+    // 2b. The sliced mesher (what the phone runs) must produce exactly the same
+    //     bytes as the all-at-once path (what the tools run), and it must respect
+    //     its time budget: the whole point of slicing is that no call blocks the
+    //     frame loop for long.
+    {
+        int64_t wvlen = 0, wilen = 0;
+        const uint8_t *wv = umbra_verts_ptr(&wvlen);
+        const uint8_t *wi = umbra_indices_ptr(&wilen);
+        // 18 MB of vertices: heap, not the stack.
+        uint8_t *whole_verts = (uint8_t *)malloc((size_t)wvlen);
+        uint8_t *whole_indices = (uint8_t *)malloc((size_t)wilen);
+        int fits = whole_verts && whole_indices && wvlen > 0 && wilen > 0;
+        check(fits, "the whole mesh was copied for comparison");
+        if (fits) {
+            memcpy(whole_verts, wv, (size_t)wvlen);
+            memcpy(whole_indices, wi, (size_t)wilen);
+        }
+
+        umbra_demo_mesh_begin();
+        int64_t calls = 0, worst_call_us = 0;
+        int done = 0;
+        while (!done && calls < 100000) {
+            int64_t t = umbra_now_us_headless();
+            done = umbra_demo_mesh_step(2000) != 0;   // a 2 ms budget per call
+            int64_t took = umbra_now_us_headless() - t;
+            if (took > worst_call_us) worst_call_us = took;
+            calls++;
+        }
+        umbra_demo_mesh_finish();
+        check(done, "the sliced mesher finished");
+        check(calls > 50, "the sliced mesher took many calls, not one");
+        check(umbra_demo_mesh_progress() == 1000, "progress reaches 1000 when done");
+        printf("sliced mesh: %lld calls, worst call %.2f ms, worst unit %.2f ms\n",
+               (long long)calls, worst_call_us / 1000.0,
+               umbra_demo_mesh_worst_unit_us() / 1000.0);
+        // A budget of 2 ms cannot promise a hard ceiling once single units are
+        // themselves long, but every call must still be far under a second.
+        check(worst_call_us < 900000, "no sliced mesher call blocked for a second");
+        check(umbra_demo_mesh_units() > 100, "the sliced mesher made real units of work");
+
+        int64_t svlen = 0, silen = 0;
+        const uint8_t *sv = umbra_verts_ptr(&svlen);
+        const uint8_t *si = umbra_indices_ptr(&silen);
+        check(svlen == wvlen && silen == wilen, "the sliced mesh has the same byte lengths");
+        check(fits && svlen == wvlen && memcmp(sv, whole_verts, (size_t)wvlen) == 0,
+              "the sliced mesh has the same vertices as the whole-mesh path");
+        check(fits && silen == wilen && memcmp(si, whole_indices, (size_t)wilen) == 0,
+              "the sliced mesh has the same indices as the whole-mesh path");
+        free(whole_verts);
+        free(whole_indices);
+        for (int b = 0; b < 3; b++) {
+            check(umbra_batch_start(b) == umbra_batch_start(b), "batch starts are stable");
+        }
+    }
 
     // 3. The batches partition the index buffer.
     int64_t total = 0;

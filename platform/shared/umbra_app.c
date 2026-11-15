@@ -495,6 +495,22 @@ static void create_cube_geometry(umbra_app *app) {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof idx, idx, GL_STATIC_DRAW);
 }
 
+// Uploads the finished mesh. Split from buffer creation because the buffers are
+// made at init and the data only exists after the sliced mesher finishes.
+static void upload_mesh(umbra_app *app) {
+    int64_t vlen = 0, ilen = 0;
+    const uint8_t *verts = umbra_verts_ptr(&vlen);
+    const uint8_t *indices = umbra_indices_ptr(&ilen);
+    glBindVertexArray(app->vao_mesh);
+    glBindBuffer(GL_ARRAY_BUFFER, app->vbo_mesh);
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)vlen, verts, GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->ibo_mesh);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)ilen, indices, GL_STATIC_DRAW);
+    app->mesh_uploaded = true;
+    umbra_log(app, "mesh uploaded: %.1f MB vertices, %.1f MB indices", vlen / 1048576.0,
+              ilen / 1048576.0);
+}
+
 static void create_mesh_buffers(umbra_app *app) {
     glGenVertexArrays(1, &app->vao_mesh);
     glBindVertexArray(app->vao_mesh);
@@ -536,12 +552,9 @@ static void create_hud_buffers(umbra_app *app) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->ibo_hud);
 }
 
-static void build_scene(umbra_app *app) {
-    int64_t t0 = umbra_now_us();
-    umbra_demo_build(20261114);
-    int64_t t1 = umbra_now_us();
-    umbra_demo_mesh();
-    int64_t t2 = umbra_now_us();
+// Everything that needs the finished mesh: counts, bounds, the camera frame and
+// the two GPU buffers. Called once, when the sliced mesher says it is done.
+static void finish_scene(umbra_app *app) {
     app->vert_count = (int32_t)umbra_vert_count();
     app->index_count = (int32_t)umbra_index_count();
     for (int b = 0; b < 3; b++) {
@@ -561,13 +574,55 @@ static void build_scene(umbra_app *app) {
     app->look[0] = app->center[0];
     app->look[1] = umbra_mesh_max_y() - 10.0f;
     app->look[2] = app->center[2];
+    upload_mesh(app);
+    app->mesh_state = 2;
+    app->mesh_progress = 1000;
     umbra_log(app, "mesh bounds x %.1f..%.1f y %.1f..%.1f z %.1f..%.1f, camera %.1f blocks out",
               umbra_mesh_min_x(), umbra_mesh_max_x(), umbra_mesh_min_y(), umbra_mesh_max_y(),
               umbra_mesh_min_z(), umbra_mesh_max_z(), app->cam_dist);
-    umbra_log(app, "demo world built in %.1f ms, meshed in %.1f ms", (t1 - t0) / 1000.0, (t2 - t1) / 1000.0);
     umbra_log(app, "mesh: %d vertices, %d indices; batches %lld/%lld/%lld", app->vert_count,
               app->index_count, (long long)app->batch_count[0], (long long)app->batch_count[1],
               (long long)app->batch_count[2]);
+    umbra_log(app, "startup: meshed in %.1f ms over %lld calls (worst call %.1f ms, worst unit %.1f ms), "
+                   "longest frame %.1f ms, frames over 250 ms: %lld",
+              app->mesh_total_us / 1000.0, (long long)app->mesh_calls,
+              app->mesh_worst_call_us / 1000.0, umbra_demo_mesh_worst_unit_us() / 1000.0,
+              app->max_frame_us / 1000.0, (long long)app->long_frames);
+}
+
+// Build the world (fast) and start meshing it (slow, sliced by the frame loop).
+static void begin_scene(umbra_app *app) {
+    int64_t t0 = umbra_now_us();
+    umbra_demo_build(20261114);
+    int64_t t1 = umbra_now_us();
+    umbra_demo_mesh_begin();
+    app->mesh_state = 1;
+    app->mesh_progress = 0;
+    app->mesh_calls = 0;
+    app->mesh_worst_call_us = 0;
+    app->mesh_total_us = 0;
+    app->screen = UMBRA_SCREEN_LOADING;
+    umbra_log(app, "demo world built in %.1f ms; meshing starts in slices of at most %d ms",
+              (t1 - t0) / 1000.0, UMBRA_MESH_BUDGET_MS);
+}
+
+// Called once per frame while the mesh is incomplete. The budget is a soft cap:
+// a single section cannot be interrupted, so a call can overrun it by one
+// section's work, which the worst-call number above reports.
+static void pump_mesh(umbra_app *app) {
+    if (app->mesh_state != 1) return;
+    int64_t t = umbra_now_us();
+    int done = (int)umbra_demo_mesh_step((int64_t)UMBRA_MESH_BUDGET_MS * 1000);
+    int64_t took = umbra_now_us() - t;
+    app->mesh_calls++;
+    app->mesh_total_us += took;
+    if (took > app->mesh_worst_call_us) app->mesh_worst_call_us = took;
+    app->mesh_progress = (int)umbra_demo_mesh_progress();
+    if (done) {
+        umbra_demo_mesh_finish();
+        finish_scene(app);
+        app->screen = UMBRA_SCREEN_HOME;
+    }
 }
 
 int umbra_app_init(umbra_app *app) {
@@ -577,6 +632,10 @@ int umbra_app_init(umbra_app *app) {
     char log_path[sizeof app->log_path];
     char marker_path[sizeof app->marker_path];
     int32_t width = app->width, height = app->height;
+    // The platform reads the system insets and the density before init (it needs
+    // a window to ask for them), so they must survive the memset too.
+    int32_t insets[4] = {app->insets[0], app->insets[1], app->insets[2], app->insets[3]};
+    float dpi_scale = app->dpi_scale > 0.0f ? app->dpi_scale : 1.0f;
     memcpy(log_path, app->log_path, sizeof log_path);
     memcpy(marker_path, app->marker_path, sizeof marker_path);
     memset(app, 0, sizeof *app);
@@ -586,8 +645,9 @@ int umbra_app_init(umbra_app *app) {
     // it here would lay the HUD out for a 0x0 screen and log nonsense.
     app->width = width;
     app->height = height;
+    for (int i = 0; i < 4; i++) app->insets[i] = insets[i];
+    app->dpi_scale = dpi_scale;
     app->screen = UMBRA_SCREEN_HOME;
-    app->dpi_scale = 1.0f;
     app->bench_seconds = 60;
     snprintf(app->build_text, sizeof app->build_text, "Umbra %s (%s)", "(see HUD)", UMBRA_GIT_COMMIT);
 
@@ -635,8 +695,8 @@ int umbra_app_init(umbra_app *app) {
     create_fullscreen_quad(app);
     create_cube_geometry(app);
     create_hud_buffers(app);
-    build_scene(app);
     create_mesh_buffers(app);
+    begin_scene(app);
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
@@ -713,6 +773,7 @@ static int selftest_begin_target(umbra_app *app, int w, int h) {
 }
 
 static void run_selftest(umbra_app *app) {
+    int64_t st_start = umbra_now_us();
     umbra_log(app, "self-test: begin (%dx%d)", app->width, app->height);
     umbra_selftest_reset();
     (void)glGetError();  // clear anything the last frame left behind
@@ -804,8 +865,10 @@ static void run_selftest(umbra_app *app) {
     app->selftest_checked = pattern_checked + cube_checked;
     app->selftest_max_diff = pattern_diff;
     app->selftest_first_bad = umbra_selftest_first_bad();
-    snprintf(app->selftest_text, sizeof app->selftest_text, "SELFTEST %s (%lld bad of %lld px)",
-             app->selftest_ok ? "PASS" : "FAIL", (long long)total_bad, (long long)app->selftest_checked);
+    app->selftest_us = umbra_now_us() - st_start;
+    snprintf(app->selftest_text, sizeof app->selftest_text, "SELFTEST %s (%lld bad of %lld px, %.0f ms)",
+             app->selftest_ok ? "PASS" : "FAIL", (long long)total_bad,
+             (long long)app->selftest_checked, app->selftest_us / 1000.0);
     umbra_log(app, "%s", app->selftest_text);
     if (!app->selftest_ok) {
         umbra_log(app, "self-test: first bad pixel index %lld", (long long)app->selftest_first_bad);
@@ -865,7 +928,10 @@ static void draw_hud(umbra_app *app) {
     hud_rect(0, 0, (float)app->width, (float)(220 + app->insets[1]), 0.0f, 0.0f, 0.0f, 0.55f);
     hud_text(x, y, s, 1, 1, 1, 1, "UMBRA - not an official Minecraft product");
     y += line * 1.6f;
-    snprintf(buf, sizeof buf, "build %s  gl %s", UMBRA_GIT_COMMIT, app->gl_version);
+    snprintf(buf, sizeof buf, "Umbra %s  build %s", UMBRA_APP_VERSION, UMBRA_GIT_COMMIT);
+    hud_text(x, y, s, 0.8f, 0.9f, 1.0f, 1, buf);
+    y += line;
+    snprintf(buf, sizeof buf, "vulkan-free GLES3  gl %s", app->gl_version);
     hud_text(x, y, s, 0.8f, 0.9f, 1.0f, 1, buf);
     y += line;
     snprintf(buf, sizeof buf, "renderer %s", app->gl_renderer);
@@ -875,9 +941,16 @@ static void draw_hud(umbra_app *app) {
              app->highp_vertex, app->highp_fragment);
     hud_text(x, y, s, 0.8f, 0.9f, 1.0f, 1, buf);
     y += line;
-    snprintf(buf, sizeof buf, "mesh %d verts %d indices  frame %.2f ms",
-             app->vert_count, app->index_count, app->frame_us / 1000.0);
-    hud_text(x, y, s, 0.8f, 0.9f, 1.0f, 1, buf);
+    if (app->mesh_state == 1) {
+        snprintf(buf, sizeof buf, "LOADING WORLD %d%%  %.1f s  (frame %.1f ms)",
+                 app->mesh_progress / 10, app->mesh_total_us / 1e6, app->frame_us / 1000.0);
+        hud_text(x, y, s, 1.0f, 0.9f, 0.4f, 1, buf);
+    } else {
+        snprintf(buf, sizeof buf, "mesh %d verts %d indices  frame %.2f ms  worst %.1f ms",
+                 app->vert_count, app->index_count, app->frame_us / 1000.0,
+                 app->max_frame_us / 1000.0);
+        hud_text(x, y, s, 0.8f, 0.9f, 1.0f, 1, buf);
+    }
     y += line;
     if (app->selftest_ran) {
         hud_text(x, y, s, app->selftest_ok ? 0.4f : 1.0f, app->selftest_ok ? 1.0f : 0.3f, 0.4f, 1,
@@ -936,10 +1009,20 @@ void umbra_app_frame(umbra_app *app) {
     }
     app->last_frame_time = (double)t0;
 
+    if (app->frame_us > app->max_frame_us) app->max_frame_us = app->frame_us;
+    if (app->frame_us > 250000) {
+        app->long_frames++;
+        // A frame this long is a stall a person can see; the log keeps the worst
+        // ones so a phone report says where the time went.
+        umbra_log(app, "long frame %.1f ms (mesh %d%%, %lld calls)", app->frame_us / 1000.0,
+                  app->mesh_progress / 10, (long long)app->mesh_calls);
+    }
+    pump_mesh(app);
+
     glViewport(0, 0, app->width, app->height);
     glClearColor(0.55f, 0.70f, 0.92f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    draw_scene(app);
+    if (app->mesh_uploaded) draw_scene(app);
     draw_hud(app);
     app->frames_drawn++;
     if (app->selftest_requested) {
@@ -968,6 +1051,13 @@ void umbra_app_frame(umbra_app *app) {
 
 void umbra_app_touch(umbra_app *app, int32_t x, int32_t y, bool down) {
     if (!down) return;
+    if (app->mesh_state != 2) {
+        // The buttons need the finished world: the self-test draws into its own
+        // target but the benchmark measures the frame loop, and both would
+        // measure the loading screen.
+        umbra_log(app, "touch ignored while meshing (%d%%)", app->mesh_progress / 10);
+        return;
+    }
     if (app->screen != UMBRA_SCREEN_HOME) return;
     for (int i = 0; i < 3; i++) {
         float bx, by, bw, bh;

@@ -32,6 +32,8 @@ jobs:
           cp /tmp/keep.zlib goose/test/fixtures/inflate/text.zlib
       - name: Jar checker against a synthetic jar (no network, no game data)
         run: GOOSE=build/bin/goose tools/check_jar.sh 2>&1 | tee build/jar-check.log
+      - name: Compile-check the shared C without the NDK (both branches)
+        run: GOOSE=build/bin/goose tools/gen_core.sh && bash tools/check_c.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -40,3 +42,35 @@ jobs:
             build/core-tests.log
             build/negative.log
             build/jar-check.log
+
+  core-tests-arm64:
+    # Gate 4 on ARM. The x86_64 job proves the code; this one proves the same
+    # code on the architecture phones actually run. It does NOT execute the
+    # Android arm64 .so: that is a different build (NDK clang, bionic, no libc
+    # from the host) and it is only compiled, never run, by the android job.
+    name: Goose core tests (arm64)
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain versions
+        run: |
+          uname -m
+          cmake --version | head -1
+          cc --version | head -1
+          nproc
+      - name: Build the pinned Goose compiler
+        run: tools/pin_goose.sh
+      - name: Core tests (Goose -> C -> native, arm64)
+        run: GOOSE=build/bin/goose tools/run_tests.sh 2>&1 | tee build/arm64-tests.log
+      - name: Publish the numbers
+        if: always()
+        run: |
+          grep -E "^PASS " build/arm64-tests.log | while IFS= read -r l; do
+            echo "::notice title=arm64::$l"; done
+          tail -3 build/arm64-tests.log | while IFS= read -r l; do
+            echo "::notice title=arm64::$l"; done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arm64-test-logs
+          path: build/arm64-tests.log

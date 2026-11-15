@@ -251,9 +251,36 @@ while IFS= read -r line; do
     esac
 done < logcat-umbra.txt
 
-# ---- 6. screenshots -------------------------------------------------------------
+# ---- 6. wait for the world, and check it was not built in one long block -------
+# Meshing is time-sliced, so the home screen only means anything once the app has
+# reported the mesh as finished. The app also reports its longest frame: a frame
+# of a second or more is the stall the slices exist to prevent, so it fails here.
+phase "wait-for-mesh"
+MESH_DEADLINE=$((SECONDS + 180))
+MESHED=0
+while [ $SECONDS -lt $MESH_DEADLINE ]; do
+    adb logcat -d -s umbra:V > logcat-umbra-mesh.txt 2>&1
+    if grep -q "startup: meshed in" logcat-umbra-mesh.txt; then MESHED=1; break; fi
+    if ! adb shell pidof org.umbra.client > /dev/null 2>&1; then
+        die "the app died while meshing; log: $(tail -c 800 logcat-umbra-mesh.txt)"
+    fi
+    sleep 2
+done
+[ "$MESHED" = 1 ] || die "the app never finished meshing within 180 s"
+STARTUP="$(grep -m1 "startup: meshed in" logcat-umbra-mesh.txt | sed 's/.*umbra   : //')"
+say "mesh: $STARTUP"
+LONGEST="$(printf '%s' "$STARTUP" | sed -n 's/.*longest frame \([0-9.]*\) ms.*/\1/p')"
+if [ -n "$LONGEST" ]; then
+    OVER="$(awk -v v="$LONGEST" 'BEGIN { print (v >= 1000.0) ? 1 : 0 }')"
+    [ "$OVER" = 0 ] || die "a single frame blocked for ${LONGEST} ms: the slices are not doing their job"
+    say "mesh: longest frame ${LONGEST} ms (under the 1000 ms budget)"
+else
+    say "mesh: the startup line did not report a longest frame"
+fi
+
+# ---- 6b. screenshots ------------------------------------------------------------
 phase "screenshot-home"
-sleep 5
+sleep 3
 adb exec-out screencap -p > shot1.png || die "screencap failed"
 S1="$(stat -c%s shot1.png)"
 say "shot1: $S1 bytes, sha256 $(sha256sum shot1.png | cut -d' ' -f1)"

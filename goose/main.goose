@@ -113,53 +113,124 @@ var world_indices: u32[>..] = [];
 var world_batches: i64[3] = [0, 0, 0];
 var world_starts: i64[3] = [0, 0, 0];
 
-fn demo_mesh() {
+// --- meshing, in slices ------------------------------------------------
+//
+// Meshing the demo world takes seconds on a phone, and a phone that blocks its
+// frame loop for seconds gets an "app isn't responding" dialog. The work is
+// therefore a resumable state machine: the C frame loop calls demo_mesh_step()
+// with a time budget, and each call completes as many sections as fit. The
+// result is byte-identical to meshing everything at once, which is what
+// tools/run_tests.sh checks.
+
+// The budget is measured on this side, so one call cannot overrun it by much.
+extern fn umbra_c_now_us() -> i64 = "umbra_c_now_us";
+
+var dm_state: i64 = 0;   // 0 not begun, 1 running, 2 done
+var dm_b: i64 = 0;       // batch pass
+var dm_col: i64 = 0;     // column
+var dm_pass: i64 = 0;    // one of the column's three passes
+var dm_sy: i64 = -4;     // section y within the column
+var dm_running: i64 = 0; // indices emitted so far, for world_starts
+var dm_units: i64 = 0;   // sections (and copies) completed
+var dm_worst_unit_us: i64 = 0;
+
+fn demo_mesh_begin() {
     world_verts = [];
     world_indices = [];
     for b in 3 {
         world_starts[b] = 0;
         world_batches[b] = 0;
     }
-    // Pass per batch so each batch is one contiguous index range.
-    var running: i64 = 0;
-    for b in 3 {
-        world_starts[b] = running;
-        for i in demo.len {
-            mesh_column(demo[i]);
-            // Copy this column's slice of the batch, offset to world space.
-            let base_vert = (world_verts.len as u32);
-            let start_idx = if b == 0 { 0 } else if b == 1 { batch_starts[1] } else { batch_starts[2] };
-            let count = batch_counts[b];
-            // Copy only the vertices the batch's indices use.
-            var max_vert: u32 = 0;
-            for k in count {
-                let vi = mesh_indices[start_idx + k];
-                if vi > max_vert { max_vert = vi; }
-            }
-            if count > 0 {
-                let ox = (demo[i].x as f32) * 16.0;
-                let oz = (demo[i].z as f32) * 16.0;
-                var remap: u32[65536] = [0; 65536];
-                var next: u32 = 0;
-                for k in count {
-                    let vi = mesh_indices[start_idx + k];
-                    if remap[vi as i64] == 0 {
-                        let src = mesh_verts[vi as i64];
-                        world_verts.push(Vertex {
-                            x: src.x + ox, y: src.y, z: src.z + oz,
-                            nx: src.nx, ny: src.ny, nz: src.nz,
-                            u: src.u, v: src.v, r: src.r, g: src.g, b: src.b, ao: src.ao,
-                        });
-                        next += 1;
-                        remap[vi as i64] = base_vert + next;
-                    }
-                    world_indices.push(remap[vi as i64] - 1);
-                }
-            }
-            running += count;
+    dm_state = 1;
+    dm_b = 0;
+    dm_col = 0;
+    dm_pass = 0;
+    dm_sy = -4;
+    dm_running = 0;
+    dm_units = 0;
+    dm_worst_unit_us = 0;
+}
+
+// One batch's slice of one column, copied into world space. This is the tail of
+// the old per-column loop, unchanged apart from its inputs.
+fn demo_copy_column(b: i64, i: i64) {
+    let base_vert = (world_verts.len as u32);
+    let start_idx = if b == 0 { 0 } else if b == 1 { batch_starts[1] } else { batch_starts[2] };
+    let count = batch_counts[b];
+    if count <= 0 { return; }
+    let ox = (demo[i].x as f32) * 16.0;
+    let oz = (demo[i].z as f32) * 16.0;
+    var remap: u32[65536] = [0; 65536];
+    var next: u32 = 0;
+    for k in count {
+        let vi = mesh_indices[start_idx + k];
+        if remap[vi as i64] == 0 {
+            let src = mesh_verts[vi as i64];
+            world_verts.push(Vertex {
+                x: src.x + ox, y: src.y + oz, z: src.z,
+                nx: src.nx, ny: src.ny, nz: src.nz,
+                u: src.u, v: src.v, r: src.r, g: src.g, b: src.b, ao: src.ao,
+            });
+            next += 1;
+            remap[vi as i64] = base_vert + next;
         }
-        world_batches[b] = running - world_starts[b];
+        world_indices.push(remap[vi as i64] - 1);
     }
+}
+
+// One section of one pass of one column, or the copy that closes a column.
+fn demo_mesh_unit() {
+    if dm_state != 1 { return; }
+    if dm_col >= demo.len {
+        world_batches[dm_b] = dm_running - world_starts[dm_b];
+        dm_b += 1;
+        dm_col = 0;
+        dm_pass = 0;
+        dm_sy = -4;
+        if dm_b >= 3 { dm_state = 2; }
+        return;
+    }
+    // A fresh column starts with an empty mesh arena.
+    if dm_pass == 0 && dm_sy == -4 { mesh_reset(); }
+    if dm_sy == -4 {
+        if dm_pass == 0 && dm_col == 0 { world_starts[dm_b] = dm_running; }
+        batch_starts[dm_pass] = mesh_indices.len;
+    }
+    let want = if dm_pass == 0 { RC_OPAQUE } else if dm_pass == 1 { RC_CUTOUT } else { RC_TRANSLUCENT };
+    mesh_section_class(demo[dm_col], dm_sy as i32, want);
+    dm_sy += 1;
+    if dm_sy <= 19 { return; }
+    // That pass is finished.
+    batch_counts[dm_pass] = mesh_indices.len - batch_starts[dm_pass];
+    dm_sy = -4;
+    dm_pass += 1;
+    if dm_pass < 3 { return; }
+    dm_pass = 0;
+    demo_copy_column(dm_b, dm_col);
+    dm_running += batch_counts[dm_b];
+    dm_col += 1;
+}
+
+// Runs units until the budget is spent. Returns true when the mesh is complete.
+fn demo_mesh_step(budget_us: i64) -> bool {
+    if dm_state != 1 { return true; }
+    let start = umbra_c_now_us();
+    while dm_state == 1 {
+        let unit_start = umbra_c_now_us();
+        demo_mesh_unit();
+        let unit_us = umbra_c_now_us() - unit_start;
+        if unit_us > dm_worst_unit_us { dm_worst_unit_us = unit_us; }
+        dm_units += 1;
+        if umbra_c_now_us() - start >= budget_us { break; }
+    }
+    return dm_state == 2;
+}
+
+// Meshing everything in one call, for the tools and the headless host.
+fn demo_mesh() {
+    demo_mesh_begin();
+    while !demo_mesh_step(1000000) { }
+    serialize_mesh();
 }
 
 // --- the GPU self-test -------------------------------------------------
@@ -337,6 +408,22 @@ export "umbra_bench_summary" fn bench_summary_export(label: const u8[:], device:
 
 export "umbra_demo_build" fn demo_build_export(seed: i64) { demo_build(seed) }
 export "umbra_demo_mesh" fn demo_mesh_export() { demo_mesh(); serialize_mesh() }
+
+// The sliced path: begin, step with a budget until it returns 1, then finish.
+export "umbra_demo_mesh_begin" fn demo_mesh_begin_export() { demo_mesh_begin() }
+export "umbra_demo_mesh_step" fn demo_mesh_step_export(budget_us: i64) -> i64 {
+    return if demo_mesh_step(budget_us) { 1 } else { 0 }
+}
+export "umbra_demo_mesh_finish" fn demo_mesh_finish_export() { serialize_mesh() }
+// Progress in permille, for the loading screen.
+export "umbra_demo_mesh_progress" fn demo_mesh_progress() -> i64 {
+    let total = demo.len * 3 * 24 + 3;   // sections, plus one copy per batch
+    if dm_state == 2 { return 1000; }
+    if dm_state == 0 { return 0; }
+    return (dm_units * 1000) / total;
+}
+export fn umbra_demo_mesh_units() -> i64 { return dm_units }
+export fn umbra_demo_mesh_worst_unit_us() -> i64 { return dm_worst_unit_us }
 
 // Serialised copies of the mesh, in the exact byte layout the GPU wants:
 // 12 little-endian f32 per vertex, 4 little-endian u32 per index. Goose has no
