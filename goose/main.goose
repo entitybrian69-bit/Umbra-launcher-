@@ -211,21 +211,29 @@ fn st_check_pattern_pixel(x: i64, y: i64, w: i64, h: i64, r: i64, g: i64, b: i64
 
 fn st_check_cube_pixel(x: i64, y: i64, w: i64, h: i64, r: i64, g: i64, b: i64) {
     st_checked += 1;
-    // The cube is dead centre. Its faces are shaded by the same light values
-    // the mesher uses, so a wrong depth range or a transposed matrix puts the
-    // background colour in the middle and fails here.
+    // The cube is dead centre: a 1x1x1 cube at the origin seen from z = 3 with
+    // a 60 degree vertical field of view covers |dx| and |dy| up to about
+    // 0.347 * h/2 = h/6 in pixels. The test only judges the parts it is sure
+    // about: h/8 inside (must be cube) and h/4 outside (must be background).
+    // Anything between is the cube's own edge and is not judged.
+    //
+    // The faces are shaded by the same light values the mesher uses, so a wrong
+    // depth range or a transposed matrix puts the background colour in the
+    // middle and fails here.
     let cx = w / 2;
     let cy = h / 2;
     let dx = abs(x - cx);
     let dy = abs(y - cy);
-    let inside = dx * 2 < w / 3 && dy * 2 < h / 3;
+    let m = if h < w { h } else { w };
+    let inside = dx < m / 8 && dy < m / 8;
+    let outside = dx > m / 4 || dy > m / 4;
     let is_background = r < 30 && g < 40 && b < 60;
     if inside && is_background {
         st_mismatches += 1;
         if st_first_bad < 0 { st_first_bad = y * w + x; }
     }
-    if !inside && !is_background {
-        // Outside the cube there must be nothing but the clear colour.
+    if outside && !is_background {
+        // Beyond the cube's silhouette there must be nothing but the clear colour.
         st_mismatches += 1;
         if st_first_bad < 0 { st_first_bad = y * w + x; }
     }

@@ -113,6 +113,22 @@ int main(int argc, char **argv) {
         check(umbra_selftest_mismatches() > 0, "a pixel shifted away from the pattern is rejected");
     }
 
+    // 4c. The cube verdict, tested on made-up pixels: background in the middle
+    // must fail, a coloured pixel far outside must fail, and a coloured pixel
+    // in the middle must pass. Without this the cube test could pass by
+    // judging nothing at all.
+    {
+        umbra_selftest_reset();
+        umbra_selftest_cube_pixel(960, 540, 1920, 1080, 5, 8, 15);
+        check(umbra_selftest_mismatches() == 1, "background where the cube should be is a failure");
+        umbra_selftest_reset();
+        umbra_selftest_cube_pixel(960, 540, 1920, 1080, 120, 30, 30);
+        check(umbra_selftest_mismatches() == 0, "a shaded cube face in the middle passes");
+        umbra_selftest_reset();
+        umbra_selftest_cube_pixel(20, 20, 1920, 1080, 120, 30, 30);
+        check(umbra_selftest_mismatches() == 1, "colour outside the cube silhouette is a failure");
+    }
+
     // 5. The benchmark statistics are real arithmetic on real numbers.
     umbra_bench_reset();
     for (int i = 0; i < 1000; i++) umbra_bench_add(16000 + (i % 10));
