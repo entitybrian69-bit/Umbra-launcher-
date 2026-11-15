@@ -15,7 +15,7 @@ ${CC:-cc} -O2 -o "$OUT" platform/shared/test_main.c build/jarcheck.c platform/sh
 echo "== a well-formed jar: must pass"
 "$OUT" build/fake-client.jar | tee build/jar-good.txt
 
-echo "== a jar with four deliberate breaks: must fail, and name them"
+echo "== a jar with four deliberate breaks: must fail, and name all four"
 if "$OUT" build/fake-broken.jar > build/jar-broken.txt 2>&1; then
     echo "FAILED: the checker accepted a broken jar" >&2
     cat build/jar-broken.txt >&2
@@ -24,12 +24,13 @@ fi
 cat build/jar-broken.txt
 for want in \
     "a blockstate referencing a model that does not exist" \
-    "a texture file that does not exist" \
-    "a box with from > to on an axis" \
-    "a texture variable that resolves nowhere"; do
+    "a face texture key that no model in the chain defines" \
+    "a parent model that does not exist" \
+    "a face whose texture has no PNG in the jar"; do
     if ! grep -qF "$want" build/jar-broken.txt; then
         echo "FAILED: the broken jar did not report: $want" >&2
         exit 1
     fi
 done
+
 echo "PASS: the jar checker accepts a good jar and names every break in a broken one"

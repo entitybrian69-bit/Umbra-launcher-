@@ -59,54 +59,79 @@ def build(path: str, broken: bool) -> None:
         if broken and i == TEXTURES - 1:
             continue
         z.writestr(f"assets/minecraft/textures/{name}.png", png_rgba(16, 16, (10, 20, 30, 255)))
+    # One animated-looking strip texture (16x64, four frames), which is legal.
+    z.writestr("assets/minecraft/textures/block/fake_animated.png", png_rgba(16, 64, (60, 70, 80, 255)))
 
-    # A parent that defines a texture its children only name as a variable, so
-    # the "#var inherited from the parent" path is exercised.
+    # The root every model inherits from. It defines no elements, like the real
+    # block/block.json, and is itself unused by any blockstate.
+    z.writestr("assets/minecraft/models/block/block.json",
+               json.dumps({"textures": {"particle": "block/fake_0"}}))
+
+    # A template exactly like the real block/cube_all.json: its textures are
+    # slots a child fills in, so on its own it resolves nowhere and that is fine
+    # as long as no blockstate uses it directly.
+    z.writestr("assets/minecraft/models/block/fake_template.json",
+               json.dumps({"textures": {"all": "#all", "particle": "#all"},
+                           "elements": model_text("t", "x")["elements"]}))
+
+    # A parent that defines a texture its children only name as a variable.
     z.writestr("assets/minecraft/models/block/fake_varparent.json",
                json.dumps({"parent": "block/block",
                            "textures": {"all": "block/fake_3", "particle": "#all"}}))
 
-    # A parent model every other model inherits from.
-    z.writestr("assets/minecraft/models/block/block.json",
-               json.dumps({"textures": {"particle": "block/fake_0"}}))
+    # An unused model with a texture that does not exist — the real block/air.json
+    # is exactly this, and it is not a fault because nothing draws it.
+    z.writestr("assets/minecraft/models/block/fake_air.json",
+               json.dumps({"textures": {"particle": "block/not_here"}}))
+
+    # An inverted box, like the real block/cube_all_inner_faces.json: legal.
+    inner = model_text("inner", "block/fake_4")
+    inner["elements"][0]["from"] = [16, 0, 16]
+    inner["elements"][0]["to"] = [0, 16, 0]
+    z.writestr("assets/minecraft/models/block/fake_inner_faces.json", json.dumps(inner))
 
     model_names = []
     for i in range(MODELS):
         name = f"block/fake_{i}"
         model_names.append(name)
-        if broken and i == MODELS - 1:
-            tex = "block/does_not_exist"
-        else:
-            tex = tex_names[i % TEXTURES]
+        tex = tex_names[i % TEXTURES]
         body = model_text(name, tex, parent="block/block")
-        if broken and i == 5:
-            # A variable that resolves neither here nor in the parent.
-            body["textures"] = {"particle": "#missing_var", "all": tex}
         if i % 10 == 3:
-            # particle comes from the parent; `all` is still defined here.
+            # Inherits `all` from the parent; defines only the slot it names.
             body = model_text(name, tex, parent="block/fake_varparent")
-            body["textures"] = {"particle": "#all", "all": tex}
-        if broken and i == MODELS - 2:
-            body["elements"][0]["from"] = [20, 0, 0]   # from > to
+            body["textures"] = {"particle": "#all"}
+        if broken and i == 5:
+            # A face that names a slot nothing in the chain defines.
+            body["elements"][0]["faces"]["up"]["texture"] = "#missing_key"
+        if broken and i == 7:
+            body["parent"] = "block/no_such_parent"
+        if broken and i == MODELS - 1:
+            tex_body = model_text(name, "block/does_not_exist", parent="block/block")
+            z.writestr(f"assets/minecraft/models/{name}.json", json.dumps(tex_body))
+            continue
         z.writestr(f"assets/minecraft/models/{name}.json", json.dumps(body))
 
-    # One all-cube model with no parent of its own, so the "no parent" branch
-    # gets exercised too.
+    # A model with no parent at all.
     z.writestr("assets/minecraft/models/block/fake_root.json",
                json.dumps({"textures": {"all": "block/fake_1"},
                            "elements": model_text("x", "y")["elements"]}))
 
     for i in range(BLOCKS):
         ref = model_names[i % MODELS]
+        if i == 5:
+            ref = "block/fake_varparent_child_unused" if False else ref
         if broken and i == BLOCKS - 1:
             ref = "block/nowhere"
         if i % 7 == 0:
-            # multipart with a weighted apply array
             doc = {"multipart": [
                 {"when": {"north": "true"},
                  "apply": [{"model": ref}, {"model": ref, "weight": 3}]},
                 {"apply": {"model": ref}},
             ]}
+        elif i % 11 == 0:
+            doc = {"variants": {"": {"model": "block/fake_inner_faces"}}}
+        elif i % 13 == 0:
+            doc = {"variants": {"": {"model": "block/fake_root"}}}
         else:
             doc = {"variants": {f"facing=north,level={j}": {"model": ref} for j in range(4)}}
         z.writestr(f"assets/minecraft/blockstates/fake_{i}.json", json.dumps(doc))
