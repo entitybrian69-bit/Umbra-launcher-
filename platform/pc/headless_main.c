@@ -93,6 +93,26 @@ int main(int argc, char **argv) {
     umbra_selftest_pattern_pixel(639, 479, 640, 480, 255, 0, 64);
     check(umbra_selftest_mismatches() > 0, "a wrong pattern pixel is rejected");
 
+    // 4b. The GPU self-test is only as good as the formula it compares with, so
+    // the formula is run here over a whole small screen: every pixel the
+    // fragment shader would produce must be accepted, and a shifted pixel must
+    // not be. This is the CPU half of "test the tests".
+    {
+        const int w = 64, h = 48;
+        umbra_selftest_reset();
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int u = (x * 255) / (w - 1);
+                int v = (y * 255) / (h - 1);
+                umbra_selftest_pattern_pixel(x, y, w, h, (u ^ v) & 255, (u + v) & 255, 64);
+            }
+        }
+        check(umbra_selftest_checked() == (int64_t)w * h, "the pattern check sees every pixel");
+        check(umbra_selftest_mismatches() == 0, "the shader formula and Goose agree on every pixel");
+        umbra_selftest_pattern_pixel(17, 23, w, h, 3, 3, 3);
+        check(umbra_selftest_mismatches() > 0, "a pixel shifted away from the pattern is rejected");
+    }
+
     // 5. The benchmark statistics are real arithmetic on real numbers.
     umbra_bench_reset();
     for (int i = 0; i < 1000; i++) umbra_bench_add(16000 + (i % 10));

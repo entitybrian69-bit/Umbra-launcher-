@@ -672,9 +672,38 @@ void umbra_app_shutdown(umbra_app *app) {
 
 // --- self test ----------------------------------------------------------
 
+// A colour texture plus a depth renderbuffer that the self-test draws into.
+// Returns 0 if the driver refuses, in which case the window's back buffer is
+// used and the log says so.
+static int selftest_begin_target(umbra_app *app, int w, int h) {
+    if (!app->fbo_selftest) {
+        glGenFramebuffers(1, &app->fbo_selftest);
+        glGenTextures(1, &app->tex_selftest);
+        glGenRenderbuffers(1, &app->rb_selftest);
+    }
+    glBindTexture(GL_TEXTURE_2D, app->tex_selftest);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glBindRenderbuffer(GL_RENDERBUFFER, app->rb_selftest);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT16, w, h);
+    glBindFramebuffer(GL_FRAMEBUFFER, app->fbo_selftest);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->tex_selftest, 0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, app->rb_selftest);
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        umbra_log(app, "self-test: offscreen framebuffer incomplete (0x%x), using the window",
+                  (unsigned)status);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        return 0;
+    }
+    return 1;
+}
+
 static void run_selftest(umbra_app *app) {
     umbra_log(app, "self-test: begin (%dx%d)", app->width, app->height);
     umbra_selftest_reset();
+    int offscreen = selftest_begin_target(app, app->width, app->height);
     glViewport(0, 0, app->width, app->height);
     glDisable(GL_DEPTH_TEST);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -704,6 +733,9 @@ static void run_selftest(umbra_app *app) {
             umbra_selftest_pattern_pixel(x, y, w, h, p[0], p[1], p[2]);
         }
     }
+    umbra_log(app, "self-test: target %s, pixel(0,0) = %d,%d,%d, pixel(w-1,0) = %d,%d,%d",
+              offscreen ? "offscreen" : "window", px[0], px[1], px[2],
+              px[(size_t)(w - 1) * 3 + 0], px[(size_t)(w - 1) * 3 + 1], px[(size_t)(w - 1) * 3 + 2]);
     glEnable(GL_DEPTH_TEST);
     int64_t pattern_mismatches = umbra_selftest_mismatches();
     int64_t pattern_checked = umbra_selftest_checked();
@@ -740,6 +772,8 @@ static void run_selftest(umbra_app *app) {
     free(px);
     umbra_log(app, "self-test: cube %lld pixels checked, %lld mismatched",
               (long long)cube_checked, (long long)cube_mismatches);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glViewport(0, 0, app->width, app->height);
 
     int64_t total_bad = pattern_mismatches + cube_mismatches;
     app->selftest_ran = true;
@@ -886,6 +920,10 @@ void umbra_app_frame(umbra_app *app) {
     draw_scene(app);
     draw_hud(app);
     app->frames_drawn++;
+    if (app->selftest_requested) {
+        app->selftest_requested = false;
+        run_selftest(app);
+    }
 
     if (app->benching) {
         umbra_bench_add(app->frame_us);
@@ -914,7 +952,11 @@ void umbra_app_touch(umbra_app *app, int32_t x, int32_t y, bool down) {
         hud_button_rect(app, i, &bx, &by, &bw, &bh);
         if (x >= bx && x <= bx + bw && y >= by && y <= by + bh) {
             if (i == 0) {
-                run_selftest(app);
+                // The self-test renders and reads back; it runs at a defined
+                // point in the frame rather than in the middle of event
+                // dispatch, so the GL state is ours and not the driver's.
+                app->selftest_requested = true;
+                umbra_log(app, "self-test: requested");
             } else if (i == 1) {
                 app->benching = true;
                 app->bench_start_time = umbra_now_us() / 1000000.0;

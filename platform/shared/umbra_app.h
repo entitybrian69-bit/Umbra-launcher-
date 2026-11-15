@@ -50,6 +50,11 @@ struct umbra_app {
 
     // Runtime state
     umbra_screen screen;
+    // The self-test renders into its own framebuffer: the window's back buffer
+    // contents are undefined after a swap, and a readback of a fresh buffer
+    // has to mean something.
+    unsigned fbo_selftest, tex_selftest, rb_selftest;
+    bool selftest_requested;
     char gl_renderer[128], gl_vendor[128], gl_version[128];
     int depth_bits;
     char highp_vertex[32], highp_fragment[32];
