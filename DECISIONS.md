@@ -516,3 +516,32 @@ not compared on the fallback path, where the panel is a quarter of the screen â€
 that is a real loss of coverage, and it is logged as `N px not compared (under the
 overlay)` so nobody mistakes it for a full comparison. `precision highp int` costs
 Mali a few cycles per fragment in a shader that only runs during the self-test.
+
+## D-039 - the atlas is real, the art in it is ours
+
+**Decision.** The texture pipeline is the one the jar will drive: PNG decode,
+atlas packing with a one-texel gutter, mipmaps, per-face UVs, cutout and
+translucent passes, back-face culling on the opaque pass. The twelve tiles the
+APK ships are generated procedurally in `core/textures.goose` - this project's own
+art - and the jar's own textures are exercised by CI at test time, never committed
+and never packaged.
+
+**Why.** The north star is the real client, and the real client's look comes from
+Mojang's textures. But Umbra ships no Mojang assets, in the repository or in the
+APK: doing so would make every download a redistribution. That leaves two options -
+ship no textures at all, or ship art this project owns through the real pipeline -
+and the first one cannot show whether the pipeline works. So the demo world is
+drawn with placeholder tiles that stand in for their materials (grass that is green
+on top and a dirt side, bark with grooves, leaves with real holes), while the
+decode/atlas/model code is proven against the jar's 3964 textures in CI. When the
+loader stage lands, the same pipeline points at the user's own jar on their own
+device.
+
+**Costs.** Two texture sources to keep straight, and the screenshots do not look
+like Minecraft - they look like a competent block game with its own palette, which
+is honest about what this is. The placeholder set is twelve tiles, so a block
+whose name is not in `tex_face_slot` gets the loud magenta tile and is counted;
+that counter is in the log and in the self-test's verdict, so a missing tile is a
+visible defect rather than a grey block. The alternative - excluding the jar's
+textures from CI too - would leave the PNG and atlas code tested only against
+artificial PNGs, and its first real test would be the phone.

@@ -158,6 +158,10 @@ typedef enum {
     PASS_COUNT,
 } umbra_pass;
 
+// Defined further down, used by the init path and the atlas upload above it.
+static void set_fallback(umbra_app *app, const char *reason);
+static void upload_atlas(umbra_app *app);
+
 static const char *VS_MESH =
     "#version 300 es\n"
     "layout(location=0) in vec3 a_pos;\n"
@@ -168,25 +172,62 @@ static const char *VS_MESH =
     "uniform mat4 u_viewproj;\n"
     "uniform vec3 u_center;\n"
     "out vec3 v_col;\n"
+    "out vec2 v_uv;\n"
     "out float v_dist;\n"
     "void main() {\n"
     "    vec3 p = a_pos - u_center;\n"
-    "    v_col = a_col;  // face shade and ambient occlusion are baked in\n"
+    "    v_col = a_col;  // face shade, ambient occlusion and block tint, baked in\n"
+    "    v_uv = a_uv;\n"
     "    v_dist = length(p);\n"
     "    gl_Position = u_viewproj * vec4(p, 1.0);\n"
     "}\n";
 
+// The world is one atlas texture. highp on the sampler coordinates is not
+// optional: at 1280 texels wide a mediump float has ~2 texels of precision, and
+// the owner's phone is the device that taught this project what a default
+// precision costs (DECISIONS.md D-038).
+//
+// The cutout pass discards fully transparent fragments instead of blending them,
+// so leaves and plants have holes and still write depth; the translucent pass
+// blends. `u_cutout` is 1 for the first and 0 for the second -- one program, so a
+// shader that fails to link fails once.
 static const char *FS_MESH =
     "#version 300 es\n"
     "precision highp float;\n"
+    "precision highp int;\n"
     "in vec3 v_col;\n"
+    "in vec2 v_uv;\n"
     "in float v_dist;\n"
+    "uniform sampler2D u_atlas;\n"
     "uniform vec2 u_fog;\n"
+    "uniform int u_cutout;\n"
     "out vec4 o_col;\n"
     "void main() {\n"
+    "    vec4 t = texture(u_atlas, v_uv);\n"
+    "    if (u_cutout == 1 && t.a < 0.5) discard;\n"
     "    float fog = clamp((v_dist - u_fog.x) / (u_fog.y - u_fog.x), 0.0, 1.0);\n"
     "    vec3 sky = vec3(0.55, 0.70, 0.92);\n"
-    "    o_col = vec4(mix(v_col, sky, fog), 1.0);\n"
+    "    o_col = vec4(mix(t.rgb * v_col, sky, fog), t.a);\n"
+    "}\n";
+
+// The atlas sampler the self-test draws with. It is a separate program on
+// purpose: it reads the *production* texture through the *production* sampler
+// state (NEAREST magnification, CLAMP_TO_EDGE, mipmaps generated), and paints the
+// 16x16 texels of one tile into the bottom-left 16x16 pixels of the target, one
+// texel per pixel. The comparison then has 256 exact values to check.
+static const char *FS_ATLAS =
+    "#version 300 es\n"
+    "precision highp float;\n"
+    "precision highp int;\n"
+    "uniform sampler2D u_atlas;\n"
+    "uniform vec4 u_rect;\n"       // u0, v0, u1, v1 of the tile
+    "out vec4 o_col;\n"
+    "void main() {\n"
+    "    vec2 p = floor(gl_FragCoord.xy);\n"
+    "    if (p.x >= 16.0 || p.y >= 16.0) { o_col = vec4(0.0, 0.0, 0.0, 1.0); return; }\n"
+    "    vec2 t = (p + 0.5) / 16.0;\n"
+    "    vec2 uv = vec2(mix(u_rect.x, u_rect.z, t.x), mix(u_rect.y, u_rect.w, t.y));\n"
+    "    o_col = texture(u_atlas, uv);\n"
     "}\n";
 
 static const char *VS_HUD =
@@ -648,6 +689,47 @@ static void create_mesh_buffers(umbra_app *app) {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)ilen, indices, GL_STATIC_DRAW);
 }
 
+// Uploads the block atlas Goose built, once. The pixels are the packer's own:
+// gutters, the loud missing tile and frame 0 of every animation are already in
+// them (core/atlas.goose), so this is a straight RGBA8 upload with mipmaps.
+static void upload_atlas(umbra_app *app) {
+    int64_t len = 0;
+    const uint8_t *pixels = umbra_atlas_pixels(&len);
+    int sz = (int)umbra_atlas_size();
+    int sh = (int)umbra_atlas_height();
+    if (!pixels || sz <= 0 || sh <= 0 || len < (int64_t)sz * sh * 4) {
+        umbra_log(app, "atlas: no pixels (%lld bytes for %dx%d)", (long long)len, sz, sh);
+        set_fallback(app, "the texture atlas did not build");
+        return;
+    }
+    if (!app->atlas_tex) glGenTextures(1, &app->atlas_tex);
+    glBindTexture(GL_TEXTURE_2D, app->atlas_tex);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, sz, sh, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    // Nearest within a tile would alias badly at a distance, so: repeat-free
+    // linear inside the tile, mipmaps for the far field, and the gutter is what
+    // keeps a mip level from mixing two tiles.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glGenerateMipmap(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    app->atlas_size = sz;
+    app->atlas_hash = (unsigned)umbra_atlas_hash();
+    app->atlas_missing = (int)umbra_atlas_missing();
+    app->atlas_uploads++;
+    umbra_log(app, "atlas: %dx%d, %lld bytes, %lld tiles, hash %08x, %d missing", sz, sh,
+              (long long)len, (long long)umbra_atlas_tiles(), app->atlas_hash,
+              app->atlas_missing);
+    if (app->atlas_missing > 0) {
+        // Not fatal, and never silent: the loud tile is on screen and the count
+        // says how many blocks asked for a texture this build does not have.
+        umbra_log(app, "atlas: %d block faces asked for a tile that is missing",
+                  app->atlas_missing);
+    }
+}
+
 static void create_hud_buffers(umbra_app *app) {
     glGenVertexArrays(1, &app->vao_hud);
     glBindVertexArray(app->vao_hud);
@@ -838,6 +920,8 @@ int umbra_app_init(umbra_app *app) {
     app->prog_hud = link_program(VS_HUD, FS_HUD, err, sizeof err);
     if (!app->prog_hud) { umbra_log(app, "hud program: %s", err); return 0; }
     app->prog_pattern = link_program(VS_FULL, FS_PATTERN, err, sizeof err);
+    app->prog_atlas = link_program(VS_FULL, FS_ATLAS, err, sizeof err);
+    if (!app->prog_atlas) umbra_log(app, "atlas sampler shader: %s", err);
     if (!app->prog_pattern) { umbra_log(app, "pattern program: %s", err); return 0; }
     app->prog_cube = link_program(VS_CUBE, FS_CUBE, err, sizeof err);
     if (!app->prog_cube) { umbra_log(app, "cube program: %s", err); return 0; }
@@ -852,15 +936,20 @@ int umbra_app_init(umbra_app *app) {
     create_font_texture(app);
     create_fullscreen_quad(app);
     create_cube_geometry(app);
+    // The atlas goes up before the world: the mesher's UVs already point into it.
+    upload_atlas(app);
     create_hud_buffers(app);
     create_mesh_buffers(app);
     begin_scene(app);
 
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
-    glDisable(GL_CULL_FACE);  // the mesher's winding is verified, but the cube
-                              // geometry and the HUD share this state; culling
-                              // comes back with the real renderer.
+    glDisable(GL_CULL_FACE);  // turned on for the opaque world pass only: cross
+                              // plants are single quads and must stay visible
+                              // from both sides, and the HUD is not culled. The
+                              // mesher's winding is checked in the host suite
+                              // (cross product against the face normal).
+    glFrontFace(GL_CCW);
     app->last_frame_time = 0.0;
     // The button rectangles are logged from the frame loop instead of here: at
     // this point the surface may still be 1x1, and a layout computed from that
@@ -1090,10 +1179,12 @@ static void device_checks(umbra_app *app) {
 
     // Every program that linked is reported by name: a shader that fails on one
     // driver and not another is the single most likely device-specific failure.
-    snprintf(buf, sizeof buf, "mesh %s, hud %s, pattern %s, cube %s",
+    snprintf(buf, sizeof buf, "mesh %s, hud %s, pattern %s, cube %s, atlas %s",
              app->prog_mesh ? "ok" : "FAILED", app->prog_hud ? "ok" : "FAILED",
-             app->prog_pattern ? "ok" : "FAILED", app->prog_cube ? "ok" : "FAILED");
-    int all = app->prog_mesh && app->prog_hud && app->prog_pattern && app->prog_cube;
+             app->prog_pattern ? "ok" : "FAILED", app->prog_cube ? "ok" : "FAILED",
+             app->prog_atlas ? "ok" : "FAILED");
+    int all = app->prog_mesh && app->prog_hud && app->prog_pattern && app->prog_cube &&
+              app->prog_atlas;
     device_note(app, "shader programs", buf, all);
     if (!app->prog_mesh) set_fallback(app, "the world shader did not compile");
     if (!app->prog_hud) set_fallback(app, "the text shader did not compile");
@@ -1134,6 +1225,8 @@ enum {
     ST_DRAW_CUBE,
     ST_READ_CUBE,
     ST_COMPARE_CUBE,
+    ST_DRAW_ATLAS,
+    ST_COMPARE_ATLAS,
     ST_DONE,
     ST_ABORTED
 };
@@ -1148,6 +1241,8 @@ static const char *st_state_name(int st) {
         case ST_DRAW_CUBE: return "draw cube";
         case ST_READ_CUBE: return "read cube";
         case ST_COMPARE_CUBE: return "compare cube";
+        case ST_DRAW_ATLAS: return "sample the atlas";
+        case ST_COMPARE_ATLAS: return "compare the atlas sample";
         case ST_DONE: return "done";
         case ST_ABORTED: return "aborted";
         default: return "idle";
@@ -1173,8 +1268,8 @@ static void selftest_end(umbra_app *app, bool ok, const char *why) {
     app->selftest_us = umbra_now_us() - app->st_start_us;
     if (ok) {
         snprintf(app->selftest_text, sizeof app->selftest_text,
-                 "SELFTEST PASS (0 bad of %lld px, %.0f ms, %s)",
-                 (long long)checked, app->selftest_us / 1000.0,
+                 "SELFTEST PASS (0 bad of %lld px + %d atlas texels, %.0f ms, %s)",
+                 (long long)checked, app->st_atlas_checked, app->selftest_us / 1000.0,
                  app->st_offscreen ? "offscreen" : "window");
     } else if (why && why[0]) {
         snprintf(app->selftest_text, sizeof app->selftest_text, "SELFTEST SKIPPED - %s", why);
@@ -1261,6 +1356,10 @@ static void selftest_begin(umbra_app *app) {
     app->st_skip_px = 0;
     app->st_pattern_bad = app->st_pattern_checked = 0;
     app->st_cube_bad = app->st_cube_checked = 0;
+    app->st_atlas_bad = app->st_atlas_checked = 0;
+    // A tile with transparent texels, so the sample proves the alpha channel made
+    // it through the upload and not only the colour channels.
+    app->st_atlas_slot = (int)umbra_atlas_named((sl_u8){(uint8_t *)"oak_leaves", 10});
     app->st_tile_rows = umbra_selftest_tile_rows(app->st_w, app->st_h);
     app->st_offscreen = 0;
     app->st_fbo_status = 0;
@@ -1493,14 +1592,85 @@ static void selftest_step(umbra_app *app) {
             app->st_row = 0;
             app->st_state = ST_COMPARE_CUBE;
             break;
+        case ST_DRAW_ATLAS: {
+            // One 16x16 tile of the production atlas, one texel per pixel. NEAREST
+            // magnification means the readback is exact, so anything but equality
+            // is a real fault: a row order, a stride, a gutter written over a tile.
+            int64_t t0 = umbra_now_us();
+            glBindFramebuffer(GL_FRAMEBUFFER, app->st_offscreen ? app->fbo_selftest : 0);
+            glViewport(0, 0, app->st_w, app->st_h);
+            glDisable(GL_DEPTH_TEST);
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glUseProgram(app->prog_atlas);
+            glActiveTexture(GL_TEXTURE0);
+            glBindTexture(GL_TEXTURE_2D, app->atlas_tex);
+            glUniform1i(glGetUniformLocation(app->prog_atlas, "u_atlas"), 0);
+            glUniform4f(glGetUniformLocation(app->prog_atlas, "u_rect"),
+                        umbra_atlas_tile_u0(app->st_atlas_slot),
+                        umbra_atlas_tile_v0(app->st_atlas_slot),
+                        umbra_atlas_tile_u1(app->st_atlas_slot),
+                        umbra_atlas_tile_v1(app->st_atlas_slot));
+            glBindVertexArray(app->vao_full);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            selftest_gl_check(app, "sampling the atlas");
+            glFinish();
+            int64_t t1 = umbra_now_us();
+            glReadPixels(0, 0, 16, 16, GL_RGBA, GL_UNSIGNED_BYTE, app->st_tile);
+            if (glGetError() != GL_NO_ERROR) {
+                selftest_abort(app, "glReadPixels failed on the atlas sample");
+                break;
+            }
+            umbra_log(app, "self-test: atlas tile %d sampled in %.1f ms",
+                      app->st_atlas_slot, (umbra_now_us() - t1) / 1000.0);
+            (void)t0;
+            app->st_state = ST_COMPARE_ATLAS;
+            break;
+        }
+        case ST_COMPARE_ATLAS: {
+            // 256 texels, compared with the CPU decode of the same tile.
+            int bad = 0;
+            int first_x = -1, first_y = -1;
+            int got_r = 0, got_g = 0, got_b = 0, got_a = 0;
+            int want_r = 0, want_g = 0, want_b = 0, want_a = 0;
+            for (int y = 0; y < 16; y++) {
+                for (int x = 0; x < 16; x++) {
+                    const unsigned char *p = app->st_tile + (y * 16 + x) * 4;
+                    int64_t want = umbra_atlas_texel(app->st_atlas_slot, x, y);
+                    if (want < 0) { continue; }
+                    int wr = (int)(want & 0xFF), wg = (int)((want >> 8) & 0xFF);
+                    int wb = (int)((want >> 16) & 0xFF), wa = (int)((want >> 24) & 0xFF);
+                    app->st_atlas_checked++;
+                    if (p[0] != wr || p[1] != wg || p[2] != wb || p[3] != wa) {
+                        bad++;
+                        if (first_x < 0) {
+                            first_x = x; first_y = y;
+                            got_r = p[0]; got_g = p[1]; got_b = p[2]; got_a = p[3];
+                            want_r = wr; want_g = wg; want_b = wb; want_a = wa;
+                        }
+                    }
+                }
+            }
+            app->st_atlas_bad = bad;
+            if (bad > 0) {
+                umbra_log(app, "self-test: atlas first mismatch at %d,%d got %d,%d,%d,%d "
+                               "want %d,%d,%d,%d", first_x, first_y, got_r, got_g, got_b,
+                          got_a, want_r, want_g, want_b, want_a);
+            }
+            umbra_log(app, "self-test: atlas %d of %d texels differ", bad,
+                      app->st_atlas_checked);
+            glEnable(GL_DEPTH_TEST);
+            selftest_end(app, app->st_pattern_bad == 0 && app->st_cube_bad == 0 && bad == 0,
+                         NULL);
+            break;
+        }
         case ST_COMPARE_CUBE:
             if (selftest_compare_step(app, 0)) {
                 int64_t max_diff = 0;
                 selftest_take_pass(app, &app->st_cube_bad, &app->st_cube_checked, &max_diff);
                 umbra_log(app, "self-test: cube compared, %lld of %lld px differ",
                           (long long)app->st_cube_bad, (long long)app->st_cube_checked);
-                glEnable(GL_DEPTH_TEST);
-                selftest_end(app, app->st_pattern_bad == 0 && app->st_cube_bad == 0, NULL);
+                app->st_state = ST_DRAW_ATLAS;
             }
             break;
         default:
@@ -1563,6 +1733,23 @@ static void draw_scene(umbra_app *app) {
         int b = pass - PASS_OPAQUE;
         if (app->batch_count[b] <= 0) continue;
         app->draw_calls++;
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, app->atlas_tex);
+        glUniform1i(glGetUniformLocation(app->prog_mesh, "u_atlas"), 0);
+        // Opaque and cutout discard nothing and blend nothing; cutout discards
+        // the transparent texels so leaves have holes and still write depth.
+        glUniform1i(glGetUniformLocation(app->prog_mesh, "u_cutout"),
+                    pass == PASS_CUTOUT ? 1 : 0);
+        // Back faces of solid blocks are half the triangles in a naive mesher;
+        // this pass is the one that can drop them, because every face in it is
+        // the outside of a box. Plants live in the cutout pass, which stays
+        // two-sided.
+        if (pass == PASS_OPAQUE) {
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_BACK);
+        } else {
+            glDisable(GL_CULL_FACE);
+        }
         if (pass == PASS_TRANSLUCENT) {
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1575,6 +1762,7 @@ static void draw_scene(umbra_app *app) {
             glDisable(GL_BLEND);
         }
     }
+    glDisable(GL_CULL_FACE);
 }
 
 // Rows the overlay draws: the title (1.6 rows, it has its own spacing), five

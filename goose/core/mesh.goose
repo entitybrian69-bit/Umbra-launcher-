@@ -9,6 +9,7 @@
 import std;
 import core.mem;
 import core.region;
+import core.textures;
 
 // The vertex layout the GPU consumes. Packed, in declaration order; the C side
 // mirrors it in platform/shared/umbra_vertex.h.
@@ -68,10 +69,13 @@ var face_normals: f32[18] = [
 // Four corners per face, counter-clockwise seen from outside the block,
 // in blocks of 0..1.
 var face_corners: f32[72] = [
-    // -Y
-    0.0, 0.0, 0.0,  0.0, 0.0, 1.0,  1.0, 0.0, 1.0,  1.0, 0.0, 0.0,
+    // -Y. Wound counter-clockwise seen from below (from outside the block): the
+    // host suite checks every triangle's cross product against its normal, and it
+    // caught both horizontal faces wound the other way -- which culling would
+    // have drawn as a world with no top and no bottom.
+    0.0, 0.0, 0.0,  1.0, 0.0, 0.0,  1.0, 0.0, 1.0,  0.0, 0.0, 1.0,
     // +Y
-    0.0, 1.0, 0.0,  1.0, 1.0, 0.0,  1.0, 1.0, 1.0,  0.0, 1.0, 1.0,
+    0.0, 1.0, 0.0,  0.0, 1.0, 1.0,  1.0, 1.0, 1.0,  1.0, 1.0, 0.0,
     // -Z
     0.0, 0.0, 0.0,  0.0, 1.0, 0.0,  1.0, 1.0, 0.0,  1.0, 0.0, 0.0,
     // +Z
@@ -151,7 +155,7 @@ fn push_quad(x0: f32, y0: f32, z0: f32, face: i64, u0: f32, v0: f32, u1: f32, v1
     }
 }
 
-fn push_cross(x0: f32, y0: f32, z0: f32, tint: f32[3]) {
+fn push_cross(x0: f32, y0: f32, z0: f32, tint: f32[3], uv: f32[4]) {
     // Two quads through the block's diagonals, as a plant model does.
     for d in 2 {
         let a: f32 = 0.1464;  // (1 - sqrt(2)/2) / 2, the model's inset
@@ -170,8 +174,8 @@ fn push_cross(x0: f32, y0: f32, z0: f32, tint: f32[3]) {
             mesh_verts.push(Vertex {
                 x: x0 + cx[c], y: y0 + cy[c], z: z0 + cz[c],
                 nx: 0.0, ny: 1.0, nz: 0.0,
-                u: if c == 0 || c == 1 { 0.0 } else { 1.0 },
-                v: if c == 0 || c == 1 { 1.0 } else { 0.0 },
+                u: if c == 0 || c == 1 { uv[0] } else { uv[2] },
+                v: if c == 0 || c == 1 { uv[3] } else { uv[1] },
                 r: tint[0] * light, g: tint[1] * light, b: tint[2] * light,
                 ao: 1.0,
             });
@@ -244,7 +248,7 @@ fn mesh_section_class(c: ChunkColumn&, sy: i32, want: i64) {
         if ends_with(path, "_leaves") || rc == RC_CROSS { tint = [0.55, 0.75, 0.35]; }
         if rc == RC_TRANSLUCENT { tint = [0.3, 0.5, 1.0]; }
         if rc == RC_CROSS {
-            push_cross(x as f32, y as f32, z as f32, tint);
+            push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
             continue;
         }
         for face in 6 {
@@ -284,7 +288,11 @@ fn mesh_section_class(c: ChunkColumn&, sy: i32, want: i64) {
                 let cc = solid_at(c, nx + o1x + o2x, ny + o1y + o2y, nz + o1z + o2z);
                 ao[corner] = corner_ao(s1, s2, cc);
             }
-            push_quad(x as f32, y as f32, z as f32, face, 0.0, 0.0, 1.0, 1.0, tint, ao);
+            // The face samples its block's tile from the atlas. The rect is
+            // inside the tile's gutter, so no bilinear sample can reach a
+            // neighbour tile even at a glancing angle.
+            let uv = tex_uv(tex_face_slot(path, face));
+            push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
         }
     }
 }

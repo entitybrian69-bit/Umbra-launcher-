@@ -4,6 +4,7 @@ import core.mem;
 import core.nbt;
 import core.region;
 import core.mesh;
+import core.textures;
 import test.harness;
 
 fn empty_column(c: ChunkColumn&) {
@@ -18,6 +19,13 @@ fn empty_column(c: ChunkColumn&) {
     c.x = 0;
     c.z = 0;
     c.present = true;
+}
+
+// A vertex samples a tile when both of its UV components are that tile's corners.
+fn uv_in_rect(u: f32, v: f32, rect: f32[4]) -> bool {
+    let u_ok = u == rect[0] || u == rect[2];
+    let v_ok = v == rect[1] || v == rect[3];
+    return u_ok && v_ok;
 }
 
 fn run_mesh() {
@@ -87,6 +95,89 @@ fn run_mesh() {
         if v.ny < -0.5 { bottom_shade = v.r; }
     }
     check(top_shade > bottom_shade, "top faces are brighter than bottom faces");
+
+    // --- textures: every face samples its block's tile -----------------------
+    tex_build();
+    var all_in_atlas = true;
+    for i in mesh_verts.len {
+        let v = mesh_verts[i];
+        if v.u < 0.0 || v.u > 1.0 || v.v < 0.0 || v.v > 1.0 { all_in_atlas = false; }
+    }
+    check(all_in_atlas, "every UV is inside the atlas");
+    // Stone's six faces all sample the same tile, so all eight distinct UV pairs
+    // in a cube reduce to one rect.
+    let stone_uv = tex_uv(TEX_STONE);
+    var stone_ok = true;
+    for i in mesh_verts.len {
+        let v = mesh_verts[i];
+        if v.u != stone_uv[0] && v.u != stone_uv[2] { stone_ok = false; }
+        if v.v != stone_uv[1] && v.v != stone_uv[3] { stone_ok = false; }
+    }
+    check(stone_ok, "a stone cube samples only the stone tile");
+
+    // --- winding -------------------------------------------------------------
+    // Back-face culling is on for the opaque pass, so every triangle has to be
+    // counter-clockwise seen from outside the block. Checked here, in the mesher's
+    // own output, and not by looking at a screenshot: a flipped quad is a hole,
+    // and a hole on a phone reads as "the driver is broken".
+    mesh_column(c);
+    var flipped = 0;
+    var k = 0;
+    while k + 2 < mesh_indices.len {
+        let a = mesh_verts[mesh_indices[k] as i64];
+        let b = mesh_verts[mesh_indices[k + 1] as i64];
+        let d = mesh_verts[mesh_indices[k + 2] as i64];
+        let e1x = b.x - a.x;
+        let e1y = b.y - a.y;
+        let e1z = b.z - a.z;
+        let e2x = d.x - a.x;
+        let e2y = d.y - a.y;
+        let e2z = d.z - a.z;
+        // cross(e1, e2) must point along the face normal.
+        let cx = e1y * e2z - e1z * e2y;
+        let cy = e1z * e2x - e1x * e2z;
+        let cz = e1x * e2y - e1y * e2x;
+        let dot = cx * a.nx + cy * a.ny + cz * a.nz;
+        if dot <= 0.0 { flipped += 1; }
+        k += 3;
+    }
+    check_i64(flipped, 0, "every triangle faces outwards (CCW against its normal)");
+
+    // A grass block uses three tiles at once: top, side and bottom. If the mesher
+    // took one tile per block, all six faces would sample the same texels.
+    var grass_col: u32 = bs_intern("minecraft:grass_block", "snowy=false");
+    var c2 = column_new();
+    empty_column(c2);
+    chunk_set_block(c2, 3, 3, 3, grass_col);
+    mesh_column(c2);
+    let top_uv = tex_uv(TEX_GRASS_TOP);
+    let side_uv = tex_uv(TEX_GRASS_SIDE);
+    let dirt_uv = tex_uv(TEX_DIRT);
+    var top_hits = 0;
+    var side_hits = 0;
+    var bottom_hits = 0;
+    for i in mesh_verts.len {
+        let v = mesh_verts[i];
+        if v.ny > 0.5 && uv_in_rect(v.u, v.v, top_uv) { top_hits += 1; }
+        if v.ny < -0.5 && uv_in_rect(v.u, v.v, dirt_uv) { bottom_hits += 1; }
+        if v.ny == 0.0 && uv_in_rect(v.u, v.v, side_uv) { side_hits += 1; }
+    }
+    check_i64(top_hits, 4, "the grass block's top samples the grass top tile");
+    check_i64(bottom_hits, 4, "its bottom samples dirt");
+    check_i64(side_hits, 16, "its four sides sample the grass side tile");
+
+    // A plant is cutout geometry with its own tile, both quads.
+    var c3 = column_new();
+    empty_column(c3);
+    chunk_set_block(c3, 7, 3, 7, plant);
+    mesh_column(c3);
+    let plant_uv = tex_uv(TEX_PLANT);
+    var plant_hits = 0;
+    for i in mesh_verts.len {
+        let v = mesh_verts[i];
+        if uv_in_rect(v.u, v.v, plant_uv) { plant_hits += 1; }
+    }
+    check_i64(plant_hits, 8, "both quads of a cross sample the plant tile");
 
     // A block buried in stone has no visible faces.
     var buried = column_new();

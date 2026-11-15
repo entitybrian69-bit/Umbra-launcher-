@@ -18,6 +18,8 @@ import core.png;
 import core.nbt;
 import core.region;
 import core.mesh;
+import core.textures;
+import core.atlas;
 
 let UMBRA_VERSION = "0.1.0-stage1";
 
@@ -542,6 +544,30 @@ export "umbra_verts_ptr" fn world_verts_ptr() -> const u8[:] { return vert_bytes
 export "umbra_indices_ptr" fn world_indices_ptr() -> const u8[:] { return index_bytes }
 export "umbra_vert_count" fn world_vert_count() -> i64 { return world_verts.len }
 export "umbra_index_count" fn world_index_count() -> i64 { return world_indices.len }
+// --- the atlas, for the renderer ---------------------------------------
+//
+// The pixel buffer belongs to Goose; C uploads it to one GL texture and the
+// vertices carry UVs inside it. Nothing here is Mojang art: see
+// core/textures.goose and DECISIONS.md D-039.
+
+export "umbra_atlas_build" fn atlas_build_export() { tex_build() }
+export "umbra_atlas_pixels" fn atlas_pixels() -> const u8[:] { tex_build(); return tex_atlas }
+export "umbra_atlas_size" fn atlas_size() -> i64 { return tex_atlas_size() }
+export "umbra_atlas_height" fn atlas_height() -> i64 { return tex_atlas_height() }
+export "umbra_atlas_hash" fn atlas_hash_export() -> u32 { return tex_atlas_hash() }
+export "umbra_atlas_missing" fn atlas_missing() -> i64 { return tex_missing_count() }
+export "umbra_atlas_tiles" fn atlas_tiles() -> i64 { return TEX_COUNT }
+export "umbra_atlas_tile_u0" fn atlas_u0(slot: i64) -> f32 { return tex_uv(slot)[0] }
+export "umbra_atlas_tile_v0" fn atlas_v0(slot: i64) -> f32 { return tex_uv(slot)[1] }
+export "umbra_atlas_tile_u1" fn atlas_u1(slot: i64) -> f32 { return tex_uv(slot)[2] }
+export "umbra_atlas_tile_v1" fn atlas_v1(slot: i64) -> f32 { return tex_uv(slot)[3] }
+export "umbra_atlas_texel" fn atlas_texel(slot: i64, x: i64, y: i64) -> i64 {
+    return tex_texel(slot, x, y)
+}
+export "umbra_atlas_named" fn atlas_named(name: const u8[:]) -> i64 {
+    return tex_slot_for(name)
+}
+
 export "umbra_batch_start" fn world_batch_start(b: i64) -> i64 { return world_starts[b] }
 export "umbra_batch_count" fn world_batch_count(b: i64) -> i64 { return world_batches[b] }
 

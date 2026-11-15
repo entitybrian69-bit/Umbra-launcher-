@@ -40,7 +40,7 @@ struct umbra_app {
     float dpi_scale;
 
     // GL objects
-    unsigned prog_mesh, prog_hud, prog_pattern, prog_cube;
+    unsigned prog_mesh, prog_hud, prog_pattern, prog_cube, prog_atlas;
     unsigned vao_mesh, vbo_mesh, ibo_mesh;
     unsigned vao_hud, vbo_hud, ibo_hud;
     unsigned vao_cube, vbo_cube, ibo_cube;
@@ -83,11 +83,19 @@ struct umbra_app {
     unsigned char *st_frame;   // whole-frame readback, window fallback only
     unsigned char *st_tile;    // one step's readback
     size_t st_frame_bytes, st_tile_bytes;
+    int st_atlas_bad;          // texels of the sampled tile that came back wrong
+    int st_atlas_checked;
+    int st_atlas_slot;
     char st_reason[160];       // why the test was skipped, when it was
     char st_bad_text[128];     // the first mismatch, copied out of Goose
     int st_steps;              // steps taken, so the log can say how many
 
     // What the device answered at start-up, and what the app did about it.
+    unsigned atlas_tex;        // the block atlas, one texture for the world
+    int atlas_size;            // its width and height in texels
+    unsigned atlas_hash;       // what the packer produced, for the log
+    int atlas_missing;         // blocks that asked for a tile the build has not
+    int atlas_uploads;         // times the atlas reached the GPU
     bool render_fallback;      // drawing without the full pipeline
     char fallback_reason[160];
     bool gpu_timer_supported;  // GL_EXT_disjoint_timer_query, i.e. real GPU time

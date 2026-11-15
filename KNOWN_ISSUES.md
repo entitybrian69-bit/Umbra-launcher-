@@ -52,13 +52,17 @@ is a bug we have not found yet. Nothing in this file is fixed by claiming it is.
   out from them, but the CI emulator reports zero insets, so a real status bar,
   gesture bar or display cutout has never moved a button. The owner's phone is the
   first real test.
-* **The world in the screenshot is a demo world, not a Minecraft world.** It is
-  generated in Goose (stone, dirt, grass, water, trees, plants), with no textures
-  and no block models: the whole surface is untextured, so grass reads as grey.
-  Atlas, blockstates and models from the jar are Stage 3 work.
-* **Back-face culling is off** (`glDisable(GL_CULL_FACE)` in `umbra_app_init`).
-  The mesher's winding is unit-tested, but the cube and HUD geometry share the
-  state and turning it on has not been verified yet.
+* **The world in the screenshot is a demo world with placeholder art.** It is
+  generated in Goose (stone, dirt, grass, water, trees, plants) and textured
+  through the real atlas pipeline, but the twelve tiles are generated in
+  `core/textures.goose`, not taken from the jar (D-039: no Mojang assets are
+  shipped). The jar's own textures and models are exercised in CI only. Block
+  models from the jar (`elements`, per-face UVs, rotations) are not used yet: the
+  mesher draws whole cubes from a name-keyed table.
+* **Back-face culling is on for the opaque world pass only.** The mesher's
+  winding is checked in the host suite (every triangle's cross product against its
+  normal, 0 flipped), and cross plants stay two-sided because they are single
+  quads; the HUD and the self-test cube are not culled.
 * **A pause rebuilds the app.** `APP_CMD_TERM_WINDOW` frees EGL and the app is
   re-initialised on return (DECISIONS.md D-017), which re-meshes the world. A
   resume therefore costs the same 4.6 s as a cold start.
