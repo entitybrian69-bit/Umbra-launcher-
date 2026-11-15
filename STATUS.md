@@ -179,6 +179,30 @@ Mali-G57 at density 3.5.
 either a real `gpu avg N ms` or `gpu n/a`; and that the benchmark's `vsync:` line
 says what the phone actually did.
 
+## Final audit, before `v0.3.2-pre` is published (2026-11-15)
+
+Every line is a command that was run, on commit `da4e8e2` unless stated.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | `GOOSE=build/bin/goose tools/gen_core.sh` twice in a row | `generated build/gen/umbra_core.c (9664 lines of C from Goose)`; the two files are byte-identical (`diff` prints nothing) |
+| 2 | `tools/check_c.sh` | `check_c: FS_PATTERN declares precision highp int`, `check_c: umbra_app_init runs the device checks`, `check_c: both branches parse and type-check, and both platform mains do too` (desktop and `-D__ANDROID__`, plus both platform mains with `-Werror=implicit-function-declaration`) |
+| 3 | `tools/build_pc.sh` (headless host) | `PASS: 149 checks, 0 failures`; the same suite passes in CI on `ubuntu-latest` and on `windows-latest` under MSYS2 UCRT64 (run `43725273753`, jobs both `success`) |
+| 4 | Android workflow on the audited commit | run `43725273786`: `Build APK (arm64 + x86_64)` success, `Emulator smoke test + screenshot` success, including `SELFTEST PASS (0 bad of 4147200 px, 1788 ms, offscreen)` and `result: PASS (installed, launched, drew, self test tapped, 60s soak, no crash)` |
+| 5 | Core workflow (Goose, x86_64 and arm64) | run `43725273775`: both jobs success |
+| 6 | Jar workflow (model data) | run `43725273740`: success; the 41 MB client jar is downloaded at test time and never committed (`find . -name '*.jar'` inside the repo: nothing; `.git` pack 14.15 MiB, 3.7 MiB tracked) |
+| 7 | Nothing silent left | `check:` lines for renderer, GL version, max texture, timer query, per-program link status, depth bits and extension length; a failure puts the app in the fallback renderer with the reason on screen; the smoke test now fails on `SELFTEST FAIL`/`SKIPPED` or fewer than 100k compared pixels |
+| 8 | Docs contract | `DECISIONS.md` D-038 (the shader precision bug, the phased self-test, its costs), `KNOWN_ISSUES.md` corrected where it claimed nothing had run on a phone GPU, `docs/PHONE_TEST.md` rewritten for 0.3.2, this file |
+| 9 | Git safety | no force-push, no branch deletion, `main` is still `c10bffc` ("Create blank.yml"), work is on `arena/dd4cb2fb-umbra-launcher`, and the tag is made on this branch |
+| 10 | Release safety | `v0.3.0-pre` and `v0.3.1-pre` stay published and untouched; `v0.3.2-pre` is a new pre-release |
+
+**What this audit cannot say.** That the fixes work on the owner's phone: the
+emulator is SwiftShader, density 420, no cutout, and `gpu n/a` where the phone may
+report real timer results. The parity table is still empty — no world from the
+real game has been opened, nothing renders the jar's models, so there is no
+honest "1.0" and no Minecraft claim to make. The arm64 `.so` inside the APK is
+still never executed by CI.
+
 ## The reference screenshot, and why it changed
 
 `docs/reference/emulator_home.png` is now the frame from run 43709489473: the
