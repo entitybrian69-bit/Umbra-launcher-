@@ -1,11 +1,11 @@
-run: 43667598194, commit: 4f469725732ee2cd87ae18695632a1ba855b3594
+run: 43668435596, commit: 310cb70b6b3787743bcb55f646e1a5c6d3a3b47e
 sdk: /usr/local/lib/android/sdk
 adb: /usr/local/lib/android/sdk/platform-tools/adb
 emulator: /usr/local/lib/android/sdk/emulator/emulator
-apk: ./android/app/build/outputs/apk/release/app-release.apk (188335 bytes, sha256 60a022a7065d732ecdc6331127e16eb074c8c1dc47e6576aeab2e9f815e220f9)
+apk: ./android/app/build/outputs/apk/release/app-release.apk (189727 bytes, sha256 179288e355e3c8f5cc44b3c016549f0c31568be9c98f633c88de8cdfbd99a5ec)
 
 == phase: kvm ==
-kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 15 02:27 /dev/kvm
+kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 15 02:37 /dev/kvm
 cpu: 4 flags match vmx/svm
 
 == phase: sdk-packages ==
@@ -16,65 +16,68 @@ sdk-image: ok (3 lines)
 avd: umbra_ci from device profile pixel_2 at /home/runner/.android/avd
 
 == phase: emulator-boot ==
-emulator: started as pid 2896
-emulator: booted in 58 s
+emulator: started as pid 2691
+emulator: booted in 31 s
 android: api 30 (11)
 display: 1080x1920
 
 == phase: unlock ==
 wake: 
-focus before launch:  mCurrentFocus=Window{8bd2776 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
+focus before launch:  mCurrentFocus=Window{50c75b9 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
 
 == phase: install ==
 install: Success
 
 == phase: launch ==
-launch: Status: ok TotalTime: 1075 
-running: pid 3361
+launch: Status: ok TotalTime: 870 
+running: pid 3217
 app: android_main: files /data/user/0/org.umbra.client/files
 app: goose core initialised
 app: app cmd 10, window 0x0
-app: app cmd 11, window 0x0
 app: no window yet: waiting for the activity to become visible
+app: app cmd 11, window 0x0
 app: app cmd 0, window 0x0
-app: app cmd 1, window 0x7bd3933e30a0
+app: app cmd 1, window 0x70a165a5ca70
 app: EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-app: app cmd 3, window 0x7bd3933e30a0
-app: app cmd 5, window 0x7bd3933e30a0
-app: app cmd 4, window 0x7bd3933e30a0
-app: app cmd 6, window 0x7bd3933e30a0
-app: 02:29:49 ---- Umbra starting, build 4f46972 ----
-app: 02:29:49 core: umbra core: formats and meshing
-app: 02:29:49 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
-app: 02:29:49 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-app: 02:29:49 GL_VENDOR Google (Google Inc.)
-app: 02:29:49 depth bits 24, vertex highp 127^23, fragment highp 127^23
-app: 02:29:54 mesh bounds x 0.0..48.0 y -64.0..76.0 z 0.0..48.0, camera 55.2 blocks out
-app: 02:29:54 demo world built in 2.5 ms, meshed in 4553.0 ms
-app: 02:29:54 mesh: 370488 vertices, 555732 indices; batches 542910/12822/0
-app: 02:29:54 hud: button 0 at 8,946 size 1904x34 on 1920x1080 (insets 0,0,0,0)
-app: 02:29:54 hud: button 1 at 8,988 size 1904x34 on 1920x1080 (insets 0,0,0,0)
-app: 02:29:54 hud: button 2 at 8,1030 size 1904x34 on 1920x1080 (insets 0,0,0,0)
+app: app cmd 3, window 0x70a165a5ca70
+app: app cmd 5, window 0x70a165a5ca70
+app: app cmd 4, window 0x70a165a5ca70
+app: 02:39:23 ---- Umbra starting, build 310cb70 ----
+app: 02:39:23 core: umbra core: formats and meshing
+app: 02:39:23 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
+app: 02:39:23 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+app: 02:39:23 GL_VENDOR Google (Google Inc.)
+app: 02:39:23 depth bits 24, vertex highp 127^23, fragment highp 127^23
+app: 02:39:28 mesh bounds x 0.0..48.0 y -64.0..76.0 z 0.0..48.0, camera 55.2 blocks out
+app: 02:39:28 demo world built in 3.3 ms, meshed in 4300.4 ms
+app: 02:39:28 mesh: 370488 vertices, 555732 indices; batches 542910/12822/0
+app: 02:39:28 hud: button 0 at 8,946 size 1904x34 on 1920x1080 (insets 0,0,0,0)
+app: 02:39:28 hud: button 1 at 8,988 size 1904x34 on 1920x1080 (insets 0,0,0,0)
+app: 02:39:28 hud: button 2 at 8,1030 size 1904x34 on 1920x1080 (insets 0,0,0,0)
+app: app cmd 6, window 0x70a165a5ca70
+app: app cmd 4, window 0x70a165a5ca70
 
 == phase: screenshot-home ==
-shot1: 213326 bytes, sha256 c528084cee6590511f852e8dbb73b4b2b36011e10fff33b2cb7110f04819a910
-focus while drawing:  mCurrentFocus=Window{f61bd75 u0 org.umbra.client/android.app.NativeActivity}
+shot1: 213299 bytes, sha256 624e9caf05d7a9cb054761973115993a5734d6bcc411c136ada430eae3712ef4
+focus while drawing:  mCurrentFocus=Window{298b245 u0 org.umbra.client/android.app.NativeActivity}
 
 == phase: selftest-tap ==
 tap: self-test button at 8,946 size 1904x34, tapping 960,963
 tap: attempt 1 at 960,963
 tap: the app reported a self-test
-shot2: 213779 bytes, sha256 120e26f0652ac32dd1435f73b29a6c7b943ad1ce93ccb8d2b7e491a2e17a121b
-app: 02:30:40 self-test: begin (1920x1080)
-app: 02:30:40 self-test: pattern 2073600 pixels checked, 2073600 mismatched, max channel diff 255
-app: 02:30:40 self-test: cube 2073600 pixels checked, 1441692 mismatched
-app: 02:30:40 self-test: first bad pixel index 2
+shot2: 213774 bytes, sha256 a6669b687cf0923b19a10ca0fed49db6c9b7dd40e92bea6d7c7bd325b7b938f4
+app: 02:40:11 self-test: requested
+app: 02:40:11 self-test: begin (1920x1080)
+app: 02:40:11 self-test: target offscreen, pixel(0,0) = 0,0,0, pixel(w-1,0) = 0,0,0
+app: 02:40:11 self-test: pattern 2073600 pixels checked, 2073600 mismatched, max channel diff 255
+app: 02:40:11 self-test: cube 2073600 pixels checked, 229452 mismatched
+app: 02:40:11 self-test: first bad pixel index 2
 
 == phase: soak ==
 soak: holding for 60s
-soak: survived, pid 3361
+soak: survived, pid 3217
 soak: no FATAL EXCEPTION
-meminfo:  Native Heap 30086 30056 0 47 31456 39716 33701 1314| Native Heap: 30056 31456| TOTAL PSS: 80788 TOTAL RSS: 178560 TOTAL SWAP PSS: 262|
+meminfo:  Native Heap 30136 30112 0 47 31472 39716 33712 1657| Native Heap: 30112 31472| TOTAL PSS: 80850 TOTAL RSS: 178320 TOTAL SWAP PSS: 256|
 
 == phase: done ==
 result: PASS (installed, launched, drew, self test tapped, 60s soak, no crash)
