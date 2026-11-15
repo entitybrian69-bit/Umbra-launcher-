@@ -498,6 +498,18 @@ fn json_key(i: i64) -> const u8[:] {
     return json_bytes[k.off .. k.off + k.len];
 }
 
+// The first child of a container, and the next sibling, for walking a tree
+// directly. Both are -1 at the end.
+fn json_first(i: i64) -> i64 {
+    if !json_valid(i) { return -1; }
+    return json_nodes[i].first;
+}
+
+fn json_next(i: i64) -> i64 {
+    if !json_valid(i) { return -1; }
+    return json_nodes[i].next;
+}
+
 fn json_child_count(i: i64) -> i64 {
     if !json_valid(i) { return 0; }
     var n: i64 = 0;

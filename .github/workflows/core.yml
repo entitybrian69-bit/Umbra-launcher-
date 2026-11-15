@@ -30,6 +30,8 @@ jobs:
           echo "gate self-test passed: corruption detected"
           grep -E "FAIL" build/negative.log | head -5
           cp /tmp/keep.zlib goose/test/fixtures/inflate/text.zlib
+      - name: Jar checker against a synthetic jar (no network, no game data)
+        run: GOOSE=build/bin/goose tools/check_jar.sh 2>&1 | tee build/jar-check.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -37,3 +39,4 @@ jobs:
           path: |
             build/core-tests.log
             build/negative.log
+            build/jar-check.log

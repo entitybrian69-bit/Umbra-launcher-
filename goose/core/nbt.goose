@@ -339,8 +339,6 @@ fn nbt_write(out: u8[>..]&) {
 fn f32_bits(v: f32) -> u32 { return umbra_c_bits_of_f32(v); }
 fn f64_bits(v: f64) -> u64 { return umbra_c_bits_of_f64(v); }
 
-extern fn umbra_c_bits_of_f32(v: f32) -> u32 = "umbra_c_bits_of_f32";
-extern fn umbra_c_bits_of_f64(v: f64) -> u64 = "umbra_c_bits_of_f64";
 
 // The bytes of a string node (e.g. a list element), for tests and callers
 // that hold the node index rather than a parent and a name.

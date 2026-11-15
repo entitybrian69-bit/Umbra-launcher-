@@ -84,6 +84,8 @@ fn put_be_i64(out: u8[>..]&, v: i64) { put_be_u64(out, v as! u64); }
 
 // Provided by the C platform layer (platform/shared/umbra_glue.c).
 extern fn umbra_c_f32_from_bits(bits: u32) -> f32 = "umbra_c_f32_from_bits";
+extern fn umbra_c_bits_of_f32(v: f32) -> u32 = "umbra_c_bits_of_f32";
+extern fn umbra_c_bits_of_f64(v: f64) -> u64 = "umbra_c_bits_of_f64";
 extern fn umbra_c_f64_from_bits(bits: u64) -> f64 = "umbra_c_f64_from_bits";
 
 fn f32_from_bits(bits: u32) -> f32 { return umbra_c_f32_from_bits(bits); }

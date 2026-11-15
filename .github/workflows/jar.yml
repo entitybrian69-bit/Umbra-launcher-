@@ -1,0 +1,56 @@
+name: jar
+# Gate 6, first half: the official client jar's own model data, checked against
+# itself. The jar is downloaded from Mojang at test time and is never committed;
+# only the version pin, the checksum and the checker's output are.
+on:
+  push:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 * * 1"
+jobs:
+  jar:
+    name: Real client jar: model data self-consistency
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+      - name: Build the pinned Goose compiler
+        run: tools/pin_goose.sh
+      - name: Download the pinned client jar (never committed)
+        run: tools/fetch_jar.sh build/jar/client.jar 2>&1 | tee build/fetch-jar.log
+      - name: Check the jar's model data against itself
+        run: |
+          set -o pipefail
+          GOOSE=build/bin/goose OUT=build/umbra_jarcheck \
+            bash -c 'mkdir -p evidence/jar
+                     build/bin/goose --standalone --header build/jarcheck.h -o build/jarcheck.c goose/jarcheck.goose
+                     cc -O2 -o build/umbra_jarcheck platform/shared/test_main.c build/jarcheck.c platform/shared/umbra_glue.c -lm -lpthread
+                     build/umbra_jarcheck build/jar/client.jar' 2>&1 | tee evidence/jar/jarcheck.txt
+      - name: Report the numbers
+        if: always()
+        run: |
+          grep -E "^(jar:|PASS|FAILED)" evidence/jar/jarcheck.txt | tail -20 | while IFS= read -r l; do
+            echo "::notice title=jar::$l"; done
+      - name: Commit the evidence
+        if: always()
+        run: |
+          set -euo pipefail
+          git config user.name "umbra ci"
+          git config user.email "ci@umbra.invalid"
+          git add -f evidence/jar
+          if git diff --cached --quiet; then echo "no change in the evidence"; exit 0; fi
+          git commit -m "ci: jar evidence from run $GITHUB_RUN_ID [skip ci]"
+          git pull --rebase origin "$GITHUB_REF_NAME" || true
+          git push origin "HEAD:$GITHUB_REF_NAME"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jar-evidence
+          path: |
+            evidence/jar
+            build/fetch-jar.log
