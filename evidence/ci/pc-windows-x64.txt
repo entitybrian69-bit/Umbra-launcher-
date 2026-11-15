@@ -139,7 +139,7 @@ core version: 0.1.0-stage1
 mesh: 17783424 vertex bytes, 2222928 index bytes
 mesh checks: 0 bad indices, 0 bad normals, 0 positions out of bounds
 progress: worst 998 permille; units 1947, total 1947
-sliced mesh: 819 calls, worst call 126.13 ms, worst unit 126.13 ms
+sliced mesh: 819 calls, worst call 120.38 ms, worst unit 120.38 ms
 batches: 542910 + 12822 + 0 = 555732 of 555732 indices
 layout: phone scale 2.64, desktop scale 1.00
 layout: button 0 21,1006 737x53; button 2 1528,1006
@@ -147,12 +147,25 @@ layout: panel 391 px, free band 401..995 (55% of 1080)
 camera: 37.6 blocks out, world 25.6 deg tall by 32.6 deg wide, screen 27.5 x 49.3, band 16.0
 camera: emulator 37.6 blocks out in a band starting at 304
 hud: 20 rows for a bench block, a last run and a crash tail
+self-test: compared 1302338 px, skipped 1302622 px under the overlay
+self-test: overlay leaks into the compared area: 0 px
+self-test: 62 rows per step at 2412x1080, 18 steps
 bench: 1000 frames  avg 16.00 ms (62 fps)
 1% low 62 fps (16.00 ms)
 median 16.00 ms  worst 16.00 ms
 headless | Android none
+gpu n/a (no GPU timer results)
+vsync: capped by the platform
 bench: 202 frames  avg 16.83 ms (59 fps)
 1% low 10 fps (100.00 ms)
 median 16.00 ms  worst 100.00 ms
 headless | Android none
-PASS: 127 checks, 0 failures
+gpu n/a (no GPU timer results)
+vsync: capped by the platform
+bench: 100 frames  avg 16.66 ms (59 fps)
+1% low 59 fps (16.66 ms)
+median 16.66 ms  worst 16.66 ms
+headless | Android none
+gpu avg 4.10 ms over 100 frames
+vsync: uncapped requested
+PASS: 149 checks, 0 failures
