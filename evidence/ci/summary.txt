@@ -1,12 +1,12 @@
-run: 43662236236, commit: 052b5ee0cf8dd8c63f219f1740fccb1437d2c4a9
+run: 43663170117, commit: 0fe681070eebd84d52c3a30ff11232c481be84b3
 sdk: /usr/local/lib/android/sdk
 adb: /usr/local/lib/android/sdk/platform-tools/adb
 emulator: /usr/local/lib/android/sdk/emulator/emulator
-apk: ./android/app/build/outputs/apk/release/app-release.apk (186839 bytes, sha256 25420681f6fc39009a807dd2354d8145d871a9878a9e313f9148cc815621b4d7)
+apk: ./android/app/build/outputs/apk/release/app-release.apk (187511 bytes, sha256 c2b5cfffd7d99891bf022969a92cd57dd4f9e897dbbc239682fe93ddf34ad149)
 
 == phase: kvm ==
-kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 15 01:19 /dev/kvm
-cpu: 4 flags match vmx/svm
+kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 15 01:30 /dev/kvm
+cpu: 8 flags match vmx/svm
 
 == phase: sdk-packages ==
 sdk-platform-tools: ok (3 lines)
@@ -16,42 +16,89 @@ sdk-image: ok (3 lines)
 avd: umbra_ci from device profile pixel_2 at /home/runner/.android/avd
 
 == phase: emulator-boot ==
-emulator: started as pid 2680
-emulator: booted in 26 s
+emulator: started as pid 2860
+emulator: booted in 31 s
 android: api 30 (11)
 display: 1080x1920
 
 == phase: unlock ==
 wake: 
-focus before launch:  mCurrentFocus=Window{ded8ed4 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
+focus before launch:  mCurrentFocus=Window{536bb13 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
 
 == phase: install ==
 install: Success
 
 == phase: launch ==
-launch: Status: timeout 
-launch: the app has not reported drawing yet, nudging it through the launcher
-nudge: data="android.intent.category.LAUNCHER" Events injected: 1 ## Network stats: elapsed time=50ms (0ms mobile, 0ms wifi, 50ms not connected) 
-ERROR: launch: the app logged its start line never within 120s; umbra log: --------- beginning of kernel
---------- beginning of main
---------- beginning of system
-11-15 01:21:13.813  3656  3697 I umbra   : android_main: files /data/user/0/org.umbra.client/files
+launch: Status: ok TotalTime: 1443 
+running: pid 
+app: android_main: files /data/user/0/org.umbra.client/files
+app: app cmd 10, window 0x0
+app: no window yet: waiting for the activity to become visible
+app: app cmd 11, window 0x0
+app: app cmd 0, window 0x0
+app: app cmd 1, window 0x72f67db9c6d0
+app: EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+app: app cmd 3, window 0x72f67db9c6d0
+app: app cmd 5, window 0x72f67db9c6d0
+app: app cmd 4, window 0x72f67db9c6d0
+app: cannot open log 
+app: cannot open log 
+app: 01:31:36 ---- Umbra starting, build unknown ----
+
+== phase: screenshot-home ==
+shot1: 519943 bytes, sha256 23502fd989a1ff66b9e2b108a6ada492b4e3daebe93f3cd2aebb2190972b2caa
+focus while drawing:  mCurrentFocus=Window{536bb13 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
+
+== phase: selftest-tap ==
+tap: no button rectangle in the log, falling back to 540,1803
+tap: attempt 1 at 540,1803
+tap: no self-test after 20 s, trying the rotated coordinate
+tap: attempt 2 at 1803,540
+tap: no self-test after 20 s, trying the rotated coordinate
+tap: the app never reported a self-test after two attempts
+shot2: 520295 bytes, sha256 ea0cf862441f251ab358d94de3d8f6780c3d9c88863360a2ae190eb27ebc7587
+ERROR: tap: the self-test never ran, so the input path is unverified; see logcat-umbra2.txt
+
+== phase: soak ==
+soak: holding for 60s
+ERROR: soak: the app died during the 60s soak (pid was )
 
 == collected diagnostics ==
-backtrace: 220 lines, 33015 bytes
-layer: ActivityRecord{ba5735 u0 org.umbra.client/android.app.NativeActivity#0
-layer: f76a32a Splash Screen org.umbra.client#0
-layer: Splash Screen org.umbra.client#0
-app pid at exit: 3656
-focus:  mCurrentFocus=null
-focus:  mFocusedApp=ActivityRecord{ba5735 u0 org.umbra.client/android.app.NativeActivity t9}
-logcat: 37035 lines, 4327935 bytes
+app pid at exit: 
+focus:  mCurrentFocus=Window{536bb13 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
+focus:  mFocusedApp=ActivityRecord{b477e49 u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t8}
+logcat: 37839 lines, 4451697 bytes
 activity manager mentions of umbra:
-sys: 11-15 01:21:12.917 499 539 I ActivityManager: Start proc 3656:org.umbra.client/u0a167 for pre-top-activity {org.umbra.client/android.app.NativeActivity}
-sys: 11-15 01:21:13.813 3656 3697 I umbra : android_main: files /data/user/0/org.umbra.client/files
-app log lines: 4
-app: --------- beginning of kernel
+sys: 11-15 01:31:36.050 491 2047 I ActivityManager: Start proc 3401:org.umbra.client/u0a167 for pre-top-activity {org.umbra.client/android.app.NativeActivity}
+sys: 11-15 01:31:36.837 3401 3442 I umbra : android_main: files /data/user/0/org.umbra.client/files
+sys: 11-15 01:31:36.839 3401 3442 I umbra : app cmd 10, window 0x0
+sys: 11-15 01:31:36.839 3401 3442 I umbra : no window yet: waiting for the activity to become visible
+sys: 11-15 01:31:36.840 3401 3442 I umbra : app cmd 11, window 0x0
+sys: 11-15 01:31:36.852 3401 3442 I umbra : app cmd 0, window 0x0
+sys: 11-15 01:31:36.881 3401 3442 I umbra : app cmd 1, window 0x72f67db9c6d0
+sys: 11-15 01:31:36.983 3401 3442 I umbra : EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+sys: 11-15 01:31:36.983 3401 3442 I umbra : app cmd 3, window 0x72f67db9c6d0
+sys: 11-15 01:31:36.983 3401 3442 I umbra : app cmd 5, window 0x72f67db9c6d0
+sys: 11-15 01:31:36.983 3401 3442 I umbra : app cmd 4, window 0x72f67db9c6d0
+sys: 11-15 01:31:36.983 3401 3442 E umbra : cannot open log 
+sys: 11-15 01:31:36.983 3401 3442 E umbra : cannot open log 
+sys: 11-15 01:31:36.983 3401 3442 I umbra : 01:31:36 ---- Umbra starting, build unknown ----
+sys: 11-15 01:31:37.186 491 1946 I WindowManager: WIN DEATH: Window{deb0552 u0 org.umbra.client/android.app.NativeActivity}
+sys: 11-15 01:31:37.270 491 581 I ActivityManager: Process org.umbra.client (pid 3401) has died: fg TOP 
+app log lines: 16
 app: --------- beginning of main
 app: --------- beginning of system
-app: 11-15 01:21:13.813 3656 3697 I umbra : android_main: files /data/user/0/org.umbra.client/files
+app: 11-15 01:31:36.837 3401 3442 I umbra : android_main: files /data/user/0/org.umbra.client/files
+app: 11-15 01:31:36.839 3401 3442 I umbra : app cmd 10, window 0x0
+app: 11-15 01:31:36.839 3401 3442 I umbra : no window yet: waiting for the activity to become visible
+app: 11-15 01:31:36.840 3401 3442 I umbra : app cmd 11, window 0x0
+app: 11-15 01:31:36.852 3401 3442 I umbra : app cmd 0, window 0x0
+app: 11-15 01:31:36.881 3401 3442 I umbra : app cmd 1, window 0x72f67db9c6d0
+app: 11-15 01:31:36.983 3401 3442 I umbra : EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+app: 11-15 01:31:36.983 3401 3442 I umbra : app cmd 3, window 0x72f67db9c6d0
+app: 11-15 01:31:36.983 3401 3442 I umbra : app cmd 5, window 0x72f67db9c6d0
+app: 11-15 01:31:36.983 3401 3442 I umbra : app cmd 4, window 0x72f67db9c6d0
+app: 11-15 01:31:36.983 3401 3442 E umbra : cannot open log 
+app: 11-15 01:31:36.983 3401 3442 E umbra : cannot open log 
+app: 11-15 01:31:36.983 3401 3442 I umbra : 01:31:36 ---- Umbra starting, build unknown ----
 
