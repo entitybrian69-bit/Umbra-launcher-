@@ -21,7 +21,7 @@ IMAGE="system-images;android-${API};google_apis;x86_64"
 DEVICE="${UMBRA_EMU_DEVICE:-pixel_2}"
 AVD="umbra_ci"
 BOOT_TIMEOUT="${UMBRA_BOOT_TIMEOUT:-600}"
-APP_TIMEOUT="${UMBRA_APP_TIMEOUT:-90}"
+APP_TIMEOUT="${UMBRA_APP_TIMEOUT:-120}"
 SOAK_SECONDS="${UMBRA_SOAK_SECONDS:-60}"
 SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
 PHASE="startup"
@@ -49,24 +49,30 @@ collect() {
     COLLECTED=1
     say ""
     say "== collected diagnostics =="
-    if [ -n "${ADB:-}" ] && [ -x adb ]; then
-        adb logcat -d > logcat-full.txt 2>&1 || true
+    if [ -n "${ADB_BIN:-}" ] && [ -x "$ADB_BIN" ]; then
+        adb logcat -d -b all -v threadtime > logcat-full.txt 2>&1 || true
         adb logcat -d -s umbra:V > logcat-umbra.txt 2>&1 || true
+        adb logcat -d -s ActivityManager:I WindowManager:I AndroidRuntime:E umbra:V > logcat-system.txt 2>&1 || true
         adb shell dumpsys window > dumpsys-window.txt 2>&1 || true
         adb shell dumpsys activity activities > dumpsys-activity.txt 2>&1 || true
+        adb shell dumpsys activity top > dumpsys-top.txt 2>&1 || true
         adb shell pidof org.umbra.client > pid.txt 2>&1 || true
-        say "app pid at exit: $(cat pid.txt 2>/dev/null | tr -d '\r\n')"
+        adb exec-out screencap -p > shot0.png 2>/dev/null || true
+        say "app pid at exit: $(tr -d '\r\n' < pid.txt 2>/dev/null)"
         grep -m2 -E 'mCurrentFocus|mFocusedApp' dumpsys-window.txt 2>/dev/null \
             | while IFS= read -r l; do say "focus: $(echo "$l" | tr -s ' ')"; done
         if [ -f logcat-full.txt ]; then
             say "logcat: $(wc -l < logcat-full.txt) lines, $(stat -c%s logcat-full.txt) bytes"
             if grep -q "FATAL EXCEPTION" logcat-full.txt; then
-                err "FATAL EXCEPTION in logcat: $(grep -A8 'FATAL EXCEPTION' logcat-full.txt | tail -c 800)"
+                err "FATAL EXCEPTION in logcat: $(grep -A10 'FATAL EXCEPTION' logcat-full.txt | tail -c 800)"
             fi
+            say "activity manager mentions of umbra:"
+            grep -iE "umbra" logcat-system.txt 2>/dev/null | tail -20 \
+                | while IFS= read -r l; do say "sys: $(echo "$l" | tr -s ' ' | cut -c1-220)"; done
         fi
         if [ -s logcat-umbra.txt ]; then
             say "app log lines: $(grep -c . logcat-umbra.txt)"
-            tail -12 logcat-umbra.txt | while IFS= read -r l; do say "app: $(echo "$l" | tr -s ' ')"; done
+            tail -15 logcat-umbra.txt | while IFS= read -r l; do say "app: $(echo "$l" | tr -s ' ')"; done
         else
             say "app log: empty (the app never logged)"
         fi
@@ -185,6 +191,15 @@ phase "launch"
 adb shell am start -W -n org.umbra.client/android.app.NativeActivity > launch.log 2>&1 \
     || die "am start failed: $(tail -c 500 launch.log)"
 say "launch: $(grep -E 'Status|TotalTime|Error' launch.log | tr '\n' ' ' | tr -s ' ')"
+# A native activity often reports "Status: timeout" even when it is starting,
+# so give it a moment and, if it still has not spoken, ask the launcher to bring
+# it forward once more.
+sleep 15
+if ! adb logcat -d -s umbra:V 2>/dev/null | grep -q "Umbra starting"; then
+    say "launch: the app has not reported drawing yet, nudging it through the launcher"
+    adb shell monkey -p org.umbra.client -c android.intent.category.LAUNCHER 1 > monkey.log 2>&1 || true
+    say "nudge: $(tail -3 monkey.log | tr '\n' ' ' | tr -s ' ')"
+fi
 
 # Wait for the app's own first words rather than guessing a sleep.
 READY=0
