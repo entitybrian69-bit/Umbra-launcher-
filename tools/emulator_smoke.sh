@@ -326,8 +326,11 @@ if adb logcat -d 2>/dev/null | grep -q "FATAL EXCEPTION"; then
 fi
 say "soak: no FATAL EXCEPTION"
 say "meminfo: $(grep -E 'TOTAL PSS|Native Heap' meminfo.txt | tr -s ' ' | tr '\n' '|' | cut -c1-240)"
-say "frames drawn: $(grep -c 'frame' logcat-umbra2.txt || true) matching log lines"
 
+# Everything worth keeping is already on disk and the device is about to go
+# away, so the exit handler has nothing left to collect (and would otherwise
+# spend minutes timing out against a dead emulator).
+COLLECTED=1
 adb emu kill > /dev/null 2>&1 || true
 phase "done"
 say "result: PASS (installed, launched, drew, self test tapped, ${SOAK_SECONDS}s soak, no crash)"

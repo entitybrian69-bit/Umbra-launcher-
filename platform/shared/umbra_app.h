@@ -42,6 +42,10 @@ struct umbra_app {
     int32_t vert_count, index_count;
     int64_t batch_start[3], batch_count[3];
     float center[3];
+    // Extent of the demo mesh, in blocks, used to frame the camera and to set
+    // a sane near/far range instead of a guess.
+    float span[3];
+    float cam_dist;
 
     // Runtime state
     umbra_screen screen;

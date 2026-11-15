@@ -156,7 +156,7 @@ static const char *VS_MESH =
     "out float v_dist;\n"
     "void main() {\n"
     "    vec3 p = a_pos - u_center;\n"
-    "    v_col = a_col * a_ao;\n"
+    "    v_col = a_col;  // face shade and ambient occlusion are baked in\n"
     "    v_dist = length(p);\n"
     "    gl_Position = u_viewproj * vec4(p, 1.0);\n"
     "}\n";
@@ -550,6 +550,14 @@ static void build_scene(umbra_app *app) {
     app->center[0] = (umbra_mesh_min_x() + umbra_mesh_max_x()) * 0.5f;
     app->center[1] = (umbra_mesh_min_y() + umbra_mesh_max_y()) * 0.5f;
     app->center[2] = (umbra_mesh_min_z() + umbra_mesh_max_z()) * 0.5f;
+    app->span[0] = umbra_mesh_max_x() - umbra_mesh_min_x();
+    app->span[1] = umbra_mesh_max_y() - umbra_mesh_min_y();
+    app->span[2] = umbra_mesh_max_z() - umbra_mesh_min_z();
+    float horiz = app->span[0] > app->span[2] ? app->span[0] : app->span[2];
+    app->cam_dist = horiz * 0.9f + 12.0f;
+    umbra_log(app, "mesh bounds x %.1f..%.1f y %.1f..%.1f z %.1f..%.1f, camera %.1f blocks out",
+              umbra_mesh_min_x(), umbra_mesh_max_x(), umbra_mesh_min_y(), umbra_mesh_max_y(),
+              umbra_mesh_min_z(), umbra_mesh_max_z(), app->cam_dist);
     umbra_log(app, "demo world built in %.1f ms, meshed in %.1f ms", (t1 - t0) / 1000.0, (t2 - t1) / 1000.0);
     umbra_log(app, "mesh: %d vertices, %d indices; batches %lld/%lld/%lld", app->vert_count,
               app->index_count, (long long)app->batch_count[0], (long long)app->batch_count[1],
@@ -562,11 +570,16 @@ int umbra_app_init(umbra_app *app) {
     // every log line would be written nowhere.
     char log_path[sizeof app->log_path];
     char marker_path[sizeof app->marker_path];
+    int32_t width = app->width, height = app->height;
     memcpy(log_path, app->log_path, sizeof log_path);
     memcpy(marker_path, app->marker_path, sizeof marker_path);
     memset(app, 0, sizeof *app);
     memcpy(app->log_path, log_path, sizeof app->log_path);
     memcpy(app->marker_path, marker_path, sizeof app->marker_path);
+    // The surface size comes from the window, not from this function: zeroing
+    // it here would lay the HUD out for a 0x0 screen and log nonsense.
+    app->width = width;
+    app->height = height;
     app->screen = UMBRA_SCREEN_HOME;
     app->dpi_scale = 1.0f;
     app->bench_seconds = 60;
@@ -741,10 +754,16 @@ static void run_selftest(umbra_app *app) {
 
 static void draw_scene(umbra_app *app) {
     float proj[16], view[16], vp[16];
-    mat4_perspective(proj, 62.0f * 3.14159265f / 180.0f, (float)app->width / (float)app->height, 0.05f, 400.0f);
-    float t = (float)(app->frames_drawn % 3600) * 0.002f;
-    float eye[3] = {app->center[0] + 34.0f * cosf(t), app->center[1] + 26.0f, app->center[2] + 34.0f * sinf(t)};
-    float target[3] = {app->center[0], app->center[1] - 6.0f, app->center[2]};
+    // The home view is a fixed three-quarter view, framed from the mesh extent
+    // and not from a hand-tuned number: the screenshot gate compares one run
+    // with the next, so the scene must not drift while it is being captured.
+    float near_z = app->cam_dist * 0.02f;
+    if (near_z < 0.05f) near_z = 0.05f;
+    float far_z = app->cam_dist * 4.0f + app->span[0] + app->span[1] + app->span[2];
+    mat4_perspective(proj, 62.0f * 3.14159265f / 180.0f, (float)app->width / (float)app->height, near_z, far_z);
+    float eye[3] = {app->center[0] + app->cam_dist * 0.62f, app->center[1] + app->cam_dist * 0.48f,
+                    app->center[2] + app->cam_dist * 0.62f};
+    float target[3] = {app->center[0], app->center[1], app->center[2]};
     float up[3] = {0.0f, 1.0f, 0.0f};
     mat4_look_at(view, eye, target, up);
     mat4_mul(vp, proj, view);

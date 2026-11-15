@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
     sl_u8 dev = {(uint8_t *)"headless", 8};
     sl_u8 android = {(uint8_t *)"none", 4};
     const uint8_t *summary = umbra_bench_summary(label, dev, android, &len);
-    printf("bench: %s\n", slice_text(summary, len));
+    printf("%s\n", slice_text(summary, len));
     check(len > 20, "benchmark summary is formatted");
 
     goose_exit();
