@@ -390,7 +390,7 @@ fn bench_summary(out: u8[>..]&, label: const u8[:], device: const u8[:], android
     // first at 16.7 ms whatever the GPU does, which is why the owner's 59 FPS told
     // us nothing. The second is measured with a timer query around the draw.
     if gpu_supported == 0 {
-        format(out, "\ngpu n/a (no EXT_disjoint_timer_query)");
+        format(out, "\ngpu n/a (no GPU timer results)");
     } else if gpu_frames <= 0 {
         format(out, "\ngpu: queried, no result before the end");
     } else {
