@@ -332,6 +332,13 @@ static void hud_text(float x, float y, float scale, float cr, float cg, float cb
     float cx = x;
     for (const char *p = text; *p; p++) {
         unsigned char c = (unsigned char)*p;
+        if (c == '\n') {
+            // Multi-line HUD text: the benchmark block needs separate lines to
+            // stay readable on a phone.
+            cx = x;
+            y += 10.0f * scale;
+            continue;
+        }
         if (c < 32 || c > 126) c = '?';
         int gi = c - 32;
         float u0 = (gi % 16) * cell;
@@ -925,7 +932,7 @@ static void draw_hud(umbra_app *app) {
     float line = 10.0f * s;
     char buf[256];
 
-    hud_rect(0, 0, (float)app->width, (float)(220 + app->insets[1]), 0.0f, 0.0f, 0.0f, 0.55f);
+    hud_rect(0, 0, (float)app->width, (float)(250 + app->insets[1]), 0.0f, 0.0f, 0.0f, 0.55f);
     hud_text(x, y, s, 1, 1, 1, 1, "UMBRA - not an official Minecraft product");
     y += line * 1.6f;
     snprintf(buf, sizeof buf, "Umbra %s  build %s", UMBRA_APP_VERSION, UMBRA_GIT_COMMIT);
@@ -961,11 +968,21 @@ static void draw_hud(umbra_app *app) {
     y += line;
     if (app->benching) {
         double elapsed = (umbra_now_us() / 1000000.0) - app->bench_start_time;
-        snprintf(buf, sizeof buf, "benchmark %.0f/%.0f s  frames %lld", elapsed,
-                 (double)app->bench_seconds, (long long)umbra_bench_frames());
+        long long frames = (long long)umbra_bench_frames();
+        int fps_now = (elapsed > 0.05) ? (int)((double)frames / elapsed + 0.5) : 0;
+        snprintf(buf, sizeof buf, "benchmark %.0f/%.0f s  %lld frames  %d fps live  worst %d ms",
+                 elapsed, (double)app->bench_seconds, frames, fps_now,
+                 (int)((app->max_frame_us + 500) / 1000));
         hud_text(x, y, s, 1.0f, 0.9f, 0.4f, 1, buf);
     } else if (app->bench_text[0]) {
+        // The benchmark block is several lines; count them so whatever is drawn
+        // below it still starts in the right place.
+        int extra = 0;
+        for (const char *q = app->bench_text; *q; q++) {
+            if (*q == '\n') extra++;
+        }
         hud_text(x, y, s, 0.7f, 1.0f, 0.7f, 1, app->bench_text);
+        y += (float)extra * 10.0f * s;
     }
     y += line;
     if (app->previous_run_crashed) {

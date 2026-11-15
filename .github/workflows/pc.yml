@@ -53,12 +53,8 @@ jobs:
           [ -f dist/SHA256SUMS ] && cp dist/SHA256SUMS evidence/ci/pc-linux-x64.sha256 || true
           grep -E "^(PASS|FAILED): " pc-selftest.txt 2>/dev/null | while IFS= read -r l; do
             echo "::notice title=linux-x64::$l"; done
-          git config user.name "umbra ci"
-          git config user.email "ci@umbra.invalid"
           git add -f evidence/ci
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "ci: pc evidence (linux x64) from run $GITHUB_RUN_ID [skip ci]"
-          git push origin "HEAD:$GITHUB_REF_NAME"
+          bash tools/commit_evidence.sh "ci: pc evidence (linux x64) from run $GITHUB_RUN_ID [skip ci]"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -120,12 +116,8 @@ jobs:
             set -x
             [ -f pc-selftest.txt ] && cp pc-selftest.txt evidence/ci/pc-windows-x64.txt
             [ -f dist/SHA256SUMS ] && cp dist/SHA256SUMS evidence/ci/pc-windows-x64.sha256
-            git config user.name "umbra ci"
-            git config user.email "ci@umbra.invalid"
             git add -f evidence/ci
-            if git diff --cached --quiet; then echo "nothing to publish"; return 0; fi
-            git commit -m "ci: pc evidence (windows x64) from run $GITHUB_RUN_ID [skip ci]"
-            git push origin "HEAD:$GITHUB_REF_NAME"
+            bash tools/commit_evidence.sh "ci: pc evidence (windows x64) from run $GITHUB_RUN_ID [skip ci]"
           }
           if ! out=$(publish 2>&1); then
             echo "::warning title=windows-x64 publish::$out"

@@ -113,9 +113,9 @@ jobs:
             WINE=$(command -v wine64 || command -v wine)
             "$WINE" "dist/umbra-${TAG#v}-windows-x64.exe" > /tmp/wine.log 2>&1 || true
             tail -4 /tmp/wine.log
-            grep -q "PASS: 31 checks, 0 failures" /tmp/wine.log \
+            grep -qE "PASS: [0-9]+ checks, 0 failures" /tmp/wine.log \
               || { echo "::error title=windows::the released .exe did not pass its self-test under wine"; exit 1; }
-            echo "::notice title=windows::the released .exe ran under wine and passed 31 checks"
+            echo "::notice title=windows::the released .exe ran under wine and passed its self-test"
           else
             echo "::error title=windows::no wine available, so the .exe is unproven"
             exit 1
@@ -238,13 +238,4 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          git config user.name "umbra ci"
-          git config user.email "ci@umbra.invalid"
-          mkdir -p evidence/release
-          cp RELEASE_VERIFY.txt "evidence/release/${TAG}.txt" 2>/dev/null || true
-          cp RELEASE_VERIFY.txt RELEASE_VERIFY.txt 2>/dev/null || true
-          git add -f RELEASE_VERIFY.txt evidence/release
-          if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
-          git commit -m "ci: release verification for $TAG from run $GITHUB_RUN_ID [skip ci]"
-          git pull --rebase origin "$EVIDENCE_BRANCH" || true
-          git push origin "HEAD:$EVIDENCE_BRANCH"
+          bash tools/commit_evidence.sh "ci: release verification for $TAG from run $GITHUB_RUN_ID [skip ci]" "$EVIDENCE_BRANCH"

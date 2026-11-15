@@ -204,6 +204,31 @@ int main(int argc, char **argv) {
     const uint8_t *summary = umbra_bench_summary(label, dev, android, &len);
     printf("%s\n", slice_text(summary, len));
     check(len > 20, "benchmark summary is formatted");
+    // The numbers are arithmetic, not decoration: check them digit by digit.
+    const char *text = slice_text(summary, len);
+    check(strstr(text, "1000 frames") != NULL, "the summary counts the frames");
+    check(strstr(text, "avg 16.00 ms (62 fps)") != NULL,
+          "the average frame time and its fps are right");
+    check(strstr(text, "1% low 62 fps (16.00 ms)") != NULL,
+          "the 1% low is the mean of the slowest frames");
+    check(strstr(text, "median 16.00 ms") != NULL, "the median frame is reported");
+    check(strstr(text, "worst 16.00 ms") != NULL, "the worst frame is reported");
+    int lines = 1;
+    for (const char *q = text; *q; q++) {
+        if (*q == '\n') lines++;
+    }
+    check(lines == 4, "the benchmark block is four lines on a phone screen");
+
+    // A spread of frame times must separate the average from the 1% low.
+    umbra_bench_reset();
+    for (int i = 0; i < 200; i++) umbra_bench_add(16000);
+    for (int i = 0; i < 2; i++) umbra_bench_add(100000);
+    summary = umbra_bench_summary(label, dev, android, &len);
+    text = slice_text(summary, len);
+    printf("%s\n", text);
+    check(strstr(text, "avg 16.83 ms") != NULL, "a few slow frames move the average");
+    check(strstr(text, "1% low 10 fps (100.00 ms)") != NULL,
+          "and the 1% low reports them at their real cost");
 
     goose_exit();
     printf("%s: %d checks, %d failures\n", failures ? "FAILED" : "PASS", checks, failures);

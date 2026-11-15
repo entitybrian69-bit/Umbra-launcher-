@@ -195,15 +195,7 @@ jobs:
           } > evidence/ci/run.txt
           # Trim the noisiest files so the repository does not grow unbounded.
           [ -f evidence/ci/logcat-full.txt ] && tail -c 400000 evidence/ci/logcat-full.txt > evidence/ci/logcat-full.tmp && mv evidence/ci/logcat-full.tmp evidence/ci/logcat-full.txt || true
-          git config user.name "umbra ci"
-          git config user.email "ci@umbra.invalid"
-          git add -f evidence/ci
-          if git diff --cached --quiet; then
-            echo "::notice title=evidence::nothing new to commit"
-            exit 0
-          fi
-          git commit -m "ci: emulator evidence from run $GITHUB_RUN_ID [skip ci]"
-          git push origin "HEAD:$GITHUB_REF_NAME"
+          bash tools/commit_evidence.sh "ci: emulator evidence from run $GITHUB_RUN_ID [skip ci]"
 
       - uses: actions/upload-artifact@v4
         if: always()

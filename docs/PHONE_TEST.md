@@ -22,7 +22,7 @@ assets; it reads your own game files from the app's private storage.
 | 1 | Just open it | Sky-blue screen, `UMBRA - not an official Minecraft product`, then `LOADING WORLD nn%` for a couple of seconds, then an island of blocks |
 | 2 | Look at the text block, top-left | `Umbra 0.3.0  build <7 hex digits>`, `gl OpenGL ES 3.x …`, `renderer …`, `depth 24 bits  highp vs …`, `mesh … verts … indices  frame … ms  worst … ms` — **nothing may sit under the status bar or the notch** |
 | 3 | Tap **RUN GPU SELF-TEST** | After a moment: `SELFTEST PASS (0 bad of 4147200 px)` in green, and the matching lines in the log |
-| 4 | Tap **RUN 60 s BENCHMARK** | A line that keeps count (`benchmark nn/60 s`) and, after a minute, `bench: 60 s … avg … ms (… fps) 1% low … median … worst …` |
+| 4 | Tap **RUN 60 s BENCHMARK** | A live line (`benchmark nn/60 s  … frames  … fps live  worst … ms`) and, after a minute, a four-line block: `bench: N frames  avg X.XX ms (Y fps)`, `1% low Y fps (X.XX ms)`, `median X.XX ms  worst X.XX ms`, and the device line |
 | 5 | Tap **SHARE LOG** | The Android share sheet, offering `umbra.log` |
 | 6 | Rotate the phone, then reopen | Still inside the screen, no text under the bar; the app survives being backgrounded and reopened |
 

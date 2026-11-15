@@ -12,14 +12,21 @@ is a bug we have not found yet. Nothing in this file is fixed by claiming it is.
   (`fragment highp 127^23`) but has not been executed on real hardware.
 * **Nothing has run on ARM.** The arm64 slice compiles and is inside the APK, and
   no arm64 device has executed it.
-* **Meshing the demo world takes 4.6 s on the emulator** (`demo world built in
-  27.4 ms, meshed in 4624.2 ms`). It runs on the thread that owns the window, so
-  the first frame is 4.6 s after launch. The mesher is not optimised and not
-  threaded; both are Stage 3 work.
-* **The HUD does not know the system insets.** `umbra_app.insets` is never
-  filled on Android, so the three buttons can sit under the navigation bar on a
-  phone. On the emulator they land inside the screen (`hud: button 0 at 8,946 on
-  1920x1080`), which is not the same thing as being right on a phone.
+* **Meshing is sliced, not threaded.** It used to be one 5.3 s call
+  (`demo world built in 2.7 ms, meshed in 5304.1 ms`); it is now stepped from the
+  frame loop at `UMBRA_MESH_BUDGET_MS 6`, and one step can overrun by a single mesh
+  unit (measured `worst call 10.21 ms` on the desktop host). Meshing still runs on
+  the thread that owns the window: the window keeps drawing a `LOADING WORLD nn%`
+  screen instead of freezing, but initial start-up is not faster. Moving it to a
+  worker thread is Stage 3.
+* **The 1% low is a CPU frame-time statistic**, measured between `glFinish`-bounded
+  frame boundaries in `umbra_app.c`. It is not a GPU timestamp query and not a
+  present-to-present number; on a phone with a compositor those differ.
+* **Insets are read but only tested on an emulator with no insets.** The JNI code
+  asks for `getRootWindowInsets()` and the display density, and the HUD lays itself
+  out from them, but the CI emulator reports zero insets, so a real status bar,
+  gesture bar or display cutout has never moved a button. The owner's phone is the
+  first real test.
 * **The world in the screenshot is a demo world, not a Minecraft world.** It is
   generated in Goose (stone, dirt, grass, water, trees, plants), with no textures
   and no block models: the whole surface is untextured, so grass reads as grey.
@@ -36,8 +43,9 @@ is a bug we have not found yet. Nothing in this file is fixed by claiming it is.
 
 ## Not implemented yet (by stage)
 
-* **No download link and no PC release binaries.** The Linux x64 headless build
-  exists and passes locally; the Windows x64 build and any published asset do not.
+* **No download link yet.** `.github/workflows/release.yml` builds the APK and both
+  PC binaries from a tag, publishes a pre-release and re-downloads every asset to
+  check it, but no tag has been pushed, so nothing is published and gate 7 is open.
 * **No world from the real game has been opened.** No parity numbers exist. Umbra
   is not Minecraft and the parity table is empty.
 * **No Umbmod loader, no shader pipeline, no multiplayer.** Stages 6-9 are not

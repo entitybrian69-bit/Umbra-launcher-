@@ -324,6 +324,13 @@ fn bench_add(us: i64) {
     frame_us.push(us);
 }
 
+fn format_ms(out: u8[>..]&, us: i64) {
+    // Microseconds as milliseconds with exactly two decimals: a value that
+    // prints sometimes as "16.0" and sometimes as "16.83" is hard to compare.
+    let tenths = (us % 1000) / 100;
+    format(out, us / 1000, ".", tenths, (us % 100) / 10);
+}
+
 fn bench_summary(out: u8[>..]&, label: const u8[:], device: const u8[:], android: const u8[:]) {
     let n = frame_us.len;
     if n == 0 {
@@ -346,13 +353,21 @@ fn bench_summary(out: u8[>..]&, label: const u8[:], device: const u8[:], android
     for i in p1n { p1sum += sorted[sorted.len - 1 - i]; }
     let p1 = p1sum / p1n;
     let median = sorted[n / 2];
+    // Four short lines, not one long one: this is drawn on a phone screen, and
+    // the numbers a tester must read (average, 1% low, worst) each get a line.
     format(out, label, ": ", n, " frames");
-    format(out, " avg ", avg / 1000, ".", (avg % 1000) / 10, " ms (",
-           if avg > 0 { 1000000 / avg } else { 0 }, " fps)");
-    format(out, " 1% low ", p1 / 1000, ".", (p1 % 1000) / 10, " ms");
-    format(out, " median ", median / 1000, ".", (median % 1000) / 10, " ms");
-    format(out, " worst ", worst / 1000, ".", (worst % 1000) / 10, " ms");
-    format(out, " | ", device, " | Android ", android);
+    format(out, "  avg ");
+    format_ms(out, avg);
+    format(out, " ms (", if avg > 0 { 1000000 / avg } else { 0 }, " fps)");
+    format(out, "\n1% low ", if p1 > 0 { 1000000 / p1 } else { 0 }, " fps (");
+    format_ms(out, p1);
+    format(out, " ms)");
+    format(out, "\nmedian ");
+    format_ms(out, median);
+    format(out, " ms  worst ");
+    format_ms(out, worst);
+    format(out, " ms");
+    format(out, "\n", device, " | Android ", android);
 }
 
 fn sort_i64(xs: i64[>..]&) {

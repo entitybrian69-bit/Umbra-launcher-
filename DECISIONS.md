@@ -2,6 +2,35 @@
 
 Newest first. Each entry says what was decided, why, and what it costs.
 
+## D-029 A release is proven by downloading it again, and a tag builds its own assets
+
+Three choices, all made because this project can only see GitHub through a narrow
+door (job logs and artifact downloads are unreadable here, D-016):
+
+* **The publishing job is not the verifying job.** `release.yml` builds the APK and
+  both PC binaries from the tag, creates the pre-release, and then a separate step
+  downloads **every** asset from its public release URL, requires HTTP 200, and
+  compares the SHA-256 with the one just built. The result is committed as
+  `RELEASE_VERIFY.txt` with the run URL. A release whose bytes were never fetched
+  back is not evidence of anything.
+* **The Windows asset is executed, under wine.** The `pc` workflow already runs the
+  `.exe` natively on a Windows runner; the release job runs the *shipped* file
+  under wine as well, so the released artifact is one that ran. Cross-compiling and
+  hoping is what this project keeps refusing to do.
+* **An existing release is added to, never replaced.** If the tag already has a
+  release, the job uploads with `--clobber` on individual assets rather than
+  deleting and recreating it, and `--prerelease` is always set while the parity table
+  is empty.
+
+Cost: the job needs `permissions: contents: write` and pushes a commit, and wine
+adds ~300 MB to the release job image. Accepted: the alternative is publishing
+numbers nobody checked.
+
+A related fix came out of run `43684262551`: the emulator job's "commit the
+evidence" step failed with a rejected push, because the branch moved while the
+emulator ran. All four workflows now call one script, `tools/commit_evidence.sh`,
+which merges and retries up to four times and **never rebases** (D-028).
+
 ## D-020 The GPU self-test draws into its own framebuffer and reads RGBA
 
 Three device-only facts shaped this. First, the window's back buffer has no
