@@ -1,11 +1,11 @@
-run: 43704264374, commit: 9d9a169683b03b90c3ae399d016ec042f4e22d2f
+run: 43706242581, commit: 660575eef9b4a2436c6e88420dfae361226dbc29
 sdk: /usr/local/lib/android/sdk
 adb: /usr/local/lib/android/sdk/platform-tools/adb
 emulator: /usr/local/lib/android/sdk/emulator/emulator
-apk: ./android/app/build/outputs/apk/release/app-release.apk (221595 bytes, sha256 7ebfef412dbc4e300063889d8ef7318f5164e11807a3c27d82d36b3153f16206)
+apk: ./android/app/build/outputs/apk/release/app-release.apk (222427 bytes, sha256 c9e81cc2e0eece9dbec49188d2e0aa5ac1f1471c429e8dc43378c46437b97996)
 
 == phase: kvm ==
-kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 15 10:32 /dev/kvm
+kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 15 10:57 /dev/kvm
 cpu: 4 flags match vmx/svm
 
 == phase: sdk-packages ==
@@ -16,14 +16,14 @@ sdk-image: ok (3 lines)
 avd: umbra_ci from device profile pixel_2 at /home/runner/.android/avd
 
 == phase: emulator-boot ==
-emulator: started as pid 2897
+emulator: started as pid 2917
 emulator: booted in 31 s
 android: api 30 (11)
 display: 1080x1920
 
 == phase: unlock ==
 wake: 
-focus before launch:  mCurrentFocus=Window{71b3e9d u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
+focus before launch:  mCurrentFocus=Window{6d8b79d u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
 
 == phase: install ==
 install: Success
@@ -32,88 +32,130 @@ install: Success
 insets: simulating "0,63,126,0" for this run (device says "0,63,126,0")
 
 == phase: launch ==
-launch: Status: ok TotalTime: 1167 
-launch: the app has not reported drawing yet, nudging it through the launcher
-nudge: data="android.intent.category.LAUNCHER" Events injected: 1 ## Network stats: elapsed time=73ms (0ms mobile, 0ms wifi, 73ms not connected) 
-ERROR: launch: the app is not running any more; umbra log:  app cmd 3, window 0x774fd2d720a0
---------- beginning of crash
-11-15 10:34:42.973  5350  5379 I umbra   : android_main: files /data/user/0/org.umbra.client/files
-11-15 10:34:42.974  5350  5379 I umbra   : goose core initialised
-11-15 10:34:42.980  5350  5379 I umbra   : app cmd 10, window 0x0
-11-15 10:34:42.980  5350  5379 I umbra   : no window yet: waiting for the activity to become visible
-11-15 10:34:42.986  5350  5379 I umbra   : app cmd 11, window 0x0
-11-15 10:34:43.037  5350  5379 I umbra   : app cmd 0, window 0x0
-11-15 10:34:43.173  5350  5379 I umbra   : app cmd 1, window 0x774fd2d720a0
-11-15 10:34:43.327  5350  5379 I umbra   : EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-11-15 10:34:43.328  5350  5379 I umbra   : app cmd 3, window 0x774fd2d720a0
+launch: Status: ok TotalTime: 1341 
+running: pid 3683
+app: android_main: files /data/user/0/org.umbra.client/files
+app: goose core initialised
+app: app cmd 10, window 0x0
+app: no window yet: waiting for the activity to become visible
+app: app cmd 11, window 0x0
+app: app cmd 0, window 0x0
+app: app cmd 1, window 0x73674d1184c0
+app: EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+app: app cmd 3, window 0x73674d1184c0
+app: insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
+app: app cmd 5, window 0x73674d1184c0
+app: app cmd 4, window 0x73674d1184c0
+app: insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 1920x1080, density bucket 420 (scale 2.62)
+app: 10:59:12 last run: nothing recorded yet
+app: 10:59:12 ---- Umbra starting, build 660575e ----
+app: 10:59:12 core: umbra core: formats and meshing
+app: 10:59:12 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
+app: 10:59:12 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+app: 10:59:12 GL_VENDOR Google (Google Inc.)
+app: 10:59:12 depth bits 24, vertex highp 127^23, fragment highp 127^23
+app: 10:59:12 demo world built in 3.7 ms; meshing starts in slices of at most 6 ms
+app: 10:59:12 hud: button 0 at 25,818 size 1743x63 on 1920x1080 (insets 0,63,126,0)
+app: 10:59:12 hud: button 1 at 25,900 size 1743x63 on 1920x1080 (insets 0,63,126,0)
+app: 10:59:12 hud: button 2 at 25,982 size 1743x63 on 1920x1080 (insets 0,63,126,0)
+app: 10:59:13 long frame 550.3 ms (mesh 0%, 1 calls)
+app: app cmd 6, window 0x73674d1184c0
+app: 10:59:43 mesh uploaded: 17.0 MB vertices, 2.1 MB indices
+app: 10:59:43 mesh bounds x 0.0..48.0 y -64.0..106.0 z 0.0..16.0, camera 41.8 blocks out
+app: 10:59:43 camera: eye 47.0 118.8 31.0 look 24.0 100.0 8.0, 41.8 blocks out, fov 55
+app: 10:59:43 mesh: 370488 vertices, 555732 indices; batches 542910/12822/0
+app: 10:59:43 startup: meshed in 9385.7 ms over 831 calls (worst call 120.4 ms, worst unit 118.8 ms), longest frame 550.3 ms, frames over 250 ms: 1
+
+== phase: wait-for-mesh ==
+mesh: 10:59:43 startup: meshed in 9385.7 ms over 831 calls (worst call 120.4 ms, worst unit 118.8 ms), longest frame 550.3 ms, frames over 250 ms: 1
+mesh: longest frame 550.3 ms (under the 1000 ms budget)
+
+== phase: insets ==
+insets: insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
+insets: the override was applied
+insets: source is the override, as asked
+overlay: button 0 starts at y=818, below the 63 px top inset
+camera: 10:59:43 camera: eye 47.0 118.8 31.0 look 24.0 100.0 8.0, 41.8 blocks out, fov 55
+
+== phase: display-size ==
+size: 10:59:12 hud: button 0 at 25,818 size 1743x63 on 1920x1080 (insets 0,63,126,0)
+size: the HUD was laid out for a 1920 pixel wide surface
+
+== phase: screenshot-home ==
+shot1: 122069 bytes, sha256 2a79505a2676ab994fdf1a1e5dcb7a03080aa1081e8588f40fd16fc878f339a3
+focus while drawing:  mCurrentFocus=Window{a236673 u0 org.umbra.client/android.app.NativeActivity}
+
+== phase: selftest-tap ==
+tap: self-test button at 25,818 size 1743x63, tapping 896,849
+tap: attempt 1 at 896,849
+tap: the app reported a self-test
+shot2: 116897 bytes, sha256 437ed3851c5afe8f82e6c6b7c910db1ed81ace843320576cd321ad71d9407b10
+app: 11:00:13 self-test: requested
+app: 11:00:13 self-test: begin (1920x1080)
+app: 11:00:13 self-test: target offscreen, pixel(0,0) = 0,0,64, pixel(w-1,0) = 255,255,64
+app: 11:00:13 self-test: pattern 2073600 pixels checked, 0 mismatched, max channel diff 0
+app: 11:00:13 self-test: cube 2073600 pixels checked, 0 mismatched
+app: 11:00:13 last run: self-test saved to /data/user/0/org.umbra.client/files/last_selftest.txt
+
+== phase: benchmark-tap ==
+benchmark: button at 25,900, tapping 896,931
+benchmark: 11:01:33 bench: 1257 frames  avg 47.79 ms (20 fps)
+benchmark: the 1% low is reported
+benchmark: saved for the next run's home screen
+
+== phase: soak ==
+soak: holding for 60s
+soak: survived, pid 3683
+soak: no FATAL EXCEPTION
+meminfo:  Native Heap 30264 30236 0 49 31552 39716 33720 1314| Native Heap: 30236 31552| TOTAL PSS: 81221 TOTAL RSS: 179308 TOTAL SWAP PSS: 298|
+
+== phase: relaunch ==
+ERROR: relaunch: after a restart the home screen had no last-run block: 11:02:42 last run: nothing recorded yet
 
 == collected diagnostics ==
-crash buffer:
-crash: 11-15 10:34:43.702  5385  5385 F DEBUG   : Abort message: 'Throwing new exception 'no non-static method "Landroid/graphics/Insets;.getTop()I"' with unexpected pending exception: java.lang.NoSuchMethodError: no non-static method "Landroid/graphics/Insets;.getLeft()I"
-crash: 11-15 10:34:43.702  5385  5385 F DEBUG   : (Throwable with empty stack trace)
-crash: 11-15 10:34:43.702  5385  5385 F DEBUG   : '
-crash: 11-15 10:34:43.702  5385  5385 F DEBUG   :     rax 0000000000000000  rbx 00000000000014e6  rcx 00007750e325f298  rdx 0000000000000006
-crash: 11-15 10:34:43.702  5385  5385 F DEBUG   :     r8  00007750e73aebd1  r9  00007750e73aebd1  r10 0000774dfabd3550  r11 0000000000000246
-crash: 11-15 10:34:43.702  5385  5385 F DEBUG   :     r12 0000000000000000  r13 0000774dfabd3620  r14 0000774dfabd3548  r15 0000000000001503
-crash: 11-15 10:34:43.702  5385  5385 F DEBUG   :     rdi 00000000000014e6  rsi 0000000000001503
-crash: 11-15 10:34:43.702  5385  5385 F DEBUG   :     rbp 0000774f12d83ad0  rsp 0000774dfabd3538  rip 00007750e325f298
-crash: 11-15 10:34:43.705  5385  5385 F DEBUG   : backtrace:
-crash: 11-15 10:34:43.705  5385  5385 F DEBUG   :       #00 pc 000000000005a298  /apex/com.android.runtime/lib64/bionic/libc.so (syscall+24) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
-crash: 11-15 10:34:43.705  5385  5385 F DEBUG   :       #01 pc 000000000005d202  /apex/com.android.runtime/lib64/bionic/libc.so (abort+194) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
-crash: 11-15 10:34:43.705  5385  5385 F DEBUG   :       #02 pc 0000000000634927  /apex/com.android.art/lib64/libart.so (art::Runtime::Abort(char const*)+2375) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
-crash: 11-15 10:34:43.705  5385  5385 F DEBUG   :       #03 pc 0000000000019cfc  /system/lib64/libbase.so (android::base::SetAborter(std::__1::function<void (char const*)>&&)::$_3::__invoke(char const*)+60) (BuildId: 7101d4565a51dea09dc23901546cbb64)
-crash: 11-15 10:34:43.705  5385  5385 F DEBUG   :       #04 pc 00000000000192a0  /system/lib64/libbase.so (android::base::LogMessage::~LogMessage()+368) (BuildId: 7101d4565a51dea09dc23901546cbb64)
-crash: 11-15 10:34:43.705  5385  5385 F DEBUG   :       #05 pc 000000000069d96a  /apex/com.android.art/lib64/libart.so (art::Thread::AssertNoPendingExceptionForNewException(char const*) const+1770) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
-crash: 11-15 10:34:43.705  5385  5385 F DEBUG   :       #06 pc 00000000006a2454  /apex/com.android.art/lib64/libart.so (art::Thread::ThrowNewExceptionF(char const*, char const*, ...)+244) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
-crash: 11-15 10:34:43.705  5385  5385 F DEBUG   :       #07 pc 000000000042f633  /apex/com.android.art/lib64/libart.so (art::FindMethodJNI(art::ScopedObjectAccess const&, _jclass*, char const*, char const*, bool)+403) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
-crash: 11-15 10:34:43.706  5385  5385 F DEBUG   :       #08 pc 000000000043cafd  /apex/com.android.art/lib64/libart.so (art::JNI<false>::GetMethodID(_JNIEnv*, _jclass*, char const*, char const*)+685) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
-crash: 11-15 10:34:43.706  5385  5385 F DEBUG   :       #09 pc 0000000000015418  /data/app/~~7eqrckNMGEoF8B_dXPRK7A==/org.umbra.client-FM-Ol1djrTs6cIC9qKbzvg==/base.apk!libumbra.so (offset 0x1c000) (BuildId: 1b2df35c220c1ed8f8cebcb8d323a2410f24194c)
-crash: 11-15 10:34:43.706  5385  5385 F DEBUG   :       #10 pc 0000000000014beb  /data/app/~~7eqrckNMGEoF8B_dXPRK7A==/org.umbra.client-FM-Ol1djrTs6cIC9qKbzvg==/base.apk!libumbra.so (offset 0x1c000) (BuildId: 1b2df35c220c1ed8f8cebcb8d323a2410f24194c)
-crash: 11-15 10:34:43.706  5385  5385 F DEBUG   :       #11 pc 0000000000016c5b  /data/app/~~7eqrckNMGEoF8B_dXPRK7A==/org.umbra.client-FM-Ol1djrTs6cIC9qKbzvg==/base.apk!libumbra.so (offset 0x1c000) (BuildId: 1b2df35c220c1ed8f8cebcb8d323a2410f24194c)
-crash: 11-15 10:34:43.706  5385  5385 F DEBUG   :       #12 pc 00000000000149c1  /data/app/~~7eqrckNMGEoF8B_dXPRK7A==/org.umbra.client-FM-Ol1djrTs6cIC9qKbzvg==/base.apk!libumbra.so (offset 0x1c000) (android_main+433) (BuildId: 1b2df35c220c1ed8f8cebcb8d323a2410f24194c)
-crash: 11-15 10:34:43.706  5385  5385 F DEBUG   :       #13 pc 0000000000016b1c  /data/app/~~7eqrckNMGEoF8B_dXPRK7A==/org.umbra.client-FM-Ol1djrTs6cIC9qKbzvg==/base.apk!libumbra.so (offset 0x1c000) (BuildId: 1b2df35c220c1ed8f8cebcb8d323a2410f24194c)
-crash: 11-15 10:34:43.706  5385  5385 F DEBUG   :       #14 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
-crash: 11-15 10:34:43.706  5385  5385 F DEBUG   :       #15 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
-ERROR: native crash: 11-15 10:34:25.448  3747  3778 F libc    : Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 3778 (Thread-2), pid 3747 (rg.umbra.client) 11-15 10:34:25.452  1350  3563 I MdiSyncModule: initializing module... 11-15 10:34:25.462  1414  1414 I KeyboardViewUtil: KeyboardViewUtil.getKeyboardHeightRatio():128 systemKeyboardHeightRatio:1.000000; userKeyboardHeightRatio:1.000000. 11-15 10:34:25.476  1414  1414 W SessionManager: SessionManager.beginSession():53 Try to begin an already begun session [IN
-app pid at exit: 
-focus:  mCurrentFocus=Window{71b3e9d u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
-focus:  mFocusedApp=ActivityRecord{b1c7429 u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t8}
-logcat: 37607 lines, 4446642 bytes
+backtrace: 203 lines, 30052 bytes
+layer: ActivityRecord{b792c80 u0 org.umbra.client/android.app.NativeActivity#0
+layer: c19690e org.umbra.client/android.app.NativeActivity#0
+layer: org.umbra.client/android.app.NativeActivity#0
+app pid at exit: 6448
+focus:  mCurrentFocus=Window{c19690e u0 org.umbra.client/android.app.NativeActivity}
+focus:  mFocusedApp=ActivityRecord{b792c80 u0 org.umbra.client/android.app.NativeActivity t10}
+logcat: 8894 lines, 1236794 bytes
 activity manager mentions of umbra:
-sys: 11-15 10:34:24.718 3747 3778 I umbra : app cmd 11, window 0x0
-sys: 11-15 10:34:24.736 3747 3778 I umbra : app cmd 0, window 0x0
-sys: 11-15 10:34:24.759 3747 3778 I umbra : app cmd 1, window 0x774fd2d720a0
-sys: 11-15 10:34:24.922 3747 3778 I umbra : EGL up: 1x1 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-sys: 11-15 10:34:24.922 3747 3778 I umbra : app cmd 3, window 0x774fd2d720a0
-sys: 11-15 10:34:27.178 495 1680 I WindowManager: WIN DEATH: Window{e22ae60 u0 org.umbra.client/android.app.NativeActivity}
-sys: 11-15 10:34:27.197 495 1836 I ActivityManager: Process org.umbra.client (pid 3747) has died: fg TOP 
-sys: 11-15 10:34:42.494 495 535 I ActivityManager: Start proc 5350:org.umbra.client/u0a167 for pre-top-activity {org.umbra.client/android.app.NativeActivity}
-sys: 11-15 10:34:42.973 5350 5379 I umbra : android_main: files /data/user/0/org.umbra.client/files
-sys: 11-15 10:34:42.974 5350 5379 I umbra : goose core initialised
-sys: 11-15 10:34:42.980 5350 5379 I umbra : app cmd 10, window 0x0
-sys: 11-15 10:34:42.980 5350 5379 I umbra : no window yet: waiting for the activity to become visible
-sys: 11-15 10:34:42.986 5350 5379 I umbra : app cmd 11, window 0x0
-sys: 11-15 10:34:43.037 5350 5379 I umbra : app cmd 0, window 0x0
-sys: 11-15 10:34:43.173 5350 5379 I umbra : app cmd 1, window 0x774fd2d720a0
-sys: 11-15 10:34:43.327 5350 5379 I umbra : EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-sys: 11-15 10:34:43.328 5350 5379 I umbra : app cmd 3, window 0x774fd2d720a0
-sys: 11-15 10:34:44.561 495 1839 I WindowManager: WIN DEATH: Window{c216342 u0 org.umbra.client/android.app.NativeActivity}
-sys: 11-15 10:34:44.578 495 1837 I ActivityManager: Process org.umbra.client (pid 5350) has died: fg TOP 
-sys: 11-15 10:34:44.596 495 5403 W ActivityManager: Ignoring remove of inactive process: ProcessRecord{6e401da 0:org.umbra.client/u0a167}
-app log lines: 22
-app: 11-15 10:34:24.718 3747 3778 I umbra : app cmd 11, window 0x0
-app: 11-15 10:34:24.736 3747 3778 I umbra : app cmd 0, window 0x0
-app: 11-15 10:34:24.759 3747 3778 I umbra : app cmd 1, window 0x774fd2d720a0
-app: 11-15 10:34:24.922 3747 3778 I umbra : EGL up: 1x1 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-app: 11-15 10:34:24.922 3747 3778 I umbra : app cmd 3, window 0x774fd2d720a0
-app: --------- beginning of crash
-app: 11-15 10:34:42.973 5350 5379 I umbra : android_main: files /data/user/0/org.umbra.client/files
-app: 11-15 10:34:42.974 5350 5379 I umbra : goose core initialised
-app: 11-15 10:34:42.980 5350 5379 I umbra : app cmd 10, window 0x0
-app: 11-15 10:34:42.980 5350 5379 I umbra : no window yet: waiting for the activity to become visible
-app: 11-15 10:34:42.986 5350 5379 I umbra : app cmd 11, window 0x0
-app: 11-15 10:34:43.037 5350 5379 I umbra : app cmd 0, window 0x0
-app: 11-15 10:34:43.173 5350 5379 I umbra : app cmd 1, window 0x774fd2d720a0
-app: 11-15 10:34:43.327 5350 5379 I umbra : EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-app: 11-15 10:34:43.328 5350 5379 I umbra : app cmd 3, window 0x774fd2d720a0
+sys: 11-15 11:02:42.702 6448 6474 I umbra : app cmd 4, window 0x73674d1184c0
+sys: 11-15 11:02:42.702 6448 6474 I umbra : insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 1920x1080, density bucket 420 (scale 2.62)
+sys: 11-15 11:02:42.702 6448 6474 I umbra : 11:02:42 last run: nothing recorded yet
+sys: 11-15 11:02:42.702 6448 6474 I umbra : 11:02:42 ---- Umbra starting, build 660575e ----
+sys: 11-15 11:02:42.702 6448 6474 I umbra : 11:02:42 core: umbra core: formats and meshing
+sys: 11-15 11:02:42.718 6448 6474 I umbra : 11:02:42 previous run did not exit cleanly
+sys: 11-15 11:02:42.770 6448 6474 I umbra : 11:02:42 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
+sys: 11-15 11:02:42.770 6448 6474 I umbra : 11:02:42 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+sys: 11-15 11:02:42.771 6448 6474 I umbra : 11:02:42 GL_VENDOR Google (Google Inc.)
+sys: 11-15 11:02:42.771 6448 6474 I umbra : 11:02:42 depth bits 24, vertex highp 127^23, fragment highp 127^23
+sys: 11-15 11:02:42.828 6448 6474 I umbra : 11:02:42 demo world built in 11.7 ms; meshing starts in slices of at most 6 ms
+sys: 11-15 11:02:42.828 6448 6474 I umbra : 11:02:42 hud: button 0 at 21,860 size 1751x52 on 1920x1080 (insets 0,63,126,0)
+sys: 11-15 11:02:42.828 6448 6474 I umbra : 11:02:42 hud: button 1 at 21,929 size 1751x52 on 1920x1080 (insets 0,63,126,0)
+sys: 11-15 11:02:42.828 6448 6474 I umbra : 11:02:42 hud: button 2 at 21,998 size 1751x52 on 1920x1080 (insets 0,63,126,0)
+sys: 11-15 11:02:43.135 6448 6474 I umbra : app cmd 6, window 0x73674d1184c0
+sys: 11-15 11:03:05.531 6448 6474 I umbra : 11:03:05 mesh uploaded: 17.0 MB vertices, 2.1 MB indices
+sys: 11-15 11:03:05.538 6448 6474 I umbra : 11:03:05 mesh bounds x 0.0..48.0 y -64.0..106.0 z 0.0..16.0, camera 41.8 blocks out
+sys: 11-15 11:03:05.538 6448 6474 I umbra : 11:03:05 camera: eye 47.0 118.8 31.0 look 24.0 100.0 8.0, 41.8 blocks out, fov 55
+sys: 11-15 11:03:05.538 6448 6474 I umbra : 11:03:05 mesh: 370488 vertices, 555732 indices; batches 542910/12822/0
+sys: 11-15 11:03:05.538 6448 6474 I umbra : 11:03:05 startup: meshed in 7292.5 ms over 739 calls (worst call 44.4 ms, worst unit 44.4 ms), longest frame 202.1 ms, frames over 250 ms: 0
+app log lines: 34
+app: 11-15 11:02:42.718 6448 6474 I umbra : 11:02:42 previous run did not exit cleanly
+app: 11-15 11:02:42.770 6448 6474 I umbra : 11:02:42 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
+app: 11-15 11:02:42.770 6448 6474 I umbra : 11:02:42 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+app: 11-15 11:02:42.771 6448 6474 I umbra : 11:02:42 GL_VENDOR Google (Google Inc.)
+app: 11-15 11:02:42.771 6448 6474 I umbra : 11:02:42 depth bits 24, vertex highp 127^23, fragment highp 127^23
+app: 11-15 11:02:42.828 6448 6474 I umbra : 11:02:42 demo world built in 11.7 ms; meshing starts in slices of at most 6 ms
+app: 11-15 11:02:42.828 6448 6474 I umbra : 11:02:42 hud: button 0 at 21,860 size 1751x52 on 1920x1080 (insets 0,63,126,0)
+app: 11-15 11:02:42.828 6448 6474 I umbra : 11:02:42 hud: button 1 at 21,929 size 1751x52 on 1920x1080 (insets 0,63,126,0)
+app: 11-15 11:02:42.828 6448 6474 I umbra : 11:02:42 hud: button 2 at 21,998 size 1751x52 on 1920x1080 (insets 0,63,126,0)
+app: 11-15 11:02:43.135 6448 6474 I umbra : app cmd 6, window 0x73674d1184c0
+app: 11-15 11:03:05.531 6448 6474 I umbra : 11:03:05 mesh uploaded: 17.0 MB vertices, 2.1 MB indices
+app: 11-15 11:03:05.538 6448 6474 I umbra : 11:03:05 mesh bounds x 0.0..48.0 y -64.0..106.0 z 0.0..16.0, camera 41.8 blocks out
+app: 11-15 11:03:05.538 6448 6474 I umbra : 11:03:05 camera: eye 47.0 118.8 31.0 look 24.0 100.0 8.0, 41.8 blocks out, fov 55
+app: 11-15 11:03:05.538 6448 6474 I umbra : 11:03:05 mesh: 370488 vertices, 555732 indices; batches 542910/12822/0
+app: 11-15 11:03:05.538 6448 6474 I umbra : 11:03:05 startup: meshed in 7292.5 ms over 739 calls (worst call 44.4 ms, worst unit 44.4 ms), longest frame 202.1 ms, frames over 250 ms: 0
 
