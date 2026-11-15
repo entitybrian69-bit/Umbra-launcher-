@@ -90,7 +90,8 @@ say "emulator: $EMU"
 
 APK="${1:-}"
 if [ -z "$APK" ]; then
-    APK="$(find . -maxdepth 6 -name '*.apk' -not -path '*/intermediates/*' | head -1)"
+    # The artifact keeps the path it had in the build job, which is deep.
+    APK="$(find . -name '*.apk' -not -path '*/intermediates/*' -not -path '*/outputs/apk/debug/*' | head -1)"
 fi
 [ -f "$APK" ] || die "no APK to install (looked for *.apk)"
 say "apk: $APK ($(stat -c%s "$APK") bytes, sha256 $(sha256sum "$APK" | cut -d' ' -f1))"
@@ -177,7 +178,7 @@ adb shell dumpsys window > focus.log 2>&1 || true
 say "focus before launch: $(grep -m1 -E 'mCurrentFocus' focus.log | tr -s ' ' | cut -c1-160)"
 
 phase "install"
-adb install -r -g "$APK" > install.log 2>&1 || die "adb install failed: $(tail -c 500 install.log)"
+ADB_TIMEOUT=300 adb install -r -g "$APK" > install.log 2>&1 || die "adb install failed: $(tail -c 500 install.log)"
 say "install: $(tail -1 install.log)"
 
 phase "launch"
