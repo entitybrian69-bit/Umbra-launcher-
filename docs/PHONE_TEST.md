@@ -5,8 +5,8 @@ Umbra is **not** an official Minecraft product.
 ## What you are installing
 
 ```
-https://github.com/entitybrian69-bit/Umbra-launcher-/releases/tag/v0.3.1-pre
-umbra-0.3.1-pre-arm64.apk
+https://github.com/entitybrian69-bit/Umbra-launcher-/releases/tag/v0.3.2-pre
+umbra-0.3.2-pre-arm64.apk
 ```
 
 This is a **pre-release**. It draws a demo world with the real renderer and the
@@ -20,37 +20,40 @@ assets; it reads your own game files from the app's private storage.
 
 1. Open the release page linked above **on the phone** (GitHub → the repo →
    Releases; or the link in the release notes).
-2. Download the file ending in `.apk` (`umbra-0.3.1-pre-arm64.apk`).
+2. Download the file ending in `.apk` (`umbra-0.3.2-pre-arm64.apk`).
 3. When Android blocks the install, tap **Settings** on the prompt and allow
    installing from this source (the browser or Files app), then tap the download
    again and choose **Install**. Android 8 and newer shows this per-app, once.
-   If 0.3.0-pre is already installed this replaces it and keeps its data, so the
-   first launch will already show the previous run's results.
+   If an older Umbra is already installed this replaces it and keeps its data, so
+   the first launch will already show that run's results.
 4. If the phone asks about a Play Protect scan, choose **Install anyway** — the
    APK is signed by this project's own key, not by Google.
 5. Open **Umbra** from the app drawer.
 
-## What changed in 0.3.1 — the four things your screenshots showed
+## What changed in 0.3.2 — the three numbers your last run produced
 
-| What you saw in 0.3.0-pre | What to look for now |
+| What your last run showed | What to look for now |
 |---|---|
-| `LOADING WORLD 224%` | The percentage counts up to 100 and stops: `LOADING WORLD nn%`. It cannot pass 100 any more; the total is computed from the mesher itself and is checked against it in the test suite. |
-| The top lines sat under the clock | Every line starts **below** the status bar. The app no longer asks Android for the old inset value, which is 0 on a phone that draws edge to edge; it asks for the modern one. |
-| Only sky behind the text | The island of blocks fills the strip between the text block and the buttons, instead of sitting in the bottom corner. |
-| One screenshot did not show the results | A `LAST RUN` block under the self-test line shows the previous run's verdict and benchmark numbers, so after the benchmark you can screenshot once. |
+| `GPU self-test FAIL: 2458665 bad of 4950720 px` | The cause was a shader that computed in 16-bit integers on your GPU, so the test pattern only matched in one corner of the screen. It is fixed, and the test now says `SELFTEST PASS (0 bad of N px, … ms, offscreen)` with N in the millions. |
+| the run before that ended at `SELF-TEST: BEGIN` and looked like a crash | It was not a crash: the test did five million comparisons in one frame and Android closed the app for not responding. It now takes 32 small steps and logs each one, so a slow test is slow, not fatal. |
+| the benchmark said 59 FPS | That was your screen's 60 Hz, not the GPU. The app now asks for an uncapped swap interval and says whether the phone allowed it, and it reports GPU time separately when the driver offers timer queries. |
 
-Also new: `MESH … VERTS  n DRAWS` and a `CAM eye -> look` line in the text block,
-and the three buttons on one row at the bottom in landscape.
+The log now also answers the device questions by name before anything else runs:
+`check: renderer …`, `check: gl version …`, `check: max texture size …`,
+`check: gpu timer query …`, `check: shader programs mesh ok, hud ok, pattern ok,
+cube ok`, `check: depth buffer …`, and then either `check: all device checks
+passed` or `check: running in fallback: <why>`. If a check fails, the app draws a
+plain background with that one line on it instead of crashing.
 
 ## What you should see, in order
 
 | Step | What to do | What "passing" looks like |
 |---|---|---|
 | 1 | Just open it | Sky-blue screen, `UMBRA - not an official Minecraft product`, then `LOADING WORLD nn%` (never above 100) for a few seconds, then an island of blocks |
-| 2 | Look at the text block, top-left | `Umbra 0.3.1  build <7 hex digits>`, `gl OpenGL ES 3.x …`, `renderer …`, `depth 24 bits  highp vs …`, `mesh … verts  n draws  frame … ms  worst … ms`, `cam …`, and **nothing under the status bar, the notch or the navigation bar** |
-| 3 | Tap **RUN GPU SELF-TEST** | After a moment: `SELFTEST PASS (0 bad of 4147200 px)` in green |
-| 4 | Tap **RUN 60 s BENCHMARK** | A live line (`benchmark nn/60 s  … frames  … fps live  worst … ms`) and, after a minute, a four-line block: `bench: N frames  avg X.XX ms (Y fps)`, `1% low Y fps (X.XX ms)`, `median X.XX ms  worst X.XX ms`, and the device line |
-| 5 | Close the app from the app switcher and open it again | The home screen comes back with a `LAST RUN` block containing the self-test verdict and the benchmark numbers from step 3 and 4 — **and no `previous run crashed` line** |
+| 2 | Look at the text block, top-left | `Umbra 0.3.2  build <7 hex digits>`, `gl OpenGL ES 3.x …`, `renderer …`, `depth 24 bits  highp vs …`, `mesh … verts  n draws  frame … ms  worst … ms`, `cam …`, and **nothing under the status bar, the notch or the navigation bar**. A red `fallback: …` line means a device check failed; that line is the reason |
+| 3 | Tap **RUN GPU SELF-TEST** | After a moment: `SELFTEST PASS (0 bad of N px, … ms, offscreen)` in green, with N in the millions. `SELFTEST FAIL` shows the first mismatch as `at x,y got r,g,b want r,g,b` |
+| 4 | Tap **RUN 60 s BENCHMARK** | A live line, then a six-line block: `bench: N frames  avg X.XX ms (Y fps)`, `1% low …`, `median … worst …`, the device line, `gpu avg X.XX ms over N frames` (or `gpu n/a (no GPU timer results)`), and `vsync: uncapped requested`, `refused` or `capped by the platform` |
+| 5 | Close the app from the app switcher and open it again | The home screen comes back with a `LAST RUN` block containing the self-test verdict and the benchmark numbers from steps 3 and 4 — **and no `previous run crashed` line** |
 | 6 | Tap **SHARE LOG** | The Android share sheet, offering `umbra.log` |
 | 7 | Rotate the phone, then reopen | Still inside the screen, no text under the bar; the app survives being backgrounded and reopened |
 

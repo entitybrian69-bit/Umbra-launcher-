@@ -23,21 +23,25 @@ every model a blockstate can render resolves through its parent chain to
 textures that exist in the jar. That is the first half of gate 6 — the second
 half, comparing *rendered* worlds with the real client, is not started.
 
-There is now a **download link**: `v0.3.0-pre`, a pre-release whose three assets
-were downloaded again and hashed, and whose two executables were run
-(`RELEASE_VERIFY.txt`). Gate 4 is closed on ARM at the host-suite level. There are
-still no world-parity numbers, no textures, and no world you can walk around in,
-and the Android arm64 `.so` inside the APK has never been executed by CI. Umbra is
-not Minecraft, and the parity table is empty.
+Two pre-releases are published and stay published: `v0.3.0-pre` and
+`v0.3.1-pre`, each with its three assets downloaded again and hashed, and each
+binary run (`RELEASE_VERIFY.txt`). The owner's phone ran `0.3.1` and returned three
+findings - a self-test that failed on 2 458 665 pixels, a previous run that ended
+in an ANR, and a benchmark that was showing the display's 60 Hz cap. `0.3.2` fixes
+all three, and fixing them exposed four more defects that had already broken a CI
+run (see **0.3.2** below). Gate 4 is closed on ARM at the host-suite level. There
+are still no world-parity numbers, no textures, and no world you can walk around
+in, and the Android arm64 `.so` inside the APK has never been executed by CI.
+Umbra is not Minecraft, and the parity table is empty.
 
 | Gate | State | Evidence |
 |---|---|---|
 | 1. CI builds from a clean checkout | PASSING | run `43671700216`: `Build APK (arm64 + x86_64)` job `completed success` |
 | 2. APK checks (unzip/aapt2/apksigner/lib per ABI) | PASSING | same run, step `Gate 2 - APK integrity` success; annotations: `package: name='org.umbra.client' versionCode='1' versionName='0.1.0' compileSdkVersion='35'`, `native-code: 'arm64-v8a' 'x86_64'`, `apksigner … v1 scheme: false` (v2/v3 cover minSdk 24) |
-| 3. Emulator smoke + fresh screenshot | PASSING (once caught a blank screen) | run `43671700216`: every step of `Emulator smoke test + screenshot` is `success`, including `Screenshot gate (fresh, non-blank, similar to the reference)`. That run's own capture differs from the reference byte for byte (`evidence/ci/shot1.png` sha256 `26e81928eb09aea9`, reference `ea2a1be5…`) and still measures `mean absolute difference 0.00 (of 255)` |
+| 3. Emulator smoke + fresh screenshot | PASSING (caught a blank screen, then a failing self-test) | run `43671700216`: every step of `Emulator smoke test + screenshot` is `success`, including `Screenshot gate (fresh, non-blank, similar to the reference)`. That run's own capture differs from the reference byte for byte (`evidence/ci/shot1.png` sha256 `26e81928eb09aea9`, reference `ea2a1be5…`) and still measures `mean absolute difference 0.00 (of 255)` |
 | 4. Core tests on x86_64 | PASSING | run `43674038711`, step `Core test suite (formats, mesher)`: `PASS mem (19) inflate (97) zip (137) png (153) nbt (196) region (237) json (302) mesh (340)`, `all modules passed` (`evidence/ci/core-tests.txt`) |
 | 4. Core tests on arm64 | PASSING (host suite; the Android `.so` is still never executed) | run `43689588892`, job `Goose core tests (arm64)` on `ubuntu-24.04-arm`: `host: aarch64`, `compiler: cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0`, then `PASS mem (19) inflate (97) zip (137) png (153) nbt (196) region (237) json (302) mesh (340)`, `all modules passed`, `c-host: goose_exit returned 0` (`evidence/ci/core-tests-arm64.txt`, committed by the job). **This is the host suite built for aarch64 Linux, not the APK's `libumbra.so`** -- that one is NDK clang, bionic, and is compiled by the `android` job and never run |
-| 5. PC builds (Windows x64, Linux x64) + headless self-test | PASSING | run `43674038711`: `Linux x64 build + headless self-test` and `Windows x64 build + headless self-test` both `completed success`; the Windows binary ran under MSYS2 UCRT64 on `windows-latest`, not under Wine. `evidence/ci/pc-linux-x64.txt` and `pc-windows-x64.txt` both end `PASS: 19 checks, 0 failures`; sha256 `1a1c76665f5a013b…` (linux) and `0190ba968e53b943…` (windows) |
+| 5. PC builds (Windows x64, Linux x64) + headless self-test | PASSING | run `43724314094`, whose jobs `Linux x64 build + headless self-test` and `Windows x64 build + headless self-test` both report `success` on `a717183`: both `PASS: 149 checks, 0 failures`, `evidence/ci/pc-linux-x64.txt` and `pc-windows-x64.txt`. Earlier: run `43674038711`: `Linux x64 build + headless self-test` and `Windows x64 build + headless self-test` both `completed success`; the Windows binary ran under MSYS2 UCRT64 on `windows-latest`, not under Wine. `evidence/ci/pc-linux-x64.txt` and `pc-windows-x64.txt` both end `PASS: 19 checks, 0 failures`; sha256 `1a1c76665f5a013b…` (linux) and `0190ba968e53b943…` (windows) |
 | 6a. The jar's model data is self-consistent | PASSING | run `43680833198`: `PASS: every model a blockstate can render resolves through its chain (2603 models, 25048 faces, 3964 textures)`; jar `26.3`, 41 483 720 bytes, sha1 `e877b6a07acd633f…`, verified against Mojang's manifest at test time (`evidence/jar/pin.txt`, `evidence/jar/jarcheck.txt`) |
 | 6b. World parity against the real client | NOT DONE | nothing renders the jar's models yet; the mesher still uses a demo world |
 | 7. Release assets verified by re-download | PASSING | `v0.3.0-pre` (pre-release, tag on `1626ba0`), release run `43695376328`, all four jobs `completed/success`. `RELEASE_VERIFY.txt` (committed, reproduced below): `RESULT: PASS - 3 assets re-downloaded from https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.0-pre and every sha256 matched`, `linux: the downloaded binary passed its self-test`, `windows: the downloaded .exe ran under wine and passed its self-test` |
@@ -106,6 +110,74 @@ SwiftShader at density 420. It is not the owner's Mali-G57 at density 3.5.
 stops at 100, that no line sits under the status bar, that the island fills the
 strip between the text and the buttons, and that the `LAST RUN` block comes back
 after closing and reopening the app.
+
+## 0.3.2 - the three findings from the phone, and the four bugs they found
+
+The owner's `0.3.1` run on the Mali-G57 produced three numbers. Each one had a
+cause, and fixing them found four more defects that no emulator run had failed on
+because nothing asserted them. Everything below is from run `43724314085`
+(commit `a717183`), the emulator at 1920x1080 with `debug.umbra.insets "0,63,126,0"`.
+
+| The phone said | Cause | What the log says now |
+|---|---|---|
+| `GPU self-test FAIL: 2458665 bad of 4950720 px` | `int` in a fragment shader is mediump (16-bit on Mali), so `x * 255` overflowed past x = 128 and only the 129x129 corner could match: 16641 pixels, against the 16695 the phone's own numbers imply | `self-test: pattern compared, 0 of 2073600 px differ, max channel diff 0` and `SELFTEST PASS (0 bad of 4147200 px, 1773 ms, offscreen)` |
+| the run before ended at `SELF-TEST: BEGIN (2292x1080)` and was reported as a crash | five million comparisons and two full-frame readbacks in one frame is five seconds without the main looper: Android force-stopped the app. It was an ANR, not a crash | `self-test: begin (1920x1080), tile 78 rows` … `end after 1773 ms, 32 steps`; a stuck test now ends with `watchdog: 30 s in "<phase>"` |
+| benchmark 59 FPS | the display is 60 Hz; the number was the cap, not the GPU | `swap interval 0: accepted by EGL`, `benchmark: uncapped swap interval requested and accepted`, `vsync: uncapped requested`, and `gpu n/a (no GPU timer results)` on the emulator, which has no timer extension |
+
+The four defects found on the way, each of which had already broken a device run:
+
+1. **The comparison read the window, not the offscreen target.** Compare steps run
+   one per frame, and the frame loop binds the window again after each step, so
+   every tile came from the window and was compared against the pattern:
+   `2073600 of 2073600 px differ` (run 43720791540). The target is bound before
+   every read now.
+2. **The counters were read after they had been reset.** The mismatch count was
+   taken, the counters were zeroed, and only then was the checked count read, so a
+   self-test reported `3854519 bad of 0 px`. All counters and the first-mismatch
+   text are now read before the reset.
+3. **The smoke test accepted a failing self-test.** It asserted that the test ran,
+   not that it passed. It now requires `SELFTEST PASS`, at least 100k compared
+   pixels, and turns the run red on `FAIL` or `SKIPPED`. That gate is what would
+   have caught 43720791540 before a release.
+4. **`device_checks()` was never called, and the platform hook was erased.** The
+   checks were written, reviewed and dead: no `check:` line appeared in any device
+   log. And `umbra_app_init`'s memset wiped the swap-interval hook android_main had
+   just installed, so the benchmark could only ever say "no platform hook". Both
+   are fixed, and `tools/check_c.sh` fails if the call disappears again.
+
+The device log now reads:
+
+```
+check: renderer                     Android Emulator OpenGL ES Translator (Google SwiftShader)
+check: gl version                   OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+check: max texture size             8192 px
+check: gpu timer query              none  (not available)
+check: shader programs              mesh ok, hud ok, pattern ok, cube ok
+check: depth buffer                 24 bits
+check: extension string             1412 chars
+check: all device checks passed
+```
+
+and the benchmark block is six lines, with GPU time and the swap-interval verdict
+on their own lines:
+
+```
+bench: 1306 frames  avg 45.97 ms (21 fps)
+1% low 14 fps (69.79 ms)
+median 45.82 ms  worst 77.32 ms
+Android Emulator OpenGL ES Translator (Google SwiftShader) | Android OpenGL ES 3.0
+gpu n/a (no GPU timer results)
+vsync: uncapped requested
+```
+
+**What is CI-only.** Every number above is SwiftShader on an x86_64 emulator at
+density 420, with a simulated 63 px status bar and no display cutout. It is not the
+Mali-G57 at density 3.5.
+
+**What the owner must confirm on the phone.** That the self-test now says
+`SELFTEST PASS` with a real pixel count; that its log shows the `check:` lines and
+either a real `gpu avg N ms` or `gpu n/a`; and that the benchmark's `vsync:` line
+says what the phone actually did.
 
 ## The reference screenshot, and why it changed
 
@@ -397,14 +469,10 @@ number quoted above from CI came through one of those channels.
 
 The owner set the order; it survives interruptions.
 
-1. **Publish `v0.3.0-pre`** (gate 7): tag the commit that carries time-sliced
-   meshing, insets and the four-line benchmark, let `.github/workflows/release.yml`
-   build the APK and both PC binaries from the tag, publish the pre-release, and
-   record the committed `RELEASE_VERIFY.txt` here. Report URL, size, SHA-256,
-   install steps and `docs/PHONE_TEST.md`.
-2. **Close gate 4 on ARM**: read the first result of `core-tests-arm64`
-   (`ubuntu-24.04-arm`) and say plainly that the Android arm64 `.so` is still
-   compile-only -- no CI job executes it.
+1. **Done:** `v0.3.0-pre` and `v0.3.1-pre` are published, each verified by
+   re-download (`RELEASE_VERIFY.txt`), and `0.3.1` ran on the owner's phone.
+2. **Done:** gate 4 is closed on ARM at the host-suite level, with the caveat that
+   the Android arm64 `.so` inside the APK is still compile-only.
 3. **Atlas and block models** from the jar: blockstates + models + a texture atlas
    packed from the jar's `textures/block`, with padded or extruded tile edges,
    mipmaps that do not bleed colour between tiles, animated textures frozen on
@@ -418,6 +486,10 @@ The owner set the order; it survives interruptions.
    through the real path would have caught it.
 6. Publish a verified pre-release after **every** stage that changes what the phone
    shows. Never replace a working release with a broken one.
+7. **Read the owner's next phone log** against the `0.3.2` claims: `SELFTEST PASS`
+   with a real pixel count, the `check:` lines, `gpu avg N ms` or `gpu n/a`, and a
+   `vsync:` line that says what the phone did. Anything the phone contradicts
+   outranks every emulator number in this file.
 
 ## Blockers
 
