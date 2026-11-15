@@ -54,7 +54,6 @@ int main(int argc, char **argv) {
     check(vlen > 0, "version string is non-empty");
 
     // 1. The demo world builds and meshes with real geometry.
-    int64_t t0 = 0;  // timing is the benchmark's job; here we check invariants
     umbra_demo_build(20261114);
     umbra_demo_mesh();
     const uint8_t *verts = umbra_verts_ptr(&vlen);

@@ -23,4 +23,15 @@ $CC -std=gnu11 -fsyntax-only -Wall -Wextra -Wno-unused-parameter -Wno-sign-compa
 echo "== android branch"
 $CC -std=gnu11 -fsyntax-only -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare \
     -D__ANDROID__ -I"$INC" -I"$GEN" -Iplatform/shared "$@" platform/shared/umbra_app.c
-echo "check_c: both branches parse and type-check"
+# The platform mains were not checked here until 0.3.1, and the JNI inset code
+# that crashed the emulator lived in one of them. clang rejects an implicit
+# function declaration in C99 mode and gcc only warns, so the warning is an
+# error here: the local check now fails on exactly what the APK build fails on.
+CFLAGS=(-std=gnu11 -fsyntax-only -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare
+        -Werror=implicit-function-declaration -Werror=incompatible-pointer-types)
+echo "== desktop main"
+$CC "${CFLAGS[@]}" -I"$INC" -I"$GEN" -Iplatform/shared "$@" platform/pc/headless_main.c
+echo "== android main"
+$CC "${CFLAGS[@]}" -D__ANDROID__ -I"$INC" -I"$GEN" -Iplatform/shared -Iplatform/android "$@" \
+    platform/android/android_main.c
+echo "check_c: both branches parse and type-check, and both platform mains do too"
