@@ -18,14 +18,19 @@ def main() -> int:
     if not client:
         print("version JSON has no downloads.client", file=sys.stderr)
         return 1
-    print(f'MC_CLIENT_URL={client["url"]}')
-    print(f'MC_CLIENT_SHA1={client["sha1"]}')
-    print(f'MC_CLIENT_SIZE={client["size"]}')
-    print(f'MC_ID={doc.get("id", "")}')
-    print(f'MC_JAVA={doc.get("javaVersion", {}).get("majorVersion", "")}')
+    # Every value is quoted: the caller sources this file, and unquoted values
+    # with spaces turn into commands (which is exactly what happened once).
+    print(f'MC_CLIENT_URL="{client["url"]}"')
+    print(f'MC_CLIENT_SHA1="{client["sha1"]}"')
+    print(f'MC_CLIENT_SIZE="{client["size"]}"')
+    print(f'MC_ID="{doc.get("id", "")}"')
+    print(f'MC_JAVA="{doc.get("javaVersion", {}).get("majorVersion", "")}"')
     assets = doc.get("assetIndex") or {}
-    print(f'MC_ASSET_INDEX={assets.get("id", "")} {assets.get("sha1", "")} {assets.get("size", 0)}')
-    print(f'MC_ASSET_INDEX_URL={assets.get("url", "")}')
+    print(f'MC_ASSET_ID="{assets.get("id", "")}"')
+    print(f'MC_ASSET_SHA1="{assets.get("sha1", "")}"')
+    print(f'MC_ASSET_SIZE="{assets.get("size", 0)}"')
+    print(f'MC_ASSET_TOTAL="{assets.get("totalSize", 0)}"')
+    print(f'MC_ASSET_INDEX_URL="{assets.get("url", "")}"')
     return 0
 
 

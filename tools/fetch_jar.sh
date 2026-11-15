@@ -57,7 +57,7 @@ mkdir -p evidence/jar
     echo "client jar: $SIZE bytes"
     echo "sha1: $GOT"
     echo "version json sha1: $JSON_SHA1"
-    echo "asset index: $MC_ASSET_INDEX"
+    echo "asset index: $MC_ASSET_ID ($MC_ASSET_SIZE bytes, $MC_ASSET_TOTAL bytes of objects)"
     echo "java: $MC_JAVA"
     echo "verified against: $MANIFEST_URL"
     echo "downloaded by: tools/fetch_jar.sh (the jar is not committed)"
