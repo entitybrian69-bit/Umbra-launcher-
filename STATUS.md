@@ -56,6 +56,16 @@ came back with screenshots, and all four are fixed in 0.3.1:
 | only sky behind the overlay | the camera was framed by a formula that put it 55 blocks out on a 2.2:1 screen, and the overlay covered the top half | the distance is computed by fitting the world to the visible part of the screen, the 3D view is shifted out from under the overlay, and the HUD now prints `mesh … verts, … draws` and `cam eye -> look` so "only sky" is diagnosable from a screenshot |
 | one screenshot did not show the results | the self-test and benchmark numbers lived only in the session | both are written to `last_selftest.txt` / `last_bench.txt` beside the log, read back at start-up, and drawn as a `LAST RUN` block; the smoke test restarts the app and fails if that block does not come back |
 
+## The reference screenshot, and why it changed
+
+`docs/reference/emulator_home.png` is now the frame from run 43709489473: the
+buttons in one row, the overlay inside a 486 px panel, the world filling the band
+between them and the previous run's results on the home screen. The gate still
+measures it -- fresh frame, not blank, mean absolute difference under threshold
+(`4.53 of 255` between the two shots of that run) -- so it catches a screen that
+changes by accident, and an intentional change updates the reference in the same
+commit as the reason.
+
 ## The first release (gate 7)
 
 ```
