@@ -93,10 +93,12 @@ static umbra_camera_fit umbra_camera_fit_world(const float min[3], const float m
     fit.eye[1] = fit.look[1] + fit.dist * UMBRA_CAMERA_DIR_Y;
     fit.eye[2] = fit.look[2] + fit.dist * UMBRA_CAMERA_DIR_Z;
 
-    // Fog starts just in front of the point the eye is aimed at, so the near face
-    // of the world is never greyed out, and ends well past the far side.
-    fit.fog_near = fit.dist - fit_h * 0.50f;
-    fit.fog_far = fit.dist + fit_h * 2.00f;
+    // Fog starts behind the point the eye is aimed at, so everything nearer than
+    // the middle of the world is at full colour, and ends well past the far side.
+    // The first version started it before the aim point and the island came out a
+    // pale ghost of itself in the screenshot.
+    fit.fog_near = fit.dist + fit_h * 0.20f;
+    fit.fog_far = fit.dist + fit_h * 2.20f;
     if (fit.fog_near < 1.0f) fit.fog_near = 1.0f;
     fit.ok = 1;
     return fit;
