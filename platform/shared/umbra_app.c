@@ -690,6 +690,11 @@ static int selftest_begin_target(umbra_app *app, int w, int h) {
     glBindFramebuffer(GL_FRAMEBUFFER, app->fbo_selftest);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, app->tex_selftest, 0);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, app->rb_selftest);
+    // The colour texture must not stay bound while it is attached to the
+    // framebuffer being drawn into: that feedback loop makes the result
+    // undefined, and SwiftShader throws the draw away.
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status != GL_FRAMEBUFFER_COMPLETE) {
         umbra_log(app, "self-test: offscreen framebuffer incomplete (0x%x), using the window",
@@ -733,6 +738,7 @@ static void run_selftest(umbra_app *app) {
             umbra_selftest_pattern_pixel(x, y, w, h, p[0], p[1], p[2]);
         }
     }
+    umbra_log(app, "self-test: gl error after the pattern draw 0x%x", (unsigned)glGetError());
     umbra_log(app, "self-test: target %s, pixel(0,0) = %d,%d,%d, pixel(w-1,0) = %d,%d,%d",
               offscreen ? "offscreen" : "window", px[0], px[1], px[2],
               px[(size_t)(w - 1) * 3 + 0], px[(size_t)(w - 1) * 3 + 1], px[(size_t)(w - 1) * 3 + 2]);
