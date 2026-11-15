@@ -56,13 +56,29 @@ jobs:
         run: |
           set -o pipefail
           chmod +x ../tools/gen_core.sh
-          gradle assembleRelease --no-daemon --stacktrace > /tmp/gradle.log 2>&1 || {
-            { grep -A15 "What went wrong" /tmp/gradle.log | head -30
-              grep -nE "error:|undefined reference|FAILED" /tmp/gradle.log | head -25
-            } | while IFS= read -r line; do echo "::error title=gradle::${line//\%/%25}"; done
-            exit 1
-          }
-          tail -6 /tmp/gradle.log
+          # Dependency resolution flakes: run 43690301844 failed to fetch
+          # kotlin-stdlib-jdk8 from Maven Central with nothing else wrong. Two
+          # attempts, the second with refreshed dependencies, and the log tail
+          # goes out as annotations because job logs are not readable here.
+          args=(--no-daemon --stacktrace)
+          attempt=1
+          while :; do
+            if gradle assembleRelease "${args[@]}" > /tmp/gradle.log 2>&1; then
+              break
+            fi
+            if [ "$attempt" -ge 2 ]; then
+              { grep -A15 "What went wrong" /tmp/gradle.log | head -30
+                grep -nE "error:|undefined reference|FAILED|Could not resolve|not found" /tmp/gradle.log | head -25
+              } | while IFS= read -r line; do echo "::error title=gradle::${line//\%/%25}"; done
+              exit 1
+            fi
+            echo "::warning title=gradle::attempt $attempt failed; retrying with refreshed dependencies"
+            attempt=$((attempt + 1))
+            args+=(--refresh-dependencies)
+            sleep 10
+          done
+          tail -12 /tmp/gradle.log
+          echo "::notice title=gradle::assembleRelease succeeded on attempt $attempt"
       - name: Collect the APK
         run: |
           set -e
