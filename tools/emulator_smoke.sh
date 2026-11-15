@@ -51,6 +51,18 @@ collect() {
     say "== collected diagnostics =="
     if [ -n "${ADB_BIN:-}" ] && [ -x "$ADB_BIN" ]; then
         adb logcat -d -b all -v threadtime > logcat-full.txt 2>&1 || true
+        # A native crash leaves a tombstone and a crash-buffer entry; both say
+        # where the process died, which is all a dead app can tell us.
+        adb logcat -d -b crash > logcat-crash.txt 2>&1 || true
+        adb shell "ls -l /data/tombstones" > tombstones.txt 2>&1 || true
+        adb shell "cat /data/tombstones/tombstone_00" >> tombstones.txt 2>&1 || true
+        if [ -f logcat-crash.txt ] && [ "$(grep -c . logcat-crash.txt)" -gt 2 ]; then
+            say "crash buffer:"
+            tail -25 logcat-crash.txt | while IFS= read -r l; do say "crash: $l"; done
+        fi
+        if grep -q "Fatal signal" logcat-full.txt 2>/dev/null; then
+            err "native crash: $(grep -m1 -A3 'Fatal signal' logcat-full.txt | tr '\n' ' ' | cut -c1-500)"
+        fi
         adb logcat -d -s umbra:V > logcat-umbra.txt 2>&1 || true
         adb logcat -d -s ActivityManager:I WindowManager:I AndroidRuntime:E umbra:V > logcat-system.txt 2>&1 || true
         adb shell dumpsys window > dumpsys-window.txt 2>&1 || true
@@ -231,6 +243,7 @@ while [ $SECONDS -lt $DEADLINE ]; do
 done
 [ "$READY" = 1 ] || die "the app logged its start line never within ${APP_TIMEOUT}s; umbra log: $(tail -c 800 logcat-umbra.txt)"
 PID="$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')"
+[ -n "$PID" ] || die "the app died right after it started drawing; crash buffer: $(adb logcat -d -b crash 2>/dev/null | tail -6 | tr '\n' ' ' | cut -c1-600)"
 say "running: pid $PID"
 while IFS= read -r line; do
     case "$line" in

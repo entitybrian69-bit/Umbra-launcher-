@@ -60,6 +60,7 @@ jobs:
         run: |
           echo "commit=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
           echo "version=0.1.0-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "UMBRA_GIT_COMMIT=$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
 
       - uses: gradle/actions/setup-gradle@v4
         with:

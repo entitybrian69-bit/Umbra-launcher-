@@ -557,7 +557,16 @@ static void build_scene(umbra_app *app) {
 }
 
 int umbra_app_init(umbra_app *app) {
+    // The platform layer fills in where the log and the crash marker live
+    // before calling init; the blanket memset below would erase them, and then
+    // every log line would be written nowhere.
+    char log_path[sizeof app->log_path];
+    char marker_path[sizeof app->marker_path];
+    memcpy(log_path, app->log_path, sizeof log_path);
+    memcpy(marker_path, app->marker_path, sizeof marker_path);
     memset(app, 0, sizeof *app);
+    memcpy(app->log_path, log_path, sizeof app->log_path);
+    memcpy(app->marker_path, marker_path, sizeof app->marker_path);
     app->screen = UMBRA_SCREEN_HOME;
     app->dpi_scale = 1.0f;
     app->bench_seconds = 60;

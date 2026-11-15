@@ -25,7 +25,10 @@ android {
         }
         externalNativeBuild {
             cmake {
-                arguments '-DANDROID_STL=none'
+                // The commit goes into the app so a screenshot or a log can be
+                // matched to the exact source it came from.
+                def gitCommit = (System.getenv('UMBRA_GIT_COMMIT') ?: 'unknown').trim()
+                arguments '-DANDROID_STL=none', "-DUMBRA_GIT_COMMIT=${gitCommit}"
                 cppFlags ''
             }
         }

@@ -15,6 +15,7 @@
 #include <sys/stat.h>
 
 #include "umbra_app.h"
+#include "umbra_core.h"
 
 #define TAG "umbra"
 #define ALOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
@@ -216,6 +217,13 @@ void android_main(struct android_app *state) {
     snprintf(g_st.app.log_path, sizeof g_st.app.log_path, "%s/umbra.log", g_st.files_dir);
     snprintf(g_st.app.marker_path, sizeof g_st.app.marker_path, "%s/session.marker", g_st.files_dir);
     ALOGI("android_main: files %s", g_st.files_dir);
+
+    // The Goose runtime must be initialised before any exported umbra_*
+    // function is called: the generated exports panic otherwise, and a panic
+    // in the frame loop kills the process a few milliseconds after start.
+    static char *goose_argv[] = {(char *)"umbra", NULL};
+    goose_init(1, goose_argv);
+    ALOGI("goose core initialised");
 
     bool started = false;
     bool announced_wait = false;
