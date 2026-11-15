@@ -50,15 +50,12 @@ static float umbra_hud_panel_height(int rows, float scale, int32_t top_inset) {
     return (float)top_inset + (float)rows * UMBRA_HUD_ROW_HEIGHT * scale + 16.0f * scale;
 }
 
-// Where the 3D view should be centred in normalised device coordinates: the panel
-// covers the top of the screen, so the scene moves down by half the covered
-// fraction. Returns 0 when there is no panel worth compensating for.
-static float umbra_hud_scene_shift(float panel_height, int height) {
-    if (height < 16 || panel_height <= 0.0f) return 0.0f;
-    float covered = panel_height / (float)height;
-    if (covered < 0.05f) return 0.0f;
-    if (covered > 0.6f) covered = 0.6f;
-    return -covered;   // negative: NDC y grows upward, the panel is above
+// A landscape surface puts the three buttons in a row, a portrait one stacks
+// them. Three stacked buttons on a 1080-pixel-high phone took 250 of them out of
+// the band the world is drawn in, and the world ended up a thumbnail between two
+// walls of interface.
+static int umbra_hud_is_wide(int width, int height) {
+    return height > 0 && (float)width / (float)height > 1.5f;
 }
 
 // One of the three buttons, in pixels, inside all four insets. The drawing code
@@ -72,14 +69,68 @@ static umbra_rect umbra_hud_button(int i, int width, int height, const int32_t i
     float bh = 20.0f * scale;
     float gap = 6.0f * scale;
     float margin = 8.0f * scale;
+    float bottom = (float)height - (float)insets[3];
     r.h = bh;
+    if (umbra_hud_is_wide(width, height)) {
+        float left = margin + (float)insets[0];
+        float usable = (float)width - left - (float)insets[2] - margin;
+        float slot = (usable - 2.0f * gap) / 3.0f;
+        if (slot < 1.0f) slot = 1.0f;
+        r.x = left + (float)i * (slot + gap);
+        r.w = slot;
+        r.y = bottom - margin - bh;
+        if (r.y < (float)insets[1]) r.y = (float)insets[1];
+        return r;
+    }
     r.x = margin + (float)insets[0];
     r.w = (float)width - r.x - (float)insets[2] - margin;
     if (r.w < 0.0f) r.w = 0.0f;
-    float bottom = (float)height - (float)insets[3];
     r.y = bottom - 3.0f * (bh + gap) - margin + (float)i * (bh + gap) + gap * 0.5f;
     if (r.y < (float)insets[1]) r.y = (float)insets[1];
     return r;
+}
+
+// The strip of screen the world is actually visible in: below the overlay, above
+// the buttons. Both the camera fit and the scene shift use it, so "framed" means
+// framed in what is left rather than in the full screen.
+static void umbra_hud_scene_band(int rows, float scale, const int32_t insets[4], int width,
+                                 int height, float *top, float *bottom) {
+    float t = umbra_hud_panel_height(rows, scale, insets[1]) + 4.0f * scale;
+    umbra_rect b0 = umbra_hud_button(0, width, height, insets, scale);
+    float b = b0.y - 4.0f * scale;
+    if (b <= t + 8.0f) {
+        // No room between the two: split what there is, so the world still has a
+        // centre to be aimed at instead of collapsing to a point.
+        float mid = (float)height * 0.5f;
+        t = mid - (float)height * 0.15f;
+        b = mid + (float)height * 0.15f;
+    }
+    if (t < 0.0f) t = 0.0f;
+    if (b > (float)height) b = (float)height;
+    *top = t;
+    *bottom = b;
+}
+
+// Where the 3D view should be centred, in normalised device coordinates: the
+// middle of the band above, moved to the middle of the screen. Negative moves the
+// world down, because NDC y grows upward and the band sits below the panel.
+static float umbra_hud_band_shift(float band_top, float band_bottom, int height) {
+    if (height < 16 || band_bottom <= band_top) return 0.0f;
+    float centre = (band_top + band_bottom) * 0.5f;
+    float shift = (centre - (float)height * 0.5f) * 2.0f / (float)height;
+    if (shift > 0.6f) shift = 0.6f;
+    if (shift < -0.6f) shift = -0.6f;
+    return -shift;
+}
+
+// Kept for the overlay's own backdrop maths: how much of the screen the panel
+// covers, as a fraction, clamped.
+static float umbra_hud_scene_shift(float panel_height, int height) {
+    if (height < 16 || panel_height <= 0.0f) return 0.0f;
+    float covered = panel_height / (float)height;
+    if (covered < 0.05f) return 0.0f;
+    if (covered > 0.6f) covered = 0.6f;
+    return -covered;
 }
 
 // Copy src into dst, turning newlines into spaces and stopping before cap; returns

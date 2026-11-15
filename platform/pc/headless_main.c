@@ -9,9 +9,22 @@
 #include <math.h>
 #include <time.h>
 #include <stdlib.h>
+#ifdef _WIN32
+#include <direct.h>
+#define umbra_mkdir(p) _mkdir(p)
+#define umbra_rmdir(p) _rmdir(p)
+#else
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#define umbra_mkdir(p) mkdir((p), 0700)
+#define umbra_rmdir(p) rmdir(p)
+#endif
 #include "umbra_core.h"
 #include "umbra_vertex.h"
 #include "umbra_hud.h"
+#include "umbra_results.h"
+#include "umbra_camera.h"
 
 static int failures = 0;
 static int checks = 0;
@@ -228,13 +241,27 @@ int main(int argc, char **argv) {
         check(panel >= 63.0f, "the overlay starts below a 63 px status bar");
 
         umbra_rect b0 = umbra_hud_button(0, 2412, 1080, phone, s_phone);
+        umbra_rect b1 = umbra_hud_button(1, 2412, 1080, phone, s_phone);
         umbra_rect b2 = umbra_hud_button(2, 2412, 1080, phone, s_phone);
         printf("layout: button 0 %.0f,%.0f %.0fx%.0f; button 2 %.0f,%.0f\n", b0.x, b0.y, b0.w, b0.h, b2.x, b2.y);
+        check(umbra_hud_is_wide(2412, 1080), "a landscape phone gets the buttons in a row");
+        check(!umbra_hud_is_wide(1080, 1920), "a portrait phone stacks them");
+        check(b0.y == b1.y && b1.y == b2.y, "the row of buttons shares one baseline");
+        check(b1.x >= b0.x + b0.w - 0.5f && b2.x >= b1.x + b1.w - 0.5f,
+              "the buttons in a row do not overlap");
         check(b0.x >= (float)phone[0], "buttons start inside the left inset");
-        check(b0.x + b0.w <= 2412.0f - (float)phone[2] + 0.5f, "buttons stop before the right inset");
+        check(b2.x + b2.w <= 2412.0f - (float)phone[2] + 0.5f, "buttons stop before the right inset");
         check(b2.y + b2.h <= 1080.0f - (float)phone[3] + 0.5f, "buttons stop above the bottom inset");
         check(b0.y >= (float)phone[1], "buttons start below the top inset");
         check(b0.h >= 40.0f, "a button is tall enough for a thumb");
+        check(b0.w >= (2412.0f - 126.0f) / 3.0f * 0.7f, "each button is a decent target in a row");
+
+        // Portrait: stacked, full width, inside the same insets.
+        int32_t tall_insets[4] = {0, 80, 0, 130};
+        umbra_rect p0 = umbra_hud_button(0, 1080, 1920, tall_insets, 3.0f);
+        umbra_rect p2 = umbra_hud_button(2, 1080, 1920, tall_insets, 3.0f);
+        check(p0.y < p2.y && p0.w > 1080.0f * 0.8f, "portrait stacks full-width buttons");
+        check(p2.y + p2.h <= 1920.0f - 130.0f + 0.5f, "the stack clears a 130 px navigation bar");
 
         // A cutout on the left (a punch-hole phone held in landscape) must not be
         // covered either, and a surface that is not there yet must not produce a
@@ -247,18 +274,142 @@ int main(int argc, char **argv) {
         umbra_rect emu = umbra_hud_button(0, 1920, 1080, bars, 2.62f);
         check(emu.x + emu.w <= 1920.0f - 126.0f + 0.5f, "the emulator's 126 px navigation bar is kept clear");
 
-        // The scene is pushed down by the fraction the panel covers, so the world
-        // is centred in what is left rather than behind the overlay.
-        float shift = umbra_hud_scene_shift(panel, 1080);
-        check(shift < 0.0f, "the world moves down out from under the overlay");
-        check(shift >= -0.6f, "and never by more than 60% of the screen");
-        check(umbra_hud_scene_shift(0.0f, 1080) == 0.0f, "no overlay means no shift");
+        // The band the world is drawn in: below the overlay, above the buttons.
+        int rows = 9;
+        float band_top = 0.0f, band_bottom = 0.0f;
+        umbra_hud_scene_band(rows, s_phone, phone, 2412, 1080, &band_top, &band_bottom);
+        float panel_h = umbra_hud_panel_height(rows, s_phone, phone[1]);
+        printf("layout: panel %.0f px, free band %.0f..%.0f (%.0f%% of 1080)\n",
+               panel_h, band_top, band_bottom, (band_bottom - band_top) / 1080.0f * 100.0f);
+        check(band_top >= panel_h, "the band starts below the overlay, not under it");
+        check(band_top >= 63.0f, "and below the status bar");
+        check(band_bottom <= b0.y, "the band stops at the buttons");
+        check(band_bottom - band_top > 1080.0f * 0.35f,
+              "the world gets more than a third of the screen height on a landscape phone");
+        check(umbra_hud_band_shift(band_top, band_bottom, 1080) < 0.0f,
+              "the world is moved down into the band");
+        check(umbra_hud_band_shift(0.0f, 1080.0f, 1080) == 0.0f,
+              "a surface with no overlay and no buttons needs no shift");
+
+     // 4b-2. The camera: the world must fit the band on the owner's screen, and
+     //       must not be a thumbnail in it. Same numbers as the phone: 2412x1080,
+     //       63 px status bar, 126 px navigation bar, and the demo world's real
+     //       bounds (x 0..48, y -64..106, z 0..16).
+        {
+            float mn[3] = {0.0f, -64.0f, 0.0f};
+            float mx[3] = {48.0f, 106.0f, 16.0f};
+            umbra_camera_fit f = umbra_camera_fit_world(mn, mx, 55.0f, 2412, 1080, band_top, band_bottom);
+            check(f.ok, "the world could be fitted to the phone's screen");
+            float tan_v = tanf(55.0f * 3.14159265f / 180.0f * 0.5f);
+            float half_angle = atanf(f.radius / f.dist);
+            float screen_half = atanf(tan_v);
+            float band_half = atanf(tan_v * f.band_fraction);
+            printf("camera: %.1f blocks out, radius %.1f, world %.1f deg, screen %.1f deg, band %.1f deg\n",
+                   f.dist, f.radius, half_angle * 57.2958f, screen_half * 57.2958f,
+                   band_half * 57.2958f);
+            check(half_angle <= screen_half + 1e-3f, "the world fits inside the screen");
+            check(half_angle >= band_half * 0.95f,
+                  "and is at least as big as the free band, not a stamp in the middle");
+            check(half_angle <= screen_half * 0.98f, "without spilling past the screen edges");
+            float dx = f.eye[0] - f.look[0], dy = f.eye[1] - f.look[1], dz = f.eye[2] - f.look[2];
+            float len = sqrtf(dx * dx + dy * dy + dz * dz);
+            check(fabsf(len - f.dist) < 0.05f * f.dist, "the eye really is cam_dist from the look point");
+            check(dy > 0.0f, "the eye looks down at the world");
+            check(f.look[1] < mx[1] - 20.0f, "it aims at the rock, not at the peak 90 blocks above it");
+            // Fog must not grey the rock the eye is aimed at (that is the near
+            // face), and must fade the far side rather than stop at it.
+            check(f.fog_near > f.dist - f.radius, "the fog starts beyond the near face of the world");
+            check(f.fog_near < f.dist, "but in front of the point the eye is aimed at");
+            check(f.fog_far > f.dist + f.radius, "and ends past the far side of the world");
+            check(f.fog_far > f.fog_near * 2.0f, "with a long enough fall-off to see depth");
+
+            // The emulator's screen: no status bar of its own, so the band is
+            // bigger and the camera should come closer, not further.
+            float emu_top = 0.0f, emu_bottom = 0.0f;
+            umbra_hud_scene_band(8, 2.62f, bars, 1920, 1080, &emu_top, &emu_bottom);
+            umbra_camera_fit fe = umbra_camera_fit_world(mn, mx, 55.0f, 1920, 1080, emu_top, emu_bottom);
+            printf("camera: emulator %.1f blocks out in a band starting at %.0f\n", fe.dist, emu_top);
+            check(fe.ok && fe.dist > 0.0f, "the emulator screen also produces a camera");
+            check(fabsf(fe.dist - f.dist) < 0.05f * f.dist,
+                  "the same world at the same aspect gets the same distance, insets or not");
+
+            // A tiny world and a huge one must both be framed sanely.
+            float small_mn[3] = {0, 0, 0}, small_mx[3] = {2, 2, 2};
+            umbra_camera_fit fs = umbra_camera_fit_world(small_mn, small_mx, 55.0f, 2412, 1080, band_top, band_bottom);
+            check(fs.ok && fs.dist >= 16.0f, "a two-block world is not jumped on top of");
+            float big_mn[3] = {-1000, -64, -1000}, big_mx[3] = {1000, 200, 1000};
+            umbra_camera_fit fb = umbra_camera_fit_world(big_mn, big_mx, 55.0f, 2412, 1080, band_top, band_bottom);
+            check(fb.ok && fb.dist <= 400.0f, "a 2000-block world is clamped, not sent to infinity");
+        }
 
         // flatten(): what the last-run file stores is one line per result.
         char flat[64];
         int n = umbra_flatten(flat, sizeof flat, "bench: 3 frames\n1% low 52 fps\nmedian 16.75");
         check(n > 0 && strstr(flat, "\n") == NULL, "the benchmark block flattens to one line");
         check(strstr(flat, "1% low 52 fps") != NULL, "flattening keeps the numbers");
+    }
+
+    // 4c. The result files. These live next to the log and are what the overlay
+    //     reads back on the next start; the first version computed their names
+    //     only while logging, which is later than the read, so a restart showed
+    //     "nothing recorded yet" after a run that had saved both. Exercised here
+    //     with a real temporary directory rather than a mock.
+    {
+        // A real directory, created portably: the pc suite runs on Windows too.
+        char dir[256];
+        dir[0] = 0;
+        const char *base = getenv("TMPDIR");
+        if (!base) base = getenv("TEMP");
+        if (!base) base = getenv("TMP");
+        if (!base) base = ".";
+        for (int attempt = 0; attempt < 20 && !dir[0]; attempt++) {
+            char candidate[256];
+            snprintf(candidate, sizeof candidate, "%s/umbra-results-%ld-%d", base, (long)time(NULL), attempt);
+            if (umbra_mkdir(candidate) == 0) snprintf(dir, sizeof dir, "%s", candidate);
+        }
+        if (dir[0]) {
+            char log_path[256], self_path[256], bench_path[256];
+            snprintf(log_path, sizeof log_path, "%s/umbra.log", dir);
+            umbra_result_path(log_path, "last_selftest.txt", self_path, sizeof self_path);
+            umbra_result_path(log_path, "last_bench.txt", bench_path, sizeof bench_path);
+            check(strstr(self_path, "last_selftest.txt") != NULL &&
+                  strncmp(self_path, dir, strlen(dir)) == 0,
+                  "the result files sit next to the log");
+
+            umbra_result_save(self_path, "SELFTEST PASS (0 bad of 2073600 px, 41 ms)");
+            umbra_result_save(bench_path, "BENCH 60 s: 1257 frames, avg 47.8 ms (20 fps)");
+            char got[256];
+            int n = umbra_result_load(self_path, got, sizeof got);
+            check(n > 0 && strstr(got, "SELFTEST PASS") != NULL, "a saved result reads back");
+            check(strchr(got, '\n') == NULL, "the stored line comes back without its newline");
+
+            char block[320];
+            int lines = umbra_last_run_block(block, sizeof block, got, "BENCH 60 s: 20 fps");
+            check(lines == 3, "the block is a title and one line per result");
+            check(strncmp(block, "LAST RUN", 8) == 0, "the block is titled LAST RUN");
+            check(strstr(block, "SELFTEST PASS") && strstr(block, "20 fps"), "both results are in the block");
+
+            char missing[256];
+            umbra_result_path(log_path, "not-there.txt", missing, sizeof missing);
+            check(umbra_result_load(missing, got, sizeof got) == 0 && got[0] == 0,
+                  "a missing result file reads back as empty, not as garbage");
+            check(umbra_last_run_block(block, sizeof block, "", "") == 0,
+                  "and produces no block at all");
+
+            // A file the process cannot open must not report a result either.
+            umbra_result_save("/proc/umbra-nope/x.txt", "SELFTEST");
+            check(umbra_result_load("/proc/umbra-nope/x.txt", got, sizeof got) == 0,
+                  "an unwritable path saves nothing and loads nothing");
+
+            char unlink_log[256];
+            snprintf(unlink_log, sizeof unlink_log, "%s/umbra.log", dir);
+            remove(self_path);
+            remove(bench_path);
+            remove(unlink_log);
+            umbra_rmdir(dir);
+        } else {
+            check(0, "a temporary directory was available for the result-file test");
+        }
     }
 
     // 5. The benchmark statistics are real arithmetic on real numbers.

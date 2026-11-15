@@ -4,6 +4,8 @@
 // Game logic is not here: it is in goose/ and reached through umbra_core.h.
 // This file draws and measures.
 #include "umbra_app.h"
+#include "umbra_results.h"
+#include "umbra_camera.h"
 #include "umbra_vertex.h"
 #include "umbra_font.h"
 #include "umbra_hud.h"
@@ -14,7 +16,7 @@
 #include <string.h>
 
 // Defined further down, used by umbra_app_init and the frame loop.
-static void sibling_path(const char *base, const char *name, char *out, size_t cap);
+static void set_run_paths(umbra_app *app);
 static void load_last_run(umbra_app *app);
 static void camera_eye(const umbra_app *app, float eye[3]);
 #include <stdarg.h>
@@ -56,8 +58,10 @@ static void log_open(umbra_app *app) {
 
 void umbra_log(umbra_app *app, const char *fmt, ...) {
     // Where the previous run's results live: next to the log, one line each.
-    sibling_path(app->log_path, "last_selftest.txt", app->selftest_path, sizeof app->selftest_path);
-    sibling_path(app->log_path, "last_bench.txt", app->bench_path, sizeof app->bench_path);
+    // Computed once, in init, so that the read at start-up happens after the
+    // paths exist -- it used to happen before, which is why the first run of
+    // 0.3.1 saved its results and then reported "nothing recorded yet".
+    if (!app->selftest_path[0]) set_run_paths(app);
 
     log_open(app);
     char line[1024];
@@ -377,67 +381,34 @@ static float hud_text_width(const char *text, float scale) {
 // self-test verdict and the benchmark numbers are written to two one-line files
 // as they happen, read back at start-up, and shown in the overlay.
 
-static void sibling_path(const char *base, const char *name, char *out, size_t cap) {
-    const char *slash = base ? strrchr(base, '/') : NULL;
-    if (!slash) {
-        snprintf(out, cap, "%s", name);
-        return;
-    }
-    size_t dirlen = (size_t)(slash - base);
-    if (dirlen + 1 + strlen(name) + 1 > cap) {
-        snprintf(out, cap, "%s", name);
-        return;
-    }
-    memcpy(out, base, dirlen);
-    out[dirlen] = '/';
-    snprintf(out + dirlen + 1, cap - dirlen - 1, "%s", name);
-}
-
-static void save_line(const char *path, const char *text) {
-    if (!path || !path[0] || !text || !text[0]) return;
-    FILE *f = fopen(path, "wb");
-    if (!f) return;
-    fprintf(f, "%s\n", text);
-    fclose(f);
-}
-
-static int load_line(const char *path, char *out, size_t cap) {
-    out[0] = 0;
-    FILE *f = path && path[0] ? fopen(path, "rb") : NULL;
-    if (!f) return 0;
-    size_t n = fread(out, 1, cap - 1, f);
-    fclose(f);
-    out[n] = 0;
-    while (n > 0 && (out[n - 1] == '\n' || out[n - 1] == '\r')) out[--n] = 0;
-    return (int)n;
+// Where the two result files live: beside the log, one line each. Called from
+// init, before the start-up read, and again by umbra_log if the platform set the
+// log path late.
+static void set_run_paths(umbra_app *app) {
+    umbra_result_path(app->log_path, "last_selftest.txt", app->selftest_path, sizeof app->selftest_path);
+    umbra_result_path(app->log_path, "last_bench.txt", app->bench_path, sizeof app->bench_path);
 }
 
 // Read both result files into the block the HUD draws.
 static void load_last_run(umbra_app *app) {
     char selftest[160], bench[220];
-    load_line(app->selftest_path, selftest, sizeof selftest);
-    load_line(app->bench_path, bench, sizeof bench);
+    umbra_result_load(app->selftest_path, selftest, sizeof selftest);
+    umbra_result_load(app->bench_path, bench, sizeof bench);
     if (!selftest[0] && !bench[0]) {
         app->last_run_text[0] = 0;
         app->last_run_lines = 0;
         umbra_log(app, "last run: nothing recorded yet");
         return;
     }
-    int n = snprintf(app->last_run_text, sizeof app->last_run_text, "LAST RUN");
-    if (selftest[0]) n += snprintf(app->last_run_text + n, sizeof app->last_run_text - (size_t)n, "\n%s", selftest);
-    if (bench[0]) n += snprintf(app->last_run_text + n, sizeof app->last_run_text - (size_t)n, "\n%s", bench);
-    int lines = 1;
-    for (const char *q = app->last_run_text; *q; q++) {
-        if (*q == '\n') lines++;
-    }
-    app->last_run_lines = lines;
+    app->last_run_lines = umbra_last_run_block(app->last_run_text, sizeof app->last_run_text,
+                                               selftest, bench);
     char flat[260];
     umbra_flatten(flat, sizeof flat, app->last_run_text);
     umbra_log(app, "last run: %s", flat);
 }
 
 static void remember_selftest(umbra_app *app) {
-    save_line(app->selftest_path, app->selftest_text);
+    umbra_result_save(app->selftest_path, app->selftest_text);
     umbra_log(app, "last run: self-test saved to %s", app->selftest_path);
     load_last_run(app);
 }
@@ -447,7 +418,7 @@ static void remember_bench(umbra_app *app) {
     // become spaces and the device name is cut short enough to stay readable.
     char flat[200];
     umbra_flatten(flat, sizeof flat, app->bench_text);
-    save_line(app->bench_path, flat);
+    umbra_result_save(app->bench_path, flat);
     umbra_log(app, "last run: benchmark saved to %s", app->bench_path);
     load_last_run(app);
 }
@@ -701,30 +672,37 @@ static void finish_scene(umbra_app *app) {
     app->span[0] = umbra_mesh_max_x() - umbra_mesh_min_x();
     app->span[1] = umbra_mesh_max_y() - umbra_mesh_min_y();
     app->span[2] = umbra_mesh_max_z() - umbra_mesh_min_z();
-    float horiz = app->span[0] > app->span[2] ? app->span[0] : app->span[2];
-    // Fit the world to the view instead of guessing a distance. On a 2412x1080
-    // phone the old formula put the camera 55 blocks out and the island filled a
-    // quarter of the width, behind a panel: "only sky visible".
-    float aspect = (app->height > 0) ? (float)app->width / (float)app->height : 1.78f;
-    if (aspect < 0.5f) aspect = 0.5f;
-    float tan_v = tanf(app->fov_y * 3.14159265f / 180.0f * 0.5f);
-    float tan_h = tan_v * aspect;
-    float want = 0.62f;                       // how much of the width the world fills
-    app->cam_dist = (horiz * 0.5f) / (tan_h * want);
-    if (app->cam_dist < 16.0f) app->cam_dist = 16.0f;
-    if (app->cam_dist > 220.0f) app->cam_dist = 220.0f;
-    // Aim at the top of the world, not at the middle of its volume: a demo
-    // world filled from y = -64 has its centre deep inside solid stone.
-    app->look[0] = app->center[0];
-    app->look[1] = umbra_mesh_max_y() - 6.0f;
-    app->look[2] = app->center[2];
+    // Fit the world into the band of screen that the overlay and the buttons
+    // leave free, instead of fitting it into the whole screen and hoping. The
+    // arithmetic lives in umbra_camera.h so the host tests can check it with the
+    // owner's phone's numbers.
+    float min_b[3] = {umbra_mesh_min_x(), umbra_mesh_min_y(), umbra_mesh_min_z()};
+    float max_b[3] = {umbra_mesh_max_x(), umbra_mesh_max_y(), umbra_mesh_max_z()};
+    float band_top = 0.0f, band_bottom = 0.0f;
+    umbra_hud_scene_band(hud_rows(app), hud_scale(app), app->insets, app->width, app->height,
+                         &band_top, &band_bottom);
+    umbra_camera_fit fit = umbra_camera_fit_world(min_b, max_b, app->fov_y, app->width,
+                                                  app->height, band_top, band_bottom);
+    if (!fit.ok) {
+        umbra_log(app, "camera: could not fit the world (%dx%d)", app->width, app->height);
+    }
+    app->cam_dist = fit.dist;
+    app->look[0] = fit.look[0];
+    app->look[1] = fit.look[1];
+    app->look[2] = fit.look[2];
+    app->fog_near = fit.fog_near;
+    app->fog_far = fit.fog_far;
+    float band_frac = fit.band_fraction;
     camera_eye(app, app->eye);
     upload_mesh(app);
     app->mesh_state = 2;
     app->mesh_progress = 1000;
-    umbra_log(app, "mesh bounds x %.1f..%.1f y %.1f..%.1f z %.1f..%.1f, camera %.1f blocks out",
+    umbra_log(app, "mesh bounds x %.1f..%.1f y %.1f..%.1f z %.1f..%.1f, camera %.1f blocks out, "
+                   "free band %.0f..%.0f of %d (%.0f%%), fog %.0f..%.0f",
               umbra_mesh_min_x(), umbra_mesh_max_x(), umbra_mesh_min_y(), umbra_mesh_max_y(),
-              umbra_mesh_min_z(), umbra_mesh_max_z(), app->cam_dist);
+              umbra_mesh_min_z(), umbra_mesh_max_z(), app->cam_dist,
+              band_top, band_bottom, app->height, band_frac * 100.0f,
+              app->fog_near, app->fog_far);
     umbra_log(app, "camera: eye %.1f %.1f %.1f look %.1f %.1f %.1f, %.1f blocks out, fov %.0f",
               app->eye[0], app->eye[1], app->eye[2], app->look[0], app->look[1], app->look[2],
               app->cam_dist, app->fov_y);
@@ -809,6 +787,9 @@ int umbra_app_init(umbra_app *app) {
     // 55 degrees is a phone-friendly vertical field of view; the distance that
     // fits the world into it is computed from the mesh, per screen aspect.
     app->fov_y = 55.0f;
+    // The result files sit next to the log, so their names have to be known
+    // before the start-up read: this line is the whole 0.3.1 last-run bug.
+    set_run_paths(app);
     load_last_run(app);
     snprintf(app->build_text, sizeof app->build_text, "Umbra %s (%s)", "(see HUD)", UMBRA_GIT_COMMIT);
 
@@ -1034,9 +1015,12 @@ static void run_selftest(umbra_app *app) {
 // fits. Shared by the draw call and the HUD so the numbers on screen are the
 // numbers that were used.
 static void camera_eye(const umbra_app *app, float eye[3]) {
-    eye[0] = app->look[0] + app->cam_dist * 0.55f;
-    eye[1] = app->look[1] + app->cam_dist * 0.45f;
-    eye[2] = app->look[2] + app->cam_dist * 0.55f;
+    // A three-quarter view from about 27 degrees up: (0.62, 0.46, 0.62) normalised,
+    // so the eye really is cam_dist away from the point it looks at and the
+    // distances in the fog and in the log mean what they say.
+    eye[0] = app->look[0] + app->cam_dist * 0.617f;
+    eye[1] = app->look[1] + app->cam_dist * 0.458f;
+    eye[2] = app->look[2] + app->cam_dist * 0.640f;
 }
 
 // --- frame --------------------------------------------------------------
@@ -1060,8 +1044,10 @@ static void draw_scene(umbra_app *app) {
     mat4_mul(vp, proj, view);
     // The overlay covers the top of the screen, so the scene is centred in what
     // is left of it: shift every clip-space y by k * w.
-    float shift = umbra_hud_scene_shift(umbra_hud_panel_height(hud_rows(app), hud_scale(app), app->insets[1]),
-                                        app->height);
+    float band_top = 0.0f, band_bottom = 0.0f;
+    umbra_hud_scene_band(hud_rows(app), hud_scale(app), app->insets, app->width, app->height,
+                         &band_top, &band_bottom);
+    float shift = umbra_hud_band_shift(band_top, band_bottom, app->height);
     if (shift != 0.0f) {
         for (int col = 0; col < 4; col++) {
             vp[1 + 4 * col] += shift * vp[3 + 4 * col];
@@ -1069,8 +1055,7 @@ static void draw_scene(umbra_app *app) {
     }
     glUseProgram(app->prog_mesh);
     glUniformMatrix4fv(glGetUniformLocation(app->prog_mesh, "u_viewproj"), 1, GL_FALSE, vp);
-    glUniform2f(glGetUniformLocation(app->prog_mesh, "u_fog"), app->cam_dist * 0.85f,
-                app->cam_dist * 2.6f);
+    glUniform2f(glGetUniformLocation(app->prog_mesh, "u_fog"), app->fog_near, app->fog_far);
     glUniform3f(glGetUniformLocation(app->prog_mesh, "u_center"), app->center[0], app->center[1], app->center[2]);
     glBindVertexArray(app->vao_mesh);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->ibo_mesh);

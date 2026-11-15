@@ -57,7 +57,8 @@ struct umbra_app {
     float cam_dist;
     float look[3];      // the point the home view is aimed at
     float eye[3];       // where the camera is; shown in the HUD and logged
-    float fov_y;        // vertical field of view, degrees
+    float fov_y;
+    float fog_near, fog_far;        // vertical field of view, degrees
 
     // Runtime state
     umbra_screen screen;

@@ -461,6 +461,11 @@ say "meminfo: $(grep -E 'TOTAL PSS|Native Heap' meminfo.txt | tr -s ' ' | tr '\n
 # app is killed and started again and its log must carry the self-test verdict
 # and the benchmark numbers from the run that just happened.
 phase "relaunch"
+FILES_DIR="$(adb shell "ls -d /data/user/0/org.umbra.client/files 2>/dev/null || echo /data/data/org.umbra.client/files" | tr -d '\r\n')"
+say "results: $(adb shell "ls -l \"$FILES_DIR\" 2>&1" | tr -d '\r' | tr '\n' '|' | cut -c1-400)"
+for f in last_selftest.txt last_bench.txt; do
+    say "$f: $(adb shell "cat \"$FILES_DIR/$f\" 2>&1" | tr -d '\r' | tr '\n' ' ' | cut -c1-200)"
+done
 adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
 sleep 3
 adb logcat -c > /dev/null 2>&1 || true
