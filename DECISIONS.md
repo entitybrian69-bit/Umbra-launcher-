@@ -85,6 +85,12 @@ That script then caught a worse bug in itself: run `43685520182` reported its
 nothing looks exactly like a step that worked. Steps that must always produce
 evidence now set `REQUIRE_EVIDENCE=1`, and the script fails if nothing is staged.
 
+**Re-taken 2026-11-15** after the overlay was scaled by the display density, given
+background panels and kept inside the system insets (D-030, D-031). The previous
+reference showed three-pixel-high text and invisible button backgrounds; keeping
+it would have meant a gate that passes while the screen is unusable. The capture
+is `evidence/ci/shot1.png` from run `43688102045`, copied unmodified.
+
 ## D-020 The GPU self-test draws into its own framebuffer and reads RGBA
 
 Three device-only facts shaped this. First, the window's back buffer has no

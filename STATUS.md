@@ -197,7 +197,7 @@ because minSdk is 24 and v2/v3 cover it.
 ```
 app: 06:23:22 demo world built in 3.6 ms; meshing starts in slices of at most 6 ms
 app: 06:23:22 insets: 0,0,126,0 on 1920x1080, density bucket 420 (scale 2.62)
-app: 06:23:22 hud: button 0 at 8,946 size 1904x34 on 1920x1080 (insets 0,0,126,0)
+app: 06:23:22 hud: button 0 at 8,946 size 1904x34 on 1920x1080 (insets 0,0,126,0)   [before D-030/D-031]
 app: 06:23:40 startup: meshed in 5621.7 ms over 587 calls (worst call 39.0 ms, worst unit 39.0 ms), longest frame 206.3 ms, frames over 250 ms: 0
 mesh: longest frame 206.3 ms (under the 1000 ms budget)
 result: PASS (installed, launched, drew, self test tapped, 60s soak, no crash)
@@ -212,6 +212,22 @@ that is the cost of not freezing the window, and it is paid once at start-up.
 The insets are also real now: the emulator reports `0,0,126,0` and a density of
 2.62, and the buttons moved from `y 946` under the navigation bar to a layout
 that respects it.
+
+### The emulator, after the overlay and surface fixes (CI, run 43688102045)
+
+```
+app: EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+app: 07:07:34 hud: button 0 at 25,809 size 1743x63 on 1920x1080 (insets 0,0,126,0)
+app: 07:07:59 startup: meshed in 7500.3 ms over 714 calls (worst call 44.3 ms, worst unit 44.3 ms), longest frame 220.7 ms, frames over 250 ms: 0
+== phase: display-size ==
+size: the HUD was laid out for a 1920 pixel wide surface
+result: PASS (installed, launched, drew, self test tapped, 60s soak, no crash)
+```
+
+The three buttons are now 63 px tall (24 dp), start at 25 px and stop at 1768 --
+left and right of the 126 px navigation-bar strip -- and sit on a visible panel.
+`docs/reference/emulator_home.png` was re-taken from this run (D-019); the previous
+reference showed 3 dp text with no backgrounds.
 
 ### The emulator (CI, run 43670787000, before slicing)
 
