@@ -2,6 +2,23 @@
 
 Newest first. Each entry says what was decided, why, and what it costs.
 
+## D-032 The release verifier is a script, because the inline version lied
+
+The first real release run (`43691770806`) created the pre-release, then its
+verification step wrote a report containing only a header and exited 1: no asset
+lines, no result line, and no clue. The cause was one line -- `cut -d' ' -f2-` on
+`sha256sum` output, which begins "hash  name" with two spaces, so every download
+URL had a leading space and every `curl` returned `000`. A hash check that never
+downloads anything looked exactly like a broken release.
+
+So the check moved into `tools/verify_release.sh`, which can be run, and is run,
+outside CI: pointed at a local `python3 -m http.server`, it reports `RESULT: PASS -
+2 assets re-downloaded ... and every sha256 matched`, and after one byte was
+appended to a served file it reports `result: MISMATCH` for that asset and
+`exit=1`. Each asset is retried five times, because a release can take a few
+seconds to become downloadable, and the downloaded files are kept under
+`dist/downloaded/` so the next step can execute them rather than trust them.
+
 ## D-031 A frame is only drawn into a surface that is at least 16 pixels wide
 
 Run `43687356640` shipped a blank screenshot: `EGL up: 1x1 ... hud: button 0 at

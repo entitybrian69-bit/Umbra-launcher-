@@ -218,57 +218,15 @@ jobs:
           fi
       - name: Verify by downloading every asset from its public URL
         run: |
-          set -uo pipefail
-          FAILED=0
-          OUT=RELEASE_VERIFY.txt
-          {
-            echo "release verification"
-            echo "tag: $TAG"
-            echo "run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            echo "commit: $(git rev-parse HEAD)"
-            echo "date: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            echo
-          } > "$OUT"
-          while IFS= read -r line; do
-            SUM=$(echo "$line" | cut -d' ' -f1)
-            NAME=$(echo "$line" | cut -d' ' -f2- | sed 's/^\*//')
-            URL="${{ github.server_url }}/${{ github.repository }}/releases/download/$TAG/$NAME"
-            CODE=$(curl -sSL -o "/tmp/dl-$NAME" -w '%{http_code}' "$URL" || echo 000)
-            GOT=$(sha256sum "/tmp/dl-$NAME" 2>/dev/null | cut -d' ' -f1)
-            SIZE=$(stat -c%s "/tmp/dl-$NAME" 2>/dev/null || echo 0)
-            if [ "$CODE" = "200" ] && [ "$GOT" = "$SUM" ]; then
-              RESULT="OK"
-            else
-              RESULT="MISMATCH"
-              FAILED=1
-            fi
-            {
-              echo "asset: $NAME"
-              echo "  url: $URL"
-              echo "  http: $CODE"
-              echo "  size: $SIZE bytes"
-              echo "  sha256: $GOT"
-              echo "  expected: $SUM"
-              echo "  result: $RESULT"
-            } | tee -a "$OUT"
-            echo "::notice title=verify-$NAME::$RESULT http $CODE sha256 $GOT ($SIZE bytes)"
-          done < dist/SHA256SUMS
-          {
-            echo
-            if [ "$FAILED" = 0 ]; then
-              echo "RESULT: PASS - every asset was re-downloaded and matched"
-            else
-              echo "RESULT: FAIL - at least one asset did not match"
-            fi
-          } | tee -a "$OUT"
-          exit "$FAILED"
+          bash tools/verify_release.sh "$TAG" dist RELEASE_VERIFY.txt
+
       - name: Run the binaries that were just downloaded
         run: |
           set -uo pipefail
           OUT=RELEASE_VERIFY.txt
           FAILED=0
-          LINUX=$(ls /tmp/dl-*-linux-x64 2>/dev/null | head -1)
-          WIN=$(ls /tmp/dl-*-windows-x64.exe 2>/dev/null | head -1)
+          LINUX=$(ls dist/downloaded/*-linux-x64 2>/dev/null | head -1)
+          WIN=$(ls dist/downloaded/*-windows-x64.exe 2>/dev/null | head -1)
           if [ -n "$LINUX" ]; then
             chmod +x "$LINUX"
             "$LINUX" > /tmp/linux-run.log 2>&1 || true
