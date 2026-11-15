@@ -431,11 +431,28 @@ export "umbra_demo_mesh_step" fn demo_mesh_step_export(budget_us: i64) -> i64 {
 }
 export "umbra_demo_mesh_finish" fn demo_mesh_finish_export() { serialize_mesh() }
 // Progress in permille, for the loading screen.
+// How many units the whole mesh takes. Counted from the same structure the
+// stepper walks, because the first version of this was wrong and showed the
+// owner "LOADING WORLD 224%": three batches, each with every column's three
+// passes of 24 sections, plus the one unit that closes the batch. Copying a
+// column into world space happens inside the last section's unit, which the
+// headless check `units == total` proves by comparing the two numbers.
+export fn umbra_demo_mesh_total_units() -> i64 {
+    let per_batch = demo.len * 3 * 24 + 1;
+    return per_batch * 3;
+}
+
 export "umbra_demo_mesh_progress" fn demo_mesh_progress() -> i64 {
-    let total = demo.len * 3 * 24 + 3;   // sections, plus one copy per batch
     if dm_state == 2 { return 1000; }
     if dm_state == 0 { return 0; }
-    return (dm_units * 1000) / total;
+    let total = umbra_demo_mesh_total_units();
+    if total <= 0 { return 1000; }
+    let p = (dm_units * 1000) / total;
+    // A phone shows "LOADING WORLD 224%": clamp as well as fix the divisor, so a
+    // future miscount cannot reach the screen as nonsense.
+    if p < 0 { return 0; }
+    if p > 1000 { return 1000; }
+    return p;
 }
 export fn umbra_demo_mesh_units() -> i64 { return dm_units }
 export fn umbra_demo_mesh_worst_unit_us() -> i64 { return dm_worst_unit_us }

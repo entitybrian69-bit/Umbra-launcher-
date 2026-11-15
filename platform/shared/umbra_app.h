@@ -25,7 +25,7 @@ typedef enum {
 
 // The app's own version, next to the git commit the build records. Bumped with
 // the tag that publishes it (see .github/workflows/release.yml).
-#define UMBRA_APP_VERSION "0.3.0"
+#define UMBRA_APP_VERSION "0.3.1"
 
 // How much meshing a frame may do before it must draw and poll input again.
 // Android starts warning about an unresponsive app after about five seconds; six
@@ -56,6 +56,8 @@ struct umbra_app {
     float span[3];
     float cam_dist;
     float look[3];      // the point the home view is aimed at
+    float eye[3];       // where the camera is; shown in the HUD and logged
+    float fov_y;        // vertical field of view, degrees
 
     // Runtime state
     umbra_screen screen;
@@ -99,6 +101,11 @@ struct umbra_app {
     int64_t long_frames;       // frames over 250 ms, i.e. visible stalls
     int64_t selftest_us;
     int32_t hud_logged_width;  // the width the HUD layout was last logged at
+    int32_t draw_calls;        // batches actually drawn in the last frame
+    int32_t last_run_lines;    // lines in last_run_text, 0 when there is none
+    char last_run_text[320];   // the previous run's self-test and benchmark
+    char selftest_path[256];   // where the last self-test verdict is kept
+    char bench_path[256];      // where the last benchmark numbers are kept
 
 #ifdef __ANDROID__
     ANativeWindow *window;

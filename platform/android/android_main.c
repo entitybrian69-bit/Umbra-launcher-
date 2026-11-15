@@ -55,9 +55,56 @@ static JNIEnv *activity_env(android_state *st) {
     return env;
 }
 
+// System property override, for testing on a device or emulator that has no
+// status bar of its own: `adb shell setprop debug.umbra.insets "0,63,126,0"`.
+// The emulator reports a top inset of zero, so CI could not otherwise exercise
+// the case that broke the owner's first run.
+#define UMBRA_PROP_VALUE_MAX 92   // PROP_VALUE_MAX from <sys/system_properties.h>
+extern int __system_property_get(const char *name, char *value);
+
+static void parse_override(int32_t insets[4], int *found) {
+    char value[UMBRA_PROP_VALUE_MAX];
+    *found = 0;
+    if (__system_property_get("debug.umbra.insets", value) <= 0) return;
+    int l = 0, t = 0, r = 0, b = 0;
+    if (sscanf(value, "%d,%d,%d,%d", &l, &t, &r, &b) != 4) {
+        ALOGE("insets: debug.umbra.insets is not \"l,t,r,b\": %s", value);
+        return;
+    }
+    insets[0] = l;
+    insets[1] = t;
+    insets[2] = r;
+    insets[3] = b;
+    *found = 1;
+}
+
+static int jint_call(JNIEnv *env, jobject obj, jclass cls, const char *name, const char *sig, int *out) {
+    jmethodID m = (*env)->GetMethodID(env, cls, name, sig);
+    if (!m) return 0;
+    *out = (int)(*env)->CallIntMethod(env, obj, m);
+    return 1;
+}
+
+// The five ways Android has reported insets, in order of preference:
+//   getInsets(systemBars|displayCutout)  API 30+, knows about cutouts and
+//                                        returns the bar sizes even when the
+//                                        app is drawn edge-to-edge (which is
+//                                        what the owner's phone does -- the
+//                                        legacy call reports 0 there);
+//   getSystemWindowInset*                API 20-29, or a device where the modern
+//                                        call returns nothing;
+//   getDisplayCutout().getSafeInset*     API 28+, a notch or a punch-hole;
+//   the window's own content inset       last resort.
+// The largest value wins, because every one of them is a lower bound on what the
+// app must keep clear of.
 static void fill_insets(android_state *st) {
     umbra_app *app = &st->app;
-    for (int i = 0; i < 4; i++) app->insets[i] = 0;
+    int32_t insets[4] = {0, 0, 0, 0};
+    int cutout[4] = {0, 0, 0, 0};
+    int legacy[4] = {0, 0, 0, 0};
+    int modern[4] = {0, 0, 0, 0};
+    const char *source = "none";
+
     // Density: the configuration carries the bucket, and the HUD's text is
     // scaled by it so a 6-inch phone and a 4-inch phone look alike.
     int dpi = 0;
@@ -68,46 +115,86 @@ static void fill_insets(android_state *st) {
     app->dpi_scale = (float)dpi / 160.0f;
 
     JNIEnv *env = activity_env(st);
-    if (!env) { ALOGI("insets: no JNI environment, using zero"); return; }
-    jobject activity = st->state->activity->clazz;
-    jclass cls = (*env)->GetObjectClass(env, activity);
-    if (!cls) return;
+    jobject insets_obj = NULL;
+    jclass insets_cls = NULL;
+    if (env) {
+        jobject activity = st->state->activity->clazz;
+        jclass cls = (*env)->GetObjectClass(env, activity);
+        jmethodID getWindow = cls ? (*env)->GetMethodID(env, cls, "getWindow", "()Landroid/view/Window;") : NULL;
+        jobject window = getWindow ? (*env)->CallObjectMethod(env, activity, getWindow) : NULL;
+        jclass window_cls = window ? (*env)->GetObjectClass(env, window) : NULL;
+        jmethodID getDecorView = window_cls ? (*env)->GetMethodID(env, window_cls, "getDecorView", "()Landroid/view/View;") : NULL;
+        jobject decor = getDecorView ? (*env)->CallObjectMethod(env, window, getDecorView) : NULL;
+        jclass view_cls = decor ? (*env)->GetObjectClass(env, decor) : NULL;
+        jmethodID getRootWindowInsets =
+            view_cls ? (*env)->GetMethodID(env, view_cls, "getRootWindowInsets", "()Landroid/view/WindowInsets;") : NULL;
+        insets_obj = getRootWindowInsets ? (*env)->CallObjectMethod(env, decor, getRootWindowInsets) : NULL;
+        insets_cls = insets_obj ? (*env)->GetObjectClass(env, insets_obj) : NULL;
+    }
+    if (!insets_obj) {
+        ALOGI("insets: the decor view has no insets yet");
+    } else {
+        // API 30: WindowInsets.getInsets(int) with systemBars(7) | displayCutout(128).
+        jmethodID getInsets = (*env)->GetMethodID(env, insets_cls, "getInsets", "(I)Landroid/graphics/Insets;");
+        if (getInsets) {
+            jobject iobj = (*env)->CallObjectMethod(env, insets_obj, getInsets, (jint)(7 | 128));
+            if (iobj) {
+                jclass icls = (*env)->GetObjectClass(env, iobj);
+                int ok = jint_call(env, iobj, icls, "getLeft", "()I", &modern[0]);
+                ok &= jint_call(env, iobj, icls, "getTop", "()I", &modern[1]);
+                ok &= jint_call(env, iobj, icls, "getRight", "()I", &modern[2]);
+                ok &= jint_call(env, iobj, icls, "getBottom", "()I", &modern[3]);
+                if (ok) source = "getInsets(systemBars|cutout)";
+                (*env)->DeleteLocalRef(env, icls);
+                (*env)->DeleteLocalRef(env, iobj);
+            }
+        }
+        // Legacy: what the emulator answered with, and what returns 0 when the
+        // window is laid out edge-to-edge.
+        const char *names[4] = {"getSystemWindowInsetLeft", "getSystemWindowInsetTop",
+                                "getSystemWindowInsetRight", "getSystemWindowInsetBottom"};
+        int legacy_ok = 0;
+        for (int i = 0; i < 4; i++) {
+            legacy_ok |= jint_call(env, insets_obj, insets_cls, names[i], "()I", &legacy[i]);
+        }
+        if (legacy_ok && source[0] == 'n') source = "getSystemWindowInset";
+        // API 28: the notch, which is not a "system window" at all.
+        jmethodID getCutout = (*env)->GetMethodID(env, insets_cls, "getDisplayCutout",
+                                                  "()Landroid/view/DisplayCutout;");
+        jobject cut = getCutout ? (*env)->CallObjectMethod(env, insets_obj, getCutout) : NULL;
+        if (cut) {
+            jclass ccls = (*env)->GetObjectClass(env, cut);
+            int ok = jint_call(env, cut, ccls, "getSafeInsetLeft", "()I", &cutout[0]);
+            ok &= jint_call(env, cut, ccls, "getSafeInsetTop", "()I", &cutout[1]);
+            ok &= jint_call(env, cut, ccls, "getSafeInsetRight", "()I", &cutout[2]);
+            ok &= jint_call(env, cut, ccls, "getSafeInsetBottom", "()I", &cutout[3]);
+            if (ok) source = "getInsets + displayCutout";
+            (*env)->DeleteLocalRef(env, ccls);
+            (*env)->DeleteLocalRef(env, cut);
+        }
+        if ((*env)->ExceptionCheck(env)) {
+            (*env)->ExceptionClear(env);
+            ALOGE("insets: a JNI call threw; insets may be wrong");
+        }
+    }
 
-    jmethodID getWindow = (*env)->GetMethodID(env, cls, "getWindow", "()Landroid/view/Window;");
-    if (!getWindow) { ALOGI("insets: no getWindow"); return; }
-    jobject window = (*env)->CallObjectMethod(env, activity, getWindow);
-    if (!window) { ALOGI("insets: no window"); return; }
-    jclass window_cls = (*env)->GetObjectClass(env, window);
-    jmethodID getDecorView = (*env)->GetMethodID(env, window_cls, "getDecorView", "()Landroid/view/View;");
-    if (!getDecorView) return;
-    jobject decor = (*env)->CallObjectMethod(env, window, getDecorView);
-    if (!decor) return;
-    jclass view_cls = (*env)->GetObjectClass(env, decor);
-    jmethodID getRootWindowInsets = (*env)->GetMethodID(env, view_cls, "getRootWindowInsets",
-                                                        "()Landroid/view/WindowInsets;");
-    if (!getRootWindowInsets) {
-        ALOGI("insets: getRootWindowInsets missing (API < 23?)");
-        return;
-    }
-    jobject insets = (*env)->CallObjectMethod(env, decor, getRootWindowInsets);
-    if (!insets) { ALOGI("insets: the decor view has no insets yet"); return; }
-    jclass insets_cls = (*env)->GetObjectClass(env, insets);
-    struct { const char *name; int slot; } fields[4] = {
-        {"getSystemWindowInsetLeft", 0}, {"getSystemWindowInsetTop", 1},
-        {"getSystemWindowInsetRight", 2}, {"getSystemWindowInsetBottom", 3},
-    };
     for (int i = 0; i < 4; i++) {
-        jmethodID m = (*env)->GetMethodID(env, insets_cls, fields[i].name, "()I");
-        if (!m) continue;
-        app->insets[fields[i].slot] = (*env)->CallIntMethod(env, insets, m);
+        int v = modern[i] > legacy[i] ? modern[i] : legacy[i];
+        if (cutout[i] > v) v = cutout[i];
+        insets[i] = v;
     }
-    if ((*env)->ExceptionCheck(env)) {
-        (*env)->ExceptionClear(env);
-        ALOGE("insets: a JNI call threw; insets may be wrong");
-    }
-    ALOGI("insets: %d,%d,%d,%d on %dx%d, density bucket %d (scale %.2f)",
-          app->insets[0], app->insets[1], app->insets[2], app->insets[3],
-          app->width, app->height, dpi, app->dpi_scale);
+    int overridden = 0;
+    parse_override(insets, &overridden);
+    if (overridden) source = "debug.umbra.insets override";
+
+    for (int i = 0; i < 4; i++) app->insets[i] = insets[i];
+    ALOGI("insets: L,T,R,B = %d,%d,%d,%d (modern %d,%d,%d,%d, legacy %d,%d,%d,%d, cutout %d,%d,%d,%d, "
+          "source %s) on %dx%d, density bucket %d (scale %.2f)",
+          insets[0], insets[1], insets[2], insets[3],
+          modern[0], modern[1], modern[2], modern[3],
+          legacy[0], legacy[1], legacy[2], legacy[3],
+          cutout[0], cutout[1], cutout[2], cutout[3],
+          source, app->width, app->height, dpi, app->dpi_scale);
 }
 
 static int init_egl(android_state *st) {

@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include "umbra_core.h"
 #include "umbra_vertex.h"
+#include "umbra_hud.h"
 
 static int failures = 0;
 static int checks = 0;
@@ -108,17 +109,32 @@ int main(int argc, char **argv) {
         umbra_demo_mesh_begin();
         int64_t calls = 0, worst_call_us = 0;
         int done = 0;
+        int64_t worst_progress = 0, last_progress = 0, backwards = 0;
         while (!done && calls < 100000) {
             int64_t t = umbra_now_us_headless();
             done = umbra_demo_mesh_step(2000) != 0;   // a 2 ms budget per call
             int64_t took = umbra_now_us_headless() - t;
             if (took > worst_call_us) worst_call_us = took;
             calls++;
+            // The phone showed "LOADING WORLD 224%": progress is watched at every
+            // step now, not just at the end.
+            int64_t p = umbra_demo_mesh_progress();
+            // Before the last step, progress must not claim to be finished.
+            if (!done && p > worst_progress) worst_progress = p;
+            if (p < last_progress) backwards++;
+            last_progress = p;
         }
         umbra_demo_mesh_finish();
         check(done, "the sliced mesher finished");
         check(calls > 50, "the sliced mesher took many calls, not one");
         check(umbra_demo_mesh_progress() == 1000, "progress reaches 1000 when done");
+        check(worst_progress < 1000, "progress is under 100% until the mesh is done");
+        check(backwards == 0, "progress never goes backwards");
+        printf("progress: worst %lld permille; units %lld, total %lld\n",
+               (long long)worst_progress, (long long)umbra_demo_mesh_units(),
+               (long long)umbra_demo_mesh_total_units());
+        check(umbra_demo_mesh_units() == umbra_demo_mesh_total_units(),
+              "the unit total is the count the stepper actually performs");
         printf("sliced mesh: %lld calls, worst call %.2f ms, worst unit %.2f ms\n",
                (long long)calls, worst_call_us / 1000.0,
                umbra_demo_mesh_worst_unit_us() / 1000.0);
@@ -192,6 +208,58 @@ int main(int argc, char **argv) {
         umbra_selftest_reset();
         umbra_selftest_cube_pixel(20, 20, 1920, 1080, 120, 30, 30);
         check(umbra_selftest_mismatches() == 1, "colour outside the cube silhouette is a failure");
+    }
+
+    // 4b. The overlay's geometry. This is the code that put text under the status
+    //     bar on the owner's phone (the emulator reports a top inset of 0), so the
+    //     case is simulated here, on a screen with a 63 px status bar, a 126 px
+    //     navigation bar and a 2412x1080 landscape frame at density 3.5.
+    {
+        int32_t phone[4] = {0, 63, 126, 0};      // left, top, right, bottom
+        int32_t bars[4] = {0, 0, 126, 126};      // the emulator's answer
+        int32_t zero[4] = {0, 0, 0, 0};
+        float s_phone = umbra_hud_scale(3.5f, 2412, 1080, 12, 63);
+        float s_desktop = umbra_hud_scale(1.0f, 1920, 1080, 12, 0);
+        printf("layout: phone scale %.2f, desktop scale %.2f\n", s_phone, s_desktop);
+        check(s_desktop == 1.0f, "a desktop screen keeps scale 1, so its reference does not move");
+        check(s_phone >= 2.0f, "a 560 dpi phone gets readable text");
+        float panel = umbra_hud_panel_height(12, s_phone, phone[1]);
+        check(panel <= 1080.0f * UMBRA_HUD_MAX_FRACTION + 1.0f,
+              "the overlay never eats more than 45% of a phone screen");
+        check(panel >= 63.0f, "the overlay starts below a 63 px status bar");
+
+        umbra_rect b0 = umbra_hud_button(0, 2412, 1080, phone, s_phone);
+        umbra_rect b2 = umbra_hud_button(2, 2412, 1080, phone, s_phone);
+        printf("layout: button 0 %.0f,%.0f %.0fx%.0f; button 2 %.0f,%.0f\n", b0.x, b0.y, b0.w, b0.h, b2.x, b2.y);
+        check(b0.x >= (float)phone[0], "buttons start inside the left inset");
+        check(b0.x + b0.w <= 2412.0f - (float)phone[2] + 0.5f, "buttons stop before the right inset");
+        check(b2.y + b2.h <= 1080.0f - (float)phone[3] + 0.5f, "buttons stop above the bottom inset");
+        check(b0.y >= (float)phone[1], "buttons start below the top inset");
+        check(b0.h >= 40.0f, "a button is tall enough for a thumb");
+
+        // A cutout on the left (a punch-hole phone held in landscape) must not be
+        // covered either, and a surface that is not there yet must not produce a
+        // negative rectangle (that was "button 0 at 25,-269 size -49x63").
+        int32_t cut[4] = {112, 63, 126, 0};
+        umbra_rect bc = umbra_hud_button(1, 2412, 1080, cut, s_phone);
+        check(bc.x >= 112.0f, "a left display cutout is kept clear");
+        umbra_rect stub = umbra_hud_button(0, 1, 1, zero, s_phone);
+        check(stub.w == 0.0f && stub.h == 0.0f, "a 1x1 surface produces no buttons, not negative ones");
+        umbra_rect emu = umbra_hud_button(0, 1920, 1080, bars, 2.62f);
+        check(emu.x + emu.w <= 1920.0f - 126.0f + 0.5f, "the emulator's 126 px navigation bar is kept clear");
+
+        // The scene is pushed down by the fraction the panel covers, so the world
+        // is centred in what is left rather than behind the overlay.
+        float shift = umbra_hud_scene_shift(panel, 1080);
+        check(shift < 0.0f, "the world moves down out from under the overlay");
+        check(shift >= -0.6f, "and never by more than 60% of the screen");
+        check(umbra_hud_scene_shift(0.0f, 1080) == 0.0f, "no overlay means no shift");
+
+        // flatten(): what the last-run file stores is one line per result.
+        char flat[64];
+        int n = umbra_flatten(flat, sizeof flat, "bench: 3 frames\n1% low 52 fps\nmedian 16.75");
+        check(n > 0 && strstr(flat, "\n") == NULL, "the benchmark block flattens to one line");
+        check(strstr(flat, "1% low 52 fps") != NULL, "flattening keeps the numbers");
     }
 
     // 5. The benchmark statistics are real arithmetic on real numbers.

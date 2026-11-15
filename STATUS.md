@@ -42,6 +42,20 @@ not Minecraft, and the parity table is empty.
 | 6b. World parity against the real client | NOT DONE | nothing renders the jar's models yet; the mesher still uses a demo world |
 | 7. Release assets verified by re-download | PASSING | `v0.3.0-pre` (pre-release, tag on `1626ba0`), release run `43695376328`, all four jobs `completed/success`. `RELEASE_VERIFY.txt` (committed, reproduced below): `RESULT: PASS - 3 assets re-downloaded from https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.0-pre and every sha256 matched`, `linux: the downloaded binary passed its self-test`, `windows: the downloaded .exe ran under wine and passed its self-test` |
 
+## The owner's first run of 0.3.0-pre (device evidence, 2026-11-15)
+
+The owner installed `v0.3.0-pre` on a phone: **Mali-G57 MC2**, GLES 3.2
+(`V1.R32P1-01EAC0.153…`), 24-bit depth, `highp vs 127^23 fs 127^23`, landscape
+2412x1080, density three and a half. It installed, started and drew. Four defects
+came back with screenshots, and all four are fixed in 0.3.1:
+
+| What the phone showed | Cause | Fix, and what proves it |
+|---|---|---|
+| `LOADING WORLD 224%` | the progress divisor counted 219 units for a mesh that takes 1947 | the total is now computed from the structure the stepper walks and clamped in Goose *and* in C; the headless host checks `units == total`, `progress < 1000` before the end and `== 1000` after: `progress: worst 997 permille; units 1947, total 1947` |
+| the overlay's first lines sat under the status bar and the clock overlapped them | `getSystemWindowInsetTop()` returns 0 when the window is drawn edge-to-edge, which is how Android 15 lays apps out | insets now come from `WindowInsets.getInsets(systemBars | displayCutout)` with the legacy and cutout values as lower bounds, all four logged with their source; the layout arithmetic moved to `platform/shared/umbra_hud.h` and is tested against a simulated 63 px status bar, a 126 px navigation bar and a 112 px cutout; the emulator smoke test now sets `debug.umbra.insets` and fails if the overlay starts above the top inset |
+| only sky behind the overlay | the camera was framed by a formula that put it 55 blocks out on a 2.2:1 screen, and the overlay covered the top half | the distance is computed by fitting the world to the visible part of the screen, the 3D view is shifted out from under the overlay, and the HUD now prints `mesh … verts, … draws` and `cam eye -> look` so "only sky" is diagnosable from a screenshot |
+| one screenshot did not show the results | the self-test and benchmark numbers lived only in the session | both are written to `last_selftest.txt` / `last_bench.txt` beside the log, read back at start-up, and drawn as a `LAST RUN` block; the smoke test restarts the app and fails if that block does not come back |
+
 ## The first release (gate 7)
 
 ```

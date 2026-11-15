@@ -6,11 +6,17 @@
 #include "umbra_app.h"
 #include "umbra_vertex.h"
 #include "umbra_font.h"
+#include "umbra_hud.h"
 #include "umbra_core.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+// Defined further down, used by umbra_app_init and the frame loop.
+static void sibling_path(const char *base, const char *name, char *out, size_t cap);
+static void load_last_run(umbra_app *app);
+static void camera_eye(const umbra_app *app, float eye[3]);
 #include <stdarg.h>
 #include <time.h>
 #include <math.h>
@@ -49,6 +55,10 @@ static void log_open(umbra_app *app) {
 }
 
 void umbra_log(umbra_app *app, const char *fmt, ...) {
+    // Where the previous run's results live: next to the log, one line each.
+    sibling_path(app->log_path, "last_selftest.txt", app->selftest_path, sizeof app->selftest_path);
+    sibling_path(app->log_path, "last_bench.txt", app->bench_path, sizeof app->bench_path);
+
     log_open(app);
     char line[1024];
     va_list ap;
@@ -361,37 +371,121 @@ static float hud_text_width(const char *text, float scale) {
     return (float)strlen(text) * 6.0f * scale;
 }
 
-// The HUD font is an 8-pixel bitmap. At scale 1 on a 420 dpi phone (density
-// 2.62) a capital letter is three density-independent pixels tall, which nobody
-// can read; the emulator's first 0.3.0 screenshot showed exactly that. So the
-// HUD is laid out in display pixels scaled by the density, and the touch rects
-// follow the same number -- the drawing code and the hit test must not disagree.
-static float hud_scale(const umbra_app *app) {
-    float s = (app->dpi_scale > 1.0f) ? app->dpi_scale * 1.2f : 1.0f;
-    if (s < 1.0f) s = 1.0f;
-    if (s > 5.0f) s = 5.0f;
-    return s;
-}
+// --- last run -----------------------------------------------------------
+//
+// One screenshot should be enough to see how the app behaved last time: the
+// self-test verdict and the benchmark numbers are written to two one-line files
+// as they happen, read back at start-up, and shown in the overlay.
 
-// The three HUD buttons are laid out from the insets; the drawing code and the
-// touch test both ask this function so they cannot disagree.
-static void hud_button_rect(const umbra_app *app, int i, float *x, float *y, float *w, float *h) {
-    float s = hud_scale(app);
-    float bh = 20.0f * s;
-    float gap = 6.0f * s;
-    float margin = 8.0f * s;
-    *h = bh;
-    *x = margin + (float)app->insets[0];
-    if (app->width < 16 || app->height < 16) {
-        // No surface yet: a negative rectangle is worse than none.
-        *x = *y = *w = *h = 0.0f;
+static void sibling_path(const char *base, const char *name, char *out, size_t cap) {
+    const char *slash = base ? strrchr(base, '/') : NULL;
+    if (!slash) {
+        snprintf(out, cap, "%s", name);
         return;
     }
-    // The right inset matters: in landscape the navigation bar is a strip on the
-    // right (1920-1794 = 126 px on the emulator), and a button that reaches into
-    // it steals touches from the system.
-    *w = (float)app->width - *x - (float)app->insets[2] - margin;
-    *y = (float)app->height - (float)app->insets[3] - 3 * (bh + gap) - margin + i * (bh + gap);
+    size_t dirlen = (size_t)(slash - base);
+    if (dirlen + 1 + strlen(name) + 1 > cap) {
+        snprintf(out, cap, "%s", name);
+        return;
+    }
+    memcpy(out, base, dirlen);
+    out[dirlen] = '/';
+    snprintf(out + dirlen + 1, cap - dirlen - 1, "%s", name);
+}
+
+static void save_line(const char *path, const char *text) {
+    if (!path || !path[0] || !text || !text[0]) return;
+    FILE *f = fopen(path, "wb");
+    if (!f) return;
+    fprintf(f, "%s\n", text);
+    fclose(f);
+}
+
+static int load_line(const char *path, char *out, size_t cap) {
+    out[0] = 0;
+    FILE *f = path && path[0] ? fopen(path, "rb") : NULL;
+    if (!f) return 0;
+    size_t n = fread(out, 1, cap - 1, f);
+    fclose(f);
+    out[n] = 0;
+    while (n > 0 && (out[n - 1] == '\n' || out[n - 1] == '\r')) out[--n] = 0;
+    return (int)n;
+}
+
+// Read both result files into the block the HUD draws.
+static void load_last_run(umbra_app *app) {
+    char selftest[160], bench[220];
+    load_line(app->selftest_path, selftest, sizeof selftest);
+    load_line(app->bench_path, bench, sizeof bench);
+    if (!selftest[0] && !bench[0]) {
+        app->last_run_text[0] = 0;
+        app->last_run_lines = 0;
+        umbra_log(app, "last run: nothing recorded yet");
+        return;
+    }
+    int n = snprintf(app->last_run_text, sizeof app->last_run_text, "LAST RUN");
+    if (selftest[0]) n += snprintf(app->last_run_text + n, sizeof app->last_run_text - (size_t)n, "\n%s", selftest);
+    if (bench[0]) n += snprintf(app->last_run_text + n, sizeof app->last_run_text - (size_t)n, "\n%s", bench);
+    int lines = 1;
+    for (const char *q = app->last_run_text; *q; q++) {
+        if (*q == '\n') lines++;
+    }
+    app->last_run_lines = lines;
+    char flat[260];
+    umbra_flatten(flat, sizeof flat, app->last_run_text);
+    umbra_log(app, "last run: %s", flat);
+}
+
+static void remember_selftest(umbra_app *app) {
+    save_line(app->selftest_path, app->selftest_text);
+    umbra_log(app, "last run: self-test saved to %s", app->selftest_path);
+    load_last_run(app);
+}
+
+static void remember_bench(umbra_app *app) {
+    // The benchmark block is four lines; the file holds one, so the newlines
+    // become spaces and the device name is cut short enough to stay readable.
+    char flat[200];
+    umbra_flatten(flat, sizeof flat, app->bench_text);
+    save_line(app->bench_path, flat);
+    umbra_log(app, "last run: benchmark saved to %s", app->bench_path);
+    load_last_run(app);
+}
+
+// "OpenGL ES 3.2 V1.R32P1-01EAC0.153D…" is 60 characters of driver build id; the
+// overlay only needs the version.
+static void short_gles(const char *version, char *out, size_t cap) {
+    const char *p = version ? strstr(version, "OpenGL ES") : NULL;
+    if (!p) {
+        snprintf(out, cap, "%s", version ? version : "?");
+        return;
+    }
+    size_t n = 0;
+    while (p[n] && n + 1 < cap) {
+        char c = p[n];
+        if (n > 9 && !(c >= '0' && c <= '9') && c != '.') break;
+        out[n] = c;
+        n++;
+    }
+    out[n] = 0;
+}
+
+// The HUD font is an 8-pixel bitmap, and where it goes is decided in
+// umbra_hud.h: pure functions that the headless self-test runs, so the
+// status-bar and navigation-bar cases are tested without a phone. These wrappers
+// only feed them the app's numbers.
+static int hud_rows(const umbra_app *app);
+
+static float hud_scale(const umbra_app *app) {
+    return umbra_hud_scale(app->dpi_scale, app->width, app->height, hud_rows(app), app->insets[1]);
+}
+
+static void hud_button_rect(const umbra_app *app, int i, float *x, float *y, float *w, float *h) {
+    umbra_rect r = umbra_hud_button(i, app->width, app->height, app->insets, hud_scale(app));
+    *x = r.x;
+    *y = r.y;
+    *w = r.w;
+    *h = r.h;
 }
 
 static void hud_flush(umbra_app *app) {
@@ -608,18 +702,32 @@ static void finish_scene(umbra_app *app) {
     app->span[1] = umbra_mesh_max_y() - umbra_mesh_min_y();
     app->span[2] = umbra_mesh_max_z() - umbra_mesh_min_z();
     float horiz = app->span[0] > app->span[2] ? app->span[0] : app->span[2];
-    app->cam_dist = horiz * 0.9f + 12.0f;
+    // Fit the world to the view instead of guessing a distance. On a 2412x1080
+    // phone the old formula put the camera 55 blocks out and the island filled a
+    // quarter of the width, behind a panel: "only sky visible".
+    float aspect = (app->height > 0) ? (float)app->width / (float)app->height : 1.78f;
+    if (aspect < 0.5f) aspect = 0.5f;
+    float tan_v = tanf(app->fov_y * 3.14159265f / 180.0f * 0.5f);
+    float tan_h = tan_v * aspect;
+    float want = 0.62f;                       // how much of the width the world fills
+    app->cam_dist = (horiz * 0.5f) / (tan_h * want);
+    if (app->cam_dist < 16.0f) app->cam_dist = 16.0f;
+    if (app->cam_dist > 220.0f) app->cam_dist = 220.0f;
     // Aim at the top of the world, not at the middle of its volume: a demo
     // world filled from y = -64 has its centre deep inside solid stone.
     app->look[0] = app->center[0];
-    app->look[1] = umbra_mesh_max_y() - 10.0f;
+    app->look[1] = umbra_mesh_max_y() - 6.0f;
     app->look[2] = app->center[2];
+    camera_eye(app, app->eye);
     upload_mesh(app);
     app->mesh_state = 2;
     app->mesh_progress = 1000;
     umbra_log(app, "mesh bounds x %.1f..%.1f y %.1f..%.1f z %.1f..%.1f, camera %.1f blocks out",
               umbra_mesh_min_x(), umbra_mesh_max_x(), umbra_mesh_min_y(), umbra_mesh_max_y(),
               umbra_mesh_min_z(), umbra_mesh_max_z(), app->cam_dist);
+    umbra_log(app, "camera: eye %.1f %.1f %.1f look %.1f %.1f %.1f, %.1f blocks out, fov %.0f",
+              app->eye[0], app->eye[1], app->eye[2], app->look[0], app->look[1], app->look[2],
+              app->cam_dist, app->fov_y);
     umbra_log(app, "mesh: %d vertices, %d indices; batches %lld/%lld/%lld", app->vert_count,
               app->index_count, (long long)app->batch_count[0], (long long)app->batch_count[1],
               (long long)app->batch_count[2]);
@@ -657,7 +765,16 @@ static void pump_mesh(umbra_app *app) {
     app->mesh_calls++;
     app->mesh_total_us += took;
     if (took > app->mesh_worst_call_us) app->mesh_worst_call_us = took;
-    app->mesh_progress = (int)umbra_demo_mesh_progress();
+    // The export is clamped in Goose too; clamping again here means a miscount
+    // can never reach the screen as "LOADING WORLD 224%", which it did.
+    int64_t progress = umbra_demo_mesh_progress();
+    if (progress < 0) progress = 0;
+    if (progress > 1000) {
+        umbra_log(app, "mesh progress overran: %lld permille of %lld units",
+                  (long long)progress, (long long)umbra_demo_mesh_total_units());
+        progress = 1000;
+    }
+    app->mesh_progress = (int)progress;
     if (done) {
         umbra_demo_mesh_finish();
         finish_scene(app);
@@ -689,6 +806,10 @@ int umbra_app_init(umbra_app *app) {
     app->dpi_scale = dpi_scale;
     app->screen = UMBRA_SCREEN_HOME;
     app->bench_seconds = 60;
+    // 55 degrees is a phone-friendly vertical field of view; the distance that
+    // fits the world into it is computed from the mesh, per screen aspect.
+    app->fov_y = 55.0f;
+    load_last_run(app);
     snprintf(app->build_text, sizeof app->build_text, "Umbra %s (%s)", "(see HUD)", UMBRA_GIT_COMMIT);
 
     log_open(app);
@@ -903,9 +1024,19 @@ static void run_selftest(umbra_app *app) {
              app->selftest_ok ? "PASS" : "FAIL", (long long)total_bad,
              (long long)app->selftest_checked, app->selftest_us / 1000.0);
     umbra_log(app, "%s", app->selftest_text);
+    remember_selftest(app);
     if (!app->selftest_ok) {
         umbra_log(app, "self-test: first bad pixel index %lld", (long long)app->selftest_first_bad);
     }
+}
+
+// The home view's eye: up and to one side, far enough out that the whole world
+// fits. Shared by the draw call and the HUD so the numbers on screen are the
+// numbers that were used.
+static void camera_eye(const umbra_app *app, float eye[3]) {
+    eye[0] = app->look[0] + app->cam_dist * 0.55f;
+    eye[1] = app->look[1] + app->cam_dist * 0.45f;
+    eye[2] = app->look[2] + app->cam_dist * 0.55f;
 }
 
 // --- frame --------------------------------------------------------------
@@ -918,12 +1049,24 @@ static void draw_scene(umbra_app *app) {
     float near_z = app->cam_dist * 0.02f;
     if (near_z < 0.05f) near_z = 0.05f;
     float far_z = app->cam_dist * 4.0f + app->span[0] + app->span[1] + app->span[2];
-    mat4_perspective(proj, 62.0f * 3.14159265f / 180.0f, (float)app->width / (float)app->height, near_z, far_z);
-    float eye[3] = {app->look[0] + app->cam_dist * 0.55f, app->look[1] + app->cam_dist * 0.45f,
-                    app->look[2] + app->cam_dist * 0.55f};
+    mat4_perspective(proj, app->fov_y * 3.14159265f / 180.0f, (float)app->width / (float)app->height, near_z, far_z);
+    float eye[3];
+    camera_eye(app, eye);
+    app->eye[0] = eye[0];
+    app->eye[1] = eye[1];
+    app->eye[2] = eye[2];
     float up[3] = {0.0f, 1.0f, 0.0f};
     mat4_look_at(view, eye, app->look, up);
     mat4_mul(vp, proj, view);
+    // The overlay covers the top of the screen, so the scene is centred in what
+    // is left of it: shift every clip-space y by k * w.
+    float shift = umbra_hud_scene_shift(umbra_hud_panel_height(hud_rows(app), hud_scale(app), app->insets[1]),
+                                        app->height);
+    if (shift != 0.0f) {
+        for (int col = 0; col < 4; col++) {
+            vp[1 + 4 * col] += shift * vp[3 + 4 * col];
+        }
+    }
     glUseProgram(app->prog_mesh);
     glUniformMatrix4fv(glGetUniformLocation(app->prog_mesh, "u_viewproj"), 1, GL_FALSE, vp);
     glUniform2f(glGetUniformLocation(app->prog_mesh, "u_fog"), app->cam_dist * 0.85f,
@@ -933,9 +1076,11 @@ static void draw_scene(umbra_app *app) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->ibo_mesh);
     // PASS_OPAQUE and PASS_CUTOUT draw with depth writing on; PASS_TRANSLUCENT
     // blends with depth writes off, which is the vanilla order.
+    app->draw_calls = 0;
     for (int pass = PASS_OPAQUE; pass <= PASS_TRANSLUCENT; pass++) {
         int b = pass - PASS_OPAQUE;
         if (app->batch_count[b] <= 0) continue;
+        app->draw_calls++;
         if (pass == PASS_TRANSLUCENT) {
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -950,25 +1095,41 @@ static void draw_scene(umbra_app *app) {
     }
 }
 
+// Rows the overlay draws: the title (1.6 rows, it has its own spacing), five
+// facts, the mesh line, the self-test, the benchmark block, the last-run block
+// and the crash tail. Needed before anything is drawn, because the backdrop's
+// height and the text scale both depend on it.
+static int hud_rows(const umbra_app *app) {
+    int rows = 1 + 5 + 1 + 1;       // title + facts + mesh + self-test
+    if (app->benching) {
+        rows += 1;
+    } else if (app->bench_text[0]) {
+        int n = 1;
+        for (const char *q = app->bench_text; *q; q++) {
+            if (*q == '\n') n++;
+        }
+        rows += n;
+    } else {
+        rows += 1;
+    }
+    rows += app->last_run_lines;
+    if (app->previous_run_crashed) rows += 3;
+    return rows;
+}
+
 static void draw_hud(umbra_app *app) {
     hud_begin();
     float s = hud_scale(app);
     float margin = 8.0f * s;
     float y = margin + (float)app->insets[1];
     float x = margin + (float)app->insets[0];
-    float line = 12.0f * s;
+    float line = UMBRA_HUD_ROW_HEIGHT * s;
     char buf[256];
 
     // The backdrop is drawn first, so its height has to be known before anything
-    // is drawn: fixed rows, plus the benchmark block, plus the crash tail.
-    int bench_lines = 1;
-    if (app->bench_text[0] && !app->benching) {
-        for (const char *q = app->bench_text; *q; q++) {
-            if (*q == '\n') bench_lines++;
-        }
-    }
-    float rows = 1.6f + 6.0f + (float)bench_lines + (app->previous_run_crashed ? 3.0f : 0.0f);
-    hud_rect(0, 0, (float)app->width, y + rows * line + margin, 0.0f, 0.0f, 0.0f, 0.55f);
+    // is drawn -- and it starts below the status bar, not behind the clock.
+    float panel_h = umbra_hud_panel_height(hud_rows(app), s, app->insets[1]);
+    hud_rect(0, 0, (float)app->width, panel_h, 0.0f, 0.0f, 0.0f, 0.62f);
     hud_text(x, y, s, 1, 1, 1, 1, "UMBRA - not an official Minecraft product");
     y += line * 1.6f;
     snprintf(buf, sizeof buf, "Umbra %s  build %s", UMBRA_APP_VERSION, UMBRA_GIT_COMMIT);
@@ -989,11 +1150,17 @@ static void draw_hud(umbra_app *app) {
                  app->mesh_progress / 10, app->mesh_total_us / 1e6, app->frame_us / 1000.0);
         hud_text(x, y, s, 1.0f, 0.9f, 0.4f, 1, buf);
     } else {
-        snprintf(buf, sizeof buf, "mesh %d verts %d indices  frame %.2f ms  worst %.1f ms",
-                 app->vert_count, app->index_count, app->frame_us / 1000.0,
+        snprintf(buf, sizeof buf, "mesh %d verts  %d draws  frame %.2f ms  worst %.1f ms",
+                 app->vert_count, app->draw_calls, app->frame_us / 1000.0,
                  app->max_frame_us / 1000.0);
         hud_text(x, y, s, 0.8f, 0.9f, 1.0f, 1, buf);
     }
+    y += line;
+    // The camera pose is on screen because "only sky visible" is otherwise a
+    // guess: the numbers say where the eye is and what it is aimed at.
+    snprintf(buf, sizeof buf, "cam %.1f %.1f %.1f -> %.1f %.1f %.1f",
+             app->eye[0], app->eye[1], app->eye[2], app->look[0], app->look[1], app->look[2]);
+    hud_text(x, y, s, 0.7f, 0.85f, 0.7f, 1, buf);
     y += line;
     if (app->selftest_ran) {
         hud_text(x, y, s, app->selftest_ok ? 0.4f : 1.0f, app->selftest_ok ? 1.0f : 0.3f, 0.4f, 1,
@@ -1019,6 +1186,13 @@ static void draw_hud(umbra_app *app) {
         }
         hud_text(x, y, s, 0.7f, 1.0f, 0.7f, 1, app->bench_text);
         y += (float)extra * line;
+    }
+    y += line;
+    if (app->last_run_lines > 0) {
+        // One screenshot is enough to see the previous run: the self-test verdict
+        // and the benchmark numbers are read back at start-up.
+        hud_text(x, y, s, 0.85f, 0.85f, 1.0f, 1, app->last_run_text);
+        y += (float)(app->last_run_lines - 1) * line;
     }
     y += line;
     if (app->previous_run_crashed) {
@@ -1111,14 +1285,17 @@ void umbra_app_frame(umbra_app *app) {
             app->benching = false;
             char dev[128];
             snprintf(dev, sizeof dev, "%s", app->gl_renderer);
+            char gles[40];
+            short_gles(app->gl_version, gles, sizeof gles);
             int64_t len = 0;
             // Slice arguments are (pointer, length) structs across the boundary.
             sl_u8 label = {(uint8_t *)"bench", 5};
             sl_u8 devs = {(uint8_t *)dev, (int64_t)strlen(dev)};
-            sl_u8 andr = {(uint8_t *)app->gl_version, (int64_t)strlen(app->gl_version)};
+            sl_u8 andr = {(uint8_t *)gles, (int64_t)strlen(gles)};
             const uint8_t *text = umbra_bench_summary(label, devs, andr, &len);
             snprintf(app->bench_text, sizeof app->bench_text, "%.*s", (int)len, (const char *)text);
             umbra_log(app, "%s", app->bench_text);
+            remember_bench(app);
         }
     }
 }

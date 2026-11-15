@@ -216,6 +216,23 @@ phase "install"
 ADB_TIMEOUT=300 adb install -r -g "$APK" > install.log 2>&1 || die "adb install failed: $(tail -c 500 install.log)"
 say "install: $(tail -1 install.log)"
 
+# The emulator reports a top inset of 0 and no display cutout, which is why CI
+# could not catch the owner's overlay being drawn under the clock. The app reads
+# `debug.umbra.insets` (property, for exactly this) and uses it in place of what
+# Android reports, so the layout is exercised with a real status bar.
+phase "insets-override"
+adb root > root.log 2>&1 || true
+sleep 3
+adb wait-for-device > /dev/null 2>&1 || true
+SIMULATED_INSETS="0,63,126,0"
+if adb shell setprop debug.umbra.insets "$SIMULATED_INSETS" > /dev/null 2>&1; then
+    GOT="$(adb shell getprop debug.umbra.insets 2>/dev/null | tr -d '\r\n')"
+    say "insets: simulating \"$SIMULATED_INSETS\" for this run (device says \"$GOT\")"
+else
+    SIMULATED_INSETS=""
+    say "insets: could not set the override; the layout test will use the real insets"
+fi
+
 phase "launch"
 adb shell am start -W -n org.umbra.client/android.app.NativeActivity > launch.log 2>&1 \
     || die "am start failed: $(tail -c 500 launch.log)"
@@ -277,6 +294,35 @@ if [ -n "$LONGEST" ]; then
 else
     say "mesh: the startup line did not report a longest frame"
 fi
+
+# ---- 6a-1. the overlay respects the insets it was given -------------------------
+phase "insets"
+INSET_LINE="$(grep -m1 "insets: L,T,R,B" logcat-umbra-mesh.txt | sed 's/.*umbra   : //')"
+if [ -z "$INSET_LINE" ]; then
+    die "the app never logged its insets, so the overlay has no idea where the bars are"
+fi
+say "insets: $INSET_LINE"
+if [ -n "$SIMULATED_INSETS" ]; then
+    case "$INSET_LINE" in
+        *"= $SIMULATED_INSETS"*) say "insets: the override was applied" ;;
+        *) die "the app did not apply the simulated insets $SIMULATED_INSETS: $INSET_LINE" ;;
+    esac
+    case "$INSET_LINE" in
+        *"source debug.umbra.insets override"*) say "insets: source is the override, as asked" ;;
+        *) die "the app applied the insets but did not say where they came from: $INSET_LINE" ;;
+    esac
+fi
+BUTTON_TOP="$(grep -m1 "hud: button 0 at" logcat-umbra-mesh.txt | sed -n 's/.*at [-0-9]*,\([-0-9]*\) size.*/\1/p')"
+TOP_INSET="$(printf '%s' "$INSET_LINE" | sed -n 's/.*= [-0-9]*,\([0-9]*\),.*/\1/p')"
+if [ -n "$BUTTON_TOP" ] && [ -n "$TOP_INSET" ] && [ "$TOP_INSET" -gt 0 ]; then
+    if [ "$BUTTON_TOP" -lt "$TOP_INSET" ]; then
+        die "button 0 starts at y=$BUTTON_TOP, above the top inset $TOP_INSET: it is under the status bar"
+    fi
+    say "overlay: button 0 starts at y=$BUTTON_TOP, below the $TOP_INSET px top inset"
+fi
+CAM_LINE="$(grep -m1 "camera: eye" logcat-umbra-mesh.txt | sed 's/.*umbra   : //')"
+[ -n "$CAM_LINE" ] || die "the app never logged where the camera is, so 'only sky' cannot be diagnosed"
+say "camera: $CAM_LINE"
 
 # ---- 6a-2. the surface really is the screen, not a 1x1 stub ---------------------
 # Run 43687356640 came up at 1x1, never got a resize event, and drew nothing but
@@ -357,6 +403,46 @@ if [ "$TAPPED" != 1 ]; then
     err "tap: the self-test never ran, so the input path is unverified; see logcat-umbra2.txt"
 fi
 
+# ---- 6d. the benchmark, on the emulator, with numbers that are logged ----------
+# The owner's gate-7 list asks for average FPS, 1% lows and frame times shown on
+# the device. Tapping the button here means the harness checks that they appear
+# and that the block is formatted, not just that the code compiles.
+phase "benchmark-tap"
+BRECT="$(grep -o 'hud: button 1 at [-0-9]*,[-0-9]* size [0-9]*x[0-9]*' logcat-umbra2.txt | tail -1)"
+if [ -n "$BRECT" ]; then
+    BNUM="$(printf '%s' "$BRECT" | sed 's/.*at //; s/ size / /; s/x/ /; s/,/ /')"
+    set -- $BNUM
+    TAP_X=$(( ${1:-0} + ${3:-0} / 2 ))
+    TAP_Y=$(( ${2:-0} + ${4:-0} / 2 ))
+    say "benchmark: button at ${1:-?},${2:-?}, tapping $TAP_X,$TAP_Y"
+    adb shell input tap "$TAP_X" "$TAP_Y" > /dev/null 2>&1 || say "benchmark: input tap failed"
+else
+    say "benchmark: no button 1 rectangle in the log"
+fi
+BENCHED=0
+DEADLINE=$((SECONDS + 120))
+while [ $SECONDS -lt $DEADLINE ]; do
+    if adbs | grep -q "bench: .* frames .* avg "; then BENCHED=1; break; fi
+    sleep 4
+done
+adb logcat -d -s umbra:V > logcat-umbra-bench.txt 2>&1
+if [ "$BENCHED" = 1 ]; then
+    grep -m1 "bench: .* frames .* avg " logcat-umbra-bench.txt | sed 's/.*umbra   : //' \
+        | while IFS= read -r l; do say "benchmark: $l"; done
+    if grep -q "1% low" logcat-umbra-bench.txt; then
+        say "benchmark: the 1% low is reported"
+    else
+        die "the benchmark block has no 1% low line"
+    fi
+    if grep -q "last run: benchmark saved" logcat-umbra-bench.txt; then
+        say "benchmark: saved for the next run's home screen"
+    else
+        err "benchmark: the numbers were not saved, so the last-run block will be incomplete"
+    fi
+else
+    err "benchmark: no result within 120 s (the benchmark is 60 s, so see logcat-umbra-bench.txt)"
+fi
+
 # ---- 7. soak --------------------------------------------------------------------
 phase "soak"
 say "soak: holding for ${SOAK_SECONDS}s"
@@ -369,6 +455,37 @@ if adb logcat -d 2>/dev/null | grep -q "FATAL EXCEPTION"; then
 fi
 say "soak: no FATAL EXCEPTION"
 say "meminfo: $(grep -E 'TOTAL PSS|Native Heap' meminfo.txt | tr -s ' ' | tr '\n' '|' | cut -c1-240)"
+
+# ---- 9. relaunch: the previous run's results come back -------------------------
+# "One screenshot is enough" only holds if the results survive a restart, so the
+# app is killed and started again and its log must carry the self-test verdict
+# and the benchmark numbers from the run that just happened.
+phase "relaunch"
+adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
+sleep 3
+adb logcat -c > /dev/null 2>&1 || true
+adb shell am start -W -n org.umbra.client/android.app.NativeActivity > relaunch.log 2>&1 \
+    || say "relaunch: am start said $(tail -1 relaunch.log)"
+REL_LINES=""
+RELAUNCHED=0
+DEADLINE=$((SECONDS + 90))
+while [ $SECONDS -lt $DEADLINE ]; do
+    REL_LINES="$(adb logcat -d -s umbra:V 2>/dev/null | grep "last run:" | sed 's/.*umbra   : //')"
+    if printf '%s' "$REL_LINES" | grep -q "last run: LAST RUN"; then RELAUNCHED=1; break; fi
+    sleep 3
+done
+[ "$RELAUNCHED" = 1 ] || die "after a restart the home screen had no last-run block: ${REL_LINES:-no log at all}"
+printf '%s\n' "$REL_LINES" | while IFS= read -r l; do say "$l"; done
+case "$REL_LINES" in
+    *SELFTEST*) say "relaunch: the previous self-test verdict is on the home screen" ;;
+    *) die "the last-run block came back without a self-test verdict: $REL_LINES" ;;
+esac
+case "$REL_LINES" in
+    *"avg "*) say "relaunch: the previous benchmark numbers are on the home screen" ;;
+    *) say "relaunch: no benchmark numbers yet (the tap may not have reached the benchmark button)" ;;
+esac
+adb exec-out screencap -p > shot3.png 2>/dev/null || true
+say "shot3: $(stat -c%s shot3.png 2>/dev/null || echo 0) bytes (the home screen with last run)"
 
 # Everything worth keeping is already on disk and the device is about to go
 # away, so the exit handler has nothing left to collect (and would otherwise
