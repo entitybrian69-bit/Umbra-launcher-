@@ -1,12 +1,12 @@
-run: 43732459912, commit: 2bd50834f7aa929e824fdc084f7b10aced4a8204
+run: 43734116783, commit: 9e44e94285f0867296936bb145a639066eaaa2f5
 sdk: /usr/local/lib/android/sdk
 adb: /usr/local/lib/android/sdk/platform-tools/adb
 emulator: /usr/local/lib/android/sdk/emulator/emulator
-apk: ./android/app/build/outputs/apk/release/app-release.apk (357827 bytes, sha256 31b6afb9160465d9f5163946f0a74f7a861fc1c62caeadd448d71bfc85f50d2b)
+apk: ./android/app/build/outputs/apk/release/app-release.apk (360083 bytes, sha256 aee341a6683d1c1eea0f768a7ba048820742b29ca08ce9a5cd2421dd8b5c6083)
 
 == phase: kvm ==
-kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 15 15:58 /dev/kvm
-cpu: 4 flags match vmx/svm
+kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 15 16:15 /dev/kvm
+cpu: 8 flags match vmx/svm
 
 == phase: sdk-packages ==
 sdk-platform-tools: ok (3 lines)
@@ -16,14 +16,14 @@ sdk-image: ok (3 lines)
 avd: umbra_ci from device profile pixel_2 at /home/runner/.android/avd
 
 == phase: emulator-boot ==
-emulator: started as pid 2694
-emulator: booted in 26 s
+emulator: started as pid 2907
+emulator: booted in 36 s
 android: api 30 (11)
 display: 1080x1920
 
 == phase: unlock ==
 wake: 
-focus before launch:  mCurrentFocus=Window{b056a7f u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
+focus before launch:  mCurrentFocus=Window{4f1459e u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
 
 == phase: install ==
 install: Success
@@ -32,112 +32,122 @@ install: Success
 insets: simulating "0,63,126,0" for this run (device says "0,63,126,0")
 
 == phase: launch ==
-launch: Status: ok TotalTime: 1263 
-running: pid 3747
+launch: Status: ok TotalTime: 1516 
+running: pid 3516
 app: android_main: files /data/user/0/org.umbra.client/files
 app: goose core initialised
 app: app cmd 10, window 0x0
-app: app cmd 11, window 0x0
 app: no window yet: waiting for the activity to become visible
+app: app cmd 11, window 0x0
 app: app cmd 0, window 0x0
-app: app cmd 1, window 0x79777ec784c0
+app: app cmd 1, window 0x7f2e2c72d4c0
 app: EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-app: app cmd 3, window 0x79777ec784c0
+app: app cmd 3, window 0x7f2e2c72d4c0
 app: insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
-app: app cmd 5, window 0x79777ec784c0
-app: app cmd 4, window 0x79777ec784c0
+app: app cmd 5, window 0x7f2e2c72d4c0
+app: app cmd 4, window 0x7f2e2c72d4c0
 app: insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 1920x1080, density bucket 420 (scale 2.62)
-app: 15:59:35 last run: nothing recorded yet
-app: 15:59:35 ---- Umbra starting, build 2bd5083 ----
-app: 15:59:35 core: umbra core: formats and meshing
-app: 15:59:35 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
-app: 15:59:35 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-app: 15:59:35 GL_VENDOR Google (Google Inc.)
-app: 15:59:35 depth bits 24, vertex highp 127^23, fragment highp 127^23
-app: 15:59:35 atlas: 128x128, 65536 bytes, 12 tiles, hash 7c205ae2, 0 missing
-app: 15:59:35 demo world built in 26.2 ms; meshing starts in slices of at most 6 ms
-app: 15:59:35 check: renderer Android Emulator OpenGL ES Translator (Google SwiftShader)
-app: 15:59:35 check: gl version OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-app: 15:59:35 check: max texture size 8192 px
-app: 15:59:35 check: gpu timer query none (not available)
-app: 15:59:35 check: shader programs mesh ok, hud ok, pattern ok, cube ok, atlas ok
-app: 15:59:35 check: depth buffer 24 bits
-app: 15:59:35 check: extension string 1412 chars
-app: 15:59:35 check: all device checks passed
-app: 15:59:35 hud: button 0 at 22,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
-app: 15:59:35 hud: button 1 at 611,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
-app: 15:59:35 hud: button 2 at 1199,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
-app: 15:59:35 hud: 11 rows, content ends at 484 px inside a 486 px panel, fits
-app: app cmd 6, window 0x79777ec784c0
-app: 15:59:59 mesh uploaded: 17.0 MB vertices, 2.1 MB indices
-app: 15:59:59 mesh bounds x 0.0..48.0 y -64.0..106.0 z 0.0..16.0, camera 37.6 blocks out, free band 497..989 of 1080 (45%), fog 66..146
-app: 15:59:59 camera: eye 47.2 105.2 32.1 look 24.0 88.0 8.0, 37.6 blocks out, fov 55
-app: 15:59:59 mesh: 370708 vertices, 556062 indices; batches 543276/12786/0
-app: 15:59:59 startup: meshed in 7360.2 ms over 681 calls (worst call 58.5 ms, worst unit 58.5 ms), longest frame 190.2 ms, frames over 250 ms: 0
+app: 16:17:42 last run: nothing recorded yet
+app: 16:17:42 ---- Umbra starting, build 9e44e94 ----
+app: 16:17:42 core: umbra core: formats and meshing
+app: 16:17:42 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
+app: 16:17:42 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+app: 16:17:42 GL_VENDOR Google (Google Inc.)
+app: 16:17:42 depth bits 24, vertex highp 127^23, fragment highp 127^23
+app: 16:17:42 atlas: 128x128, 65536 bytes, 12 tiles, hash 7c205ae2, 0 missing
+app: 16:17:42 demo world built in 4.7 ms; meshing starts in slices of at most 6 ms
+app: 16:17:42 check: renderer Android Emulator OpenGL ES Translator (Google SwiftShader)
+app: 16:17:42 check: gl version OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+app: 16:17:42 check: max texture size 8192 px
+app: 16:17:42 check: gpu timer query none (not available)
+app: 16:17:42 check: shader programs mesh ok, hud ok, pattern ok, cube ok, atlas ok
+app: 16:17:42 check: depth buffer 24 bits
+app: 16:17:42 check: extension string 1412 chars
+app: 16:17:42 check: all device checks passed
+app: 16:17:42 hud: button 0 at 22,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
+app: 16:17:42 hud: button 1 at 611,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
+app: 16:17:42 hud: button 2 at 1199,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
+app: 16:17:42 hud: 11 rows, content ends at 484 px inside a 486 px panel, fits
+app: 16:17:43 long frame 550.2 ms (mesh 0%, 1 calls)
+app: app cmd 6, window 0x7f2e2c72d4c0
+app: 16:17:44 long frame 304.2 ms (mesh 3%, 26 calls)
+app: 16:18:19 mesh uploaded: 17.0 MB vertices, 2.1 MB indices
+app: 16:18:19 mesh bounds x 0.0..48.0 y -64.0..106.0 z 0.0..16.0, camera 37.6 blocks out, free band 497..989 of 1080 (45%), fog 66..146
+app: 16:18:19 camera: eye 47.2 105.2 32.1 look 24.0 88.0 8.0, 37.6 blocks out, fov 55
+app: 16:18:19 mesh: 370708 vertices, 556062 indices; batches 543276/12786/0
+app: 16:18:19 startup: meshed in 9869.6 ms over 835 calls (worst call 75.1 ms, worst unit 75.1 ms), longest frame 550.2 ms, frames over 250 ms: 2
+app: 16:18:19 long frame 254.9 ms (mesh 100%, 835 calls)
 
 == phase: wait-for-mesh ==
-mesh: 15:59:59 startup: meshed in 7360.2 ms over 681 calls (worst call 58.5 ms, worst unit 58.5 ms), longest frame 190.2 ms, frames over 250 ms: 0
-mesh: longest frame 190.2 ms (under the 1000 ms budget)
+mesh: 16:18:19 startup: meshed in 9869.6 ms over 835 calls (worst call 75.1 ms, worst unit 75.1 ms), longest frame 550.2 ms, frames over 250 ms: 2
+mesh: longest frame 550.2 ms (under the 1000 ms budget)
 
 == phase: insets ==
 insets: insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
 insets: the override was applied
 insets: source is the override, as asked
 overlay: button 0 starts at y=999, below the 63 px top inset
-overlay: 15:59:35 hud: 11 rows, content ends at 484 px inside a 486 px panel, fits
-camera: 15:59:59 camera: eye 47.2 105.2 32.1 look 24.0 88.0 8.0, 37.6 blocks out, fov 55
+overlay: 16:17:42 hud: 11 rows, content ends at 484 px inside a 486 px panel, fits
+camera: 16:18:19 camera: eye 47.2 105.2 32.1 look 24.0 88.0 8.0, 37.6 blocks out, fov 55
 
 == phase: display-size ==
-size: 15:59:35 hud: button 0 at 22,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
+size: 16:17:42 hud: button 0 at 22,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
 size: the HUD was laid out for a 1920 pixel wide surface
 
 == phase: screenshot-home ==
-shot1: 415189 bytes, sha256 34223776d583817e395339b11a83c9d94a1aa3cfc816a624b63befa627e4c668
-focus while drawing:  mCurrentFocus=Window{f4ebda0 u0 org.umbra.client/android.app.NativeActivity}
+shot1: 415142 bytes, sha256 d6d98fe31b20df48dde1a203e976f94811e6e083916f23388b06915693b7f757
+focus while drawing:  mCurrentFocus=Window{ff7da68 u0 org.umbra.client/android.app.NativeActivity}
 
 == phase: selftest-tap ==
 tap: self-test button at 22,999 size 571x57, tapping 307,1027
 tap: attempt 1 at 307,1027
 tap: the app reported a self-test
-shot2: 419867 bytes, sha256 1f93e0440852f5dbbf81d61231416380df05c1f4b5fe3f7b5b2fe814c09b512c
-app: 16:00:28 self-test: requested
-app: 16:00:28 self-test: begin (1920x1080), tile 78 rows
-app: 16:00:28 self-test: pattern drawn in 103.7 ms into the offscreen target
-app: 16:00:28 self-test: reading the offscreen target in 78-row tiles
-app: 16:00:29 self-test: pattern compared, 0 of 2073600 px differ, max channel diff 0
-app: 16:00:29 self-test: cube drawn in 77.6 ms
-app: 16:00:30 self-test: cube compared, 0 of 2073600 px differ
-app: 16:00:30 self-test: atlas tile 8 sampled in 0.2 ms
-app: 16:00:30 self-test: atlas 0 of 256 texels differ
-app: 16:00:30 self-test: end after 2269 ms, 34 steps
-app: 16:00:30 last run: self-test saved to /data/user/0/org.umbra.client/files/last_selftest.txt
-self-test: SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 2269 ms, offscreen)
+shot2: 419873 bytes, sha256 037d07456c9778a16d447863c4cb27110e887e3a526524e9fe8ffa725ef64c6e
+app: 16:19:15 self-test: requested
+app: 16:19:15 self-test: begin (1920x1080), tile 78 rows
+app: 16:19:15 self-test: pattern drawn in 76.9 ms into the offscreen target
+app: 16:19:15 self-test: reading the offscreen target in 78-row tiles
+app: 16:19:16 self-test: pattern compared, 0 of 2073600 px differ, max channel diff 0
+app: 16:19:16 self-test: cube drawn in 58.5 ms
+app: 16:19:17 self-test: cube compared, 0 of 2073600 px differ
+app: 16:19:18 self-test: atlas tile 8 sampled in 0.2 ms
+app: 16:19:18 self-test: atlas 0 of 256 texels differ
+app: 16:19:18 self-test: end after 2764 ms, 34 steps
+app: 16:19:18 last run: self-test saved to /data/user/0/org.umbra.client/files/last_selftest.txt
+self-test: SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 2764 ms, offscreen)
 
 == phase: benchmark-tap ==
 benchmark: button at 611,999, tapping 896,1027
-benchmark: 16:01:44 bench: 1102 frames  avg 54.48 ms (18 fps)
+benchmark: 16:20:41 bench: 899 frames  avg 66.82 ms (14 fps)
 benchmark: the 1% low is reported
 benchmark: saved for the next run's home screen
 
+== phase: player ==
+player: screen 1080x1920
+ERROR: player: the tap did not start first person (no spawn line)
+player: 16:20:55 player: at 24.50 66.00 24.50, yaw 0.00 pitch -0.25, on ground, 0 steps up
+player: 16:20:57 player: at 24.50 66.00 24.50, yaw -1.69 pitch -0.25, on ground, 0 steps up
+player: the body moved and reported where it is
+
 == phase: soak ==
 soak: holding for 60s
-soak: survived, pid 3747
+soak: survived, pid 3516
 soak: no FATAL EXCEPTION
-meminfo:  Native Heap 30744 30712 0 64 32044 39988 33738 1785| Native Heap: 30712 32044| TOTAL PSS: 82204 TOTAL RSS: 179172 TOTAL SWAP PSS: 301|
+meminfo:  Native Heap 30754 30688 20 41 32260 39476 33725 1245| Native Heap: 30688 32260| TOTAL PSS: 82063 TOTAL RSS: 179632 TOTAL SWAP PSS: 279|
 
 == phase: relaunch ==
-results: total 32|-rw------- 1 u0_a167 u0_a167  200 2026-11-15 16:01 last_bench.txt|-rw------- 1 u0_a167 u0_a167   75 2026-11-15 16:00 last_selftest.txt|-rw------- 1 u0_a167 u0_a167    8 2026-11-15 15:59 session.marker|-rw------- 1 u0_a167 u0_a167 3782 2026-11-15 16:01 umbra.log|
-last_selftest.txt: SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 2269 ms, offscreen) 
-last_bench.txt: bench: 1102 frames  avg 54.48 ms (18 fps) 1% low 11 fps (86.94 ms) median 54.98 ms  worst 95.23 ms Android Emulator OpenGL ES Translator (Google SwiftShader) | Android OpenGL ES 3.0 gpu n/a (no GPU t 
-16:02:54 last run: LAST RUN SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 2269 ms, offscreen) bench: 1102 frames  avg 54.48 ms (18 fps) 1% low 11 fps (86.94 ms) median 54.98 ms  worst 95.23 ms Android Emulator OpenGL ES Translator (Google SwiftShader) | Android OpenGL 
+results: total 36|-rw------- 1 u0_a167 u0_a167  200 2026-11-15 16:20 last_bench.txt|-rw------- 1 u0_a167 u0_a167   75 2026-11-15 16:19 last_selftest.txt|-rw------- 1 u0_a167 u0_a167    8 2026-11-15 16:17 session.marker|-rw------- 1 u0_a167 u0_a167 7270 2026-11-15 16:22 umbra.log|
+last_selftest.txt: SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 2764 ms, offscreen) 
+last_bench.txt: bench: 899 frames  avg 66.82 ms (14 fps) 1% low 9 fps (103.86 ms) median 66.17 ms  worst 112.64 ms Android Emulator OpenGL ES Translator (Google SwiftShader) | Android OpenGL ES 3.0 gpu n/a (no GPU t 
+16:22:16 last run: LAST RUN SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 2764 ms, offscreen) bench: 899 frames  avg 66.82 ms (14 fps) 1% low 9 fps (103.86 ms) median 66.17 ms  worst 112.64 ms Android Emulator OpenGL ES Translator (Google SwiftShader) | Android OpenGL 
 relaunch: the previous self-test verdict is on the home screen
 relaunch: the previous benchmark numbers are on the home screen
-shot3: 46201 bytes (the home screen with last run)
+shot3: 46499 bytes (the home screen with last run)
 
 == phase: crash-detect ==
-crash-detect: kill -9 6325
+crash-detect: kill -9 6616
 crash-detect: the killed run was reported on the next start
-shot4: 46631 bytes (the crash screen)
+shot4: 46571 bytes (the crash screen)
 
 == phase: done ==
 result: PASS (installed, launched, drew, self test tapped, 60s soak, no crash)
