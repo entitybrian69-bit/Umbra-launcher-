@@ -1,8 +1,39 @@
-run: 43630875034, commit: c02d7002b819dcb168eb4b40febe2886f162a29a
+run: 43660636352, commit: 4e6790cb474fcf77da21099a7cb4bf7d5acf7bcd
 sdk: /usr/local/lib/android/sdk
 adb: /usr/local/lib/android/sdk/platform-tools/adb
 emulator: /usr/local/lib/android/sdk/emulator/emulator
-ERROR: startup: no APK to install (looked for *.apk)
+apk: ./android/app/build/outputs/apk/release/app-release.apk (186759 bytes, sha256 ee68f3bbb1dca159020ffc819f87a5a3826b4cedcbbccb8a518d116d4c95e669)
+
+== phase: kvm ==
+kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 15 00:59 /dev/kvm
+cpu: 8 flags match vmx/svm
+
+== phase: sdk-packages ==
+sdk-platform-tools: ok (3 lines)
+sdk-image: ok (3 lines)
+
+== phase: avd ==
+avd: umbra_ci from device profile pixel_2 at /home/runner/.android/avd
+
+== phase: emulator-boot ==
+emulator: started as pid 3374
+emulator: booted in 76 s
+android: api 30 (11)
+display: 1080x1920
+
+== phase: unlock ==
+wake: 
+focus before launch:  mCurrentFocus=Window{650efdf u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
+
+== phase: install ==
+install: Success
+
+== phase: launch ==
+launch: Status: timeout 
+ERROR: launch: the app logged its start line never within 90s; umbra log: --------- beginning of kernel
+--------- beginning of main
+--------- beginning of system
+11-15 01:01:54.610  3255  3289 I umbra   : android_main: files /data/user/0/org.umbra.client/files
 
 == collected diagnostics ==
 

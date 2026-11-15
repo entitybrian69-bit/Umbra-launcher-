@@ -26,7 +26,7 @@ INFO         |   Checking: hasSufficientSystem
 INFO         |      Ok: System requirements to run avd: `umbra_ci` are met
 WARNING      | Feature QuickbootFileBacked is disabled due to stability issues, if you really want that, the environment variable ANDROID_EMU_FORCE_QUICKBOOT_FILE_BACKED need to set to 1
 WARNING      | FeatureControl is requesting a non existing feature.
-INFO         | Storing crashdata in: /tmp/android-runner/emu-crash-37.2.13.db, detection is enabled for process: 2513
+INFO         | Storing crashdata in: /tmp/android-runner/emu-crash-37.2.13.db, detection is enabled for process: 3374
 INFO         | Initializing gfxstream backend
 INFO         | startOpenglesRendererImpl: gpu info
 INFO         | 
@@ -89,24 +89,24 @@ INFO         |   qemu.hwcodec.hevcdec=2
 INFO         |   qemu.hwcodec.vpxdec=2
 INFO         |   qemu.opengles.version=196608
 INFO         |   qemu.settings.system.screen_off_timeout=2147483647
-INFO         |   qemu.skin=320x640
+INFO         |   qemu.skin=1080x1920
 INFO         |   qemu.uirenderer=skiagl
 INFO         |   qemu.virtiowifi=1
 INFO         |   qemu.vsync=60
-WARNING: cannnot unmap ptr 0x7b0b0a801000 as it is in the protected range from 0x7b0a8a800000 to 0x7b0b0aa00000
+WARNING: cannnot unmap ptr 0x6ffd1ac01000 as it is in the protected range from 0x6ffc9ac00000 to 0x6ffd1ae00000
 INFO         | Monitoring duration of emulator setup.
 WARNING      | The emulator now requires a signed jwt token for gRPC access! Use the -grpc flag if you really want an open unprotected grpc port
 INFO         | Using security allow list from: /usr/local/lib/android/sdk/emulator/lib/emulator_access.json
-INFO         | The active JSON Web Key Sets can be found here: /run/user/1001/avd/running/2513/jwks/7d1bfcf1-0765-45ee-968f-8c9c688a40e0/active.jwk
-INFO         | Scanning /run/user/1001/avd/running/2513/jwks/7d1bfcf1-0765-45ee-968f-8c9c688a40e0 for jwk keys.
+INFO         | The active JSON Web Key Sets can be found here: /run/user/1001/avd/running/3374/jwks/fa638152-cae3-4b95-9e5b-e01db718915e/active.jwk
+INFO         | Scanning /run/user/1001/avd/running/3374/jwks/fa638152-cae3-4b95-9e5b-e01db718915e for jwk keys.
 INFO         | Started GRPC server at 127.0.0.1:8554, security: Local, auth: +token
-INFO         | Advertising in: /run/user/1001/avd/running/pid_2513.ini
+INFO         | Advertising in: /run/user/1001/avd/running/pid_3374.ini
 INFO         | Successfully initialized netsim WiFi
-INFO         | Setting display: 0 configuration to: 320x640, dpi: 160x160 
-INFO         | setDisplayActiveConfig: id:0, 320x640
+INFO         | Setting display: 0 configuration to: 1080x1920, dpi: 420x420 
+INFO         | setDisplayActiveConfig: id:0, 1080x1920
 INFO         | emulatorSetupEnvironment: Environment scene is not required
 USER_INFO    | Emulator is performing a full startup. This may take upto two minutes, or more.
 WARNING      | Failed to process .ini file /home/runner/.android/emu-update-last-check.ini for reading.
 WARNING      | Failed to process .ini file /home/runner/.android/emu-update-last-check.ini for reading.
-INFO         | Boot completed in 27291 ms
+INFO         | Boot completed in 80604 ms
 INFO         | Increasing screen off timeout, logcat buffer size to 2M.
