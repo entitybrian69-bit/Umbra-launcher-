@@ -187,7 +187,28 @@ Gate 2's step also runs `unzip -t` and fails if either ABI's `libumbra.so` is
 missing. Signed with the repository key (DECISIONS.md D-014); v1 signing is off
 because minSdk is 24 and v2/v3 cover it.
 
-### The emulator (CI, run 43670787000)
+### The emulator, with sliced meshing and insets (CI, run 43684817720)
+
+```
+app: 06:23:22 demo world built in 3.6 ms; meshing starts in slices of at most 6 ms
+app: 06:23:22 insets: 0,0,126,0 on 1920x1080, density bucket 420 (scale 2.62)
+app: 06:23:22 hud: button 0 at 8,946 size 1904x34 on 1920x1080 (insets 0,0,126,0)
+app: 06:23:40 startup: meshed in 5621.7 ms over 587 calls (worst call 39.0 ms, worst unit 39.0 ms), longest frame 206.3 ms, frames over 250 ms: 0
+mesh: longest frame 206.3 ms (under the 1000 ms budget)
+result: PASS (installed, launched, drew, self test tapped, 60s soak, no crash)
+```
+
+That is the before/after the owner asked for. Before: one **5304.1 ms** call on the
+window thread. After: 587 slices, worst **39.0 ms**, longest frame **206.3 ms**,
+**zero** frames over 250 ms, and the whole run still ends `PASS`. The slice count
+and the total are bigger than the single call (5621.7 ms vs 4624 ms earlier) --
+that is the cost of not freezing the window, and it is paid once at start-up.
+
+The insets are also real now: the emulator reports `0,0,126,0` and a density of
+2.62, and the buttons moved from `y 946` under the navigation bar to a layout
+that respects it.
+
+### The emulator (CI, run 43670787000, before slicing)
 
 ```
 emulator: booted in 52 s          android: api 30 (11)    display: 1080x1920
@@ -204,9 +225,8 @@ soak: survived, pid 3172        TOTAL PSS: 80850
 
 The two screenshots are committed: `docs/reference/emulator_home.png` (the home
 screen: a 3x3-chunk island with trees, the HUD and the three buttons) and
-`docs/reference/emulator_selftest.png` (after the GPU self-test). Meshing takes
-4.6 s on the emulator's CPU — the slowest thing in the start-up path, listed in
-KNOWN_ISSUES.md.
+`docs/reference/emulator_selftest.png` (after the GPU self-test). Meshing is
+sliced now (see the run above); this section is kept as the before picture.
 
 ## How CI evidence is read here
 
