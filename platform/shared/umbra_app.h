@@ -15,6 +15,7 @@
 #endif
 
 #include "umbra_vertex.h"
+#include "umbra_player.h"
 
 typedef enum {
     UMBRA_SCREEN_HOME = 0,
@@ -55,6 +56,18 @@ struct umbra_app {
     // a sane near/far range instead of a guess.
     float span[3];
     float cam_dist;
+    // The player. `player_on` switches the camera from the fixed overview to the
+    // body's eyes; the overview stays the default so the screenshot gate keeps a
+    // fixed view, and the state is logged whenever it changes.
+    umbra_player player;
+    int player_on;
+    int move_fwd, move_back, move_left, move_right, jump_wanted;
+    int touch_look_id;      // the pointer dragging the view, or -1
+    int touch_walk_id;      // the pointer holding "walk forward", or -1
+    float touch_last_x, touch_last_y;
+    int touch_moved;        // this finger has turned the head instead of resting
+    int64_t touch_down_us;
+    int64_t player_logged_us;
     float look[3];      // the point the home view is aimed at
     float eye[3];       // where the camera is; shown in the HUD and logged
     float fov_y;
@@ -169,6 +182,10 @@ void umbra_app_shutdown(umbra_app *app);
 void umbra_session_set(umbra_app *app, const char *state);
 void umbra_app_frame(umbra_app *app);
 void umbra_app_touch(umbra_app *app, int32_t x, int32_t y, bool down);
+// The same, with the pointer's id and its whole life: 0 down, 1 move, 2 up,
+// 3 cancel. A phone reports several pointers at once and only this version can see
+// the one that is dragging while another one holds "walk".
+void umbra_app_touch_id(umbra_app *app, int32_t id, int32_t x, int32_t y, int32_t phase);
 
 // Implemented per platform.
 void umbra_log(umbra_app *app, const char *fmt, ...);

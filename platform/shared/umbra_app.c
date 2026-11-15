@@ -885,6 +885,8 @@ int umbra_app_init(umbra_app *app) {
     // 55 degrees is a phone-friendly vertical field of view; the distance that
     // fits the world into it is computed from the mesh, per screen aspect.
     app->fov_y = 55.0f;
+    app->touch_look_id = -1;
+    app->touch_walk_id = -1;
     // The result files sit next to the log, so their names have to be known
     // before the start-up read: this line is the whole 0.3.1 last-run bug.
     set_run_paths(app);
@@ -1690,6 +1692,67 @@ static void camera_eye(const umbra_app *app, float eye[3]) {
     eye[2] = app->look[2] + app->cam_dist * 0.640f;
 }
 
+// --- the player ---------------------------------------------------------
+
+// The grid the player collides with is the world the mesher just built: Goose
+// answers "how tall is this cell's collision box", with 0.5 for the slab that is
+// drawn from a model. One call per candidate cell, and a cell is only a candidate
+// if the body's box overlaps it.
+static float app_block_top(void *ctx, int x, int y, int z) {
+    (void)ctx;
+    return umbra_block_top((int64_t)x, (int64_t)y, (int64_t)z);
+}
+
+// Spawn on top of the middle column, at the floor the world reports. Logged,
+// because "the player fell through the world" has to be distinguishable from "the
+// player was never spawned".
+static void player_spawn(umbra_app *app) {
+    float y = umbra_world_spawn(24, 24);
+    umbra_player_reset(&app->player, 24.5f, y + 0.01f, 24.5f);
+    app->player.yaw = 0.0f;
+    app->player.pitch = -0.25f;
+    app->player_on = 1;
+    app->touch_look_id = -1;
+    app->touch_walk_id = -1;
+    app->player_logged_us = 0;
+    umbra_log(app, "player: spawned at %.2f %.2f %.2f (floor %.2f), eye %.2f",
+              app->player.x, app->player.y, app->player.z, y,
+              app->player.y + UMBRA_PLAYER_EYE);
+}
+
+// One physics step with the current input. dt is the real frame time, and the
+// step function sub-steps it, so a long frame cannot walk the body through a wall.
+static void player_update(umbra_app *app) {
+    if (!app->player_on) return;
+    float dt = app->frame_us / 1000000.0f;
+    if (dt <= 0.0f || dt > 1.0f) dt = 1.0f / 60.0f;
+    // Hold to walk. A finger that rests on the screen without turning the head is
+    // a walk, which is the one gesture a single finger can make on a phone: drag to
+    // look, rest to walk, tap to jump. The 400 ms delay is what keeps a tap from
+    // also being a step.
+    int64_t now_us = umbra_now_us();
+    if (app->touch_walk_id < 0 && app->touch_look_id >= 0 && !app->touch_moved &&
+        now_us - app->touch_down_us > 400000 && !app->move_fwd) {
+        app->move_fwd = 1;
+        app->touch_walk_id = app->touch_look_id;
+        umbra_log(app, "player: holding, walking forward");
+    }
+    float fwd = (float)(app->move_fwd - app->move_back);
+    float strafe = (float)(app->move_right - app->move_left);
+    umbra_player_step(app_block_top, app, &app->player, dt, fwd, strafe, app->jump_wanted);
+    app->jump_wanted = 0;
+    // Once every two seconds, so a phone log says where the body is and whether it
+    // is standing, without the log costing anything.
+    int64_t now = umbra_now_us();
+    if (app->player_logged_us == 0 || now - app->player_logged_us > 2000000) {
+        app->player_logged_us = now;
+        umbra_log(app, "player: at %.2f %.2f %.2f, yaw %.2f pitch %.2f, %s, %lld steps up",
+                  app->player.x, app->player.y, app->player.z, app->player.yaw,
+                  app->player.pitch, app->player.on_ground ? "on ground" : "in the air",
+                  (long long)app->player.stepped);
+    }
+}
+
 // --- frame --------------------------------------------------------------
 
 static void draw_scene(umbra_app *app) {
@@ -1702,12 +1765,32 @@ static void draw_scene(umbra_app *app) {
     float far_z = app->cam_dist * 4.0f + app->span[0] + app->span[1] + app->span[2];
     mat4_perspective(proj, app->fov_y * 3.14159265f / 180.0f, (float)app->width / (float)app->height, near_z, far_z);
     float eye[3];
-    camera_eye(app, eye);
+    float target[3];
+    if (app->player_on) {
+        // First person: the eye is the body's eye and the target is one block along
+        // the look direction. The fog moves with the view, so it is a depth cue at
+        // the distance a walking body can actually see.
+        float f[3];
+        umbra_player_eye(&app->player, eye);
+        umbra_player_forward(&app->player, f);
+        target[0] = eye[0] + f[0];
+        target[1] = eye[1] + f[1];
+        target[2] = eye[2] + f[2];
+        near_z = 0.05f;
+        far_z = 320.0f;
+        mat4_perspective(proj, app->fov_y * 3.14159265f / 180.0f,
+                         (float)app->width / (float)app->height, near_z, far_z);
+    } else {
+        camera_eye(app, eye);
+        target[0] = app->look[0];
+        target[1] = app->look[1];
+        target[2] = app->look[2];
+    }
     app->eye[0] = eye[0];
     app->eye[1] = eye[1];
     app->eye[2] = eye[2];
     float up[3] = {0.0f, 1.0f, 0.0f};
-    mat4_look_at(view, eye, app->look, up);
+    mat4_look_at(view, eye, target, up);
     mat4_mul(vp, proj, view);
     // The overlay covers the top of the screen, so the scene is centred in what
     // is left of it: shift every clip-space y by k * w.
@@ -1722,8 +1805,17 @@ static void draw_scene(umbra_app *app) {
     }
     glUseProgram(app->prog_mesh);
     glUniformMatrix4fv(glGetUniformLocation(app->prog_mesh, "u_viewproj"), 1, GL_FALSE, vp);
-    glUniform2f(glGetUniformLocation(app->prog_mesh, "u_fog"), app->fog_near, app->fog_far);
-    glUniform3f(glGetUniformLocation(app->prog_mesh, "u_center"), app->center[0], app->center[1], app->center[2]);
+    if (app->player_on) {
+        // Two blocks away is clear, 90 is sky: a walking body sees further than the
+        // overview camera, which is framed from outside the island.
+        glUniform2f(glGetUniformLocation(app->prog_mesh, "u_fog"), 24.0f, 96.0f);
+        glUniform3f(glGetUniformLocation(app->prog_mesh, "u_center"), app->player.x,
+                    app->player.y, app->player.z);
+    } else {
+        glUniform2f(glGetUniformLocation(app->prog_mesh, "u_fog"), app->fog_near, app->fog_far);
+        glUniform3f(glGetUniformLocation(app->prog_mesh, "u_center"), app->center[0],
+                    app->center[1], app->center[2]);
+    }
     glBindVertexArray(app->vao_mesh);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->ibo_mesh);
     // PASS_OPAQUE and PASS_CUTOUT draw with depth writing on; PASS_TRANSLUCENT
@@ -1846,8 +1938,19 @@ static void draw_hud(umbra_app *app) {
     y += line;
     // The camera pose is on screen because "only sky visible" is otherwise a
     // guess: the numbers say where the eye is and what it is aimed at.
-    snprintf(buf, sizeof buf, "cam %.1f %.1f %.1f -> %.1f %.1f %.1f",
-             app->eye[0], app->eye[1], app->eye[2], app->look[0], app->look[1], app->look[2]);
+    if (app->player_on) {
+        // In first person the useful numbers are the body's: where it is, whether it
+        // is standing, and which way it faces. "Fell through the world" and "walked
+        // into a wall" both read off this line.
+        snprintf(buf, sizeof buf, "you %.1f %.1f %.1f  yaw %d  %s  steps %lld",
+                 app->player.x, app->player.y, app->player.z,
+                 (int)(app->player.yaw * 57.2958f),
+                 app->player.on_ground ? "ground" : "air",
+                 (long long)app->player.stepped);
+    } else {
+        snprintf(buf, sizeof buf, "cam %.1f %.1f %.1f -> %.1f %.1f %.1f",
+                 app->eye[0], app->eye[1], app->eye[2], app->look[0], app->look[1], app->look[2]);
+    }
     hud_text(x, y, s, 0.7f, 0.85f, 0.7f, 1, buf);
     y += line;
     if (app->selftest_ran) {
@@ -1995,6 +2098,7 @@ void umbra_app_frame(umbra_app *app) {
     }
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     if (app->mesh_uploaded && !app->render_fallback) {
+        player_update(app);
         gpu_timer_begin(app);
         draw_scene(app);
         gpu_timer_end(app);
@@ -2040,50 +2144,117 @@ void umbra_app_frame(umbra_app *app) {
 }
 
 void umbra_app_touch(umbra_app *app, int32_t x, int32_t y, bool down) {
-    if (!down) return;
+    umbra_app_touch_id(app, 0, x, y, down ? 0 : 2);
+}
+
+// Three things a finger can mean, in the order they are tested: one of the three
+// buttons, a drag that turns the head, or a hold that walks forward. A quick tap
+// on the scene jumps, and a tap while the body is standing in the overview starts
+// walking, which is the only way into first person from the home screen.
+void umbra_app_touch_id(umbra_app *app, int32_t id, int32_t x, int32_t y, int32_t phase) {
+    if (phase == 2 || phase == 3) {
+        if (app->touch_look_id == id) {
+            app->touch_look_id = -1;
+            app->move_fwd = 0;
+            // A short press that never moved the head is a tap, and a tap in first
+            // person is a jump. A long one was already walking.
+            int64_t held = umbra_now_us() - app->touch_down_us;
+            if (phase == 2 && !app->touch_moved && held < 180000 && app->player_on) {
+                app->jump_wanted = 1;
+                umbra_log(app, "player: tap, jumping");
+            }
+        }
+        if (app->touch_walk_id == id) {
+            app->touch_walk_id = -1;
+            app->move_fwd = 0;
+        }
+        return;
+    }
+    if (phase == 0) {
+        app->touch_down_us = umbra_now_us();
+        app->touch_last_x = (float)x;
+        app->touch_last_y = (float)y;
+        app->touch_moved = 0;
+    }
     if (app->mesh_state != 2) {
         // The buttons need the finished world: the self-test draws into its own
         // target but the benchmark measures the frame loop, and both would
         // measure the loading screen.
-        umbra_log(app, "touch ignored while meshing (%d%%)", app->mesh_progress / 10);
+        if (phase == 0) {
+            umbra_log(app, "touch ignored while meshing (%d%%)", app->mesh_progress / 10);
+        }
         return;
     }
-    if (app->screen != UMBRA_SCREEN_HOME) return;
-    for (int i = 0; i < 3; i++) {
-        float bx, by, bw, bh;
-        hud_button_rect(app, i, &bx, &by, &bw, &bh);
-        if (x >= bx && x <= bx + bw && y >= by && y <= by + bh) {
-            if (i == 0) {
-                // The self-test renders and reads back; it runs at a defined
-                // point in the frame rather than in the middle of event
-                // dispatch, so the GL state is ours and not the driver's.
-                app->selftest_requested = true;
-                umbra_log(app, "self-test: requested");
-            } else if (i == 1) {
-                app->benching = true;
-                app->bench_start_time = umbra_now_us() / 1000000.0;
-                app->bench_text[0] = 0;
-                umbra_bench_reset();
-                gpu_timer_load(app);
-                gpu_timer_reset(app);
-                // "59 FPS" on a 60 Hz phone is the display, not the GPU. Ask for an
-                // uncapped swap interval, log whether the platform agreed, and never
-                // pretend the frame rate means something it does not.
-                app->bench_vsync = 0;
-                if (app->swap_interval_fn) {
-                    int took = app->swap_interval_fn(app->swap_interval_ctx, 0);
-                    app->bench_vsync = took ? 1 : 2;
-                    umbra_log(app, "benchmark: uncapped swap interval %s",
-                              took ? "requested and accepted" : "refused by the platform");
+    if (app->screen == UMBRA_SCREEN_HOME && phase == 0) {
+        for (int i = 0; i < 3; i++) {
+            float bx, by, bw, bh;
+            hud_button_rect(app, i, &bx, &by, &bw, &bh);
+            if (x >= bx && x <= bx + bw && y >= by && y <= by + bh) {
+                if (i == 0) {
+                    // The self-test renders and reads back; it runs at a defined
+                    // point in the frame rather than in the middle of event
+                    // dispatch, so the GL state is ours and not the driver's.
+                    app->selftest_requested = true;
+                    umbra_log(app, "self-test: requested");
+                } else if (i == 1) {
+                    app->benching = true;
+                    app->bench_start_time = umbra_now_us() / 1000000.0;
+                    app->bench_text[0] = 0;
+                    umbra_bench_reset();
+                    gpu_timer_load(app);
+                    gpu_timer_reset(app);
+                    // "59 FPS" on a 60 Hz phone is the display, not the GPU. Ask for an
+                    // uncapped swap interval, log whether the platform agreed, and never
+                    // pretend the frame rate means something it does not.
+                    app->bench_vsync = 0;
+                    if (app->swap_interval_fn) {
+                        int took = app->swap_interval_fn(app->swap_interval_ctx, 0);
+                        app->bench_vsync = took ? 1 : 2;
+                        umbra_log(app, "benchmark: uncapped swap interval %s",
+                                  took ? "requested and accepted" : "refused by the platform");
+                    } else {
+                        umbra_log(app, "benchmark: no platform hook for the swap interval");
+                    }
+                    umbra_log(app, "benchmark: start, %d seconds, gpu timer %s", app->bench_seconds,
+                              g_gpu_timer.ready ? "on" : "off");
                 } else {
-                    umbra_log(app, "benchmark: no platform hook for the swap interval");
+                    umbra_log(app, "share log: requested");
+                    umbra_share_log(app);
                 }
-                umbra_log(app, "benchmark: start, %d seconds, gpu timer %s", app->bench_seconds,
-                          g_gpu_timer.ready ? "on" : "off");
-            } else {
-                umbra_log(app, "share log: requested");
-                umbra_share_log(app);
+                return;
             }
         }
+    }
+    // Not a button: this finger is on the world.
+    if (!app->player_on) {
+        // The overview is where the buttons live; touching the world starts walking.
+        // The first touch is not also a drag, so the view does not jump on entry.
+        player_spawn(app);
+        umbra_log(app, "player: first-person view on; drag to look, hold to walk, tap to jump");
+        app->touch_look_id = id;
+        return;
+    }
+    if (app->touch_look_id < 0) {
+        app->touch_look_id = id;
+        return;
+    }
+    if (app->touch_look_id == id) {
+        // Drag to look: 0.005 radians per pixel is about a 2300-pixel-wide turn on a
+        // phone screen, which is a comfortable sweep of the thumb.
+        float dx = (float)x - app->touch_last_x;
+        float dy = (float)y - app->touch_last_y;
+        if (phase == 1) {
+            if (dx * dx + dy * dy > 4.0f) app->touch_moved = 1;
+            umbra_player_look(&app->player, -dx * 0.005f, -dy * 0.005f);
+        }
+        app->touch_last_x = (float)x;
+        app->touch_last_y = (float)y;
+        return;
+    }
+    // A second finger holds "walk forward".
+    if (app->touch_walk_id < 0) {
+        app->touch_walk_id = id;
+        app->move_fwd = 1;
+        umbra_log(app, "player: walking");
     }
 }

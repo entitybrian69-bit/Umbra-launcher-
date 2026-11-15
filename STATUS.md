@@ -564,3 +564,28 @@ None that stop work. This session's sandbox has no JDK, Android SDK/NDK, adb,
 GPU or KVM, so the APK, the emulator and the phone-facing checks can only run in
 GitHub Actions; that is where gates 2, 3 and 5 run, and where their evidence is
 produced.
+
+## Stage 3 is in the working tree: block models and a body to walk with
+
+The atlas was stage 1. This stage adds the two things that make the world more than
+a picture:
+
+**Block models.** `core/models.goose` parses a model the way the jar writes one:
+elements with `from`/`to`, per-face `texture`, `uv`, `cullface`, `tintindex` and
+`rotation`, and `#name` chains resolved with a cycle guard. The mesher can draw one
+bound block's geometry from a parsed model instead of a whole cube, and the demo
+world uses that for a plank slab, so the model path runs in the shipped build. CI
+parses **every** block model in the real client jar with the same parser
+(`goose/modelcheck.goose`): `4192 block models parsed, 0 refused`, `1205 elements,
+4300 faces`, `3409 faces with an explicit uv, 1078 with a cullface, 122 with a tint
+index, 251 rotated`, `3845 models are templates with no elements of their own`.
+
+**A body.** `platform/shared/umbra_player.h` gives the camera a body: a 0.6 x 1.8
+box with gravity, a jump, walking speed, and collision against the same block data
+the mesher used, so a slab that is drawn half a block tall is also walked on half a
+block up (D-041). One finger: drag to look, rest to walk, tap to jump. The emulator
+smoke test now taps into the world, holds to walk and drags to look, and fails if
+the logged position does not move.
+
+Counts from this machine: host suite `PASS: 174 checks, 0 failures` (was 149 before
+the player), core suites `mesh 354`, `atlas 403`, `models 425`.

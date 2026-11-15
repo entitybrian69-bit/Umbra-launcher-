@@ -374,17 +374,34 @@ void umbra_share_log(umbra_app *app) {
 // --- input and lifecycle -----------------------------------------------
 
 static int32_t handle_input(struct android_app *state, AInputEvent *event) {
-    if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION) {
-        int32_t action = AMotionEvent_getAction(event) & AMOTION_EVENT_ACTION_MASK;
-        if (action == AMOTION_EVENT_ACTION_DOWN) {
-            float x = AMotionEvent_getX(event, 0);
-            float y = AMotionEvent_getY(event, 0);
-            umbra_app_touch(&g_st.app, (int32_t)x, (int32_t)y, true);
-            return 1;
-        }
+    if (AInputEvent_getType(event) != AINPUT_EVENT_TYPE_MOTION) {
+        (void)state;
+        return 0;
     }
-    (void)state;
-    return 0;
+    int32_t action = AMotionEvent_getAction(event);
+    int32_t masked = action & AMOTION_EVENT_ACTION_MASK;
+    // Which pointer this event is about: the index for a move/up, and the pointer
+    // id that just arrived or left for the pointer actions. Without this the app
+    // cannot tell the finger that is looking from the finger that is walking.
+    int32_t idx = (action & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >>
+                  AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT;
+    size_t count = AMotionEvent_getPointerCount(event);
+    if (masked == AMOTION_EVENT_ACTION_MOVE) {
+        for (size_t i = 0; i < count; i++) {
+            umbra_app_touch_id(&g_st.app, AMotionEvent_getPointerId(event, i),
+                               (int32_t)AMotionEvent_getX(event, i),
+                               (int32_t)AMotionEvent_getY(event, i), 1);
+        }
+        return 1;
+    }
+    if ((size_t)idx >= count) idx = 0;
+    int32_t phase = 0;
+    if (masked == AMOTION_EVENT_ACTION_UP || masked == AMOTION_EVENT_ACTION_POINTER_UP) phase = 2;
+    else if (masked == AMOTION_EVENT_ACTION_CANCEL) phase = 3;
+    umbra_app_touch_id(&g_st.app, AMotionEvent_getPointerId(event, idx),
+                       (int32_t)AMotionEvent_getX(event, idx),
+                       (int32_t)AMotionEvent_getY(event, idx), phase);
+    return 1;
 }
 
 static void handle_cmd(struct android_app *state, int32_t cmd) {

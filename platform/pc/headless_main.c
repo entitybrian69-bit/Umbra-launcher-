@@ -25,7 +25,30 @@
 #include "umbra_hud.h"
 #include "umbra_results.h"
 #include "umbra_camera.h"
+#include "umbra_player.h"
 #include "umbra_selftest.h"
+
+
+// A grid to test the player on: solid stone from y = 0 down, a wall at x = 10, and a
+// bottom slab filling z in [4,6) at y = 0 so half-height collision is exercised.
+typedef struct { int wall_x; float slab_z0, slab_z1; } player_grid;
+
+static void player_grid_init(player_grid *g) {
+    g->wall_x = 10;
+    g->slab_z0 = 4.0f;
+    g->slab_z1 = 6.0f;
+}
+
+static float player_top(void *ctx, int x, int y, int z) {
+    player_grid *g = (player_grid *)ctx;
+    if (x == g->wall_x && y >= 0 && y < 3 && (z < (int)g->slab_z0 || z >= (int)g->slab_z1 + 2)) return 1.0f;
+    if (y < 0) return 1.0f;
+    if (y == 0) {
+        if ((float)z >= g->slab_z0 && (float)z < g->slab_z1) return 0.5f;
+        return 1.0f;
+    }
+    return -1.0f;
+}
 
 static int failures = 0;
 static int checks = 0;
@@ -575,6 +598,123 @@ int main(int argc, char **argv) {
           "and an accepted uncapped request is recorded");
     check(strstr(text, "avg 16.66 ms (59 fps)") != NULL,
           "the CPU frame time is still reported next to it");
+
+    // --- the world the player walks on ------------------------------------
+    {
+        // The grid the player collides with is answered by the same Goose code that
+        // built the mesh, so these three numbers are the contract between the
+        // mesher and the body: a full block, the model's half slab, and air.
+        float floor_y = umbra_world_spawn(24, 24);
+        printf("world: floor at 24,24 is %.2f\n", floor_y);
+        int fy = (int)(floor_y - 0.5f);
+        check(umbra_block_top(24, fy, 24) == 1.0f, "the floor at the spawn point is a full block");
+        check(umbra_block_top(24, fy + 3, 24) < 0.0f, "and the air above it is not solid");
+        // The plank path is two columns wide at x = 12,13, for z 20..40; find one and
+        // compare its collision height with a full block beside it.
+        int slab_x = -1, slab_y = -1000, slab_z = -1;
+        for (int z = 18; z <= 42 && slab_x < 0; z++) {
+            for (int x = 12; x <= 13 && slab_x < 0; x++) {
+                for (int y = 40; y < 120; y++) {
+                    if (umbra_block_top(x, y, z) == 0.5f) { slab_x = x; slab_y = y; slab_z = z; break; }
+                }
+            }
+        }
+        check(slab_x >= 0, "a bottom slab is in the world, drawn from its model");
+        if (slab_x >= 0) {
+            printf("world: slab at %d,%d,%d with a half-block collision top\n", slab_x, slab_y, slab_z);
+            check(umbra_block_top(slab_x, slab_y - 1, slab_z) == 1.0f,
+                  "and it sits on a full block");
+            check(umbra_block_top(slab_x, slab_y + 1, slab_z) < 0.0f, "with air above it");
+        }
+    }
+
+    // --- the player -------------------------------------------------------
+    {
+        // A test grid: flat stone from y=-1 down, a wall at x == 10, and a half
+        // slab filling the floor at z in [4,6) so a slab and a full block can be
+        // compared in the same world.
+        player_grid g;
+        player_grid_init(&g);
+        umbra_player p;
+        umbra_player_reset(&p, 2.5f, 6.0f, 2.5f);
+        // Falling: the body lands on the floor and stops with its feet on it.
+        for (int i = 0; i < 120; i++) umbra_player_step(player_top, &g, &p, 1.0f / 60.0f, 0, 0, 0);
+        check(fabsf(p.y - 1.0f) < 0.001f, "a falling body lands on the floor with its feet on it");
+        check(p.on_ground == 1, "and knows it is standing");
+        check(fabsf(p.vy) < 0.001f, "with no downward speed left");
+
+        // Walking: one second of forward at the walking speed moves about that far.
+        umbra_player_reset(&p, 2.5f, 1.0f, 2.5f);
+        p.on_ground = 1;
+        p.yaw = -1.5707963f;   /* looking down +X */
+        for (int i = 0; i < 60; i++) umbra_player_step(player_top, &g, &p, 1.0f / 60.0f, 1, 0, 0);
+        check(p.x > 2.5f + 3.9f && p.x < 2.5f + 4.4f, "one second of walking covers about four blocks");
+        check(fabsf(p.y - 1.0f) < 0.01f, "and the body stays on the floor while walking");
+
+        // A wall stops the body 0.3 blocks short of it (its own half width).
+        umbra_player_reset(&p, 6.5f, 1.0f, 2.5f);
+        p.on_ground = 1;
+        p.yaw = -1.5707963f;
+        for (int i = 0; i < 180; i++) umbra_player_step(player_top, &g, &p, 1.0f / 60.0f, 1, 0, 0);
+        check(p.x < 10.0f && p.x > 9.6f, "a wall stops the body at its own width");
+        check(p.on_ground == 1, "and it is still standing");
+
+        // Jumping: the apex is about 1.2 blocks up and the body comes back down.
+        umbra_player_reset(&p, 2.5f, 1.0f, 2.5f);
+        p.on_ground = 1;
+        float apex = p.y;
+        for (int i = 0; i < 40; i++) {
+            umbra_player_step(player_top, &g, &p, 1.0f / 60.0f, 0, 0, i == 0 ? 1 : 0);
+            if (p.y > apex) apex = p.y;
+        }
+        check(apex > 1.0f + 1.0f && apex < 1.0f + 1.5f, "a jump lifts the body a little over one block");
+        for (int i = 0; i < 120; i++) umbra_player_step(player_top, &g, &p, 1.0f / 60.0f, 0, 0, 0);
+        check(fabsf(p.y - 1.0f) < 0.001f, "and it lands again");
+
+        // A slab is walked onto, not walked through: the feet end up at 0.5.
+        umbra_player_reset(&p, 2.5f, 1.0f, 4.5f);
+        for (int i = 0; i < 120; i++) umbra_player_step(player_top, &g, &p, 1.0f / 60.0f, 0, 0, 0);
+        check(fabsf(p.y - 0.5f) < 0.001f, "a body standing on a bottom slab is half a block up");
+
+        // Walking from a full block onto a slab steps up instead of stopping.
+        umbra_player_reset(&p, 2.5f, 1.0f, 3.5f);
+        p.on_ground = 1;
+        p.yaw = 3.14159265f;   /* looking down +Z */
+        // Twenty frames is a little over one block: enough to be on the slab, not
+        // enough to have walked off the far side of it.
+        for (int i = 0; i < 26; i++) umbra_player_step(player_top, &g, &p, 1.0f / 60.0f, 1, 0, 0);
+        check(p.z > 4.2f, "the body walks onto a slab instead of stopping at it");
+        check(fabsf(p.y - 0.5f) < 0.001f, "and is standing on top of it");
+        check(p.stepped == 0, "a drop onto a slab is not counted as a step up");
+
+        // A drop from height: the body does not tunnel through the floor even at
+        // terminal speed, because the step is sub-stepped.
+        umbra_player_reset(&p, 2.5f, 40.0f, 2.5f);
+        for (int i = 0; i < 300; i++) umbra_player_step(player_top, &g, &p, 1.0f / 60.0f, 0, 0, 0);
+        check(fabsf(p.y - 1.0f) < 0.001f, "a long fall ends on the floor, not through it");
+
+        // One enormous frame (a phone that stalled) still cannot tunnel.
+        umbra_player_reset(&p, 2.5f, 40.0f, 2.5f);
+        for (int i = 0; i < 10; i++) umbra_player_step(player_top, &g, &p, 0.25f, 0, 0, 0);
+        check(fabsf(p.y - 1.0f) < 0.001f, "a quarter-second frame does not push the body through the floor");
+
+        // Looking: pitch stops short of straight up and yaw stays in one turn.
+        umbra_player_look(&p, 0.0f, 10.0f);
+        check(p.pitch < 1.5708f && p.pitch > 1.5f, "pitch stops just short of straight up");
+        umbra_player_look(&p, 100.0f, 0.0f);
+        check(p.yaw >= -3.1416f && p.yaw < 3.1416f, "yaw stays inside one turn");
+
+        // The camera sits at eye height above the feet, and looks where yaw says.
+        float eye[3], fwd[3];
+        umbra_player_reset(&p, 1.0f, 2.0f, 3.0f);
+        umbra_player_eye(&p, eye);
+        check(fabsf(eye[1] - (2.0f + 1.62f)) < 0.001f, "the eye is 1.62 blocks above the feet");
+        umbra_player_forward(&p, fwd);
+        check(fabsf(fwd[2] + 1.0f) < 0.001f, "at yaw 0 the camera looks down -Z");
+        p.yaw = -1.5707963f;
+        umbra_player_forward(&p, fwd);
+        check(fabsf(fwd[0] - 1.0f) < 0.001f, "and at a quarter turn it looks down +X");
+    }
 
     goose_exit();
     printf("%s: %d checks, %d failures\n", failures ? "FAILED" : "PASS", checks, failures);

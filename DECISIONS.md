@@ -573,3 +573,35 @@ reason) and `mesh` (354 checks: a floating slab is six faces and its top is at
 `y+0.5`, a solid neighbour culls only the face the model tagged `cullface`, model
 faces sample the tile the model named). `goose/modelcheck.goose` runs the same parser
 over every block model in the real jar in CI.
+
+## D-041: the player is a box that asks the world how tall it is
+
+**Decided.** The body is an axis-aligned box 0.6 x 1.8, moved one axis at a time
+with a binary search back to the last free position, sub-stepped so a long frame
+cannot tunnel. Collision comes from one callback that answers "how tall is the
+collision box in this cell", answered by Goose (`umbra_block_top`) from the same
+block data the mesher used: 1.0 for a full block, 0.5 for the bottom slab drawn from
+a model, negative for air, water, plants and leaves.
+
+**Why.** The player has to agree with the picture. Drawing a slab 0.5 tall and then
+letting a body walk through it would be a lie the screenshot cannot show, so the
+height comes from the model's element box in one place and both the mesh and the
+body read it. Sub-stepping plus a binary search is also what makes "a phone that
+stalled for 250 ms" safe: the alternative, one big step, puts the body on the far
+side of a wall.
+
+**Cost.** No swimming, no ladders, no sneaking, no auto-jump for a full block (a
+0.5 step is climbed, a 1.0 step is a wall — the game's own rule is 0.6), and no
+entity physics beyond this one body. Water is not solid at all, so the body walks
+along the bottom of a pond instead of swimming.
+
+**Input.** One finger: drag to look, rest for 400 ms to walk, tap to jump. That is
+what a single pointer can express, and it is what the CI emulator can drive with
+`adb shell input swipe`. Two fingers would be better and are not in yet.
+
+**Tests that hold this.** 24 host checks in `platform/pc/headless_main.c` cover
+landing, walking speed, a wall stopping a body at its own half-width, the jump apex,
+standing on a slab at 0.5, stepping up onto one, a long fall and a quarter-second
+frame not tunnelling, and the eye/forward vectors. Three more check the world
+contract itself: the spawn floor is a full block, the air above is not solid, and
+the slab in the demo world has a 0.5 collision top with a full block under it.

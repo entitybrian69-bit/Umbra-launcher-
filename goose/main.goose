@@ -587,6 +587,58 @@ export "umbra_atlas_named" fn atlas_named(name: const u8[:]) -> i64 {
     return tex_slot_for(name)
 }
 
+// --- the world, as a grid the player can walk on -----------------------
+//
+// The player needs one question answered per cell: how tall is the collision box
+// in this block? A full block is 1.0, a bottom slab is 0.5 (from its model), and
+// anything you can walk through -- air, water, plants, leaves are not solid here --
+// is -1. This is the same knowledge the mesher used, asked the other way round.
+
+fn demo_column_at(wx: i64, wz: i64) -> i64 {
+    if wx < 0 || wz < 0 || wx >= 48 || wz >= 48 { return -1; }
+    return (wz / 16) * 3 + (wx / 16);
+}
+
+fn demo_block_at(wx: i64, wy: i64, wz: i64) -> u32 {
+    let ci = demo_column_at(wx, wz);
+    if ci < 0 { return 0; }
+    let c = demo[ci];
+    return chunk_block(c, (wx % 16) as i32, wy as i32, (wz % 16) as i32);
+}
+
+export "umbra_block_top" fn block_top_export(wx: i64, wy: i64, wz: i64) -> f32 {
+    let id = demo_block_at(wx, wy, wz);
+    if id == 0 { return -1.0; }
+    let rc = render_class(id);
+    if rc == RC_CROSS { return -1.0; }
+    if rc == RC_TRANSLUCENT { return -1.0; }   // water is swimmable, not walked on
+    if model_bound && id == model_block {
+        // A bound model's collision is its box: the demo slab is half a block.
+        var lo: f32[3] = [0.0, 0.0, 0.0];
+        var hi: f32[3] = [0.0, 0.0, 0.0];
+        mdl_elem_box(0, lo, hi);
+        return hi[1];
+    }
+    return 1.0;
+}
+
+// The floor height at a column of the world: the first y, from the top down, whose
+// block can be stood on. The C spawn code asks for this instead of guessing.
+export "umbra_world_spawn" fn world_spawn_export(wx: i64, wz: i64) -> f32 {
+    var y: i64 = 120;
+    while y > -64 {
+        let t = block_top_export(wx, y, wz);
+        if t > 0.0 { return (y as f32) + t; }
+        y -= 1;
+    }
+    return 64.0;
+}
+
+export fn umbra_world_min_x() -> f32 { return 0.0 }
+export fn umbra_world_max_x() -> f32 { return 48.0 }
+export fn umbra_world_min_z() -> f32 { return 0.0 }
+export fn umbra_world_max_z() -> f32 { return 48.0 }
+
 export "umbra_batch_start" fn world_batch_start(b: i64) -> i64 { return world_starts[b] }
 export "umbra_batch_count" fn world_batch_count(b: i64) -> i64 { return world_batches[b] }
 
