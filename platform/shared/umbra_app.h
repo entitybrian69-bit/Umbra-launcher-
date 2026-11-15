@@ -89,6 +89,7 @@ struct umbra_app {
     bool render_fallback;      // drawing without the full pipeline
     char fallback_reason[160];
     bool gpu_timer_supported;  // GL_EXT_disjoint_timer_query, i.e. real GPU time
+    int gpu_timer_disjoint;   // a query result was thrown away after a GPU reset
     char gpu_timer_note[96];
     int64_t gpu_time_us;       // summed elapsed GPU time during the benchmark
     int64_t gpu_frames;        // frames that produced a GPU time

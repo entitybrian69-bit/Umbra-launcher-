@@ -546,7 +546,7 @@ int main(int argc, char **argv) {
         if (*q == '\n') lines++;
     }
     check(lines == 6, "the benchmark block is six lines: four of numbers and two of honesty");
-    check(strstr(text, "gpu n/a (no EXT_disjoint_timer_query)") != NULL,
+    check(strstr(text, "gpu n/a (no GPU timer results)") != NULL,
           "without a timer query the gpu time says so instead of guessing");
     check(strstr(text, "vsync: capped by the platform") != NULL,
           "and the frame rate is labelled with what capped it");
