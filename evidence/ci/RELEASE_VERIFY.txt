@@ -1,6 +1,37 @@
 release verification
 tag: v0.3.0-pre
-run: https://github.com/entitybrian69-bit/Umbra-launcher-/actions/runs/43691770806
-commit: 5e11a278d88cddda38bf9d1a85180377a185bc1d
-date: 2026-11-15T07:55:06Z
+base: https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.0-pre
+run: https://github.com/entitybrian69-bit/Umbra-launcher-/actions/runs/43693504331
+commit: 3b2d595209ff6cfaea9dd6742c5b86fc601caf92
+date: 2026-11-15T08:18:00Z
 
+asset: umbra-0.3.0-pre-arm64.apk
+  url: https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.0-pre/umbra-0.3.0-pre-arm64.apk
+  http: 200
+  size: 214723 bytes
+  sha256: acff4fcfcfb30e14ddf8870cfde2adcc596cfc69eaf0962b5d6cddabfe6b160c
+  expected: acff4fcfcfb30e14ddf8870cfde2adcc596cfc69eaf0962b5d6cddabfe6b160c
+  result: OK
+asset: umbra-0.3.0-pre-linux-x64
+  url: https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.0-pre/umbra-0.3.0-pre-linux-x64
+  http: 200
+  size: 59048 bytes
+  sha256: ae53bf6dac39c50fd6b92daf5ebccf8d7b80165793bb8854a02e39b6bf12cfbb
+  expected: ae53bf6dac39c50fd6b92daf5ebccf8d7b80165793bb8854a02e39b6bf12cfbb
+  result: OK
+asset: umbra-0.3.0-pre-windows-x64.exe
+  url: https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.0-pre/umbra-0.3.0-pre-windows-x64.exe
+  http: 200
+  size: 87130 bytes
+  sha256: 24e1f9fb4b47406eaa97b15bfa5bf8768bae8bc33b5ec1583763f686904dbae7
+  expected: 24e1f9fb4b47406eaa97b15bfa5bf8768bae8bc33b5ec1583763f686904dbae7
+  result: OK
+
+RESULT: PASS - 3 assets re-downloaded from https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.0-pre and every sha256 matched
+linux: the downloaded binary passed its self-test
+windows: the downloaded .exe did not pass under wine
+0108:err:setupapi:do_file_copyW Unsupported style(s) 0x10
+002c:err:setupapi:do_file_copyW Unsupported style(s) 0x10
+0108:err:setupapi:do_file_copyW Unsupported style(s) 0x10
+0024:err:module:import_dll Library libwinpthread-1.dll (which is needed by L"Z:\\home\\runner\\work\\Umbra-launcher-\\Umbra-launcher-\\dist\\downloaded\\umbra-0.3.0-pre-windows-x64.exe") not found
+0024:err:module:loader_init Importing dlls for L"Z:\\home\\runner\\work\\Umbra-launcher-\\Umbra-launcher-\\dist\\downloaded\\umbra-0.3.0-pre-windows-x64.exe" failed, status c0000135
