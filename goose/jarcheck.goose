@@ -39,6 +39,7 @@ var jc_pool: u8[>..] = [];        // names, appended and never removed
 var jc_table: i64[>..] = [];      // open-addressed entry-name table
 var jc_archive: i64 = -1;
 var jc_cur: u8[>..] = [];         // the entry being checked, for messages
+var jc_msg: u8[>..] = [];         // scratch for building a message
 
 var jc_blocks: i64 = 0;
 var jc_models: i64 = 0;
@@ -57,6 +58,8 @@ var jc_inverted_boxes: i64 = 0;
 var jc_multipart: i64 = 0;
 var jc_weighted: i64 = 0;
 var jc_uv_present: i64 = 0;
+var jc_rotations: i64 = 0;
+var jc_rot_no_angle: i64 = 0;
 var jc_unused_models: i64 = 0;
 
 var jc_problems: u8[>..] = [];
@@ -84,6 +87,17 @@ fn jc_problem(msg: const u8[:]) {
         let sep = ": ";
         for i in sep.len { jc_problems.push(sep[i]); }
         for i in msg.len { jc_problems.push(msg[i]); }
+    }
+}
+
+// A problem that names the key it is about, and how many keys the chain did
+// define — the difference between "wrong" and "looked in the wrong place".
+fn jc_problem_key(msg: const u8[:], key: const u8[:]) {
+    jc_msg = [];
+    format(jc_msg, msg, " (chain defines ", jc_keys.len, " keys)");
+    jc_problem(jc_msg[..]);
+    if jc_reported <= JC_MAX_REPORTED {
+        jc_problem(key);
     }
 }
 
@@ -291,7 +305,7 @@ fn jc_resolve_face_tex(key: const u8[:]) -> i64 {
     while hops < JC_MAX_CHAIN {
         let v = jc_tex_get(name);
         if v.off < 0 {
-            jc_problem("a face texture key that no model in the chain defines");
+            jc_problem_key("a face texture key that no model in the chain defines", name);
             return -1;
         }
         let val = jc_pin_str(v);
@@ -348,13 +362,18 @@ fn jc_check_box(el: i64) {
         if json_kind(rotation) != J_OBJ {
             jc_problem("a rotation that is not an object");
         } else {
-            let angle = json_get(rotation, "angle");
-            if angle < 0 || json_kind(angle) != J_NUM {
-                jc_problem("a box rotation without a numeric angle");
+            // angle and axis are optional: the hanging-sign models carry a
+            // rotation with neither, and the client accepts that.
+            jc_rotations += 1;
+            let origin = json_get(rotation, "origin");
+            if origin < 0 || json_kind(origin) != J_ARR || json_child_count(origin) != 3 {
+                jc_problem("a box rotation without a three-number origin");
             }
-            let axis = json_get(rotation, "axis");
-            if axis < 0 || json_kind(axis) != J_STR {
-                jc_problem("a box rotation without an axis");
+            let angle = json_get(rotation, "angle");
+            if angle < 0 {
+                jc_rot_no_angle += 1;
+            } else if json_kind(angle) != J_NUM {
+                jc_problem("a box rotation whose angle is not a number");
             }
         }
     }
@@ -638,7 +657,8 @@ fn main() {
           ", faces whose texture resolved to a PNG ", jc_faces_resolved,
           ", uv sets ", jc_uv_present);
     print("jar: texture variable hops ", jc_var_hops,
-          ", inverted boxes (legal) ", jc_inverted_boxes);
+          ", inverted boxes (legal) ", jc_inverted_boxes,
+          ", box rotations ", jc_rotations, " (", jc_rot_no_angle, " with no angle)");
     print("jar: multipart blockstates ", jc_multipart, ", weighted variant lists ", jc_weighted);
     print("jar: textures decoded ", decoded, ", whole square frames ", sane,
           " (", animated, " animated strips), tallest ", longest, " px");
