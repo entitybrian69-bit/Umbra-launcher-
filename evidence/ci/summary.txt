@@ -1,11 +1,11 @@
-run: 43669192896, commit: e9ceffcd360d3becd0ec03e4da58d677f4808138
+run: 43669973781, commit: 94d5861028c4917fa9293ab3f99daede14c5de2b
 sdk: /usr/local/lib/android/sdk
 adb: /usr/local/lib/android/sdk/platform-tools/adb
 emulator: /usr/local/lib/android/sdk/emulator/emulator
-apk: ./android/app/build/outputs/apk/release/app-release.apk (189871 bytes, sha256 5774f8cd491348e78b3f0d35e15fa4020ac248b1560f598aa5e51bc1d6ee7c02)
+apk: ./android/app/build/outputs/apk/release/app-release.apk (190223 bytes, sha256 726184345a377d6e4db970d865b77eed3fba3cab4cd723fb1f8fbeaf57454840)
 
 == phase: kvm ==
-kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 15 02:49 /dev/kvm
+kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 15 02:58 /dev/kvm
 cpu: 8 flags match vmx/svm
 
 == phase: sdk-packages ==
@@ -16,68 +16,67 @@ sdk-image: ok (3 lines)
 avd: umbra_ci from device profile pixel_2 at /home/runner/.android/avd
 
 == phase: emulator-boot ==
-emulator: started as pid 2731
-emulator: booted in 26 s
+emulator: started as pid 2854
+emulator: booted in 30 s
 android: api 30 (11)
 display: 1080x1920
 
 == phase: unlock ==
 wake: 
-focus before launch:  mCurrentFocus=Window{44f9d09 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
+focus before launch:  mCurrentFocus=Window{2bf2123 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
 
 == phase: install ==
 install: Success
 
 == phase: launch ==
-launch: Status: ok TotalTime: 930 
-running: pid 3170
+launch: Status: ok TotalTime: 950 
+running: pid 3747
 app: android_main: files /data/user/0/org.umbra.client/files
 app: goose core initialised
 app: app cmd 10, window 0x0
 app: no window yet: waiting for the activity to become visible
 app: app cmd 11, window 0x0
 app: app cmd 0, window 0x0
-app: app cmd 1, window 0x7ac9be0816d0
+app: app cmd 1, window 0x79f5bb0200a0
 app: EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-app: app cmd 3, window 0x7ac9be0816d0
-app: app cmd 5, window 0x7ac9be0816d0
-app: app cmd 4, window 0x7ac9be0816d0
-app: 02:50:39 ---- Umbra starting, build e9ceffc ----
-app: 02:50:39 core: umbra core: formats and meshing
-app: 02:50:39 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
-app: 02:50:39 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-app: 02:50:39 GL_VENDOR Google (Google Inc.)
-app: 02:50:39 depth bits 24, vertex highp 127^23, fragment highp 127^23
-app: 02:50:42 mesh bounds x 0.0..48.0 y -64.0..76.0 z 0.0..48.0, camera 55.2 blocks out
-app: 02:50:42 demo world built in 10.7 ms, meshed in 3277.8 ms
-app: 02:50:42 mesh: 370488 vertices, 555732 indices; batches 542910/12822/0
-app: 02:50:42 hud: button 0 at 8,946 size 1904x34 on 1920x1080 (insets 0,0,0,0)
-app: 02:50:42 hud: button 1 at 8,988 size 1904x34 on 1920x1080 (insets 0,0,0,0)
-app: 02:50:42 hud: button 2 at 8,1030 size 1904x34 on 1920x1080 (insets 0,0,0,0)
-app: app cmd 6, window 0x7ac9be0816d0
+app: app cmd 3, window 0x79f5bb0200a0
+app: app cmd 5, window 0x79f5bb0200a0
+app: app cmd 4, window 0x79f5bb0200a0
+app: 03:00:04 ---- Umbra starting, build 94d5861 ----
+app: 03:00:04 core: umbra core: formats and meshing
+app: 03:00:04 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
+app: 03:00:04 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+app: 03:00:04 GL_VENDOR Google (Google Inc.)
+app: 03:00:04 depth bits 24, vertex highp 127^23, fragment highp 127^23
+app: 03:00:07 mesh bounds x 0.0..48.0 y -64.0..76.0 z 0.0..48.0, camera 55.2 blocks out
+app: 03:00:07 demo world built in 2.7 ms, meshed in 3281.1 ms
+app: 03:00:07 mesh: 370488 vertices, 555732 indices; batches 542910/12822/0
+app: 03:00:07 hud: button 0 at 8,946 size 1904x34 on 1920x1080 (insets 0,0,0,0)
+app: 03:00:07 hud: button 1 at 8,988 size 1904x34 on 1920x1080 (insets 0,0,0,0)
+app: 03:00:07 hud: button 2 at 8,1030 size 1904x34 on 1920x1080 (insets 0,0,0,0)
+app: app cmd 6, window 0x79f5bb0200a0
 
 == phase: screenshot-home ==
-shot1: 213244 bytes, sha256 70da816fc10c7ee437ad50254543e83ad525b58a8b286672a2849cccbee486be
-focus while drawing:  mCurrentFocus=Window{cb2af46 u0 org.umbra.client/android.app.NativeActivity}
+shot1: 213269 bytes, sha256 c6a191393c80b7f06df7b99c542df31f4d11c8ea647c0ca2105d3a29854bffe0
+focus while drawing:  mCurrentFocus=Window{55e85fb u0 org.umbra.client/android.app.NativeActivity}
 
 == phase: selftest-tap ==
 tap: self-test button at 8,946 size 1904x34, tapping 960,963
 tap: attempt 1 at 960,963
 tap: the app reported a self-test
-shot2: 213746 bytes, sha256 a9709a04a3c877e928e727fdcfed0a15910a6802ba8f133d961258b3101e3794
-app: 02:51:36 self-test: requested
-app: 02:51:36 self-test: begin (1920x1080)
-app: 02:51:36 self-test: gl error after the pattern draw 0x502
-app: 02:51:36 self-test: target offscreen, pixel(0,0) = 0,0,0, pixel(w-1,0) = 0,0,0
-app: 02:51:36 self-test: pattern 2073600 pixels checked, 2073600 mismatched, max channel diff 255
-app: 02:51:36 self-test: cube 2073600 pixels checked, 239744 mismatched
-app: 02:51:36 self-test: first bad pixel index 4
+shot2: 213637 bytes, sha256 a58be88891e54e768909189e466d55d49804e26e1d38ba5ce6ce9b82e7f3bfb7
+app: 03:00:46 self-test: requested
+app: 03:00:46 self-test: begin (1920x1080)
+app: 03:00:46 self-test: target offscreen, pixel(0,0) = 0,0,64, pixel(w-1,0) = 255,255,64
+app: 03:00:46 self-test: pattern 2073600 pixels checked, 0 mismatched, max channel diff 0
+app: 03:00:46 self-test: cube 2073600 pixels checked, 100745 mismatched
+app: 03:00:46 self-test: first bad pixel index 678533
 
 == phase: soak ==
 soak: holding for 60s
-soak: survived, pid 3170
+soak: survived, pid 3747
 soak: no FATAL EXCEPTION
-meminfo:  Native Heap 30233 30200 0 49 31548 39460 33714 1294| Native Heap: 30200 31548| TOTAL PSS: 81024 TOTAL RSS: 178368 TOTAL SWAP PSS: 261|
+meminfo:  Native Heap 30171 30144 0 49 31476 39460 33702 1305| Native Heap: 30144 31476| TOTAL PSS: 81219 TOTAL RSS: 177016 TOTAL SWAP PSS: 285|
 
 == phase: done ==
 result: PASS (installed, launched, drew, self test tapped, 60s soak, no crash)
