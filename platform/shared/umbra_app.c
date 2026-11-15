@@ -1074,6 +1074,11 @@ static void device_checks(umbra_app *app) {
     device_note(app, "shader programs", buf, all);
     if (!app->prog_mesh) set_fallback(app, "the world shader did not compile");
     if (!app->prog_hud) set_fallback(app, "the text shader did not compile");
+    if (!app->prog_pattern || !app->prog_cube) {
+        // The self-test cannot compare a pipeline it cannot draw with; saying so
+        // is worth more than a FAIL that blames the device.
+        set_fallback(app, "the self-test shaders did not compile");
+    }
 
     snprintf(buf, sizeof buf, "%d bits", app->depth_bits);
     device_note(app, "depth buffer", buf, app->depth_bits >= 16);
@@ -1753,9 +1758,15 @@ void umbra_app_frame(umbra_app *app) {
     glEnable(GL_DEPTH_TEST);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glViewport(0, 0, app->width, app->height);
-    glClearColor(0.55f, 0.70f, 0.92f, 1.0f);
+    if (app->render_fallback) {
+        // The plain renderer: a flat background and the overlay that says why.
+        // No world, no shader that failed to link, and no crash.
+        glClearColor(0.10f, 0.11f, 0.14f, 1.0f);
+    } else {
+        glClearColor(0.55f, 0.70f, 0.92f, 1.0f);
+    }
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    if (app->mesh_uploaded) {
+    if (app->mesh_uploaded && !app->render_fallback) {
         gpu_timer_begin(app);
         draw_scene(app);
         gpu_timer_end(app);
