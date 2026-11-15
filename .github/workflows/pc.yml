@@ -82,14 +82,15 @@ jobs:
           fetch-depth: 1
       - uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          # UCRT64 rather than MINGW64: MSYS2 deprecated the latter.
+          msystem: UCRT64
           update: false
           install: >-
             git
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-ninja
-      - name: Build and run (MSYS2 MINGW64)
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+      - name: Build and run (MSYS2 UCRT64)
         shell: msys2 {0}
         run: |
           set -euo pipefail
@@ -102,9 +103,11 @@ jobs:
           (cd dist && sha256sum umbra-windows-x64.exe > SHA256SUMS)
           cat dist/SHA256SUMS
           echo "::notice title=windows-x64::$(cat dist/SHA256SUMS)"
+      # Publishing runs in Git Bash, not MSYS2: the checkout's credentials are
+      # configured for the Windows git that Git Bash uses.
       - name: Publish the self-test text
         if: always()
-        shell: msys2 {0}
+        shell: bash
         run: |
           set -euo pipefail
           mkdir -p evidence/ci
