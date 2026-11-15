@@ -1,0 +1,143 @@
+goose/core/mesh.goose:247: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+            push_cross(x as f32, y as f32, z as f32, tint);
+                       ^~~~~~~~
+goose/core/mesh.goose:247: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+            push_cross(x as f32, y as f32, z as f32, tint);
+                                 ^~~~~~~~
+goose/core/mesh.goose:247: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+            push_cross(x as f32, y as f32, z as f32, tint);
+                                           ^~~~~~~~
+goose/core/mesh.goose:287: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+            push_quad(x as f32, y as f32, z as f32, face, 0.0, 0.0, 1.0, 1.0, tint, ao);
+                      ^~~~~~~~
+goose/core/mesh.goose:287: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+            push_quad(x as f32, y as f32, z as f32, face, 0.0, 0.0, 1.0, 1.0, tint, ao);
+                                ^~~~~~~~
+goose/core/mesh.goose:287: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+            push_quad(x as f32, y as f32, z as f32, face, 0.0, 0.0, 1.0, 1.0, tint, ao);
+                                          ^~~~~~~~
+goose/core/region.goose:60: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+    if id as i64 >= bs_defs.len { return bs_names[0..0]; }
+       ^~~~~~~~~
+goose/core/region.goose:66: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+    if id as i64 >= bs_defs.len { return bs_props[0..0]; }
+       ^~~~~~~~~
+goose/core/region.goose:142: warning: redundant `as u32`: a u16 converts to u32 implicitly here
+    return s.blocks[i] as u32;
+           ^~~~~~~~~~~~~~~~~~
+goose/core/region.goose:452: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+            put_be_u32(out, (offsets[i] << 8) | (counts[i] as u32));
+                                                 ^~~~~~~~~~~~~~~~
+goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
+        nbt_nodes[slot].ival = r.src[r.pos] as i8 as i64;
+                               ^~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/nbt.goose:108: warning: redundant `as i64`: an i16 converts to i64 implicitly here
+        nbt_nodes[slot].ival = be_i16(r.src, r.pos) as i64;
+                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/nbt.goose:112: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+        nbt_nodes[slot].ival = be_i32(r.src, r.pos) as i64;
+                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/nbt.goose:120: warning: redundant `as f64`: an f32 converts to f64 implicitly here
+        nbt_nodes[slot].fval = be_f32(r.src, r.pos) as f64;
+                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/nbt.goose:256: warning: redundant `as f64`: an i64 converts to f64 implicitly here
+    return nbt_nodes[c].ival as f64;
+           ^~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/png.goose:58: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+            raw[i] = (raw[i] as i64 + add) as u8;
+                      ^~~~~~~~~~~~~
+goose/core/png.goose:94: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+            for b in ty { c = crc_table[(c ^ (b as u32)) & 0xFF] ^ (c >> 8); }
+                                              ^~~~~~~~
+goose/core/png.goose:95: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+            for b in body { c = crc_table[(c ^ (b as u32)) & 0xFF] ^ (c >> 8); }
+                                                ^~~~~~~~
+goose/core/png.goose:99: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+                       " (chunk says 0x", u64_to_hex(want_crc as u64, 8),
+                                                     ^~~~~~~~~~~~~~~
+goose/core/png.goose:100: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+                       ", bytes are 0x", u64_to_hex(crc_all as u64, 8), ")");
+                                                    ^~~~~~~~~~~~~~
+goose/core/png.goose:110: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+                    info.width = be_u32(body, 0) as i64;
+                                 ^~~~~~~~~~~~~~~~~~~~~~
+goose/core/png.goose:111: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+                    info.height = be_u32(body, 4) as i64;
+                                  ^~~~~~~~~~~~~~~~~~~~~~
+goose/core/png.goose:112: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+                    info.bit_depth = body[8] as i64;
+                                     ^~~~~~~~~~~~~~
+goose/core/png.goose:113: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+                    info.color_type = body[9] as i64;
+                                      ^~~~~~~~~~~~~~
+goose/core/png.goose:114: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+                    info.interlace = body[12] as i64;
+                                     ^~~~~~~~~~~~~~~
+goose/core/png.goose:187: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+                    idx = raw[rs + x] as i64;
+                          ^~~~~~~~~~~~~~~~~~
+goose/core/png.goose:202: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+                    v = raw[rs + x] as i64;
+                        ^~~~~~~~~~~~~~~~~~
+goose/core/png.goose:204: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+                    v = raw[rs + x * 2] as i64;
+                        ^~~~~~~~~~~~~~~~~~~~~~
+goose/core/png.goose:235: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+                    if r as i64 == tr && g as i64 == tg && b as i64 == tb { a = 0; }
+                       ^~~~~~~~
+goose/core/png.goose:235: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+                    if r as i64 == tr && g as i64 == tg && b as i64 == tb { a = 0; }
+                                         ^~~~~~~~
+goose/core/png.goose:235: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+                    if r as i64 == tr && g as i64 == tg && b as i64 == tb { a = 0; }
+                                                           ^~~~~~~~
+goose/core/inflate.goose:84: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+        code |= (bits(r, 1) as i64);
+                 ^~~~~~~~~~~~~~~~~
+goose/core/inflate.goose:150: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+                let len = length_base[li] + (bits(r, length_extra[li]) as i64);
+                                             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/inflate.goose:157: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+                let d = dist_base[dsym] + (bits(r, dist_extra[dsym]) as i64);
+                                           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/inflate.goose:301: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+    let hdr = (cmf as u32) * 256 + (flg as u32);
+                                    ^~~~~~~~~~
+goose/core/inflate.goose:303: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+        format(err, "zlib: bad header check 0x", u64_to_hex(hdr as u64, 4));
+                                                            ^~~~~~~~~~
+goose/core/inflate.goose:316: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+        format(err, "zlib: adler32 mismatch: stream says 0x", u64_to_hex(want as u64, 8),
+                                                                         ^~~~~~~~~~~
+goose/core/inflate.goose:317: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+               ", data is 0x", u64_to_hex(got as u64, 8));
+                                          ^~~~~~~~~~
+goose/core/mem.goose:26: warning: redundant `as u16`: a u8 converts to u16 implicitly here
+    return (b[off] as u16 << 8) | (b[off + 1] as u16);
+                                   ^~~~~~~~~~~~~~~~~
+goose/core/mem.goose:29: warning: redundant `as u32`: a u16 converts to u32 implicitly here
+    return (be_u16(b, off) as u32 << 16) | (be_u16(b, off + 2) as u32);
+                                            ^~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/mem.goose:32: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+    return (be_u32(b, off) as u64 << 32) | (be_u32(b, off + 4) as u64);
+                                            ^~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/mem.goose:47: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+    return (b[off] as u32) | (b[off + 1] as u32 << 8) | (b[off + 2] as u32 << 16) |
+            ^~~~~~~~~~~~~
+goose/core/mem.goose:52: warning: redundant `as u16`: a u8 converts to u16 implicitly here
+    return (b[off] as u16) | (b[off + 1] as u16 << 8);
+            ^~~~~~~~~~~~~
+goose/core/mem.goose:113: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+        c = crc_table[(c ^ (b as u32)) & 0xFF] ^ (c >> 8);
+                            ^~~~~~~~
+goose/core/mem.goose:123: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+        a = (a + (x as u32)) % 65521;
+                  ^~~~~~~~
+built build/pc/umbra_headless
+umbra headless self-test
+core version: 0.1.0-stage1
+mesh: 17783424 vertex bytes, 2222928 index bytes
+mesh checks: 0 bad indices, 0 bad normals, 0 positions out of bounds
+batches: 542910 + 12822 + 0 = 555732 of 555732 indices
+bench: 1000 frames avg 16.0 ms (62 fps) 1% low 16.0 ms median 16.0 ms worst 16.0 ms | headless | Android none
+PASS: 19 checks, 0 failures
