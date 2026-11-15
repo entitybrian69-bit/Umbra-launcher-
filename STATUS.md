@@ -111,6 +111,40 @@ stops at 100, that no line sits under the status bar, that the island fills the
 strip between the text and the buttons, and that the `LAST RUN` block comes back
 after closing and reopening the app.
 
+## 0.3.2-pre is published and verified
+
+`v0.3.2-pre` is the build that answers the owner's three findings. `v0.3.0-pre` and
+`v0.3.1-pre` stay published and untouched.
+
+```
+release: https://github.com/entitybrian69-bit/Umbra-launcher-/releases/tag/v0.3.2-pre
+run:     https://github.com/entitybrian69-bit/Umbra-launcher-/actions/runs/43726939393
+commit:  33958092e1ba8743451d7702510b7547236bb729
+asset: umbra-0.3.2-pre-arm64.apk      254787 bytes  http 200  sha256 a0cd23ec...  OK
+asset: umbra-0.3.2-pre-linux-x64       76552 bytes  http 200  sha256 c5c2775d...  OK
+asset: umbra-0.3.2-pre-windows-x64.exe 176668 bytes http 200  sha256 342590ed...  OK
+RESULT: PASS - 3 assets re-downloaded and every sha256 matched
+linux: the downloaded binary passed its self-test
+windows: the downloaded .exe ran under wine and passed its self-test
+```
+
+`RELEASE_VERIFY.txt` in the repository root is that file, committed by the release
+workflow after it downloaded each asset from its public URL.
+
+**What is verified:** the work builds from the tag on a clean checkout, the APK
+installs and runs on the CI emulator, its GPU self-test passes with 4 147 200
+compared pixels, the benchmark produces the six-line block with a `vsync:` verdict,
+the device checks are in the log, a restart shows the previous run's results, a
+kill is still reported as a crash, and the published bytes match their checksums.
+
+**What is CI-only:** all of it. SwiftShader, x86_64, density 420, no display
+cutout, no timer-query extension.
+
+**What the owner must confirm:** that the phone now says `SELFTEST PASS` with a
+real pixel count, that the log carries the eight `check:` lines and either a real
+`gpu avg N ms` or `gpu n/a`, and that the benchmark's `vsync:` line reports what
+the phone actually did.
+
 ## 0.3.2 - the three findings from the phone, and the four bugs they found
 
 The owner's `0.3.1` run on the Mali-G57 produced three numbers. Each one had a
