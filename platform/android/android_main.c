@@ -389,6 +389,18 @@ static void handle_cmd(struct android_app *state, int32_t cmd) {
             // umbra_app_init() when a window comes back.
             st->pending_restart = 1;
             break;
+        case APP_CMD_PAUSE:
+        case APP_CMD_STOP:
+        case APP_CMD_DESTROY:
+            // Home button, app switcher, a swipe away, or the system stopping us:
+            // none of those is a crash, so the marker is set to clean and the next
+            // start does not accuse the previous one.
+            if (st->egl_ready) umbra_session_set(&st->app, "clean");
+            break;
+        case APP_CMD_RESUME:
+        case APP_CMD_START:
+            if (st->egl_ready) umbra_session_set(&st->app, "running");
+            break;
         case APP_CMD_WINDOW_RESIZED:
         case APP_CMD_CONFIG_CHANGED:
             // Rotation, a fold, the bars appearing or a different density all

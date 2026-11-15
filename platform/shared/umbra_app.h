@@ -104,6 +104,8 @@ struct umbra_app {
     int32_t hud_logged_width;  // the width the HUD layout was last logged at
     int32_t draw_calls;        // batches actually drawn in the last frame
     int32_t last_run_lines;    // lines in last_run_text, 0 when there is none
+    int32_t hud_rows_logged;   // the row count the fit was last logged for
+    bool hud_fits;             // did the overlay's content fit inside its panel
     char last_run_text[320];   // the previous run's self-test and benchmark
     char selftest_path[256];   // where the last self-test verdict is kept
     char bench_path[256];      // where the last benchmark numbers are kept
@@ -120,6 +122,10 @@ struct umbra_app {
 // The app's own entry points, called by whichever platform shell is hosting it.
 int umbra_app_init(umbra_app *app);
 void umbra_app_shutdown(umbra_app *app);
+// "running", "clean" or "suspended": the platform calls this when the app goes to
+// the background and when it comes back, so that a swipe-away is not reported as
+// a crash on the next start.
+void umbra_session_set(umbra_app *app, const char *state);
 void umbra_app_frame(umbra_app *app);
 void umbra_app_touch(umbra_app *app, int32_t x, int32_t y, bool down);
 

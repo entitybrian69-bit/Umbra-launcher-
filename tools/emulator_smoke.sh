@@ -320,6 +320,15 @@ if [ -n "$BUTTON_TOP" ] && [ -n "$TOP_INSET" ] && [ "$TOP_INSET" -gt 0 ]; then
     fi
     say "overlay: button 0 starts at y=$BUTTON_TOP, below the $TOP_INSET px top inset"
 fi
+HUD_LINE="$(grep -m1 "hud: .*rows" logcat-umbra-mesh.txt | sed 's/.*umbra   : //')"
+[ -n "$HUD_LINE" ] || die "the app never reported whether its overlay fits"
+case "$HUD_LINE" in
+    *OVERFLOW*) die "the overlay draws past its backdrop: $HUD_LINE" ;;
+    *) say "overlay: $HUD_LINE" ;;
+esac
+if grep -q "previous run did not exit cleanly" logcat-umbra-mesh.txt; then
+    die "a freshly installed app claims the previous run crashed"
+fi
 CAM_LINE="$(grep -m1 "camera: eye" logcat-umbra-mesh.txt | sed 's/.*umbra   : //')"
 [ -n "$CAM_LINE" ] || die "the app never logged where the camera is, so 'only sky' cannot be diagnosed"
 say "camera: $CAM_LINE"
@@ -491,6 +500,38 @@ case "$REL_LINES" in
 esac
 adb exec-out screencap -p > shot3.png 2>/dev/null || true
 say "shot3: $(stat -c%s shot3.png 2>/dev/null || echo 0) bytes (the home screen with last run)"
+
+# ---- 10. a kill is still a crash ------------------------------------------------
+# The pause/resume marker exists so that swiping the app away is not reported as a
+# crash. That must not quietly disable the crash report altogether, so this phase
+# kills the process outright and demands the accusation on the next start.
+phase "crash-detect"
+PIDK="$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')"
+if [ -n "$PIDK" ]; then
+    say "crash-detect: kill -9 $PIDK"
+    adb shell "kill -9 $PIDK" > /dev/null 2>&1 || say "crash-detect: kill failed"
+    sleep 3
+    adb logcat -c > /dev/null 2>&1 || true
+    adb shell am start -W -n org.umbra.client/android.app.NativeActivity > crash-restart.log 2>&1 || true
+    FOUND=0
+    DEADLINE=$((SECONDS + 90))
+    while [ $SECONDS -lt $DEADLINE ]; do
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "previous run did not exit cleanly"; then
+            FOUND=1
+            break
+        fi
+        sleep 3
+    done
+    if [ "$FOUND" = 1 ]; then
+        say "crash-detect: the killed run was reported on the next start"
+    else
+        die "crash-detect: a kill -9 was not reported as a crash on the next start"
+    fi
+    adb exec-out screencap -p > shot4.png 2>/dev/null || true
+    say "shot4: $(stat -c%s shot4.png 2>/dev/null || echo 0) bytes (the crash screen)"
+else
+    err "crash-detect: the app was not running, so the marker could not be tested"
+fi
 
 # Everything worth keeping is already on disk and the device is about to go
 # away, so the exit handler has nothing left to collect (and would otherwise

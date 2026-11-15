@@ -38,8 +38,26 @@ static float umbra_hud_scale(float dpi_scale, int width, int height, int rows, i
     if (block > budget) {
         s = budget / ((float)rows * UMBRA_HUD_ROW_HEIGHT + 16.0f);
     }
-    if (s < 2.0f && dpi_scale > 1.6f) s = 2.0f;
+    // A readability floor, but a low one: refusing to shrink means text on bare
+    // sky, which is worse than small text.
+    if (s < 1.6f && dpi_scale > 1.6f) s = 1.6f;
     return s;
+}
+
+// How many rows the overlay draws: the title, four facts, the mesh line, the
+// camera line and the self-test line, then the benchmark block, a blank, the
+// last-run block, a blank, and the crash tail. One function, called by the drawing
+// code and by the tests, because the first version counted whole rows and forgot
+// that the title is spaced at 1.6 -- which put the crash tail on bare sky.
+#define UMBRA_HUD_TITLE_ROWS 1.6f
+static float umbra_hud_rows(int bench_lines, int last_run_lines, int crashed) {
+    float rows = UMBRA_HUD_TITLE_ROWS + 4.0f + 1.0f + 1.0f + 1.0f;
+    rows += (float)(bench_lines > 0 ? bench_lines : 0);
+    rows += 1.0f;
+    rows += (float)(last_run_lines > 0 ? last_run_lines : 0);
+    rows += 1.0f;
+    if (crashed) rows += 3.0f;
+    return rows;
 }
 
 // How tall the backdrop is, given how many rows the overlay will draw. The top

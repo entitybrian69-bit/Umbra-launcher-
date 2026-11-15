@@ -301,26 +301,33 @@ int main(int argc, char **argv) {
             umbra_camera_fit f = umbra_camera_fit_world(mn, mx, 55.0f, 2412, 1080, band_top, band_bottom);
             check(f.ok, "the world could be fitted to the phone's screen");
             float tan_v = tanf(55.0f * 3.14159265f / 180.0f * 0.5f);
-            float half_angle = atanf(f.radius / f.dist);
-            float screen_half = atanf(tan_v);
+            float aspect = 2412.0f / 1080.0f;
+            // What has to fit is the height that was fitted and the footprint's
+            // width, measured as angles from the eye.
+            float v_half = atanf((f.fitted_height * 0.5f) / f.dist);
+            float h_half = atanf(((mx[0] - mn[0]) * 0.5f) / f.dist);
+            float screen_v = atanf(tan_v), screen_h = atanf(tan_v * aspect);
             float band_half = atanf(tan_v * f.band_fraction);
-            printf("camera: %.1f blocks out, radius %.1f, world %.1f deg, screen %.1f deg, band %.1f deg\n",
-                   f.dist, f.radius, half_angle * 57.2958f, screen_half * 57.2958f,
-                   band_half * 57.2958f);
-            check(half_angle <= screen_half + 1e-3f, "the world fits inside the screen");
-            check(half_angle >= band_half * 0.95f,
-                  "and is at least as big as the free band, not a stamp in the middle");
-            check(half_angle <= screen_half * 0.98f, "without spilling past the screen edges");
+            printf("camera: %.1f blocks out, world %.1f deg tall by %.1f deg wide, screen %.1f x %.1f, band %.1f\n",
+                   f.dist, v_half * 57.2958f, h_half * 57.2958f, screen_v * 57.2958f,
+                   screen_h * 57.2958f, band_half * 57.2958f);
+            check(v_half <= screen_v + 1e-3f, "the world's height fits on the screen");
+            check(h_half <= screen_h + 1e-3f, "the world's width fits on the screen");
+            check(v_half >= band_half * 0.95f,
+                  "and is at least as tall as the free band, not a stamp in the middle");
+            check(v_half >= screen_v * 0.75f, "it uses most of the screen height, not a corner");
             float dx = f.eye[0] - f.look[0], dy = f.eye[1] - f.look[1], dz = f.eye[2] - f.look[2];
             float len = sqrtf(dx * dx + dy * dy + dz * dz);
             check(fabsf(len - f.dist) < 0.05f * f.dist, "the eye really is cam_dist from the look point");
             check(dy > 0.0f, "the eye looks down at the world");
-            check(f.look[1] < mx[1] - 20.0f, "it aims at the rock, not at the peak 90 blocks above it");
-            // Fog must not grey the rock the eye is aimed at (that is the near
-            // face), and must fade the far side rather than stop at it.
-            check(f.fog_near > f.dist - f.radius, "the fog starts beyond the near face of the world");
+            // The aim point must be on the visible top of the world, not at the box
+            // centre: the demo world is a 170-block slab whose centre is a wall.
+            check(f.look[1] > mx[1] - 40.0f, "it aims at the top of the world, not at the box centre");
+            check(f.look[1] < mx[1], "just below the highest block");
+            check(f.eye[1] > mx[1] - 20.0f, "the eye is up with the peaks, not down in the rock");
+            check(f.fog_near > f.dist - f.fitted_height, "the fog starts beyond the near face of the world");
             check(f.fog_near < f.dist, "but in front of the point the eye is aimed at");
-            check(f.fog_far > f.dist + f.radius, "and ends past the far side of the world");
+            check(f.fog_far > f.dist + f.fitted_height, "and ends past the far side of the world");
             check(f.fog_far > f.fog_near * 2.0f, "with a long enough fall-off to see depth");
 
             // The emulator's screen: no status bar of its own, so the band is
@@ -410,6 +417,35 @@ int main(int argc, char **argv) {
         } else {
             check(0, "a temporary directory was available for the result-file test");
         }
+    }
+
+    // 4d. The overlay's own height: the panel must be taller than the rows drawn
+    //     in it, on the phone's numbers and on the emulator's, with and without a
+    //     crash tail. A phone screenshot showed the last three lines below the
+    //     panel because the walk counted whole rows and the title takes 1.6.
+    {
+        struct { int bench, last_run, crash; } cases[] = {
+            {0, 0, 0}, {0, 3, 0}, {0, 3, 3}, {3, 3, 0}, {1, 0, 3},
+        };
+        for (size_t i = 0; i < sizeof cases / sizeof cases[0]; i++) {
+            float rows = umbra_hud_rows(cases[i].bench, cases[i].last_run, cases[i].crash);
+            int whole = (int)rows + (rows > (float)(int)rows ? 1 : 0);
+            for (int screen = 0; screen < 2; screen++) {
+                int w = screen ? 2412 : 1920, h = screen ? 1080 : 1080;
+                int32_t in[4] = {0, screen ? 63 : 0, screen ? 126 : 126, 0};
+                float sc = umbra_hud_scale(screen ? 3.5f : 1.0f, w, h, whole, in[1]);
+                float panel = umbra_hud_panel_height(whole, sc, in[1]);
+                float content = 8.0f * sc + rows * UMBRA_HUD_ROW_HEIGHT * sc;
+                check(content <= panel + 0.5f, "the overlay's rows fit inside its panel");
+                check(panel <= (float)h * UMBRA_HUD_MAX_FRACTION + 1.0f,
+                      "and the panel stays inside its share of the screen");
+                check(sc >= 1.0f, "at a size that can be read");
+            }
+        }
+        float rows = umbra_hud_rows(3, 3, 1);
+        int whole = (int)rows + (rows > (float)(int)rows ? 1 : 0);
+        printf("hud: %d rows for a bench block, a last run and a crash tail\n", whole);
+        check(whole == 20, "the row count for that overlay is the one the log reports");
     }
 
     // 5. The benchmark statistics are real arithmetic on real numbers.

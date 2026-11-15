@@ -852,6 +852,19 @@ int umbra_app_init(umbra_app *app) {
     return 1;
 }
 
+// Running, suspended or clean. A force-stop, a kill -9 or a crash all leave the
+// marker saying "running", which is the honest answer for a crash -- but the app
+// is also killed from the background all the time, and claiming "previous run
+// crashed" on a screen the owner is looking at after a swipe-away is a lie that
+// costs more than it is worth. Pausing writes "clean", resuming writes "running".
+void umbra_session_set(umbra_app *app, const char *state) {
+    if (!app || !app->marker_path[0]) return;
+    FILE *m = fopen(app->marker_path, "wb");
+    if (!m) return;
+    fprintf(m, "%s\n", state);
+    fclose(m);
+}
+
 void umbra_app_shutdown(umbra_app *app) {
     FILE *m = fopen(app->marker_path, "wb");
     if (m) {
@@ -1084,22 +1097,29 @@ static void draw_scene(umbra_app *app) {
 // facts, the mesh line, the self-test, the benchmark block, the last-run block
 // and the crash tail. Needed before anything is drawn, because the backdrop's
 // height and the text scale both depend on it.
-static int hud_rows(const umbra_app *app) {
-    int rows = 1 + 5 + 1 + 1;       // title + facts + mesh + self-test
+//
+// It is a float, and it counts the blank rows the drawing code advances through,
+// because it *is* the drawing code's walk: the first version counted whole rows
+// and forgot the title's 1.6-row spacing, so on a phone the last three lines --
+// the crash tail, the one people need -- were drawn below the panel on bare sky.
+static float hud_content_rows(const umbra_app *app) {
+    int bench_lines = 0;
     if (app->benching) {
-        rows += 1;
+        bench_lines = 1;
     } else if (app->bench_text[0]) {
-        int n = 1;
+        bench_lines = 1;
         for (const char *q = app->bench_text; *q; q++) {
-            if (*q == '\n') n++;
+            if (*q == '\n') bench_lines++;
         }
-        rows += n;
-    } else {
-        rows += 1;
     }
-    rows += app->last_run_lines;
-    if (app->previous_run_crashed) rows += 3;
-    return rows;
+    return umbra_hud_rows(bench_lines, app->last_run_lines, app->previous_run_crashed ? 1 : 0);
+}
+
+static int hud_rows(const umbra_app *app) {
+    float rows = hud_content_rows(app);
+    int whole = (int)rows;
+    if ((float)whole < rows) whole++;                 // round up: the panel may be tall, never short
+    return whole;
 }
 
 static void draw_hud(umbra_app *app) {
@@ -1211,6 +1231,21 @@ static void draw_hud(umbra_app *app) {
         float label = s * 1.15f;
         hud_rect(bx, by, bw, bh, active ? 0.25f : 0.15f, active ? 0.55f : 0.25f, active ? 0.3f : 0.15f, 0.9f);
         hud_text(bx + margin * 0.5f, by + (bh - 8.0f * label) * 0.5f, label, 1, 1, 1, 1, buttons[i].label);
+    }
+    // The overlay checks itself: a row-for-row walk that ends below the backdrop
+    // means text on bare sky, which is what a phone screenshot showed once. The
+    // numbers go to the log so CI can assert on them instead of on a picture.
+    float content_bottom = y + line;
+    if (app->hud_rows_logged != hud_rows(app) || app->hud_fits != (panel_h >= content_bottom)) {
+        app->hud_rows_logged = hud_rows(app);
+        app->hud_fits = panel_h >= content_bottom;
+        if (app->hud_fits) {
+            umbra_log(app, "hud: %d rows, content ends at %.0f px inside a %.0f px panel, fits",
+                      hud_rows(app), content_bottom, panel_h);
+        } else {
+            umbra_log(app, "hud: OVERFLOW - %d rows, content ends at %.0f px but the panel is %.0f px",
+                      hud_rows(app), content_bottom, panel_h);
+        }
     }
     hud_flush(app);
 }
