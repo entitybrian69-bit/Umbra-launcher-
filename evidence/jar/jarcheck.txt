@@ -1,7 +1,7 @@
-goose/jarcheck.goose:110: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+goose/jarcheck.goose:124: warning: redundant `as u32`: a u8 converts to u32 implicitly here
         h = (h ^ (s[i] as u32)) * 16777619;
                   ^~~~~~~~~~~
-goose/jarcheck.goose:112: warning: redundant `as i64`: (h & (JC_TABLE_SIZE - 1)) is already i64
+goose/jarcheck.goose:126: warning: redundant `as i64`: (h & (JC_TABLE_SIZE - 1)) is already i64
     return (h & (JC_TABLE_SIZE - 1)) as i64;
             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 goose/core/png.goose:58: warning: redundant `as i64`: a u8 converts to i64 implicitly here
@@ -130,39 +130,39 @@ jar: used models 2500/2603
 jar: blockstate model references 10290, distinct models used 2603 (1589 unused)
 jar: parent links followed 4176, parents that exist 4176, builtin parents 0
 jar: used models with elements 2544, boxes 6128, faces 25048, faces whose texture resolved to a PNG 24678, uv sets 20908
-jar: texture variable hops 2740, inverted boxes (legal) 16
+jar: texture variable hops 2740, inverted boxes (legal) 16, box rotations 1918 (26 with no angle)
 jar: multipart blockstates 104, weighted variant lists 75
 jar: textures decoded 159, whole square frames 129 (6 animated strips), tallest 512 px
-jar: problems 452
+jar: problems 764
 jar: first problems
-assets/minecraft/models/block/acacia_hanging_sign_rot_3.json: a box rotation without a numeric angle
-assets/minecraft/models/block/acacia_hanging_sign_rot_3.json: a box rotation without an axis
-assets/minecraft/models/block/acacia_hanging_sign_rot_3.json: a box rotation without a numeric angle
-assets/minecraft/models/block/acacia_hanging_sign_rot_3.json: a box rotation without an axis
-assets/minecraft/models/block/bamboo_hanging_sign_rot_3.json: a box rotation without a numeric angle
-assets/minecraft/models/block/bamboo_hanging_sign_rot_3.json: a box rotation without an axis
-assets/minecraft/models/block/bamboo_hanging_sign_rot_3.json: a box rotation without a numeric angle
-assets/minecraft/models/block/bamboo_hanging_sign_rot_3.json: a box rotation without an axis
-assets/minecraft/models/block/birch_hanging_sign_rot_3.json: a box rotation without a numeric angle
-assets/minecraft/models/block/birch_hanging_sign_rot_3.json: a box rotation without an axis
-assets/minecraft/models/block/birch_hanging_sign_rot_3.json: a box rotation without a numeric angle
-assets/minecraft/models/block/birch_hanging_sign_rot_3.json: a box rotation without an axis
-assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass_pane_post.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass_pane_post.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: a face texture key that no model in the chain defines
-assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: a face texture key that no model in the chain defines
-FAILED: 452 problems in the jar's model data
+assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines (chain defines 7 keys)
+assets/minecraft/models/block/black_stained_glass.json: all
+assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines (chain defines 7 keys)
+assets/minecraft/models/block/black_stained_glass.json: all
+assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines (chain defines 7 keys)
+assets/minecraft/models/block/black_stained_glass.json: all
+assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines (chain defines 7 keys)
+assets/minecraft/models/block/black_stained_glass.json: all
+assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines (chain defines 7 keys)
+assets/minecraft/models/block/black_stained_glass.json: all
+assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines (chain defines 7 keys)
+assets/minecraft/models/block/black_stained_glass.json: all
+assets/minecraft/models/block/black_stained_glass_pane_post.json: a face texture key that no model in the chain defines (chain defines 1 keys)
+assets/minecraft/models/block/black_stained_glass_pane_post.json: edge
+assets/minecraft/models/block/black_stained_glass_pane_post.json: a face texture key that no model in the chain defines (chain defines 1 keys)
+assets/minecraft/models/block/black_stained_glass_pane_post.json: edge
+assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines (chain defines 1 keys)
+assets/minecraft/models/block/black_stained_glass_pane_side.json: edge
+assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines (chain defines 1 keys)
+assets/minecraft/models/block/black_stained_glass_pane_side.json: edge
+assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines (chain defines 1 keys)
+assets/minecraft/models/block/black_stained_glass_pane_side.json: edge
+assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines (chain defines 1 keys)
+assets/minecraft/models/block/black_stained_glass_pane_side.json: pane
+assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines (chain defines 1 keys)
+assets/minecraft/models/block/black_stained_glass_pane_side.json: pane
+assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: a face texture key that no model in the chain defines (chain defines 1 keys)
+assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: edge
+assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: a face texture key that no model in the chain defines (chain defines 1 keys)
+assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: edge
+FAILED: 764 problems in the jar's model data
