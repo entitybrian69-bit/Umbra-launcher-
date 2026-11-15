@@ -150,3 +150,36 @@ index's 487 MB of objects, block `states` beyond `variants`/`multipart`, or
 - The emulator's SwiftShader reports 10-20 fps for a 370k-vertex scene where the
   owner's Mali-G57 reported 59 fps. Frame-rate numbers from CI mean nothing about
   the phone; they are there to catch a regression, not to predict one.
+
+## Block models: one at a time, and not the jar's
+
+`core/models.goose` parses one model into module globals, and the mesher draws the
+geometry of exactly one bound block from it (D-040). The demo world uses that for a
+plank slab, so the path is real and tested, but every *other* block still draws as a
+whole cube. A block that has a model in the jar and is not bound draws wrong in a way
+a screenshot can show — a slab as a full block. Binding blockstate → model → parents
+at load time is the next stage, and it needs a per-block model cache.
+
+The textures are ours, not Mojang's (D-039): twelve procedural tiles. The jar's
+textures resolve in CI (`3964 textures` in the jarcheck) but nothing loads them into
+the atlas, because the jar is never in the repository or the APK.
+
+## The player: one body, no swimming, no full-block auto-step
+
+The body is 0.6 x 1.8 and collides with full blocks and the model's slabs. It does
+not swim (water is not solid, so it walks along the bottom of a pond), does not climb
+ladders, cannot sneak, and stops at a full-block rise rather than stepping up it. One
+finger: drag to look, rest 400 ms to walk, tap to jump. Two-finger movement, and any
+on-screen stick, are not in yet.
+
+Input coordinates are in the display's *current* orientation, which cost a CI run: a
+tap that landed in one run produced nothing in the next, because the activity is
+landscape-locked and the emulator had rotated. `tools/emulator_smoke.sh` now asks the
+window manager for the display it has and retries the other orientation.
+
+## The emulator's 20 fps is a software rasterizer
+
+`bench: 1207 frames avg 49.77 ms (20 fps)` on the CI emulator is SwiftShader. It is
+not a phone number and it is not a regression: the same run reports `vsync: uncapped
+requested` and no GPU timer query (`check: gpu timer query none (not available)`), so
+on the emulator there is no GPU time to report separately from frame time.

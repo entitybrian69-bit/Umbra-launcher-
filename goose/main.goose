@@ -22,7 +22,7 @@ import core.textures;
 import core.atlas;
 import core.models;
 
-let UMBRA_VERSION = "0.1.0-stage1";
+let UMBRA_VERSION = "0.3.4";
 
 // --- a demo world ------------------------------------------------------
 //

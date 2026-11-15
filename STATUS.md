@@ -589,3 +589,43 @@ the logged position does not move.
 
 Counts from this machine: host suite `PASS: 174 checks, 0 failures` (was 149 before
 the player), core suites `mesh 354`, `atlas 403`, `models 425`.
+
+## What CI proved after stage 3 (run 43737854072, commit 4691a05)
+
+The emulator job passes end to end with the player in it, and its summary says:
+
+```
+player: physical display 1080x1920, current display 1920x1080
+player: 16:59:24 player: spawned at 24.50 66.01 24.50 (floor 66.00), eye 67.63
+player: hold 1 walked 0.20 blocks (24.50,24.50 -> 24.50,24.30)
+player: hold 2 walked 1.20 blocks (24.50,24.30 -> 25.70,24.20)
+player: a held finger walked the body
+player: the drag turned the head (yaw -1)
+player: the body is standing on the ground after walking
+player: a tap asked for a jump
+```
+
+with the rest of the run unchanged: `mesh: 370708 vertices, 556062 indices; batches
+543276/12786/0`, `SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 1977 ms,
+offscreen)`, `result: PASS (installed, launched, drew, self test tapped, 60s soak, no
+crash)`.
+
+Two of those lines are worth reading twice. `hold 1 walked 0.20 blocks` is the body
+walking into a full-block rise and stopping: a half block is stepped over, a whole
+block is a wall, which is the rule the host checks encode. And the benchmark on the
+emulator is `1207 frames avg 49.77 ms (20 fps), 1% low 12 fps` with `vsync: uncapped
+requested` — that is SwiftShader, the emulator's software renderer, and it is the
+honest number for it, not for a phone.
+
+## Parity table (what is and is not the same as the game)
+
+| Thing | State | Proof |
+|---|---|---|
+| Anvil regions, NBT, PNG, zip, inflate | tested | `region 237`, `nbt 196`, `png 153`, `zip 137`, `inflate 97` checks |
+| Block models: every model in the jar parses | yes | `4192 block models parsed, 0 refused`, `1205 elements, 4300 faces` (jar 26.3, CI) |
+| Models are drawn from their geometry | one bound block | the demo slab: 6 faces, top at `y+0.5`, bottom face culled by its `cullface`, host-tested (`mesh 354`) |
+| Binding the jar's blockstates to models at load | **not done** | one model at a time (D-040); the demo world binds one shape |
+| Textures from the jar | **not done** | the atlas is 12 procedural placeholder tiles (D-039) |
+| A body you can walk with | yes | 24 host checks, and the device run above |
+| Water, ladders, sneaking, swimming, mobs, survival, multiplayer | **no** | not implemented |
+| Rendered world matches the real client | **not measured** | gate 6b; nothing compares two renders yet |

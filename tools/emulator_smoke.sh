@@ -531,9 +531,14 @@ adb logcat -d -s umbra:V > logcat-umbra-player.txt 2>&1
 if [ "$SPAWNED" = 1 ]; then
     grep -m1 "player: spawned at" logcat-umbra-player.txt | sed 's/.*umbra   : //' \
         | while IFS= read -r l; do say "player: $l"; done
-    grep -m1 "player: at " logcat-umbra-player.txt | grep -q "on ground" \
-        && say "player: standing on the floor the world reported" \
-        || err "player: spawned but the first position line is not on the ground"
+    # The body spawns a centimetre above the floor, so the first position line can
+    # still say "in the air" for a few frames. What matters is that it lands; the end
+    # of the phase checks that it is standing after walking.
+    if grep "player: at " logcat-umbra-player.txt | grep -q "on ground"; then
+        say "player: standing on the floor the world reported"
+    else
+        err "player: spawned but never reported standing on the ground"
+    fi
 else
     say "player: focus at failure: $(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus | tr -s ' ' | cut -c1-120)"
     say "player: the app's own surface was $(grep -m1 -o 'hud: button 0 at [0-9,]* size [0-9]*x[0-9]* on [0-9]*x[0-9]*' logcat-umbra-player.txt | sed 's/.* on //')"
