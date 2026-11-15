@@ -1,20 +1,38 @@
-goose/core/mesh.goose:247: warning: redundant `as f32`: an i32 converts to f32 implicitly here
-            push_cross(x as f32, y as f32, z as f32, tint);
+goose/core/atlas.goose:87: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+        u0: (x as f32) / fw,
+             ^~~~~~~~
+goose/core/atlas.goose:88: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+        v0: (y as f32) / fh,
+             ^~~~~~~~
+goose/core/atlas.goose:89: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+        u1: ((x as f32) + tw) / fw,
+              ^~~~~~~~
+goose/core/atlas.goose:90: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+        v1: ((y as f32) + tw) / fh,
+              ^~~~~~~~
+goose/core/atlas.goose:207: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+    return (atlas[i] as i64) | ((atlas[i + 1] as i64) << 8) | ((atlas[i + 2] as i64) << 16) |
+            ^~~~~~~~~~~~~~~
+goose/core/atlas.goose:217: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+        h = (h ^ (b as u32)) * 16777619;
+                  ^~~~~~~~
+goose/core/mesh.goose:251: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+            push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
                        ^~~~~~~~
-goose/core/mesh.goose:247: warning: redundant `as f32`: an i32 converts to f32 implicitly here
-            push_cross(x as f32, y as f32, z as f32, tint);
+goose/core/mesh.goose:251: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+            push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
                                  ^~~~~~~~
-goose/core/mesh.goose:247: warning: redundant `as f32`: an i32 converts to f32 implicitly here
-            push_cross(x as f32, y as f32, z as f32, tint);
+goose/core/mesh.goose:251: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+            push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
                                            ^~~~~~~~
-goose/core/mesh.goose:287: warning: redundant `as f32`: an i32 converts to f32 implicitly here
-            push_quad(x as f32, y as f32, z as f32, face, 0.0, 0.0, 1.0, 1.0, tint, ao);
+goose/core/mesh.goose:295: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+            push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
                       ^~~~~~~~
-goose/core/mesh.goose:287: warning: redundant `as f32`: an i32 converts to f32 implicitly here
-            push_quad(x as f32, y as f32, z as f32, face, 0.0, 0.0, 1.0, 1.0, tint, ao);
+goose/core/mesh.goose:295: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+            push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
                                 ^~~~~~~~
-goose/core/mesh.goose:287: warning: redundant `as f32`: an i32 converts to f32 implicitly here
-            push_quad(x as f32, y as f32, z as f32, face, 0.0, 0.0, 1.0, 1.0, tint, ao);
+goose/core/mesh.goose:295: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+            push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
                                           ^~~~~~~~
 goose/core/region.goose:60: warning: redundant `as i64`: a u32 converts to i64 implicitly here
     if id as i64 >= bs_defs.len { return bs_names[0..0]; }
@@ -138,8 +156,8 @@ umbra headless self-test
 core version: 0.1.0-stage1
 mesh: 17783424 vertex bytes, 2222928 index bytes
 mesh checks: 0 bad indices, 0 bad normals, 0 positions out of bounds
-progress: worst 995 permille; units 1947, total 1947
-sliced mesh: 377 calls, worst call 4.42 ms, worst unit 3.22 ms
+progress: worst 997 permille; units 1947, total 1947
+sliced mesh: 658 calls, worst call 7.42 ms, worst unit 7.42 ms
 batches: 542910 + 12822 + 0 = 555732 of 555732 indices
 layout: phone scale 2.64, desktop scale 1.00
 layout: button 0 21,1006 737x53; button 2 1528,1006
