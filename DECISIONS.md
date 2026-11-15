@@ -2,6 +2,43 @@
 
 Newest first. Each entry says what was decided, why, and what it costs.
 
+## D-020 The GPU self-test draws into its own framebuffer and reads RGBA
+
+Three device-only facts shaped this. First, the window's back buffer has no
+defined contents after a swap, so the self-test renders into an offscreen
+RGBA8 framebuffer with a depth renderbuffer and reads that. Second, the emulator
+refuses `glReadPixels(..., GL_RGB, ...)` with `GL_INVALID_OPERATION` (0x502),
+which silently left the readback buffer as zeros and failed every pixel; the read
+is RGBA. Third, a texture still bound while it is attached to the framebuffer
+being drawn into is a feedback loop, and SwiftShader discarded those draws — the
+texture is unbound after the attachment. The self-test also runs at a defined
+point in the frame (a flag set by the touch handler) instead of in the middle of
+event dispatch.
+
+Cost: an 8 MB 1920x1080 RGBA8 target, allocated on first use, and one full-screen
+pixel comparison per tap (2,073,600 calls into Goose).
+
+## D-019 The screenshot reference is a real capture, chosen by looking at it
+
+`docs/reference/emulator_home.png` is run 43670787000's own screenshot, committed
+by hand after viewing it, not by the job that produced it. The gate then compares
+each new capture against it (16x16 signature, mean absolute difference <= 24) and
+also requires the two captures of a run to differ, so a stale file cannot pass.
+Cost: when the home screen legitimately changes, a human must look at the new
+capture and commit it; the gate is a regression detector, not an oracle.
+
+## D-018 The home screen is a fixed view, so the screenshot gate compares like with like
+
+The first device screenshots showed the scene drifting: the camera orbited with
+frame time, so two captures taken seconds apart differed in every pixel and no
+reference could gate anything. The demo view is now a fixed three-quarter view,
+with the camera distance and the near/far planes derived from the mesh's own
+extent and aimed at the top of the world (the demo world is filled from y = -64,
+so its centre is inside solid stone). The vertex colour is no longer multiplied
+by ambient occlusion twice — Goose already bakes face shade and AO into it, and
+the double multiply is why the first device screenshots showed a black world.
+Cost: no motion on the home screen until the real world renderer arrives.
+
 ## D-017 The app blocks when it has no window, and rebuilds after a context loss
 
 The first version of the frame loop polled with a zero timeout whatever the
