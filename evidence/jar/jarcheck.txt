@@ -1,7 +1,7 @@
-goose/jarcheck.goose:124: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+goose/jarcheck.goose:125: warning: redundant `as u32`: a u8 converts to u32 implicitly here
         h = (h ^ (s[i] as u32)) * 16777619;
                   ^~~~~~~~~~~
-goose/jarcheck.goose:126: warning: redundant `as i64`: (h & (JC_TABLE_SIZE - 1)) is already i64
+goose/jarcheck.goose:127: warning: redundant `as i64`: (h & (JC_TABLE_SIZE - 1)) is already i64
     return (h & (JC_TABLE_SIZE - 1)) as i64;
             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 goose/core/png.goose:58: warning: redundant `as i64`: a u8 converts to i64 implicitly here
@@ -129,40 +129,40 @@ jar: used models 2000/2603
 jar: used models 2500/2603
 jar: blockstate model references 10290, distinct models used 2603 (1589 unused)
 jar: parent links followed 4176, parents that exist 4176, builtin parents 0
-jar: used models with elements 2544, boxes 6128, faces 25048, faces whose texture resolved to a PNG 24678, uv sets 20908
-jar: texture variable hops 2740, inverted boxes (legal) 16, box rotations 1918 (26 with no angle)
+jar: used models with elements 2544, boxes 6128, faces 25048, faces whose texture resolved to a PNG 25042, uv sets 20908
+jar: texture variable hops 2740, inverted boxes (legal) 16, box rotations 1918 (26 with no angle, 0 with no origin)
 jar: multipart blockstates 104, weighted variant lists 75
 jar: textures decoded 159, whole square frames 129 (6 animated strips), tallest 512 px
-jar: problems 764
+jar: problems 36
 jar: first problems
-assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines (chain defines 7 keys)
-assets/minecraft/models/block/black_stained_glass.json: all
-assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines (chain defines 7 keys)
-assets/minecraft/models/block/black_stained_glass.json: all
-assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines (chain defines 7 keys)
-assets/minecraft/models/block/black_stained_glass.json: all
-assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines (chain defines 7 keys)
-assets/minecraft/models/block/black_stained_glass.json: all
-assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines (chain defines 7 keys)
-assets/minecraft/models/block/black_stained_glass.json: all
-assets/minecraft/models/block/black_stained_glass.json: a face texture key that no model in the chain defines (chain defines 7 keys)
-assets/minecraft/models/block/black_stained_glass.json: all
-assets/minecraft/models/block/black_stained_glass_pane_post.json: a face texture key that no model in the chain defines (chain defines 1 keys)
-assets/minecraft/models/block/black_stained_glass_pane_post.json: edge
-assets/minecraft/models/block/black_stained_glass_pane_post.json: a face texture key that no model in the chain defines (chain defines 1 keys)
-assets/minecraft/models/block/black_stained_glass_pane_post.json: edge
-assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines (chain defines 1 keys)
-assets/minecraft/models/block/black_stained_glass_pane_side.json: edge
-assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines (chain defines 1 keys)
-assets/minecraft/models/block/black_stained_glass_pane_side.json: edge
-assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines (chain defines 1 keys)
-assets/minecraft/models/block/black_stained_glass_pane_side.json: edge
-assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines (chain defines 1 keys)
-assets/minecraft/models/block/black_stained_glass_pane_side.json: pane
-assets/minecraft/models/block/black_stained_glass_pane_side.json: a face texture key that no model in the chain defines (chain defines 1 keys)
-assets/minecraft/models/block/black_stained_glass_pane_side.json: pane
-assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: a face texture key that no model in the chain defines (chain defines 1 keys)
-assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: edge
-assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: a face texture key that no model in the chain defines (chain defines 1 keys)
-assets/minecraft/models/block/black_stained_glass_pane_side_alt.json: edge
-FAILED: 764 problems in the jar's model data
+assets/minecraft/models/block/heavy_core.json: a face texture key that is not #name
+assets/minecraft/models/block/heavy_core.json: a face texture key that is not #name
+assets/minecraft/models/block/heavy_core.json: a face texture key that is not #name
+assets/minecraft/models/block/heavy_core.json: a face texture key that is not #name
+assets/minecraft/models/block/heavy_core.json: a face texture key that is not #name
+assets/minecraft/models/block/heavy_core.json: a face texture key that is not #name
+assets/minecraft/textures/entity/cat/cat_calico.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/entity/equipment/humanoid/leather.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/entity/equipment/llama_body/gray.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/entity/equipment/wolf_body/armadillo_scute.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/entity/sheep/sheep_baby.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/entity/wolf/wolf_armor_crackiness_medium.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/gui/sprites/advancements/tab_right_middle_selected.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/gui/sprites/boss_bar/white_progress.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/gui/sprites/container/creative_inventory/tab_top_selected_1.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/gui/sprites/container/grindstone/error.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/gui/sprites/container/villager/experience_bar_current.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/gui/sprites/friends/send_request.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/gui/sprites/hud/heart/frozen_half.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/gui/sprites/hud/heart/withered_full.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/gui/sprites/icon/ping_1.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/gui/sprites/player_list/remove_operator.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/gui/sprites/server_list/pinging_3.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/gui/sprites/widget/button_highlighted.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/gui/sprites/widget/tab.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/gui/title/background/panorama_3.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/map/decorations/light_blue_banner.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/map/decorations/woodland_mansion.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/painting/fighters.png: a texture that is not a whole number of square frames
+assets/minecraft/textures/particle/cherry_4.png: a texture that is not a whole number of square frames
+FAILED: 36 problems in the jar's model data
