@@ -475,59 +475,70 @@ else
 fi
 
 # ---- 6b. the player: walk into the world and look around ----------------------
-# The physics is checked on the host (169 checks), so what this proves is the part
-# only a device can: a real MotionEvent reaches the app, the body spawns on the
-# floor the world reports, a hold walks it, a drag turns the head, and none of it
-# ANRs or crashes.
+# The physics is checked on the host (174 checks), so what this proves is the part
+# only a device can: a real MotionEvent reaches the app, the body spawns on the floor
+# the world reports, a held finger walks it, a drag turns the head, and none of it
+# ANRs or crashes. Positions are compared, not lines: a changed yaw is not a walk.
 phase "player"
-# The display, from the emulator's own report, so the coordinates are real pixels.
 P_WIDTH="${WM_SIZE%x*}"
 P_HEIGHT="${WM_SIZE#*x}"
-case "$P_WIDTH" in ''|*[!0-9]*) P_WIDTH=1920 ;; esac
-case "$P_HEIGHT" in ''|*[!0-9]*) P_HEIGHT=1080 ;; esac
-say "player: screen ${P_WIDTH}x${P_HEIGHT}"
-# Tap the middle of the free band, which is the world and not a button.
-adb shell input tap $(( P_WIDTH / 2 )) $(( P_HEIGHT * 3 / 5 )) > /dev/null 2>&1 \
+case "$P_WIDTH" in ''|*[!0-9]*) P_WIDTH=1080 ;; esac
+case "$P_HEIGHT" in ''|*[!0-9]*) P_HEIGHT=1920 ;; esac
+# 60% down the screen is the middle of the free band in both orientations: above the
+# buttons, below the overlay.
+P_SCENE_Y=$(( P_HEIGHT * 3 / 5 ))
+say "player: screen ${P_WIDTH}x${P_HEIGHT}, touching the world at y=$P_SCENE_Y"
+adb shell input tap $(( P_WIDTH / 2 )) "$P_SCENE_Y" > /dev/null 2>&1 \
     || say "player: the tap into the world failed"
-sleep 2
+SPAWNED=0
+DEADLINE=$((SECONDS + 20))
+while [ $SECONDS -lt $DEADLINE ]; do
+    if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: spawned at"; then SPAWNED=1; break; fi
+    sleep 2
+done
 adb logcat -d -s umbra:V > logcat-umbra-player.txt 2>&1
-if grep -q "player: spawned at" logcat-umbra-player.txt; then
+if [ "$SPAWNED" = 1 ]; then
     grep -m1 "player: spawned at" logcat-umbra-player.txt | sed 's/.*umbra   : //' \
         | while IFS= read -r l; do say "player: $l"; done
+    grep -m1 "player: at " logcat-umbra-player.txt | grep -q "on ground" \
+        && say "player: standing on the floor the world reported" \
+        || err "player: spawned but the first position line is not on the ground"
 else
-    err "player: the tap did not start first person (no spawn line)"
+    die "player: the tap did not start first person (no spawn line)"
 fi
-# Hold a finger down for three seconds: a finger that rests without turning the head
-# is a walk. `input swipe` from one point to the same point is exactly that hold.
-adb shell input swipe $(( P_WIDTH / 2 )) $(( P_HEIGHT * 3 / 4 )) $(( P_WIDTH / 2 )) $(( P_HEIGHT * 3 / 4 )) 3000 \
+# Hold a finger on the scene for three seconds: a finger that rests without turning
+# the head walks. `input swipe` from a point to itself is exactly that hold.
+# The same point the tap used: that point is known to be the world and not a button.
+adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 )) "$P_SCENE_Y" 3000 \
     > /dev/null 2>&1 || say "player: the hold failed"
 sleep 1
-# A drag turns the head: a swipe across the screen with a real displacement, which
-# must show up in the logged yaw even though the body stays put.
-adb shell input swipe $(( P_WIDTH / 3 )) $(( P_HEIGHT / 2 )) $(( P_WIDTH * 2 / 3 )) $(( P_HEIGHT / 2 )) 600 \
+# A drag turns the head: a one-third-of-the-screen swipe must show up as a yaw change.
+adb shell input swipe $(( P_WIDTH / 3 )) "$P_SCENE_Y" $(( P_WIDTH * 2 / 3 )) "$P_SCENE_Y" 600 \
     > /dev/null 2>&1 || say "player: the look drag failed"
-sleep 1
-adb logcat -d -s umbra:V > logcat-umbra-player.txt 2>&1
-PLINES="$(grep "player: at" logcat-umbra-player.txt | sed 's/.*umbra   : //')"
-printf '%s\n' "$PLINES" | tail -3 | while IFS= read -r l; do [ -n "$l" ] && say "player: $l"; done
-if printf '%s' "$PLINES" | grep -q "player: at"; then
-    # The first and last positions must differ: the body moved, and it is standing
-    # on the ground rather than falling through the world.
-    FIRST="$(printf '%s\n' "$PLINES" | head -1)"
-    LAST="$(printf '%s\n' "$PLINES" | tail -1)"
-    if [ "$FIRST" = "$LAST" ]; then
-        err "player: the body never moved; look at logcat-umbra-player.txt"
-    else
-        FIRST_X="$(printf '%s' "$FIRST" | sed 's/.*at \([-0-9.]*\) .*/\1/')"
-        LAST_X="$(printf '%s' "$LAST" | sed 's/.*at \([-0-9.]*\) .*/\1/')"
-        if [ "$FIRST_X" = "$LAST_X" ] && printf '%s' "$LAST" | grep -q "in the air"; then
-            err "player: the body stayed in the air at one x; it may be falling"
-        else
-            say "player: the body moved and reported where it is"
-        fi
-    fi
-else
-    err "player: no position line after walking; the input path is dead"
+sleep 2
+adb logcat -d -s umbra:V > logcat-umbra-player2.txt 2>&1
+PLINES="$(grep "player: at " logcat-umbra-player2.txt | sed 's/.*umbra   : //')"
+[ -n "$PLINES" ] || die "player: no position line at all; the input path is dead"
+printf '%s\n' "$PLINES" | tail -2 | while IFS= read -r l; do say "player: $l"; done
+FIRST="$(printf '%s\n' "$PLINES" | head -1)"
+LAST="$(printf '%s\n' "$PLINES" | tail -1)"
+FIRST_X="$(printf '%s' "$FIRST" | sed 's/.*at \([-0-9.]*\) [-0-9.]* [-0-9.]*.*/\1/')"
+FIRST_Z="$(printf '%s' "$FIRST" | sed 's/.*at [-0-9.]* [-0-9.]* \([-0-9.]*\) .*/\1/')"
+LAST_X="$(printf '%s' "$LAST" | sed 's/.*at \([-0-9.]*\) [-0-9.]* [-0-9.]*.*/\1/')"
+LAST_Z="$(printf '%s' "$LAST" | sed 's/.*at [-0-9.]* [-0-9.]* \([-0-9.]*\) .*/\1/')"
+MOVED="$(awk -v ax="$FIRST_X" -v az="$FIRST_Z" -v bx="$LAST_X" -v bz="$LAST_Z" \
+    'BEGIN { dx = ax - bx; dz = az - bz; if (dx < 0) dx = -dx; if (dz < 0) dz = -dz;
+             printf "%.2f", (dx > dz ? dx : dz) }')"
+say "player: moved ${MOVED} blocks, from (${FIRST_X}, ${FIRST_Z}) to (${LAST_X}, ${LAST_Z})"
+awk -v m="$MOVED" 'BEGIN { exit !(m >= 0.5) }' \
+    || die "player: the body did not move ($MOVED blocks); holding a finger is supposed to walk it"
+FIRST_YAW="$(printf '%s' "$FIRST" | sed 's/.*yaw \([-0-9]*\).*/\1/')"
+LAST_YAW="$(printf '%s' "$LAST" | sed 's/.*yaw \([-0-9]*\).*/\1/')"
+[ "$FIRST_YAW" != "$LAST_YAW" ] \
+    && say "player: the drag turned the head (yaw ${FIRST_YAW} -> ${LAST_YAW})" \
+    || err "player: the drag did not change the yaw"
+if printf '%s' "$LAST" | grep -q "in the air"; then
+    err "player: the body is in the air after walking, not standing on the ground"
 fi
 
 # ---- 7. soak --------------------------------------------------------------------
