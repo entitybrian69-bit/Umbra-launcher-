@@ -294,6 +294,10 @@ fn tex_build() {
     tex_built = true;
 }
 
+// The layout, for the mesher's model path: a face's uv rect has to be mapped into
+// its tile, and that needs the tile's place in the atlas.
+fn tex_layout_of() -> AtlasLayout { return tex_layout; }
+
 fn tex_atlas_size() -> i64 { return tex_layout.width; }
 fn tex_atlas_height() -> i64 { return tex_layout.height; }
 
@@ -355,6 +359,17 @@ fn tex_face_slot(path: const u8[:], face: i64) -> i64 {
     if eq_bytes(path, "stone") { return TEX_STONE; }
     tex_missing_hits += 1;
     return TEX_COUNT - 1;
+}
+
+// A full texture path from a model (`minecraft:block/oak_planks`) mapped onto the
+// placeholder set by its last component. When the loader lands, the jar's own
+// textures are looked up by the same path; this is the lookup a placeholder build
+// can do.
+fn tex_slot_for_path(path: const u8[:]) -> i64 {
+    var p = path;
+    if starts_with(p, "minecraft:") { p = p[10..]; }
+    if starts_with(p, "block/") { p = p[6..]; }
+    return tex_slot_for(p);
 }
 
 fn tex_missing_count() -> i64 { return tex_missing_hits; }

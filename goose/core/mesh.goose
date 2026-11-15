@@ -10,6 +10,7 @@ import std;
 import core.mem;
 import core.region;
 import core.textures;
+import core.models;
 
 // The vertex layout the GPU consumes. Packed, in declaration order; the C side
 // mirrors it in platform/shared/umbra_vertex.h.
@@ -91,6 +92,20 @@ fn face_corner(face: i64, corner: i64, axis: i64) -> f32 {
     return face_corners[face * 12 + corner * 3 + axis];
 }
 
+// A block whose geometry comes from a parsed model instead of a whole cube. The
+// demo world uses this for one shape (a slab) to exercise the model path end to
+// end; the loader stage binds the jar's own models here.
+var model_block: u32 = 0;
+var model_bound: bool = false;
+var model_faces_drawn: i64 = 0;
+
+fn mesh_bind_model(id: u32) {
+    model_block = id;
+    model_bound = true;
+}
+
+fn mesh_model_faces() -> i64 { return model_faces_drawn; }
+
 var mesh_verts: Vertex[>..] = [];
 var mesh_indices: u32[>..] = [];
 // Per-batch ranges: [start, count] in indices, in the order the renderer draws
@@ -155,6 +170,37 @@ fn push_quad(x0: f32, y0: f32, z0: f32, face: i64, u0: f32, v0: f32, u1: f32, v1
     }
 }
 
+// One face of a box that is not the whole block: a slab, a torch, a fence post.
+// The corners come from the box and the face, so the winding rule stays in one
+// place (it is the unit-cube table scaled into the box).
+fn push_box_face(bx: i32, by: i32, bz: i32, face: i64, lo: f32[3], hi: f32[3],
+                 uv: f32[4], tint: f32[3]) {
+    let base = mesh_verts.len as u32;
+    let light = if face == 1 { 1.0 } else if face == 0 { 0.5 } else if face == 2 || face == 3 { 0.8 } else { 0.6 };
+    for c in 4 {
+        let ux = face_corner(face, c, 0);
+        let uy = face_corner(face, c, 1);
+        let uz = face_corner(face, c, 2);
+        let px = (bx as f32) + (if ux > 0.5 { hi[0] } else { lo[0] });
+        let py = (by as f32) + (if uy > 0.5 { hi[1] } else { lo[1] });
+        let pz = (bz as f32) + (if uz > 0.5 { hi[2] } else { lo[2] });
+        mesh_verts.push(Vertex {
+            x: px, y: py, z: pz,
+            nx: face_normal(face, 0), ny: face_normal(face, 1), nz: face_normal(face, 2),
+            u: if c == 0 || c == 3 { uv[0] } else { uv[2] },
+            v: if c == 0 || c == 1 { uv[3] } else { uv[1] },
+            r: tint[0] * light, g: tint[1] * light, b: tint[2] * light,
+            ao: 1.0,
+        });
+    }
+    mesh_indices.push(base);
+    mesh_indices.push(base + 1);
+    mesh_indices.push(base + 2);
+    mesh_indices.push(base);
+    mesh_indices.push(base + 2);
+    mesh_indices.push(base + 3);
+}
+
 fn push_cross(x0: f32, y0: f32, z0: f32, tint: f32[3], uv: f32[4]) {
     // Two quads through the block's diagonals, as a plant model does.
     for d in 2 {
@@ -186,6 +232,36 @@ fn push_cross(x0: f32, y0: f32, z0: f32, tint: f32[3], uv: f32[4]) {
         mesh_indices.push(base);
         mesh_indices.push(base + 2);
         mesh_indices.push(base + 3);
+    }
+}
+
+// Emits one block's geometry from the model currently parsed by core.models.
+// Every element is a box; each of its present faces becomes a quad, with the
+// model's own uv rect mapped into that texture's atlas tile, and the model's
+// cullface honoured: a face that names the neighbour it faces is dropped when that
+// neighbour is solid, which is the only culling a model is allowed to ask for.
+fn push_model(c: ChunkColumn&, bx: i32, by: i32, bz: i32, tint: f32[3]) {
+    for e in mdl_elements {
+        var lo: f32[3] = [0.0, 0.0, 0.0];
+        var hi: f32[3] = [0.0, 0.0, 0.0];
+        mdl_elem_box(e, lo, hi);
+        for face in 6 {
+            let fi = e * 6 + face;
+            if mdl_tex[fi] < 0 { continue; }
+            // Culling: only a face on the block's surface may vanish.
+            if mdl_face_cullable(e, face) {
+                let nx = bx + (face_normal(face, 0) as i32);
+                let ny = by + (face_normal(face, 1) as i32);
+                let nz = bz + (face_normal(face, 2) as i32);
+                if is_solid(neighbour(c, nx, ny, nz)) { continue; }
+            }
+            let slot = tex_slot_for_path(mdl_texture_name(mdl_tex[fi]));
+            let t = atlas_tile(tex_layout_of(), slot);
+            var uv: f32[4] = [0.0, 0.0, 0.0, 0.0];
+            mdl_face_uv(e, face, t.u0, t.v0, t.u1, t.v1, uv);
+            push_box_face(bx, by, bz, face, lo, hi, uv, tint);
+            model_faces_drawn += 1;
+        }
     }
 }
 
@@ -245,6 +321,12 @@ fn mesh_section_class(c: ChunkColumn&, sy: i32, want: i64) {
         }
         var tint: f32[3] = [1.0, 1.0, 1.0];
         let path = bs_path(bs_name(id));
+        if model_bound && id == model_block {
+            // A model's geometry replaces the cube entirely: the mesher does not
+            // know what shape it is, only that the model said so.
+            push_model(c, x, y, z, tint);
+            continue;
+        }
         if ends_with(path, "_leaves") || rc == RC_CROSS { tint = [0.55, 0.75, 0.35]; }
         if rc == RC_TRANSLUCENT { tint = [0.3, 0.5, 1.0]; }
         if rc == RC_CROSS {

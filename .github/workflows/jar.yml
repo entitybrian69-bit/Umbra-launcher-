@@ -42,11 +42,21 @@ jobs:
                      build/bin/goose --standalone --header build/jarcheck.h -o build/jarcheck.c goose/jarcheck.goose
                      cc -O2 -o build/umbra_jarcheck platform/shared/test_main.c build/jarcheck.c platform/shared/umbra_glue.c -lm -lpthread
                      build/umbra_jarcheck build/jar/client.jar' 2>&1 | tee evidence/jar/jarcheck.txt
+      - name: Parse every block model with the parser the mesher uses
+        run: |-
+          set -o pipefail
+          mkdir -p evidence/jar
+          GOOSE_STDLIB=build/goose-src/stdlib GOOSE=build/bin/goose bash tools/check_models.sh 2>&1 | tee evidence/jar/models-smoke.txt
+          build/umbra_modelcheck build/jar/client.jar 2>&1 | tee evidence/jar/modelcheck.txt
+          grep -qF "PASS: every block model in the jar parses" evidence/jar/modelcheck.txt
       - name: Report the numbers
         if: always()
         run: |
-          grep -E "^(jar:|PASS|FAILED)" evidence/jar/jarcheck.txt | tail -20 | while IFS= read -r l; do
-            echo "::notice title=jar::$l"; done
+          for f in evidence/jar/jarcheck.txt evidence/jar/modelcheck.txt; do
+            [ -f "$f" ] || continue
+            grep -E "^(jar:|model:|PASS|FAILED)" "$f" | tail -24 | while IFS= read -r l; do
+              echo "::notice title=jar::$l"; done
+          done
       - name: Commit the evidence
         if: always()
         run: |

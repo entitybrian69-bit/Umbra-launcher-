@@ -545,3 +545,31 @@ that counter is in the log and in the self-test's verdict, so a missing tile is 
 visible defect rather than a grey block. The alternative - excluding the jar's
 textures from CI too - would leave the PNG and atlas code tested only against
 artificial PNGs, and its first real test would be the phone.
+
+## D-040: the model parser keeps one model at a time, and the mesher is told which block uses it
+
+**Decided.** `core/models.goose` parses exactly one model into module globals
+(`mdl_*`), and `mesh_bind_model(block_id)` tells the mesher that one block id draws
+its geometry from it. Every other block still draws as a cube.
+
+**Why.** A model needs a box, six texture slots, six uv rects, six cull flags, six
+tint indices and six rotations. Keeping a table of *all* models would mean either a
+fixed array of fixed structs (the jar has 2 603 and the count grows) or an array of
+variable-size records, which Goose cannot index. One model at a time is enough for
+the thing this stage has to prove: that a JSON box with its own uv rects and
+cullface rules comes out the other end as correct triangles. It also matches the
+lifecycle the loader will have — parse a model, expand it into a section's mesh,
+drop it — because the mesh keeps the triangles, not the model.
+
+**Cost.** The demo world can show exactly one model-shaped block. Binding the jar's
+real chains (blockstate → model → parents) needs a lookup from block id to model
+entry plus a cache, and that is the next stage, not this one. Until then a block
+that *has* a model in the jar but is not bound still draws as a whole cube, which is
+wrong in a way a screenshot can show (a slab drawn as a full block).
+
+**Tests that hold this.** `models` (425 checks: parse, `#` chain, a cycle guard,
+mirrored and rotated uv, cullface only on a surface face, tint, refusal with a
+reason) and `mesh` (354 checks: a floating slab is six faces and its top is at
+`y+0.5`, a solid neighbour culls only the face the model tagged `cullface`, model
+faces sample the tile the model named). `goose/modelcheck.goose` runs the same parser
+over every block model in the real jar in CI.

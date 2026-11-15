@@ -36,6 +36,11 @@ fn zip_reset() {
 
 fn zip_name_of(e: ZipEntry) -> u8[:] { return zip_names[e.name.off .. e.name.off + e.name.len] }
 
+// Walking an archive: a caller that wants to look at everything (the model
+// checker does) needs the listing, not a lookup by name.
+fn zip_count(archive: i64) -> i64 { return zip_archives[archive].count; }
+fn zip_entry_at(archive: i64, i: i64) -> i64 { return zip_archives[archive].first + i; }
+
 // Find the end-of-central-directory record, which is the last structure in
 // the file and may be followed by a comment of up to 64 KiB.
 fn find_eocd(data: const u8[:]) -> i64 {

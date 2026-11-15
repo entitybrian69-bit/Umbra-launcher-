@@ -97,8 +97,13 @@ static umbra_camera_fit umbra_camera_fit_world(const float min[3], const float m
     // the middle of the world is at full colour, and ends well past the far side.
     // The first version started it before the aim point and the island came out a
     // pale ghost of itself in the screenshot.
-    fit.fog_near = fit.dist + fit_h * 0.20f;
-    fit.fog_far = fit.dist + fit_h * 2.20f;
+    // The fog is depth cueing, not weather: it has to start past the far side of
+    // the world, or the world itself is what gets greyed out. With textures (0.3.2
+    // onwards) a fog that began at dist + 0.2 * height washed the grass to sky
+    // colour in the middle of the screen; at 0.8 it clears the whole island and
+    // still fades the empty distance.
+    fit.fog_near = fit.dist + fit_h * 0.80f;
+    fit.fog_far = fit.dist + fit_h * 3.00f;
     if (fit.fog_near < 1.0f) fit.fog_near = 1.0f;
     fit.ok = 1;
     return fit;

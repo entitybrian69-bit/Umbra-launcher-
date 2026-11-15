@@ -531,7 +531,16 @@ The owner set the order; it survives interruptions.
    re-download (`RELEASE_VERIFY.txt`), and `0.3.1` ran on the owner's phone.
 2. **Done:** gate 4 is closed on ARM at the host-suite level, with the caveat that
    the Android arm64 `.so` inside the APK is still compile-only.
-3. **Atlas and block models** from the jar: blockstates + models + a texture atlas
+3. **In progress.** *Atlas: done* (`core/atlas.goose`, 12 placeholder tiles,
+   128x128, padded, mipmapped, magenta for missing, counted; sampled back through the
+   real upload path by the on-device self-test: `0 of 256 texels differ`). *Block
+   models: the parser and the geometry path are done* (`core/models.goose` parses
+   elements/faces/uv/cullface/tintindex/rotation and resolves `#` chains; the mesher
+   draws a bound block's geometry from the model's own box; the demo world contains a
+   plank slab drawn that way; `goose/modelcheck.goose` parses every block model in the
+   real jar in CI). *Still missing:* binding the jar's own blockstates to models at
+   load time instead of one built-in slab, and packing the jar's textures. The
+   original goal, for reference: blockstates + models + a texture atlas
    packed from the jar's `textures/block`, with padded or extruded tile edges,
    mipmaps that do not bleed colour between tiles, animated textures frozen on
    frame 0, a loud magenta tile for missing textures (counted in a test), and

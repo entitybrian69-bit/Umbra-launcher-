@@ -5,6 +5,7 @@ import core.nbt;
 import core.region;
 import core.mesh;
 import core.textures;
+import core.models;
 import test.harness;
 
 fn empty_column(c: ChunkColumn&) {
@@ -270,5 +271,58 @@ fn run_mesh() {
         check(hash != 2166136261, "mesh hash covers real data");
         check(mesh_verts.len > 1000, "a 12-section terrain column has thousands of vertices");
     }
+    // --- a model instead of a cube ------------------------------------------
+    // The slab is half a block tall, so its geometry comes from the model's box and
+    // not from the unit cube: if the model path were ignored, the top of the
+    // geometry would sit at y+1 instead of y+0.5.
+    mdl_reset();
+    let slab_json = "{\"textures\":{\"all\":\"minecraft:block/oak_planks\"},\"elements\":[{\"from\":[0,0,0],\"to\":[16,8,16],\"faces\":{\"down\":{\"texture\":\"#all\",\"cullface\":\"down\"},\"up\":{\"texture\":\"#all\"},\"north\":{\"texture\":\"#all\"},\"south\":{\"texture\":\"#all\"},\"west\":{\"texture\":\"#all\"},\"east\":{\"texture\":\"#all\"}}}]}";
+    check_i64(mdl_parse(slab_json), 1, "the slab model parses");
+    var c4 = column_new();
+    empty_column(c4);
+    var slab = bs_intern("minecraft:oak_slab", "type=bottom");
+    chunk_set_block(c4, 2, 10, 2, slab);
+    mesh_bind_model(slab);
+    mesh_column(c4);
+    check_i64(mesh_verts.len as i64, 24, "a floating slab is six faces");
+    var top_y: f32 = -99.0;
+    var bottom_y: f32 = 99.0;
+    for i in mesh_verts.len {
+        let v = mesh_verts[i];
+        if v.y > top_y { top_y = v.y; }
+        if v.y < bottom_y { bottom_y = v.y; }
+    }
+    check_f64(top_y as f64, 10.5, "the slab's top is half a block up");
+    check_f64(bottom_y as f64, 10.0, "and its bottom is the block's bottom");
+
+    // A slab with a solid block under it loses exactly its bottom face, because
+    // the model asked for `cullface: down` and the face is on the surface.
+    var c5 = column_new();
+    empty_column(c5);
+    chunk_set_block(c5, 2, 10, 2, slab);
+    chunk_set_block(c5, 2, 9, 2, stone);
+    mesh_column(c5);
+    var slab_bottom = 0;
+    var slab_top = 0;
+    for i in mesh_verts.len {
+        let v = mesh_verts[i];
+        if v.ny < -0.5 && v.y == 10.0 { slab_bottom += 1; }
+        if v.ny > 0.5 && v.y == 10.5 { slab_top += 1; }
+    }
+    check_i64(slab_bottom, 0, "the slab's bottom face is culled by the stone beneath");
+    check_i64(slab_top, 4, "and its top face is still drawn");
+
+    // Model faces sample their texture's tile, through the name the model gave.
+    let planks_uv = tex_uv(TEX_PLANKS);
+    // On the column with no stone beneath: every vertex of the slab comes from the
+    // model, so every one of them samples the tile the model named.
+    mesh_column(c4);
+    var model_uv_ok = true;
+    for i in mesh_verts.len {
+        let v = mesh_verts[i];
+        if !uv_in_rect(v.u, v.v, planks_uv) { model_uv_ok = false; }
+    }
+    check(model_uv_ok, "the model's faces sample the planks tile");
+
     test_summary("mesh");
 }
