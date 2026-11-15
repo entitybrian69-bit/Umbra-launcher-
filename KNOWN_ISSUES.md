@@ -48,6 +48,13 @@ is a bug we have not found yet. Nothing in this file is fixed by claiming it is.
 
 ## Not implemented yet (by stage)
 
+* **APK builds are not byte-reproducible.** Two builds from the same commit differ
+  (released `312bd4ba…`, emulator-tested `2163f797…`, both 214723 bytes), so the
+  exact bytes in the release were downloaded back and hashed but were never
+  installed on a device. Only the owner's phone has done that.
+* **The released Windows `.exe` is verified under wine, not on Windows.** The `pc`
+  workflow runs a natively built `.exe` on `windows-latest`; the release job runs
+  the shipped one under wine because no Windows machine is available to it.
 * **No download link yet.** `.github/workflows/release.yml` builds the APK and both
   PC binaries from a tag, publishes a pre-release and re-downloads every asset to
   check it, but no tag has been pushed, so nothing is published and gate 7 is open.

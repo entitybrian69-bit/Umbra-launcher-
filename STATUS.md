@@ -23,11 +23,12 @@ every model a blockstate can render resolves through its parent chain to
 textures that exist in the jar. That is the first half of gate 6 — the second
 half, comparing *rendered* worlds with the real client, is not started.
 
-There is still **no download link** at the time of writing (the release workflow
-exists and is described below; no tag has been pushed yet), no world-parity
-numbers, and no ARM execution: the arm64 APK is built but never run, and the new
-`core-tests-arm64` job has not produced a result. Umbra is not Minecraft, and the
-parity table is empty.
+There is now a **download link**: `v0.3.0-pre`, a pre-release whose three assets
+were downloaded again and hashed, and whose two executables were run
+(`RELEASE_VERIFY.txt`). Gate 4 is closed on ARM at the host-suite level. There are
+still no world-parity numbers, no textures, and no world you can walk around in,
+and the Android arm64 `.so` inside the APK has never been executed by CI. Umbra is
+not Minecraft, and the parity table is empty.
 
 | Gate | State | Evidence |
 |---|---|---|
@@ -39,7 +40,44 @@ parity table is empty.
 | 5. PC builds (Windows x64, Linux x64) + headless self-test | PASSING | run `43674038711`: `Linux x64 build + headless self-test` and `Windows x64 build + headless self-test` both `completed success`; the Windows binary ran under MSYS2 UCRT64 on `windows-latest`, not under Wine. `evidence/ci/pc-linux-x64.txt` and `pc-windows-x64.txt` both end `PASS: 19 checks, 0 failures`; sha256 `1a1c76665f5a013b…` (linux) and `0190ba968e53b943…` (windows) |
 | 6a. The jar's model data is self-consistent | PASSING | run `43680833198`: `PASS: every model a blockstate can render resolves through its chain (2603 models, 25048 faces, 3964 textures)`; jar `26.3`, 41 483 720 bytes, sha1 `e877b6a07acd633f…`, verified against Mojang's manifest at test time (`evidence/jar/pin.txt`, `evidence/jar/jarcheck.txt`) |
 | 6b. World parity against the real client | NOT DONE | nothing renders the jar's models yet; the mesher still uses a demo world |
-| 7. Release assets verified by re-download | IN PROGRESS: hashes PASS, the Windows asset was not standalone | `.github/workflows/release.yml`: builds the APK and both PC binaries from the tag, runs the Windows `.exe` under wine, publishes a pre-release, then re-downloads **every** asset from its public URL, requires HTTP 200 and a matching SHA-256, and commits `RELEASE_VERIFY.txt` with the run URL. Until a tag exists and that file is committed, gate 7 is open |
+| 7. Release assets verified by re-download | PASSING | `v0.3.0-pre` (pre-release, tag on `1626ba0`), release run `43695376328`, all four jobs `completed/success`. `RELEASE_VERIFY.txt` (committed, reproduced below): `RESULT: PASS - 3 assets re-downloaded from https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.0-pre and every sha256 matched`, `linux: the downloaded binary passed its self-test`, `windows: the downloaded .exe ran under wine and passed its self-test` |
+
+## The first release (gate 7)
+
+```
+tag v0.3.0-pre  prerelease=true
+url https://github.com/entitybrian69-bit/Umbra-launcher-/releases/tag/v0.3.0-pre
+SHA256SUMS                       282 bytes
+umbra-0.3.0-pre-arm64.apk     214723 bytes  sha256 312bd4ba875d9d38abf0ee6f4a216becfb1b17291a22cab7e969e016659b35f1
+umbra-0.3.0-pre-linux-x64      59048 bytes  sha256 ae53bf6dac39c50fd6b92daf5ebccf8d7b80165793bb8854a02e39b6bf12cfbb
+umbra-0.3.0-pre-windows-x64.exe 155881 bytes sha256 b89376bc32dadfed8e069c97a22ec5c952476c3808bf4d75a1ba9fb80f2d6915
+```
+
+`RELEASE_VERIFY.txt` (committed by the release workflow, run `43695376328`):
+
+```
+RESULT: PASS - 3 assets re-downloaded from https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.0-pre and every sha256 matched
+linux: the downloaded binary passed its self-test
+windows: the downloaded .exe ran under wine and passed its self-test
+```
+
+The tag points at `1626ba0`, whose `android` run `43694202675` ended `result: PASS
+(installed, launched, drew, self test tapped, 60s soak, no crash)` with `self-test:
+pattern 2073600 pixels checked, 0 mismatched` and `self-test: cube 2073600 pixels
+checked, 0 mismatched`.
+
+**The caveat that belongs with those numbers:** the APK in the release was built by
+the release workflow and is *not* byte-identical to the APK the emulator installed
+from the same commit (both 214723 bytes; `312bd4ba…` released, `2163f797…`
+emulator-tested). Android builds are not reproducible yet, so the released bytes
+were hashed and downloaded back but not installed on a device. The owner's phone
+is the first device to run them -- which is exactly why the checklist in
+`docs/PHONE_TEST.md` exists.
+
+Three defects were found by this gate and fixed before publishing: a verifier that
+built URLs with a leading space and therefore downloaded nothing (D-032), and a
+Windows binary that needed `libwinpthread-1.dll` from the machine that built it
+(D-034). The withdrawn first attempt is recorded in D-033.
 
 ## Verified results (command output, not claims)
 

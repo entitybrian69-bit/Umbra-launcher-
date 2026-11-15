@@ -18,6 +18,26 @@ Umbra is **not** Minecraft yet. Every parity claim in this repository is a
 measured match rate with the test that produced it, kept in
 [STATUS.md](STATUS.md). Where there is no number, there is no claim.
 
+## Install on an Android phone
+
+The pre-release `v0.3.0-pre` is the first build that installs and draws a world on
+a device:
+
+```
+https://github.com/entitybrian69-bit/Umbra-launcher-/releases/tag/v0.3.0-pre
+umbra-0.3.0-pre-arm64.apk   214723 bytes
+sha256 312bd4ba875d9d38abf0ee6f4a216becfb1b17291a22cab7e969e016659b35f1
+```
+
+Open that page in the phone's browser, download the `.apk`, and open it. Android
+will ask you to allow installing from this source; that is expected for an app
+that does not come from the Play Store. There is no PC needed and no game file to
+import: the build draws a demo world. `docs/PHONE_TEST.md` is the checklist to run
+once it is installed.
+
+It is a **pre-release**: no textures yet (the world is untextured grey and green),
+no world you can walk around in, and nothing from your own game files is read.
+
 ## Status
 
 Read [STATUS.md](STATUS.md) for the current stage, verified results, and the

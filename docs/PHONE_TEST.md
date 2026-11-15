@@ -1,11 +1,25 @@
-# Installing and testing Umbra on a phone
+# Testing Umbra on your phone
+
+Umbra is **not** an official Minecraft product.
+
+## What you are installing
+
+```
+https://github.com/entitybrian69-bit/Umbra-launcher-/releases/tag/v0.3.0-pre
+umbra-0.3.0-pre-arm64.apk   214723 bytes
+sha256 312bd4ba875d9d38abf0ee6f4a216becfb1b17291a22cab7e969e016659b35f1
+```
+
+This is a **pre-release**. It draws a demo world with the real renderer and the
+real mesher, and it is not Minecraft: there are no textures yet, and you cannot
+walk around or open a world.
 
 Umbra is **not** an official Minecraft product. It ships no Mojang code or
 assets; it reads your own game files from the app's private storage.
 
 ## Install
 
-1. Open the release page for `v0.3.0-pre` **on the phone** (GitHub → the repo →
+1. Open the release page linked above **on the phone** (GitHub → the repo →
    Releases; or the link in the release notes).
 2. Download the file ending in `.apk` (`umbra-0.3.0-pre-arm64.apk`).
 3. When Android blocks the install, tap **Settings** on the prompt and allow
