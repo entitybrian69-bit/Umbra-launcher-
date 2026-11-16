@@ -130,7 +130,11 @@ jobs:
           rm -rf build/partial
           mkdir -p build/partial
           cp -r build/server/run/world build/partial/world
-          python3 tools/downgrade_chunk_status.py build/partial/world minecraft:features
+          # The chunk has to be inside the detail window, or the refusal (rightly) does not
+          # fire: the first chunk of the first region file is the corner of the region and
+          # was outside it, which is what made the first version of this step fail on a real
+          # save. Chunk 0,0 is the one a window centred on the origin always contains.
+          python3 tools/downgrade_chunk_status.py build/partial/world minecraft:carvers 0 0
           # The downgrade must not cost a single chunk: if the rewritten record had moved
           # the ones behind it, this would read fewer than the original.
           before="$(build/umbra_worldload build/server/run/world build/partial/before.txt 1 \
