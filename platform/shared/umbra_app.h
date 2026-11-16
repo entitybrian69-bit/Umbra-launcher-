@@ -202,6 +202,7 @@ struct umbra_app {
     int mesh_state;            // 0 idle, 1 running, 2 done
     int mesh_progress;         // permille
     int64_t mesh_calls, mesh_worst_call_us, mesh_total_us;
+    int64_t upload_us;         // the one whole-arena upload, timed on its own
     bool mesh_uploaded;
 
     // Frame timing

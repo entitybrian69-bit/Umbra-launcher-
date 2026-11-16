@@ -908,7 +908,19 @@ static void finish_scene(umbra_app *app) {
     app->fog_far = fit.fog_far;
     float band_frac = fit.band_fraction;
     camera_eye(app, app->eye);
+    // The upload is a single glBufferData of the whole arena, and it lands inside one
+    // frame: the run that logs "longest frame 165 ms" cannot say whether that frame
+    // was spent here or in the first draw, so it is timed on its own and the number
+    // goes in the log with the size that produced it.
+    int64_t up_t0 = umbra_now_us();
     upload_mesh(app);
+    app->upload_us = umbra_now_us() - up_t0;
+    umbra_log(app, "upload: %.1f MB of vertices and %.1f MB of indices in %.1f ms "
+                   "(%.0f MB/s)",
+              app->uploaded_vlen / 1048576.0, app->uploaded_ilen / 1048576.0,
+              app->upload_us / 1000.0,
+              (app->uploaded_vlen + app->uploaded_ilen) / 1048576.0 /
+                  (app->upload_us > 0 ? app->upload_us / 1000000.0 : 1e-6));
     // The initial mesh marked everything dirty and moved the arena; now that the whole
     // buffer is up, the next upload is an edit's sub-upload, not another 25 MB.
     umbra_dirty_clear();
