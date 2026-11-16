@@ -786,7 +786,44 @@ ERROR: the server wrote no region files
   region error. `tools/rcon.py` itself is checked against a fake RCON server (auth, command,
   `stop` closing without an answer = success), a refused password and no server at all.
 
-What the real server does is still unknown, so no real-world match rate may be claimed.
+The fourth failure, from run `43803520288`: **the world was generated and saved**
+(`PASS: the real server generated a world with 4 region file(s)`, `2.4M world`), and step 10
+failed instead:
+
+```
+worldload: FAIL cannot list build/server/run/world/region
+```
+
+- 26.3 keeps the overworld's regions in
+  `world/dimensions/minecraft/overworld/region/`, not `world/region/`. Both readers now ask
+  for the classic path first and then the 26.3 one, print which one answered
+  (`worldload: region dir ...`, `oracle: region dir ...`), and both are host-checked on the
+  synthetic world in *both* layouts (classic `4 of 4 chunks`, and the same world copied into
+  `dimensions/minecraft/overworld/region` gives the same 24673 blocks and `PASS`). The next
+  run is the first one that will read a real save.
+
+The fifth run (`43803905956`) got past that and failed on the data itself:
+
+```
+worldload: region dir build/server/run/world/dimensions/minecraft/overworld/region
+worldload: chunks 529, non-air blocks 0, states 0, region files 4, read errors 0
+worldload: PASS - every chunk in the save was read
+oracle: ... ValueError: not enough values to unpack (expected 2, got 1)
+```
+
+- the save is real and the region files are understood (529 chunks, 4 files, no read errors),
+  but the *chunk* format is not the one either reader expects: not one non-air block in any
+  chunk, and the oracle raised. The synthetic world those readers were built against was
+  written by my own generator, so it only proves they agree with me, not with the game.
+  Two changes: the loader now **fails** when it reads chunks and finds no blocks (a save
+  full of empty chunks is not an empty world, it is a reader that does not understand the
+  file - the old message said PASS), and the `world` workflow now dumps the real chunk's
+  *shape* - keys, tag types, list lengths, no block data - into
+  `evidence/world/chunk-shape.txt` with `tools/dump_nbt_shape.py`, so the format is read
+  from the file rather than guessed. Both readers still pass on the synthetic world
+  (`24673 of 24673`, `PASS`) in the classic and the 26.3 directory layout.
+
+So: a real world has still not been read, and no real-world match rate may be claimed.
 
 ## Step 5 in the working tree: hands (break and place), host-verified
 

@@ -8,10 +8,10 @@ goose/worldload.goose:61: warning: redundant `as i64`: name.len is already i64
 goose/worldload.goose:72: warning: redundant `as i64`: name.len is already i64
     wl_state_len.push(name.len as i64);
                       ^~~~~~~~~~~~~~~
-goose/worldload.goose:181: warning: redundant `as i64`: cx is already i64
+goose/worldload.goose:202: warning: redundant `as i64`: cx is already i64
                 let wx = nums[0] * 32 + (cx as i64);
                                          ^~~~~~~~~
-goose/worldload.goose:182: warning: redundant `as i64`: cz is already i64
+goose/worldload.goose:203: warning: redundant `as i64`: cz is already i64
                 let wz = nums[1] * 32 + (cz as i64);
                                          ^~~~~~~~~
 goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
@@ -84,5 +84,7 @@ goose/core/inflate.goose:317: warning: redundant `as u64`: a u32 converts to u64
                ", data is 0x", u64_to_hex(got as u64, 8));
                                           ^~~~~~~~~~
 == reading build/server/run/world with the loader the renderer uses
-worldload: FAIL cannot list build/server/run/world/region
+worldload: region dir build/server/run/world/dimensions/minecraft/overworld/region
+
+worldload: FAIL 529 chunks read and not one non-air block: the chunk format is not the one this reader expects
 

@@ -122,14 +122,35 @@ fn main() {
     arg(2, out_path);
     let radius = wl_int_arg(3, 1);
 
+    // Where the regions are depends on the version: the classic layout keeps the
+    // overworld in `<world>/region`, and 26.3 keeps it in
+    // `<world>/dimensions/minecraft/overworld/region`. Both are asked, in that order, and
+    // the one that answered is named in the output so the two readers' logs can be
+    // compared and neither can quietly read a different world.
     var region_dir: u8[>..] = [];
-    region_dir.append(dir[..]);
-    region_dir.append("/region");
     var names: u8[>..] = [];
-    if !list_dir(region_dir[..], names) {
-        print("worldload: FAIL cannot list ", region_dir, "\n");
+    var probe: u8[>..] = [];
+    probe.append(dir[..]);
+    probe.append("/region");
+    var found = list_dir(probe[..], names);
+    if found {
+        region_dir.append(dir[..]);
+        region_dir.append("/region");
+    } else {
+        probe = [];
+        probe.append(dir[..]);
+        probe.append("/dimensions/minecraft/overworld/region");
+        if list_dir(probe[..], names) {
+            found = true;
+            region_dir.append(dir[..]);
+            region_dir.append("/dimensions/minecraft/overworld/region");
+        }
+    }
+    if !found {
+        print("worldload: FAIL cannot list ", dir, "/region (nor the 26.3 overworld path)\n");
         exit(1);
     }
+    print("worldload: region dir ", region_dir, "\n");
 
     var summary: u8[>..] = [];     // the machine-readable part
     var detail: u8[>..] = [];      // the block-by-block part
@@ -148,8 +169,8 @@ fn main() {
         if !ends_with(name, ".mca") { continue; }
         files += 1;
         var path: u8[>..] = [];
-        for b in dir { path.push(b); }
-        path.append("/region/");
+        for b in region_dir { path.push(b); }
+        path.append("/");
         for b in name { path.push(b); }
         wl_region = [];
         if !read_file(path[..], wl_region) {
@@ -242,6 +263,14 @@ fn main() {
 
     if chunks == 0 {
         print("worldload: FAIL no chunks: ", region_dir, " holds ", files, " region file(s)\n");
+        exit(1);
+    }
+    if blocks == 0 {
+        // A save with hundreds of chunks and no non-air block in any of them is not an
+        // empty world, it is a reader that does not understand the file. Saying PASS here
+        // would be the exact failure this gate exists to catch.
+        print("worldload: FAIL ", chunks, " chunks read and not one non-air block: the chunk",
+              " format is not the one this reader expects\n");
         exit(1);
     }
 
