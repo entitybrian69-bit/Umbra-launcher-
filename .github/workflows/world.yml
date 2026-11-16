@@ -206,11 +206,25 @@ jobs:
         # The client cannot run in CI, so gate 6b's second half is met the other way the
         # brief allows: the game's own verdict on every block Umbra read out of the save
         # it wrote, taken over RCON before it stopped.
+        #
+        # Run 43864624600 is why this deletes first and demands a fresh file. The
+        # comparison had been refused (correctly: the sample area had not stopped
+        # changing), so no probe ran at all - and this step, being skipped, left the
+        # *previous* run's server-blocks.txt in place for "Commit the numbers" to commit.
+        # A skipped gate must not publish an older gate's verdict.
+        if: always()
         run: |
           set -o pipefail
-          rm -f evidence/world/server-blocks.txt evidence/world/server-compare.log
+          rm -f evidence/world/server-blocks.txt evidence/world/server-compare.txt \
+                evidence/world/server-compare.log
+          if [ ! -f build/server/run/server-blocks.txt ]; then
+            echo "no probe output in this run: the comparison did not get as far as asking"
+            echo "SKIPPED: no server verdict in this run" > evidence/world/server-compare.txt
+            exit 0
+          fi
           cp build/server/run/server-blocks.txt evidence/world/server-blocks.txt
-          cp build/server/run/compare.log evidence/world/server-compare.log
+          [ -f build/server/run/compare.log ] && cp build/server/run/compare.log \
+            evidence/world/server-compare.log
           python3 tools/check_server_blocks.py evidence/world/server-blocks.txt --min 10 \
             2>&1 | tee evidence/world/server-compare.txt
       - name: Report the numbers

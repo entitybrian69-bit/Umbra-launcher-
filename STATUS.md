@@ -1437,9 +1437,52 @@ header repointed when it does not fit. Both branches are exercised: `in place` o
 save (all 9 chunks and 55625 blocks still read afterwards) and `moved to sector 11 (1
 sectors freed, 2 used)` on one trimmed to a single sector, again with every chunk intact.
 
-**Not yet claimed:** a full green world run. Two of its four remaining steps - the
-two-readers comparison and the server comparison - are green; the render and the final
-checker have not run yet because the earlier step failed first. What is
+### The seventh run: everything before the render is green, and the reference picture was wrong (43864624600)
+
+```
+10 success Generate a real world with the real server
+11 success The shape of one real chunk
+12 success A save read while it is still being generated is refused, not compared
+13 success Read the real world twice and compare it block by block
+14 failure Draw the real world with the game's own models and textures
+```
+
+Step 13 is the two-readers half of gate 6b, and it is green on a bigger world than ever
+before: `worldload: chunks 2209, non-air blocks 26568648, states 141`,
+`PASS: two independent readers agree on every block of all 2209 chunks`.
+
+Step 14 failed, and not in the renderer. The render itself says
+`jr: PASS - a world drawn with the jar's own models and textures`, `169 chunks, 5519837
+non-air blocks`, `0 with no model`, `missing-tile magenta 0`, `6144 texels compared with the
+jar's PNGs, 0 differ`. What failed was `check_world_shot.py` against the committed
+reference: `mean absolute difference 29.11 (limit 12.0)`.
+
+**The reference was a picture of a world that had not finished generating.** It was recorded
+by run `43831301517`, whose own log says `jr: save 4 region file(s), 156 chunks, 503215
+non-air blocks` — 3226 per chunk, against 32662 in this run and 32079 in the loader's own
+radius-10 count of the settled save. A real 26.3 chunk holds about 32k non-air blocks, so
+the reference was drawn from a world holding a tenth of that: the same half-generated save
+that made run `43847395025` report 529 chunks where the settled file holds 1089. The
+picture's own colour counts agree — `pale` (sand and stone) 193 -> 39058, `green`
+24553 -> 35963 — and the two frames show the same tree, the same hills and the same camera,
+one of them with no grass on it.
+
+`docs/reference/real_world.png` is re-recorded from this run's picture, by the rule this
+project uses: a reference is replaced only when the run's own numbers show the new picture
+is the real state. `0.00 of 255` against itself, and the two-readers gate above it passed on
+the same save.
+
+**A stale-evidence bug found by reading this run's artifacts.** `evidence/world/server-blocks.txt`
+and `server-compare.txt` in this run's evidence commit are from the *previous* run: the
+probe never ran (the comparison was refused before asking), the "Hold Umbra's blocks to the
+answers" step was therefore skipped, and a skipped step does not clean up - so
+`Commit the numbers` published an older run's 17 denials as if they were this run's. That
+step is now `if: always()`, deletes the evidence first, and writes `SKIPPED: no server
+verdict in this run` when there is nothing fresh. A gate that did not run must not publish
+another run's verdict.
+
+**Still not green:** one world run has passed every step except the render's reference
+check, which this commit fixes. Not yet claimed: a fully green world workflow. What is
 host-verified here is the ordering (a stub RCON server shows `forceload` arriving before
 any `save-all`), the settling loop in both directions (a still save settles after three
 readings and the probe gets 153 of 153 confirmed; a save that grew every second failed with
