@@ -1,12 +1,45 @@
-goose/jrender.goose:180: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/jrender.goose:181: warning: redundant `as f32`: an i64 converts to f32 implicitly here
               " bytes, sampled at ", (cu * (jp_colormap_w() as f32)) as i64, ",",
                                             ^~~~~~~~~~~~~~~~~~~~~~
-goose/jrender.goose:181: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/jrender.goose:182: warning: redundant `as f32`: an i64 converts to f32 implicitly here
               (cv * (jp_colormap_h() as f32)) as i64, "\n");
                      ^~~~~~~~~~~~~~~~~~~~~~
-goose/jrender.goose:231: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/jrender.goose:252: warning: redundant `as f32`: an i64 converts to f32 implicitly here
     let aspect = (width as f32) / (height as f32);
                                    ^~~~~~~~~~~~~
+goose/core/savegame.goose:57: warning: redundant `as i64`: name.len is already i64
+    while k < name.len as i64 && got < 2 {
+              ^~~~~~~~~~~~~~~
+goose/core/savegame.goose:65: warning: redundant `as i64`: name.len is already i64
+            while k < name.len as i64 && name[k] >= '0' && name[k] <= '9' {
+                      ^~~~~~~~~~~~~~~
+goose/core/savegame.goose:99: warning: redundant `as i64`: names.len is already i64
+    while i < names.len as i64 {
+              ^~~~~~~~~~~~~~~~
+goose/core/savegame.goose:101: warning: redundant `as i64`: names.len is already i64
+        while j < (names.len as i64) && names[j] != '\n' { j += 1; }
+                   ^~~~~~~~~~~~~~~~
+goose/core/savegame.goose:144: warning: redundant `as i64`: cx is already i64
+                    c.x = (nums[0] * 32 + (cx as i64)) as i32;
+                                           ^~~~~~~~~
+goose/core/savegame.goose:145: warning: redundant `as i64`: cz is already i64
+                    c.z = (nums[1] * 32 + (cz as i64)) as i32;
+                                           ^~~~~~~~~
+goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
+        nbt_nodes[slot].ival = r.src[r.pos] as i8 as i64;
+                               ^~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/nbt.goose:108: warning: redundant `as i64`: an i16 converts to i64 implicitly here
+        nbt_nodes[slot].ival = be_i16(r.src, r.pos) as i64;
+                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/nbt.goose:112: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+        nbt_nodes[slot].ival = be_i32(r.src, r.pos) as i64;
+                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/nbt.goose:120: warning: redundant `as f64`: an f32 converts to f64 implicitly here
+        nbt_nodes[slot].fval = be_f32(r.src, r.pos) as f64;
+                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/nbt.goose:256: warning: redundant `as f64`: an i64 converts to f64 implicitly here
+    return nbt_nodes[c].ival as f64;
+           ^~~~~~~~~~~~~~~~~~~~~~~~
 goose/core/raster.goose:64: warning: redundant `as f32`: (((f[0] * f[0]) + (f[1] * f[1])) + (f[2] * f[2])) is already f32
     let fl = (f[0] * f[0] + f[1] * f[1] + f[2] * f[2]) as f32;
               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -304,21 +337,6 @@ goose/core/region.goose:142: warning: redundant `as u32`: a u16 converts to u32 
 goose/core/region.goose:484: warning: redundant `as u32`: a u8 converts to u32 implicitly here
             put_be_u32(out, (offsets[i] << 8) | (counts[i] as u32));
                                                  ^~~~~~~~~~~~~~~~
-goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
-        nbt_nodes[slot].ival = r.src[r.pos] as i8 as i64;
-                               ^~~~~~~~~~~~~~~~~~~~~~~~~
-goose/core/nbt.goose:108: warning: redundant `as i64`: an i16 converts to i64 implicitly here
-        nbt_nodes[slot].ival = be_i16(r.src, r.pos) as i64;
-                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/core/nbt.goose:112: warning: redundant `as i64`: an i32 converts to i64 implicitly here
-        nbt_nodes[slot].ival = be_i32(r.src, r.pos) as i64;
-                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/core/nbt.goose:120: warning: redundant `as f64`: an f32 converts to f64 implicitly here
-        nbt_nodes[slot].fval = be_f32(r.src, r.pos) as f64;
-                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/core/nbt.goose:256: warning: redundant `as f64`: an i64 converts to f64 implicitly here
-    return nbt_nodes[c].ival as f64;
-           ^~~~~~~~~~~~~~~~~~~~~~~~
 goose/core/mem.goose:26: warning: redundant `as u16`: a u8 converts to u16 implicitly here
     return (b[off] as u16 << 8) | (b[off + 1] as u16);
                                    ^~~~~~~~~~~~~~~~~
