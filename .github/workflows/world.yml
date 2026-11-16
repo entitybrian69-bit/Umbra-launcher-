@@ -101,8 +101,25 @@ jobs:
           set -o pipefail
           java -version 2>&1 | head -2
           if ! tools/gen_server_world.sh build/server/server.jar build/server/run \
-                2>&1 | tee evidence/world/gen-world.txt; then
+                2>&1 | tee evidence/world/gen-world.txt | tail -80; then
             echo "::error title=world generation::$(tail -3 evidence/world/gen-world.txt | tr '\n' ' ')"
+            exit 1
+          fi
+          # The comparison is part of this step, and it has to fail the step. Run
+          # 43867075771 showed why: the comparison was refused ("the save never reached a
+          # state where the sample area was finished and had stopped changing"), but
+          # gen_server_world.sh only warns, so the job went green with 17 steps "passing"
+          # and no server verdict at all. A gate that did not run is not a gate that passed.
+          if grep -qE "^compare: FAIL|WARNING: the server comparison did not pass" \
+                evidence/world/gen-world.txt; then
+            echo "::error title=server comparison::the world was not compared with the server"
+            grep -E "^compare: FAIL|^compare: +|WARNING: the server comparison" \
+              evidence/world/gen-world.txt | head -8
+            exit 1
+          fi
+          if ! grep -q "^compare: the server answered every claim" \
+                evidence/world/gen-world.txt; then
+            echo "::error title=server comparison::no verdict line: the probe did not finish"
             exit 1
           fi
       - name: The shape of one real chunk (structure only, no block data)
@@ -203,6 +220,8 @@ jobs:
           python3 tools/check_world_shot.py evidence/world/real.png \
             --reference docs/reference/real_world.png --record 2>&1 | tee evidence/world/real-shot.txt
       - name: Hold Umbra's blocks to the answers the server gave while it held the world
+        # (This is the second reading of the same verdict, by a checker that exits non-zero
+        # on any denial. The step above is what guarantees the probe actually ran.)
         # The client cannot run in CI, so gate 6b's second half is met the other way the
         # brief allows: the game's own verdict on every block Umbra read out of the save
         # it wrote, taken over RCON before it stopped.
@@ -218,9 +237,12 @@ jobs:
           rm -f evidence/world/server-blocks.txt evidence/world/server-compare.txt \
                 evidence/world/server-compare.log
           if [ ! -f build/server/run/server-blocks.txt ]; then
+            # Not a silent pass: the step above has already failed the job for this, and
+            # this says so in the evidence rather than leaving an older run's file behind.
             echo "no probe output in this run: the comparison did not get as far as asking"
             echo "SKIPPED: no server verdict in this run" > evidence/world/server-compare.txt
-            exit 0
+            echo "::error title=server comparison::no server-blocks.txt in this run"
+            exit 1
           fi
           cp build/server/run/server-blocks.txt evidence/world/server-blocks.txt
           [ -f build/server/run/compare.log ] && cp build/server/run/compare.log \

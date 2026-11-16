@@ -117,7 +117,11 @@ fingerprint() {
 settled=0
 prev=""
 same=0
-for attempt in 1 2 3 4 5 6; do
+# Ten attempts, not six. The window converges rather than stopping dead: run 43867075771
+# measured +2365, +803, +283, +156, +0 blocks over six readings and ran out of attempts one
+# short of the confirmation it needed. Ten gives that arithmetic room without letting a
+# genuinely stuck save through, because the rule is still three identical readings.
+for attempt in $(seq 1 10); do
     if ! flush; then
         echo "compare: FAIL the server did not accept save-all flush"
         exit 1

@@ -1481,8 +1481,34 @@ step is now `if: always()`, deletes the evidence first, and writes `SKIPPED: no 
 verdict in this run` when there is nothing fresh. A gate that did not run must not publish
 another run's verdict.
 
-**Still not green:** one world run has passed every step except the render's reference
-check, which this commit fixes. Not yet claimed: a fully green world workflow. What is
+### The eighth run: green, and that was the problem (43867075771)
+
+Every one of the 17 steps reported `success`. Underneath, the comparison it is supposed to
+guarantee had been refused:
+
+```
+compare: attempt 6: 441 chunks, 14144846 non-air blocks, the window is finished
+compare: FAIL the save never reached a state where the sample area was
+compare:      finished and had stopped changing
+evidence/world/server-compare.txt: SKIPPED: no server verdict in this run
+```
+
+Two things were wrong, and only one of them was timing.
+
+**The job could not go red.** `gen_server_world.sh` treats a failed comparison as a warning
+("WARNING: the server comparison did not pass"), and my stale-evidence guard then turned the
+skipped collection step into a clean exit. So a refused comparison produced a green run -
+which is worse than a red one, because it says a gate passed when it never ran. That step
+now greps its own log and fails on `compare: FAIL` or on a missing
+`compare: the server answered every claim`, and the collection step fails too when there is
+no fresh `server-blocks.txt` instead of writing `SKIPPED` and exiting 0.
+
+**And it really was one reading short.** The window converges rather than stopping dead -
+`+2365, +803, +283, +156, +0` - and six attempts ended exactly one confirmation short. The
+loop allows ten now. Replaying this run's own six measurements through the loop's rule
+settles at attempt 7: `14144846` three times.
+
+**Not yet claimed:** a green world run that also has a real server verdict in it. What is
 host-verified here is the ordering (a stub RCON server shows `forceload` arriving before
 any `save-all`), the settling loop in both directions (a still save settles after three
 readings and the probe gets 153 of 153 confirmed; a save that grew every second failed with
