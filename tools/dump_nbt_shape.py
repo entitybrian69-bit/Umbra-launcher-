@@ -248,11 +248,24 @@ def hexdump(data, pos, count=96):
         print(f"    {pos + i:6d}  {' '.join(f'{b:02x}' for b in row):<47}  {text}")
 
 
-def describe_bytes(files):
-    """Walk every chunk until a palette with real terrain in it is found, and print it.
+def entry_members(nbt, pos, tag):
+    """(member names, end position) of a compound payload, or ([], end) otherwise."""
+    if tag != 10:
+        value, end, _kids = walk(nbt, pos, tag)
+        return [], end
+    value, end, _kids = walk(nbt, pos, 10)
+    return [name for name, _t, _at in value], end
 
-    The first version returned from inside the first chunk, which on a real save is empty
-    air, so it printed nothing at all for four files."""
+
+def describe_bytes(files, limit=3):
+    """Print the palettes the readers cannot read, as member names and raw bytes.
+
+    It looks for a palette whose first entry is a compound without a `Name` member - the
+    form that came back as 'compound {: string}' - and prints up to `limit` of them with
+    their bytes, then falls back to the first palettes with compounds in them.
+    """
+    printed = 0
+    fallback = []
     for path in files:
         for nbt in world_oracle.file_chunks(path):
             try:
@@ -279,14 +292,27 @@ def describe_bytes(files):
                     for inner, itag, iat in walk(nbt, at, 10)[0]:
                         if inner != "palette" or itag != 9:
                             continue
+                        element_tag = nbt[iat]
                         n = struct.unpack(">i", nbt[iat + 1:iat + 5])[0]
-                        if n < 2:
+                        if n < 2 or element_tag != 10:
                             continue
-                        print(f"  {path}: section[{index}] palette: list of {n}, "
-                              f"element tag {nbt[iat]}")
-                        hexdump(nbt, iat + 5, 80)
-                        return
-    print("  (no palette with two or more entries was found)")
+                        names, _e = entry_members(nbt, iat + 5, element_tag)
+                        record = (path, index, n, names, iat + 5)
+                        if "Name" not in names:
+                            print(f"  {path}: section[{index}] palette of {n}, "
+                                  f"element tag {element_tag}, first entry members {names}")
+                            hexdump(nbt, iat + 5, 96)
+                            printed += 1
+                            if printed >= limit:
+                                return
+                        elif len(fallback) < limit:
+                            fallback.append(record)
+    if printed == 0:
+        for path, index, n, names, at in fallback:
+            print(f"  fallback: {path}: section[{index}] palette of {n}, first entry members {names}")
+            hexdump(nbt, at, 64)
+    if printed == 0 and not fallback:
+        print("  (no compound palette with two or more entries was found)")
 
 
 def main(argv):
