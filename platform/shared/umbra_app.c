@@ -1182,17 +1182,30 @@ int umbra_app_init(umbra_app *app) {
         fclose(m);
     }
 
+    // Each shader is compiled and linked here, inside init, and the driver does that
+    // work then and there: on the emulator this is the longest frame of the run
+    // (269.7 ms at "mesh 0%, 1 calls"), and on a phone a driver that compiles on
+    // first use would put it in the first world frame instead. Timed per program so
+    // the number in the log names what it cost.
     char err[1024];
+    int64_t sh_t0 = umbra_now_us();
     app->prog_mesh = link_program(VS_MESH, FS_MESH, err, sizeof err);
     if (!app->prog_mesh) { umbra_log(app, "mesh program: %s", err); return 0; }
+    int64_t sh_mesh = umbra_now_us() - sh_t0;
     app->prog_hud = link_program(VS_HUD, FS_HUD, err, sizeof err);
     if (!app->prog_hud) { umbra_log(app, "hud program: %s", err); return 0; }
+    int64_t sh_hud = umbra_now_us() - sh_t0 - sh_mesh;
     app->prog_pattern = link_program(VS_FULL, FS_PATTERN, err, sizeof err);
     app->prog_atlas = link_program(VS_FULL, FS_ATLAS, err, sizeof err);
     if (!app->prog_atlas) umbra_log(app, "atlas sampler shader: %s", err);
     if (!app->prog_pattern) { umbra_log(app, "pattern program: %s", err); return 0; }
     app->prog_cube = link_program(VS_CUBE, FS_CUBE, err, sizeof err);
     if (!app->prog_cube) { umbra_log(app, "cube program: %s", err); return 0; }
+    int64_t sh_total = umbra_now_us() - sh_t0;
+    umbra_log(app, "shaders: 5 programs compiled and linked in %.1f ms "
+                   "(mesh %.1f, hud %.1f, the rest %.1f) -- once, at start",
+              sh_total / 1000.0, sh_mesh / 1000.0, sh_hud / 1000.0,
+              (sh_total - sh_mesh - sh_hud) / 1000.0);
 
     query_gl_info(app);
     umbra_log(app, "GL_RENDERER %s", app->gl_renderer);
