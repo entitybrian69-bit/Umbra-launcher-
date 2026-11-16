@@ -729,9 +729,23 @@ server jar from Mojang and checks it against the version JSON, `tools/gen_server
 runs it with a fixed seed until it says `Done`, stops it cleanly, and the same two
 readers then read *that* save. The server jar and the save are never committed.
 
-**State: implemented and host-verified on the synthetic world; the real half is failing
-in CI at the generation step, and two causes have been found and fixed on 2026-11-16,
-neither verified yet.** The first cause: run `43800033517`
+**State: DONE and CI-verified on a real, server-generated 26.3 world** (run
+`43808551824`, step "Read the real world twice and compare it block by block" success):
+
+```
+worldload: region dir build/server/run/world/dimensions/minecraft/overworld/region
+worldload: chunks 529, non-air blocks 843609, states 45, region files 4, read errors 0
+oracle:    chunks 529, non-air blocks 843609, states 45, region files 4
+chunks that agree: 529 of 529 (100.00%)
+blocks in agreeing chunks: 843609 of 843609 (100.00% of every non-air block in the save)
+block states that agree: 45 of 45
+PASS: two independent readers agree on every block of all 529 chunks
+PASS: the world the server generated is read the same way twice
+```
+
+It took six runs and five separate causes, each found from CI's own output rather than
+guessed. They are recorded here because they are the reason the format code now reads what
+the game writes. The first cause: run `43800033517`
 (commit `764da22`) failed at step 8 with
 
 ```
@@ -871,7 +885,22 @@ oracle:    chunks 529, non-air blocks 732557, states 29, region files 4
   the lines it cannot read (the first real dump had a `block` line with an empty name,
   which is the next thing to look at).
 
-So: a real world has still not been read, and no real-world match rate may be claimed.
+The sixth cause, from run `43808066207`, was the palette entry itself. The hexdump of the
+bytes:
+
+```
+08 00 00 00 0f 6d 69 6e 65 63 72 61 66 74 3a 73 ...
+08 00 02 69 64 00 14 "minecraft:oak_leaves" 0a 00 0a "properties" ...
+```
+
+- in a compound palette, 26.3 writes `{id: <name>, properties: {...}}` for a state that has
+  properties, and **a compound with a single member whose name is empty**, `{"": <name>}`,
+  for one that does not. Neither reader knew either form. Both now read four forms - the
+  classic `{Name, Properties}`, the bare string, `{id, properties}` and `{"": name}` - and
+  the generator can write the 26.3 pair, so CI reads five flavours on every push
+  (`string`, `compound`, `id` x `contiguous`, `padded`), each at `100.00%`.
+
+**A real world is now read, twice, with full agreement.**
 
 ## Step 5 in the working tree: hands (break and place), host-verified
 
@@ -942,6 +971,6 @@ and host-tested but not re-run:
 | A body you can walk with | yes | 24 host checks, and the device run above |
 | Breaking and placing blocks | yes, host-verified | 36 host checks over the ray, the edit, the re-mesh, the 44 dp target size and all three layouts; the emulator `hands` phase is unverified |
 | Water, ladders, sneaking, swimming, mobs, survival, multiplayer | **no** | not implemented |
-| Reading a world from a real save | implemented, synthetic-verified | two independent readers, `24673 of 24673` blocks, 100.00%; the real server's save has not been read yet (step 8 of the `world` workflow failed three times; the third cause is fixed and unverified) |
+| Reading a world from a real save | **CI-verified on a real 26.3 save** | `529 of 529` chunks, `843609 of 843609` blocks, `45 of 45` states, two independent readers, run `43808551824`; plus five synthetic flavours on every push |
 | Rendered world matches the real client | **not measured** | gate 6b second half: nothing compares two renders yet |
 | Threaded meshing | **no** | one step per frame on the render thread; a re-mesh after an edit stalls nothing but takes ~5 s |

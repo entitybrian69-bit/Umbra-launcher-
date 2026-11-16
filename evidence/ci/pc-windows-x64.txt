@@ -166,7 +166,7 @@ goose/core/region.goose:66: warning: redundant `as i64`: a u32 converts to i64 i
 goose/core/region.goose:142: warning: redundant `as u32`: a u16 converts to u32 implicitly here
     return s.blocks[i] as u32;
            ^~~~~~~~~~~~~~~~~~
-goose/core/region.goose:468: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+goose/core/region.goose:484: warning: redundant `as u32`: a u8 converts to u32 implicitly here
             put_be_u32(out, (offsets[i] << 8) | (counts[i] as u32));
                                                  ^~~~~~~~~~~~~~~~
 goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
@@ -279,8 +279,8 @@ umbra headless self-test
 core version: 0.3.5
 mesh: 17793984 vertex bytes, 2224248 index bytes
 mesh checks: 0 bad indices, 0 bad normals, 0 positions out of bounds
-progress: worst 998 permille; units 1947, total 1947
-sliced mesh: 505 calls, worst call 4.75 ms, worst unit 3.57 ms
+progress: worst 996 permille; units 1947, total 1947
+sliced mesh: 527 calls, worst call 5.06 ms, worst unit 4.70 ms
 batches: 543276 + 12786 + 0 = 556062 of 556062 indices
 layout: phone scale 2.64, desktop scale 1.00
 layout: button 0 21,1006 737x53; button 2 1528,1006
