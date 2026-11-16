@@ -8,10 +8,10 @@ goose/worldload.goose:61: warning: redundant `as i64`: name.len is already i64
 goose/worldload.goose:72: warning: redundant `as i64`: name.len is already i64
     wl_state_len.push(name.len as i64);
                       ^~~~~~~~~~~~~~~
-goose/worldload.goose:181: warning: redundant `as i64`: cx is already i64
+goose/worldload.goose:202: warning: redundant `as i64`: cx is already i64
                 let wx = nums[0] * 32 + (cx as i64);
                                          ^~~~~~~~~
-goose/worldload.goose:182: warning: redundant `as i64`: cz is already i64
+goose/worldload.goose:203: warning: redundant `as i64`: cz is already i64
                 let wz = nums[1] * 32 + (cz as i64);
                                          ^~~~~~~~~
 goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
@@ -84,5 +84,29 @@ goose/core/inflate.goose:317: warning: redundant `as u64`: a u32 converts to u64
                ", data is 0x", u64_to_hex(got as u64, 8));
                                           ^~~~~~~~~~
 == reading build/server/run/world with the loader the renderer uses
-worldload: FAIL cannot list build/server/run/world/region
+worldload: region dir build/server/run/world/dimensions/minecraft/overworld/region
 
+worldload: chunks 529, non-air blocks 0, states 0, region files 4, read errors 0
+
+worldload: detail lines for chunks within 1 of the origin
+
+worldload: PASS - every chunk in the save was read
+
+== reading the same world with the independent reader
+oracle: region dir build/server/run/world/dimensions/minecraft/overworld/region
+Traceback (most recent call last):
+  File "/home/runner/work/Umbra-launcher-/Umbra-launcher-/tools/world_oracle.py", line 273, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/runner/work/Umbra-launcher-/Umbra-launcher-/tools/world_oracle.py", line 249, in main
+    cx, cz, n, h, counts, det = chunk_records(nbt, radius)
+                                ~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/runner/work/Umbra-launcher-/Umbra-launcher-/tools/world_oracle.py", line 136, in chunk_records
+    palette, indices = section_states(sec)
+                       ~~~~~~~~~~~~~~^^^^^
+  File "/home/runner/work/Umbra-launcher-/Umbra-launcher-/tools/world_oracle.py", line 107, in section_states
+    name = get(entry, "Name", "minecraft:air")
+  File "/home/runner/work/Umbra-launcher-/Umbra-launcher-/tools/world_oracle.py", line 92, in get
+    for k, v in node:
+        ^^^^
+ValueError: not enough values to unpack (expected 2, got 1)
