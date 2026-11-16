@@ -546,6 +546,9 @@ hands: player: place -> 1 (placed oak_slab at 25 65 23)
 hands: shot-hands.png is 306466 bytes
 ```
 
+and again at the tip (android run `43824520091`, success): `broke grass_block at 25 65 23`,
+re-meshed, `placed oak_slab at 25 65 23`.
+
 1. **Done:** `v0.3.0-pre` and `v0.3.1-pre` are published, each verified by
    re-download (`RELEASE_VERIFY.txt`), and `0.3.1` ran on the owner's phone.
 2. **Done:** gate 4 is closed on ARM at the host-suite level, with the caveat that
@@ -783,6 +786,11 @@ block states that agree: 45 of 45
 PASS: two independent readers agree on every block of all 529 chunks
 PASS: the world the server generated is read the same way twice
 ```
+
+The same step at the branch tip (run `43824520067`) gives the same verdict on a different
+world: `529 of 529` chunks, `844904 of 844904` blocks, `44 of 44` states, `100.00%`. The
+numbers move run to run because the server picks a different spawn each time; what is
+constant is that two independent readers agree on every block of every chunk.
 
 It took six runs and five separate causes, each found from CI's own output rather than
 guessed. They are recorded here because they are the reason the format code now reads what
