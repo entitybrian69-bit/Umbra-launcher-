@@ -1104,6 +1104,18 @@ int umbra_app_init(umbra_app *app) {
     // android_main had set one.
     int (*swap_fn)(void *, int) = app->swap_interval_fn;
     void *swap_ctx = app->swap_interval_ctx;
+    // The same is true of everything the platform supplies for the game-files
+    // screen: the directory the app's own jar lives in, and the two ways to get
+    // one there. All four were erased by this memset, so on the phone the app
+    // believed it was a build with no download and no file picker, logged
+    // "jar: none found" and went straight to the placeholder world -- the screen
+    // the whole feature exists for never opened (run 43946503664).
+    char files_dir[sizeof app->files_dir];
+    memcpy(files_dir, app->files_dir, sizeof files_dir);
+    int (*download_fn)(void *, const char *, const char *, long long *) = app->download_fn;
+    int (*pick_file_fn)(void *, const char *, const char *, long long *) = app->pick_file_fn;
+    void (*progress_fn)(void *, long long *, long long *) = app->progress_fn;
+    void *net_ctx = app->net_ctx;
     memcpy(log_path, app->log_path, sizeof log_path);
     memcpy(marker_path, app->marker_path, sizeof marker_path);
     memset(app, 0, sizeof *app);
@@ -1117,6 +1129,11 @@ int umbra_app_init(umbra_app *app) {
     app->dpi_scale = dpi_scale;
     app->swap_interval_fn = swap_fn;
     app->swap_interval_ctx = swap_ctx;
+    memcpy(app->files_dir, files_dir, sizeof app->files_dir);
+    app->download_fn = download_fn;
+    app->pick_file_fn = pick_file_fn;
+    app->progress_fn = progress_fn;
+    app->net_ctx = net_ctx;
     app->screen = UMBRA_SCREEN_HOME;
     app->bench_seconds = 60;
     // 55 degrees is a phone-friendly vertical field of view; the distance that
@@ -1199,6 +1216,10 @@ int umbra_app_init(umbra_app *app) {
     // The screen needs a real surface to lay out its buttons, so the frame loop
     // opens it (see gf_open_when_ready) rather than this function: at this point the
     // window may still be 1x1.
+    umbra_log(app, "gamefiles: platform hooks %s, picker %s, files dir %s",
+              app->download_fn ? "download" : "none",
+              app->pick_file_fn ? "import" : "none",
+              app->files_dir[0] ? app->files_dir : "(unknown)");
     app->gf_pending_open = (!app->jar_loaded && app->files_dir[0] && app->download_fn) ? 1 : 0;
     // The atlas goes up before the world: the mesher's UVs already point into it.
     upload_atlas(app);

@@ -55,4 +55,23 @@ then
     exit 1
 fi
 echo "check_c: umbra_app_init runs the device checks"
+# The platform fills in the game-files screen's hooks (and the directory the app's
+# own jar lives in) *before* calling init, and init starts with a blanket memset.
+# It erased all five, so the phone believed it had no download and no picker, and
+# the screen the feature exists for never opened (emulator run 43946503664). No
+# desktop build can notice that, so the save/restore pairs are checked here.
+INIT_BODY="$(sed -n '/^int umbra_app_init/,/^}/p' platform/shared/umbra_app.c)"
+BEFORE_MEMSET="$(printf '%s\n' "$INIT_BODY" | sed -n '1,/memset(app, 0, sizeof \*app);/p')"
+AFTER_MEMSET="$(printf '%s\n' "$INIT_BODY" | sed -n '/memset(app, 0, sizeof \*app);/,$p')"
+for field in files_dir download_fn pick_file_fn progress_fn net_ctx; do
+    if ! printf '%s\n' "$BEFORE_MEMSET" | grep -q "app->$field"; then
+        echo "check_c: umbra_app_init does not save app->$field before its memset" >&2
+        exit 1
+    fi
+    if ! printf '%s\n' "$AFTER_MEMSET" | grep -qE "(app->$field =|memcpy\(app->$field,)"; then
+        echo "check_c: umbra_app_init erases app->$field: it is not restored after the memset" >&2
+        exit 1
+    fi
+done
+echo "check_c: umbra_app_init keeps the platform's game-files hooks and files dir"
 echo "check_c: both branches parse and type-check, and both platform mains do too"
