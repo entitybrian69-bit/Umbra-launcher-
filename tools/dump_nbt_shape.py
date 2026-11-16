@@ -186,12 +186,122 @@ def describe_shapes(path):
     return
 
 
+# --- raw bytes, for when a shape is not enough ---------------------------------
+# A tiny NBT walker that keeps byte offsets, so the one palette entry the readers cannot
+# read can be printed as hex. Independent of the oracle's parser on purpose: if that
+# parser is what is wrong, this must not share the mistake.
+
+def walk(data, pos, tag):
+    """(value, end position, children offsets) for one payload."""
+    start = pos
+    if tag == 1:
+        return data[pos], pos + 1, None
+    if tag == 2:
+        return struct.unpack(">h", data[pos:pos + 2])[0], pos + 2, None
+    if tag == 3:
+        return struct.unpack(">i", data[pos:pos + 4])[0], pos + 4, None
+    if tag == 4:
+        return struct.unpack(">q", data[pos:pos + 8])[0], pos + 8, None
+    if tag == 5:
+        return struct.unpack(">f", data[pos:pos + 4])[0], pos + 4, None
+    if tag == 6:
+        return struct.unpack(">d", data[pos:pos + 8])[0], pos + 8, None
+    if tag == 7:
+        n = struct.unpack(">i", data[pos:pos + 4])[0]
+        return data[pos + 4:pos + 4 + n], pos + 4 + n, None
+    if tag == 8:
+        n = struct.unpack(">H", data[pos:pos + 2])[0]
+        return data[pos + 2:pos + 2 + n].decode("utf-8", "replace")[:40], pos + 2 + n, None
+    if tag == 9:
+        sub = data[pos]
+        n = struct.unpack(">i", data[pos + 1:pos + 5])[0]
+        pos += 5
+        items = []
+        for _ in range(n):
+            value, pos, kids = walk(data, pos, sub)
+            items.append((value, kids))
+        return items, pos, None
+    if tag == 10:
+        members = []
+        while True:
+            t = data[pos]
+            if t == 0:
+                return members, pos + 1, None
+            n = struct.unpack(">H", data[pos + 1:pos + 3])[0]
+            name = data[pos + 3:pos + 3 + n].decode("utf-8", "replace")
+            members.append((name, t, pos + 3 + n))
+            _value, pos, _kids = walk(data, pos + 3 + n, t)
+    if tag == 11:
+        n = struct.unpack(">i", data[pos:pos + 4])[0]
+        return list(struct.unpack(">%di" % n, data[pos + 4:pos + 4 + 4 * n])), pos + 4 + 4 * n, None
+    if tag == 12:
+        n = struct.unpack(">i", data[pos:pos + 4])[0]
+        return list(struct.unpack(">%dq" % n, data[pos + 4:pos + 4 + 8 * n])), pos + 4 + 8 * n, None
+    raise ValueError(f"tag {tag} at {pos}")
+
+
+def hexdump(data, pos, count=96):
+    chunk = data[pos:pos + count]
+    for i in range(0, len(chunk), 16):
+        row = chunk[i:i + 16]
+        text = "".join(chr(b) if 32 <= b < 127 else "." for b in row)
+        print(f"    {pos + i:6d}  {' '.join(f'{b:02x}' for b in row):<47}  {text}")
+
+
+def describe_bytes(path):
+    """Walk the first chunk and print the raw bytes of a palette the readers cannot read."""
+    for nbt in world_oracle.file_chunks(path):
+        root, _end, _kids = walk(nbt, 3, 10)      # 1 byte tag, 2 bytes name length, name
+        sections = None
+        for name, tag, at in root:
+            if name == "sections" and tag == 9:
+                sections = at
+                break
+        if sections is None:
+            print("  no sections")
+            return
+        pos = sections + 5
+        sub_tag = nbt[sections]
+        for index in range(struct.unpack(">i", nbt[sections + 1:sections + 5])[0]):
+            sec_start = pos
+            sec, pos, _kids = walk(nbt, pos, sub_tag)
+            if not sec:
+                continue
+            for name, tag, at in sec:
+                if name != "block_states" or tag != 10:
+                    continue
+                for inner, itag, iat in walk(nbt, at, 10)[0]:
+                    if inner != "palette" or itag != 9:
+                        continue
+                    count = struct.unpack(">i", nbt[iat + 1:iat + 5])[0]
+                    if count < 2:
+                        # A one-entry palette is all air; the interesting sections are the
+                        # ones with real terrain in them.
+                        continue
+                    first = iat + 5
+                    print(f"  section[{index}] palette at {first}, first entry bytes:")
+                    hexdump(nbt, first, 80)
+                    return
+        return
+
+
 def main(argv):
     if len(argv) < 2:
         print(__doc__.strip(), file=sys.stderr)
         return 1
-    for path in argv[1:]:
+    paths = [a for a in argv[1:] if not a.startswith("--")]
+    want_hex = "--hex" in argv
+    if len(paths) == 0:
+        print(__doc__.strip(), file=sys.stderr)
+        return 1
+    for path in paths:
         print(f"== {path}")
+        if want_hex:
+            try:
+                describe_bytes(path)
+            except (ValueError, struct.error) as exc:
+                print(f"  could not walk it: {exc}")
+            continue
         try:
             describe_shapes(path)
         except (ValueError, struct.error) as exc:
