@@ -1508,7 +1508,41 @@ no fresh `server-blocks.txt` instead of writing `SKIPPED` and exiting 0.
 loop allows ten now. Replaying this run's own six measurements through the loop's rule
 settles at attempt 7: `14144846` three times.
 
-**Not yet claimed:** a green world run that also has a real server verdict in it. What is
+### Green with the gate actually met (43868464871, evidence commit `dc2e218`)
+
+Every step success, and this time the evidence underneath it is from that run:
+
+```
+compare: attempt 4: 441 chunks, 14144660 non-air blocks, the window is finished
+compare: attempt 6: 441 chunks, 14144660 non-air blocks, the window is finished
+compare: the save is settled - three readings in a row agree: 441 chunks, 14144660
+probe: 150 confirmed, 0 denied, 0 errors
+compare: the server answered every claim
+```
+
+```
+step 12  A save read while it is still being generated is refused  success  (0 FAIL lines)
+step 13  Two independent readers:
+         worldload: chunks 2209, non-air blocks 26568999, states 141
+         oracle:    chunks 2209, non-air blocks 26568999, states 141
+         chunks that agree: 2209 of 2209 (100.00%)
+         blocks in agreeing chunks: 26568999 of 26568999 (100.00%)
+         PASS: two independent readers agree on every block of all 2209 chunks
+step 14  jr: save 4 region file(s), 169 chunks, 5520145 non-air blocks, 0 read error(s)
+         250966828 blocks drawn from a model, 0 with no model
+         6144 atlas texels compared with the jar's PNGs, 0 differ
+         jr: PASS - a world drawn with the jar's own models and textures
+         mean absolute difference from the reference: 0.98 of 255 -> PASS
+step 15  server blocks: 150 coordinates asked, 150 confirmed, 0 denied
+         PASS: the server confirms Umbra's block and properties at all 150
+```
+
+**Gate 6b is met, with the caveat the brief names and this project has always recorded:**
+the client cannot run in CI, so the second half is the game's own verdict on Umbra's blocks
+over RCON, not a rendered client. Two things make that verdict worth something and both are
+in the log: the control coordinate scores 0, so the oracle is known to be able to say no,
+and the comparison only runs on a save that three consecutive readings show has stopped
+changing with every chunk in the sample area finished. What is
 host-verified here is the ordering (a stub RCON server shows `forceload` arriving before
 any `save-all`), the settling loop in both directions (a still save settles after three
 readings and the probe gets 153 of 153 confirmed; a save that grew every second failed with
