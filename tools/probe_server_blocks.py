@@ -54,18 +54,51 @@ def command(sock, rid, text):
     return body
 
 
-def load_dump(path):
-    """`detail x y z minecraft:stone[axis=y]` -> {(x, y, z): 'minecraft:stone[axis=y]'}."""
+def scan_dump(path):
+    """Learn the x and z lines the dump has, without holding every block in memory.
+
+    The dump written for a whole save is hundreds of thousands of lines; the sample only
+    needs a handful of columns, so the coordinates are chosen here and their blocks are
+    collected in a second pass.
+    """
+    xs, zs = set(), set()
+    lines = 0
+    for line in open(path, errors="replace"):
+        parts = line.split()
+        if len(parts) < 5 or parts[0] != "detail":
+            continue
+        try:
+            xs.add(int(parts[1]))
+            zs.add(int(parts[3]))
+        except ValueError:
+            continue
+        lines += 1
+    return sorted(xs), sorted(zs), lines
+
+
+def pick(values, count):
+    if not values:
+        return []
+    if len(values) <= count:
+        return values
+    step = len(values) / count
+    return [values[int(i * step)] for i in range(count)]
+
+
+def collect(path, want_x, want_z):
+    """{(x, y, z): 'name[props]'} for the chosen columns only."""
+    sx, sz = set(want_x), set(want_z)
     out = {}
     for line in open(path, errors="replace"):
         parts = line.split()
         if len(parts) < 5 or parts[0] != "detail":
             continue
         try:
-            key = (int(parts[1]), int(parts[2]), int(parts[3]))
+            x, y, z = int(parts[1]), int(parts[2]), int(parts[3])
         except ValueError:
             continue
-        out[key] = parts[4]
+        if x in sx and z in sz:
+            out[(x, y, z)] = parts[4]
     return out
 
 
@@ -76,22 +109,18 @@ def main() -> int:
         return 2
     host, port, password, dump_path, out = args[0], int(args[1]), args[2], args[3], args[4]
 
-    dump = load_dump(dump_path)
-    if not dump:
+    xs, zs, lines = scan_dump(dump_path)
+    if lines == 0:
         print(f"probe: FAIL {dump_path} has no detail lines", file=sys.stderr)
         return 1
 
-    # A grid over the dump, so the sample is spread across the world rather than
-    # clustered where the reader happens to have written its first lines.
-    xs = sorted({k[0] for k in dump})
-    zs = sorted({k[2] for k in dump})
-    ys = sorted({k[1] for k in dump})
-    want_x = xs[:: max(1, len(xs) // 6)][:6]
-    want_z = zs[:: max(1, len(zs) // 6)][:6]
-    want_y = ys[:: max(1, len(ys) // 5)][:5]
-    coords = [(x, y, z) for x in want_x for z in want_z for y in want_y if (x, y, z) in dump]
-    print(f"probe: the dump has {len(dump)} blocks; asking about {len(coords)} of them "
-          f"({len(want_x)} x {len(want_z)} x {len(want_y)} grid)")
+    want_x = pick(xs, 6)
+    want_z = pick(zs, 6)
+    dump = collect(dump_path, want_x, want_z)
+    ys = pick(sorted({k[1] for k in dump}), 5)
+    coords = [(x, y, z) for x in want_x for z in want_z for y in ys if (x, y, z) in dump]
+    print(f"probe: the dump has {lines} blocks over {len(xs)} x and {len(zs)} z lines; "
+          f"asking about {len(coords)} of them")
 
     sock = connect(host, port, password)
     lines = []
@@ -102,7 +131,9 @@ def main() -> int:
         # chunks that exist in the save, so this is the same region.
         rid += 1
         try:
-            a = command(sock, rid, "forceload add -64 -64 80 80")
+            x0, x1 = min(c[0] for c in coords), max(c[0] for c in coords)
+            z0, z1 = min(c[2] for c in coords), max(c[2] for c in coords)
+            a = command(sock, rid, f"forceload add {x0 - 16} {z0 - 16} {x1 + 16} {z1 + 16}")
             print(f"probe: forceload: {a.strip()[:140]}")
         except (EOFError, OSError) as exc:
             print(f"probe: forceload failed: {exc}", file=sys.stderr)

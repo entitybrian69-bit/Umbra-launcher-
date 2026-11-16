@@ -145,8 +145,9 @@ jobs:
         # it wrote, taken over RCON before it stopped.
         run: |
           set -o pipefail
+          rm -f evidence/world/server-blocks.txt evidence/world/server-compare.log
           cp build/server/run/server-blocks.txt evidence/world/server-blocks.txt
-          cp build/server/run/compare.log evidence/world/server-compare.log 2>/dev/null || true
+          cp build/server/run/compare.log evidence/world/server-compare.log
           python3 tools/check_server_blocks.py evidence/world/server-blocks.txt --min 10 \
             2>&1 | tee evidence/world/server-compare.txt
       - name: Report the numbers

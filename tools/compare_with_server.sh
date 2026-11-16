@@ -39,7 +39,9 @@ if [ ! -x "$ROOT/build/umbra_worldload" ] || [ "$ROOT/goose/worldload.goose" -nt
     ${CC:-cc} -O2 -o "$ROOT/build/umbra_worldload" "$ROOT/build/worldload.c" \
         "$ROOT/platform/shared/umbra_glue.c" -lm -lpthread || exit 1
 fi
-"$ROOT/build/umbra_worldload" "$RUN/world" "$RUN/goose-dump.txt" 3 || exit 1
+# Radius 10 chunks around the origin: the detail lines only exist for chunks that are in
+# the save, and a radius-3 dump of this world came back with none of them.
+"$ROOT/build/umbra_worldload" "$RUN/world" "$RUN/goose-dump.txt" 10 || exit 1
 grep -c '^detail ' "$RUN/goose-dump.txt" | sed 's/^/compare: detail lines for the grid: /'
 
 echo "== asking the server about every claim"
