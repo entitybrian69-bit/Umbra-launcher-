@@ -1275,6 +1275,20 @@ PASS: every block of every palette width was read back, 13104 of 13104
 the loader would read. The types `tools/__pycache__/*.pyc` that had been committed are
 untracked and ignored.
 
+While wiring the partial-save gate in, the workflow itself was broken and the run proved
+it in the most direct way available: `43855510033` finished in **0 seconds with zero jobs**.
+A heredoc at column 0 inside a `run: |` block ends the block scalar, so the file stopped
+being YAML and GitHub rejected it before anything started - the world job never ran, and
+nothing in the repository could have noticed. The script it held is now
+`tools/downgrade_chunk_status.py`, and `tools/check_workflows.py` runs first in the `core`
+job: it requires every workflow to parse, forbids a block-scalar body from escaping its
+key, and refuses an inline heredoc in a workflow at all. Its own value is checked by
+re-running it against the broken file from `4618b10`, where it reports `not valid YAML`.
+The step it guards is host-verified in both directions: on a copy of a save with one chunk
+downgraded, `original chunks 4, non-air blocks 24777` and `downgraded chunks 4, non-air
+blocks 24777` (nothing moved), with `PASS: a partly generated save is named as such`; with
+the downgrade skipped it fails with `a partly generated save was not detected`.
+
 **Not yet claimed:** the world workflow has not been re-run with these changes. What is
 host-verified here is the ordering (a stub RCON server shows `forceload` arriving before
 any `save-all`), the settling loop in both directions (a still save settles after three
