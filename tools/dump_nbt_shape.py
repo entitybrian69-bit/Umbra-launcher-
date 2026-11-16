@@ -98,12 +98,24 @@ TAG_NAMES = {
 }
 
 
+def kind_of(value):
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, list) and value and isinstance(value[0], tuple):
+        return "compound"
+    if isinstance(value, list):
+        return "list"
+    if isinstance(value, int):
+        return "int"
+    return type(value).__name__
+
+
 def entry_shape(entry):
-    """What a palette entry looks like: its tag type, or a compound's key names."""
+    """What a palette entry looks like: its tag type, or a compound's keys and their types."""
     if isinstance(entry, str):
         return f"string len {len(entry)}"
     if isinstance(entry, list) and entry and isinstance(entry[0], tuple):
-        return "compound keys " + ",".join(k for k, _ in entry)
+        return "compound {" + ", ".join(f"{k}: {kind_of(v)}" for k, v in entry) + "}"
     if isinstance(entry, list):
         return f"list of {len(entry)}"
     if isinstance(entry, int):
@@ -160,10 +172,10 @@ def describe_shapes(path):
             key = (f"{form}, palette {bucket}, "
                    f"data {'none' if data is None else 'present'}")
             hist[key] = hist.get(key, 0) + 1
-            if not (form.startswith("compound keys Name") or form.startswith("string len")
-                    or form == "int"):
-                odd.append((cx, cz, y, f"{key}, palette {len(palette) if palette else 0}, "
-                                      f"data {len(data) if data is not None else 'none'}"))
+            known = form.startswith("compound {Name:") or form.startswith("string len") or form == "int"
+            if not known:
+                entries = ", ".join(entry_shape(e) for e in (palette or [])[:4])
+                odd.append((cx, cz, y, f"{key}; first entries: {entries}"))
     print(f"  {chunks} chunks read")
     for key in sorted(hist, key=lambda k: -hist[k]):
         print(f"  {hist[key]:6d} sections: {key}")
