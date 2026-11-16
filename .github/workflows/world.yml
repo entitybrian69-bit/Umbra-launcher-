@@ -56,8 +56,11 @@ jobs:
         run: |
           set -o pipefail
           java -version 2>&1 | head -2
-          tools/gen_server_world.sh build/server/server.jar build/server/run \
-            2>&1 | tee evidence/world/gen-world.txt
+          if ! tools/gen_server_world.sh build/server/server.jar build/server/run \
+                2>&1 | tee evidence/world/gen-world.txt; then
+            echo "::error title=world generation::$(tail -3 evidence/world/gen-world.txt | tr '\n' ' ')"
+            exit 1
+          fi
       - name: Read the real world twice and compare it block by block
         run: |
           set -o pipefail
