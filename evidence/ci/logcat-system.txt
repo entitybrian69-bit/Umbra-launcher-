@@ -1,9 +1,94 @@
---------- beginning of kernel
 --------- beginning of main
-11-16 18:14:26.790  5516  5541 I umbra   : 18:14:26 player: at 25.70 66.00 24.26, yaw -1.56 pitch -1.55, on ground, 0 steps up
+11-16 20:17:38.814  6518  6541 I umbra   : 20:17:38 jar: /data/local/tmp/umbra-client.jar, 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's
+11-16 20:17:38.815  6518  6541 I umbra   : 20:17:38 atlas: 1024x1024, 4194304 bytes, 1225 tiles, hash 3ca6170e, 1 missing
+11-16 20:17:38.815  6518  6541 I umbra   : 20:17:38 atlas: source is the client jar
+11-16 20:17:38.815  6518  6541 I umbra   : 20:17:38 atlas: 1 block faces asked for a tile that is missing
+11-16 20:17:38.825  6518  6541 I umbra   : 20:17:38 screen: home -> loading
+11-16 20:17:38.825  6518  6541 I umbra   : 20:17:38 demo world built in 2.3 ms; meshing starts in slices of at most 6 ms
+11-16 20:17:38.825  6518  6541 I umbra   : 20:17:38 check: renderer                     Android Emulator OpenGL ES Translator (Google SwiftShader)
+11-16 20:17:38.825  6518  6541 I umbra   : 20:17:38 check: gl version                   OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+11-16 20:17:38.825  6518  6541 I umbra   : 20:17:38 check: max texture size             8192 px
+11-16 20:17:38.825  6518  6541 I umbra   : 20:17:38 check: gpu timer query              none  (not available)
+11-16 20:17:38.825  6518  6541 I umbra   : 20:17:38 check: shader programs              mesh ok, hud ok, pattern ok, cube ok, atlas ok
+11-16 20:17:38.825  6518  6541 I umbra   : 20:17:38 check: depth buffer                 24 bits
+11-16 20:17:38.825  6518  6541 I umbra   : 20:17:38 check: extension string             1412 chars
+11-16 20:17:38.825  6518  6541 I umbra   : 20:17:38 check: all device checks passed
+11-16 20:17:38.825  6518  6541 I umbra   : 20:17:38 hud: button 0 at 15,1026 size 580x38 on 1920x1080 (insets 0,63,126,0)
+11-16 20:17:38.825  6518  6541 I umbra   : 20:17:38 hud: button 1 at 606,1026 size 580x38 on 1920x1080 (insets 0,63,126,0)
+11-16 20:17:38.825  6518  6541 I umbra   : 20:17:38 hud: button 2 at 1198,1026 size 580x38 on 1920x1080 (insets 0,63,126,0)
+11-16 20:17:38.833  6518  6541 I umbra   : 20:17:38 hud: 17 rows, content ends at 457 px inside a 486 px panel, fits
+11-16 20:17:38.924  6518  6541 I umbra   : app cmd 4, window 0x77bd6f6114c0
+--------- beginning of kernel
 --------- beginning of system
-11-16 18:14:27.206   493  1176 I ActivityManager: Force stopping org.umbra.client appid=10167 user=0: from pid 6351
-11-16 18:14:27.206   493  1176 I ActivityManager: Killing 5516:org.umbra.client/u0a167 (adj 0): stop org.umbra.client due to from pid 6351
-11-16 18:14:27.283   493   527 W ActivityManager: setHasOverlayUi called on unknown pid: 5516
-11-16 18:14:27.346   493  1811 W ActivityManager: Unable to start service Intent { act=android.service.appprediction.AppPredictionService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiPredictionService } U=0: not found
-11-16 18:14:27.872   493   527 I WindowManager: Override config changes=20000480 {1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h659dp 420dpi nrml port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 1920) mAppBounds=Rect(0, 0 - 1080, 1794) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} s.73} for displayId=0
+11-16 20:17:41.022   493   958 I ActivityManager: Force stopping org.umbra.client appid=10167 user=0: clear data
+11-16 20:17:41.023   493   958 I ActivityManager: Killing 6518:org.umbra.client/u0a167 (adj 0): stop org.umbra.client due to clear data
+11-16 20:17:41.046   493   532 I ActivityManager: Force stopping org.umbra.client appid=10167 user=-1: clearApplicationUserData
+11-16 20:17:41.057   493   526 W ActivityManager: setHasOverlayUi called on unknown pid: 6518
+11-16 20:17:41.115   493   533 I ActivityManager: Start proc 6563:com.android.chrome/u0a131 for broadcast {com.android.chrome/org.chromium.chrome.browser.browserservices.ClientAppBroadcastReceiver}
+11-16 20:17:41.392   493   526 I WindowManager: Override config changes=20000480 {1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h659dp 420dpi nrml port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 1920) mAppBounds=Rect(0, 0 - 1080, 1794) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} s.219} for displayId=0
+11-16 20:17:41.901   493   533 I ActivityManager: Start proc 6597:org.umbra.client/u0a167 for pre-top-activity {org.umbra.client/org.umbra.client.UmbraNet$UmbraActivity}
+11-16 20:17:42.021  6597  6622 I umbra   : android_main: files /data/user/0/org.umbra.client/files
+11-16 20:17:42.021  6597  6622 I umbra   : goose core initialised
+11-16 20:17:42.045  6597  6622 I umbra   : app cmd 10, window 0x0
+11-16 20:17:42.045  6597  6622 I umbra   : no window yet: waiting for the activity to become visible
+11-16 20:17:42.046  6597  6622 I umbra   : app cmd 11, window 0x0
+11-16 20:17:42.048  6597  6622 I umbra   : app cmd 0, window 0x0
+11-16 20:17:42.139  6597  6622 I umbra   : app cmd 1, window 0x77bd6f6114c0
+11-16 20:17:42.304   493  1793 W ActivityManager: Slow operation: 76ms so far, now at getContentProviderImpl: after updateOomAdj
+11-16 20:17:42.304   493  1793 W ActivityManager: Slow operation: 76ms so far, now at getContentProviderImpl: done!
+11-16 20:17:42.355  6597  6622 I umbra   : EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+11-16 20:17:42.355  6597  6622 I umbra   : app cmd 3, window 0x77bd6f6114c0
+11-16 20:17:42.355  6597  6622 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,63,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
+11-16 20:17:42.355  6597  6622 I umbra   : app cmd 5, window 0x77bd6f6114c0
+11-16 20:17:42.355  6597  6622 I umbra   : app cmd 4, window 0x77bd6f6114c0
+11-16 20:17:42.355  6597  6622 I umbra   : app cmd 6, window 0x77bd6f6114c0
+11-16 20:17:42.355  6597  6622 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,63,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 1920x1080, density bucket 420 (scale 2.62)
+11-16 20:17:42.356  6597  6622 I umbra   : 20:17:42 last run: nothing recorded yet
+11-16 20:17:42.356  6597  6622 I umbra   : 20:17:42 ---- Umbra starting, build 3105752 ----
+11-16 20:17:42.356  6597  6622 I umbra   : 20:17:42 core: umbra core: formats and meshing
+11-16 20:17:42.383   493   526 I WindowManager: Override config changes=20000480 {1.0 310mcc260mnc [en_US] ldltr sw411dp w683dp h387dp 420dpi nrml land finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1794, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_90} s.255} for displayId=0
+11-16 20:17:42.456   493   533 I ActivityManager: Start proc 6633:com.google.android.documentsui/u0a92 for broadcast {com.google.android.documentsui/com.android.documentsui.PackageReceiver}
+11-16 20:17:42.482  6597  6622 I umbra   : 20:17:42 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
+11-16 20:17:42.482  6597  6622 I umbra   : 20:17:42 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+11-16 20:17:42.482  6597  6622 I umbra   : 20:17:42 GL_VENDOR Google (Google Inc.)
+11-16 20:17:42.482  6597  6622 I umbra   : 20:17:42 depth bits 24, vertex highp 127^23, fragment highp 127^23
+11-16 20:17:42.484  6597  6622 I umbra   : 20:17:42 jar: none found; the atlas is the built-in placeholder set (set UMBRA_JAR or put client.jar in the app's files directory)
+11-16 20:17:42.484  6597  6622 I umbra   : 20:17:42 atlas: 128x128, 65536 bytes, 12 tiles, hash 7c205ae2, 0 missing
+11-16 20:17:42.484  6597  6622 I umbra   : 20:17:42 atlas: source is the placeholder set
+11-16 20:17:42.508  6597  6622 I umbra   : 20:17:42 screen: home -> loading
+11-16 20:17:42.508  6597  6622 I umbra   : 20:17:42 demo world built in 3.4 ms; meshing starts in slices of at most 6 ms
+11-16 20:17:42.508  6597  6622 I umbra   : 20:17:42 check: renderer                     Android Emulator OpenGL ES Translator (Google SwiftShader)
+11-16 20:17:42.508  6597  6622 I umbra   : 20:17:42 check: gl version                   OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+11-16 20:17:42.508  6597  6622 I umbra   : 20:17:42 check: max texture size             8192 px
+11-16 20:17:42.508  6597  6622 I umbra   : 20:17:42 check: gpu timer query              none  (not available)
+11-16 20:17:42.508  6597  6622 I umbra   : 20:17:42 check: shader programs              mesh ok, hud ok, pattern ok, cube ok, atlas ok
+11-16 20:17:42.508  6597  6622 I umbra   : 20:17:42 check: depth buffer                 24 bits
+11-16 20:17:42.508  6597  6622 I umbra   : 20:17:42 check: extension string             1412 chars
+11-16 20:17:42.508  6597  6622 I umbra   : 20:17:42 check: all device checks passed
+11-16 20:17:42.508  6597  6622 I umbra   : 20:17:42 hud: button 0 at 22,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
+11-16 20:17:42.508  6597  6622 I umbra   : 20:17:42 hud: button 1 at 611,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
+11-16 20:17:42.508  6597  6622 I umbra   : 20:17:42 hud: button 2 at 1199,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
+11-16 20:17:42.522  6597  6622 I umbra   : 20:17:42 hud: 11 rows, content ends at 484 px inside a 486 px panel, fits
+11-16 20:17:42.668   493  1793 I ActivityManager: Killing 4560:com.google.android.gms.ui/u0a122 (adj 985): empty #17
+11-16 20:17:42.674  6597  6622 I umbra   : app cmd 4, window 0x77bd6f6114c0
+11-16 20:17:43.026   493   533 W ActivityManager: Slow operation: 52ms so far, now at startProcess: returned from zygote!
+11-16 20:17:43.026   493   533 W ActivityManager: Slow operation: 52ms so far, now at startProcess: done updating battery stats
+11-16 20:17:43.026   493   533 W ActivityManager: Slow operation: 52ms so far, now at startProcess: building log message
+11-16 20:17:43.026   493   533 I ActivityManager: Start proc 6669:com.google.android.apps.docs/u0a141 for content provider {com.google.android.apps.docs/com.google.android.apps.docs.storagebackend.StorageBackendContentProvider}
+11-16 20:17:43.026   493   533 W ActivityManager: Slow operation: 52ms so far, now at startProcess: starting to update pids map
+11-16 20:17:43.031   493   533 W ActivityManager: Slow operation: 57ms so far, now at startProcess: done updating pids map
+11-16 20:17:43.437   493   956 I ActivityManager: Killing 5202:com.google.android.configupdater/u0a118 (adj 985): empty #17
+11-16 20:17:48.755  6597  6622 I umbra   : 20:17:48 mesh uploaded: 21.3 MB vertices, 2.7 MB indices
+11-16 20:17:48.759  6597  6622 I umbra   : 20:17:48 mesh bounds x 0.0..48.0 y -64.0..76.0 z 0.0..48.0, camera 37.6 blocks out, free band 497..989 of 1080 (45%), fog 66..146
+11-16 20:17:48.759  6597  6622 I umbra   : 20:17:48 camera: eye 47.2 75.2 48.1 look 24.0 58.0 24.0, 37.6 blocks out, fov 55
+11-16 20:17:48.759  6597  6622 I umbra   : 20:17:48 mesh: 370708 vertices drawn, passes 543276/12786/0 over 27 ranges
+11-16 20:17:48.760  6597  6622 I umbra   : 20:17:48 startup: meshed in 1985.5 ms over 215 calls (worst call 23.5 ms, worst unit 23.5 ms), longest frame 165.3 ms, frames over 250 ms: 0
+11-16 20:17:48.760  6597  6622 I umbra   : 20:17:48 screen: loading -> home
+11-16 20:18:22.553   493  1930 I ActivityManager: Killing 5952:com.google.android.syncadapters.contacts/u0a143 (adj 985): empty #17
+11-16 20:19:23.155   493  1930 I ActivityManager: Killing 4205:com.google.android.gm/u0a134 (adj 985): empty #17
+11-16 20:19:53.259   493   533 W ActivityManager: Slow operation: 61ms so far, now at startProcess: returned from zygote!
+11-16 20:19:53.260   493   533 W ActivityManager: Slow operation: 61ms so far, now at startProcess: done updating battery stats
+11-16 20:19:53.260   493   533 W ActivityManager: Slow operation: 61ms so far, now at startProcess: building log message
+11-16 20:19:53.260   493   533 I ActivityManager: Start proc 6983:com.google.android.projection.gearhead:shared/u0a116 for service {com.google.android.projection.gearhead/com.google.android.apps.auto.components.app.fzero.LauncherIconStateVerificationService}
+11-16 20:19:53.260   493   533 W ActivityManager: Slow operation: 61ms so far, now at startProcess: starting to update pids map
+11-16 20:19:53.260   493   533 W ActivityManager: Slow operation: 61ms so far, now at startProcess: done updating pids map
