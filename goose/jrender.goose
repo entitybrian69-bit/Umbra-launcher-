@@ -165,13 +165,23 @@ fn main() {
     var grass: f32[3] = [1.0, 1.0, 1.0];
     var foliage: f32[3] = [1.0, 1.0, 1.0];
     var water: f32[3] = [1.0, 1.0, 1.0];
+    // A colormap is indexed the way the client indexes it: x across temperature and
+    // y down (1 - humidity * temperature), both flipped, because the top-right corner
+    // of the image is the coldest, driest climate. Plains is temperature 0.8, humidity
+    // 0.4, which is x 51 and y 173 of a 256x256 map.
+    let temp: f32 = 0.8;
+    let humid: f32 = 0.4;
+    let cu = 1.0 - temp;
+    let cv = 1.0 - humid * temp;
     if jp_read_colormap("grass") {
-        // x is temperature, y is (1 - humidity); the plains sample is 0.8 and 0.4.
-        jp_colormap_color(0.8, 0.6, grass);
+        jp_colormap_color(cu, cv, grass);
+        print("jr: grass colormap ", jp_colormap_w(), "x", jp_colormap_h(), ", ", jp_colormap_bytes(),
+              " bytes, sampled at ", (cu * (jp_colormap_w() as f32)) as i64, ",",
+              (cv * (jp_colormap_h() as f32)) as i64, "\n");
         print("jr: grass tint ", (grass[0] * 255.0) as i64, ",", (grass[1] * 255.0) as i64,
               ",", (grass[2] * 255.0) as i64, " from the jar's colormap\n");
-        if jp_read_colormap("foliage") { jp_colormap_color(0.8, 0.6, foliage); }
-        if jp_read_colormap("water") { jp_colormap_color(0.8, 0.6, water); }
+        if jp_read_colormap("foliage") { jp_colormap_color(cu, cv, foliage); }
+        if jp_read_colormap("water") { jp_colormap_color(cu, cv, water); }
     } else {
         print("jr: no grass colormap in this jar; tints stay neutral\n");
     }

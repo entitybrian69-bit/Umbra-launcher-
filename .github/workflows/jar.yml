@@ -52,7 +52,8 @@ jobs:
       - name: Draw the demo world with the jar's own models and textures
         run: |
           set -o pipefail
-          GOOSE=build/bin/goose bash tools/render_world.sh build/jar/client.jar build/world.ppm 960 540 \
+          GOOSE=build/bin/goose bash tools/render_world.sh build/jar/client.jar \
+            build/world.ppm 960 540 evidence/jar/world.png \
             2>&1 | tee evidence/jar/render-world.txt
       - name: Compare the picture with its reference
         run: |

@@ -35,6 +35,21 @@ def png_rgba(w: int, h: int, rgba: tuple) -> bytes:
             + chunk(b"IEND", b""))
 
 
+def png_gradient(w: int, h: int) -> bytes:
+    """A 256x256 image whose pixel (x, y) is (x, y, 128): the colormap sample point
+    is then a number the test can predict, instead of a colour nobody can check."""
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return (struct.pack(">I", len(data)) + kind + data
+                + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF))
+
+    raw = b"".join(b"\x00" + bytes(v for x in range(w) for v in (x, y, 128, 255))
+                   for y in range(h))
+    return (b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(raw, 9))
+            + chunk(b"IEND", b""))
+
+
 def model_text(name: str, texture: str, parent="block/block") -> dict:
     # cullface on all six, like the real block/cube_all.json: two touching blocks must
     # hide the faces between them, or a world is six faces per block of rock.
@@ -125,6 +140,11 @@ def build(path: str, broken: bool) -> None:
     z.writestr("assets/minecraft/models/block/fake_root.json",
                json.dumps({"textures": {"all": "block/fake_1"},
                            "elements": model_text("x", "y")["elements"]}))
+
+    # The three colormaps the client tints grass, leaves and water with. Invented like
+    # the rest of this jar, and shaped so a sample can be checked by arithmetic.
+    for cmap in ("grass", "foliage", "water"):
+        z.writestr(f"assets/minecraft/textures/colormap/{cmap}.png", png_gradient(256, 256))
 
     # The eight blocks the demo world is built from, under their real names, so the
     # jar-driven renderer can draw that world from a jar that exists on a machine with
