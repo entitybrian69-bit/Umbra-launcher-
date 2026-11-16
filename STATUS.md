@@ -712,6 +712,25 @@ atlas (D-039) with one bound model (D-040): the phone has no jar and cannot have
 so the jar-drawn world is a CI picture until the app is given the pack from a file it
 is allowed to read.
 
+## 0.3.6-pre is published and verified
+
+Tag `v0.3.6-pre` at `68fc892`, release run `43809670666` (success), verification run
+`43809674028`:
+
+```
+asset: umbra-0.3.6-pre-arm64.apk          395075 bytes  sha256 f1aac82e...  OK
+asset: umbra-0.3.6-pre-linux-x64          142808 bytes  sha256 65f463af...  OK
+asset: umbra-0.3.6-pre-windows-x64.exe    242245 bytes  sha256 c8a2797b...  OK
+RESULT: PASS - 3 assets re-downloaded ... and every sha256 matched
+linux: the downloaded binary passed its self-test
+windows: the downloaded .exe ran under wine and passed its self-test
+```
+
+What changed for the phone since `0.3.5-pre`: it can break and place blocks, with five
+hotbar slots and two action buttons that are drawn from the arithmetic the taps are tested
+against, at a size a finger can hit. The emulator run of that same code did it: `broke
+grass_block at 25 65 23`, re-meshed, `placed oak_slab at 25 65 23`.
+
 ## Stage 3, step 4: a real world, read twice
 
 `goose/worldload.goose` reads a save the way the renderer does: every `region/*.mca`,
