@@ -142,6 +142,15 @@ def main():
         print(f"check_jni_signatures: {bad} of {checked + bad} lookups disagree "
               f"with {JAVA}", file=sys.stderr)
         return 1
+    # The caller names the file it wants written -- client.jar.part, decided in
+    # core/gamefiles.goose -- so the Java must write that path, not a variation of
+    # it. `new File(dest + ".part")` wrote client.jar.part.part and cost a run: the
+    # 41 MB download landed where nothing looked and was refused (43958738406).
+    code_only = "\n".join(re.sub(r"//.*$", "", line) for line in java.splitlines())
+    if re.search(r'dest\s*\+\s*"\.part"', code_only):
+        print(f"{JAVA}: a destination is being rewritten; the caller's path is the "
+              "path", file=sys.stderr)
+        return 1
     print(f"check_jni_signatures: {checked} JNI lookups match {JAVA}")
     return 0
 
