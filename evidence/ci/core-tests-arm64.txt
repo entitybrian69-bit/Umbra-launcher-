@@ -1,11 +1,9 @@
 host: aarch64
 compiler: cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
-run: 43740024781
-commit: 424daf36fa1dc04b61e7bde6c91fbcffb0e7321c
+run: 43788855830
+commit: e69c7116645b24ae217c9d6122944a9adcf74553
 note: this is the host test suite on ARM, not the Android arm64 .so
 
-built build/umbra_tests
-umbra core tests
 PASS mem (19 checks)
 inflate: 72 streams matched zlib byte for byte, 4 corrupt streams rejected
 PASS inflate (97 checks)
@@ -22,5 +20,7 @@ mesh: real chunk -> 35652 vertices, 53478 indices, fnv1a 4f270675
 PASS mesh (354 checks)
 PASS atlas (403 checks)
 PASS models (425 checks)
+PASS modelstore (475 checks)
+PASS raster (485 checks)
 all modules passed
 c-host: goose_exit returned 0
