@@ -823,6 +823,30 @@ oracle: ... ValueError: not enough values to unpack (expected 2, got 1)
   from the file rather than guessed. Both readers still pass on the synthetic world
   (`24673 of 24673`, `PASS`) in the classic and the 26.3 directory layout.
 
+The shape dump from that run named the cause:
+
+```
+  sections: 24
+  section[0]:
+    compound with 3 keys
+      block_states: compound
+        compound with 1 keys
+          palette: list len 1
+  palette entry:
+    string minecraft:air
+```
+
+- a 26.3 palette entry is the **bare block name**, not a `{Name, Properties}` compound, for
+  every section whose states have no properties. `resolve_palette` called
+  `state_name_text` (which reads `Name`) on a string, got nothing, and interned air for
+  every entry: 529 chunks, not one block, and a PASS. The biome palette had handled both
+  forms since it was written; the block palette now does too, and the Python oracle accepts
+  both as well (it used to raise on a string). The synthetic world can now be generated in
+  either form (`tools/make_test_world.py <dir> <radius> string`), and CI reads **both** on
+  every push, so a reader that only understands the classic form fails here instead of
+  passing on the real save. Host: the string-form world gives the same
+  `4 chunks, 24673 blocks, 7 states` and `PASS`.
+
 So: a real world has still not been read, and no real-world match rate may be claimed.
 
 ## Step 5 in the working tree: hands (break and place), host-verified
