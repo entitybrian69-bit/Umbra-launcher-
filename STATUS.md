@@ -45,7 +45,7 @@ Umbra is not Minecraft, and the parity table is empty.
 | 4. Core tests on arm64 | PASSING (host suite; the Android `.so` is still never executed) | run `43689588892`, job `Goose core tests (arm64)` on `ubuntu-24.04-arm`: `host: aarch64`, `compiler: cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0`, then `PASS mem (19) inflate (97) zip (137) png (153) nbt (196) region (237) json (302) mesh (340)`, `all modules passed`, `c-host: goose_exit returned 0` (`evidence/ci/core-tests-arm64.txt`, committed by the job). **This is the host suite built for aarch64 Linux, not the APK's `libumbra.so`** -- that one is NDK clang, bionic, and is compiled by the `android` job and never run |
 | 5. PC builds (Windows x64, Linux x64) + headless self-test | PASSING | run `43724314094`, whose jobs `Linux x64 build + headless self-test` and `Windows x64 build + headless self-test` both report `success` on `a717183`: both `PASS: 149 checks, 0 failures`, `evidence/ci/pc-linux-x64.txt` and `pc-windows-x64.txt`. Earlier: run `43674038711`: `Linux x64 build + headless self-test` and `Windows x64 build + headless self-test` both `completed success`; the Windows binary ran under MSYS2 UCRT64 on `windows-latest`, not under Wine. `evidence/ci/pc-linux-x64.txt` and `pc-windows-x64.txt` both end `PASS: 19 checks, 0 failures`; sha256 `1a1c76665f5a013b…` (linux) and `0190ba968e53b943…` (windows) |
 | 6a. The jar's model data is self-consistent | PASSING | run `43680833198`: `PASS: every model a blockstate can render resolves through its chain (2603 models, 25048 faces, 3964 textures)`; jar `26.3`, 41 483 720 bytes, sha1 `e877b6a07acd633f…`, verified against Mojang's manifest at test time (`evidence/jar/pin.txt`, `evidence/jar/jarcheck.txt`) |
-| 6b. World parity against the real client | NOT DONE | the jar's models and textures are now what draws the world (stage 3, step 3), but no world from a real save has been loaded and compared block by block, and no render has been compared with the real client's |
+| 6b. World parity against the real client | NOT DONE | the jar's models and textures are now what draws the world (stage 3, step 3, CI-verified with a picture compared against `docs/reference/jar_world.png`), but no world from a real save has been loaded and compared block by block, and no render has been compared with the real client's |
 | 7. Release assets verified by re-download | PASSING | `v0.3.0-pre` (pre-release, tag on `1626ba0`), release run `43695376328`, all four jobs `completed/success`. `RELEASE_VERIFY.txt` (committed, reproduced below): `RESULT: PASS - 3 assets re-downloaded from https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.0-pre and every sha256 matched`, `linux: the downloaded binary passed its self-test`, `windows: the downloaded .exe ran under wine and passed its self-test` |
 
 ## The owner's first run of 0.3.0-pre (device evidence, 2026-11-15)
@@ -656,11 +656,41 @@ tile the atlas holds is compared, texel for texel, against the same PNG decoded
 straight out of the jar, so a wrong tile rect, a mipmap that bled its neighbours in, a
 gutter overwritten into the art, or an animated strip uploaded whole all fail here.
 
-**What is proved, and what is not.** Host-verified: the pack builds, the blockstates
-bind, the world draws and the atlas is the jar's pixels. Not yet CI-verified: the same
-run over the *real* jar, which is what the `jar` workflow now does (it renders at
-960x540, commits `evidence/jar/world.png` and holds later runs to it through
-`tools/check_world_shot.py`). The picture the phone shows is still the placeholder
+The same renderer, in CI, over the real pinned client jar (26.3, 41 483 720 bytes,
+downloaded at test time and never committed), run `43790227726`:
+
+```
+jr: models 4192 built, 4192 in the store, 0 refused
+jr: blockstates 1288 built, 1288 in the store, 10290 rules, 4 linked here, 0 with no model at all
+jr: atlas 1024x1024 tile 16 gutter 2 cells 1225
+jr: textures used 1214, decoded 1213, missing 1, animated 52
+jr: grass colormap 256x256, 262144 bytes, sampled at 51,174
+jr: grass tint 146,189,89 from the jar's colormap
+jr: coverage 849 permille of the frame (440486 of 518400 px), sky 77914
+jr: hues green 170092, blue 101, brown 142776, other 127517, dark 129958, missing-tile magenta 0
+jr: atlas texels compared with the jar's PNGs: 6144 sampled, 0 differ
+jr: PASS - a world drawn with the jar's own models and textures
+```
+
+and the picture gate (`evidence/jar/world-shot.txt`, same run):
+
+```
+evidence/jar/world.png: 960x540
+mean absolute difference from the reference: 0.00 of 255 (worst cell channel 0)
+PASS: the jar-drawn world matches the reference
+```
+
+The reference is `docs/reference/jar_world.png`, committed by the previous jar run
+(`43789629651`) and compared unchanged by this one. The picture is a Minecraft world:
+grass tops with the vanilla plains tint `146,189,89`, dirt sides, oak logs, leaves,
+stone. **This is a CI-verified picture drawn from the real jar**, and it is what
+`v0.3.5-pre` is published on.
+
+**What is proved, and what is not.** CI-verified: the pack builds from the real jar,
+every blockstate rule resolves to a model, the world draws, the atlas is the jar's
+pixels texel for texel, and the picture matches its reference. Host-verified: the same
+path over a synthetic jar on every push, so a regression shows up without waiting for
+a jar download. The picture the phone shows is still the placeholder
 atlas (D-039) with one bound model (D-040): the phone has no jar and cannot have one,
 so the jar-drawn world is a CI picture until the app is given the pack from a file it
 is allowed to read.
@@ -674,7 +704,7 @@ is allowed to read.
 | Models are drawn from their geometry | every block, from the jar | `blocks drawn from a model 1498125, faces 454261` over the synthetic jar, host-verified; the demo slab's 6 faces, `y+0.5` top and culled bottom are still host-tested (`mesh 354`) |
 | Binding the jar's blockstates to models at load | yes, host-verified | `1731 rules linked to a model`, `0 refused` (synthetic jar); the real jar runs in the `jar` workflow (D-042) |
 | Textures from the jar | yes, host-verified | 469 textures packed into a 512x512 atlas, `6144` texels compared with the jar's PNGs, `0 differ`; the phone still ships the 12 placeholder tiles (D-039) |
-| A world drawn from the jar's models and textures | picture drawn on the host and in CI | `goose/jrender.goose` -> `evidence/jar/world.png`, compared with its reference by `tools/check_world_shot.py` |
+| A world drawn from the jar's models and textures | CI-verified picture | `goose/jrender.goose` -> `evidence/jar/world.png`, compared with its reference by `tools/check_world_shot.py` |
 | A body you can walk with | yes | 24 host checks, and the device run above |
 | Water, ladders, sneaking, swimming, mobs, survival, multiplayer | **no** | not implemented |
 | Rendered world matches the real client | **not measured** | gate 6b; nothing compares two renders yet |
