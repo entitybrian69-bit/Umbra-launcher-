@@ -1230,11 +1230,16 @@ Fixed by ordering, and each half is host-tested:
 
 - `tools/compare_with_server.sh` force-loads the sample area **first**, before anything is
   read, and fails if the server refuses it.
-- It then flushes and reads the save repeatedly until **three consecutive readings agree**
-  in chunk count, block count, state count, total region-file bytes *and* the newest mtime.
-  A save that never settles fails the step with "the save never stopped changing" instead of
-  comparing against a world that is not the one it read. Two agreeing readings were not
-  enough: chunks appear in bursts, so a lull can look settled (observed while testing).
+- It then flushes and reads the save repeatedly until **every chunk is `minecraft:full`
+  and three consecutive readings agree** in chunk count, block count, state count, total
+  region-file bytes *and* the newest mtime. Two agreeing readings were not enough: chunks
+  appear in bursts, so a lull can look settled. And agreement alone was not enough either
+  - see the next section, where a stalled save agreed with itself six times over while
+  528 of its 529 chunks were unfinished.
+- It covers the sample area in strips that fit the server's 256-chunk cap on a single
+  `forceload add`, and fails if any strip is refused. Run `43855851186` showed that a
+  radius-10 box is 441 chunks, that the server answers `Too many chunks in the specified
+  area (maximum 256, but specified 441)`, and that the previous version ignored the reply.
 - `tools/probe_server_blocks.py` no longer loads anything itself. The probe is purely a
   question-asker now; loading belongs to the shell, before the read.
 - `goose/worldload.goose` counts chunks whose `Status` is not `minecraft:full` and says so
@@ -1289,7 +1294,45 @@ downgraded, `original chunks 4, non-air blocks 24777` and `downgraded chunks 4, 
 blocks 24777` (nothing moved), with `PASS: a partly generated save is named as such`; with
 the downgrade skipped it fails with `a partly generated save was not detected`.
 
-**Not yet claimed:** the world workflow has not been re-run with these changes. What is
+### The run that proved the first version of the fix was not enough (43855851186)
+
+The world job ran again on `74108f7` and failed at the new step, which is exactly what that
+step is for. Its own evidence (`7d53f9c`, `evidence/world/gen-world.txt`):
+
+```
+== forcing the sample area to generate before anything is read
+Too many chunks in the specified area (maximum 256, but specified 441)
+Saving the game (this may take a moment!)Saved the game
+compare: attempt 1: chunks 529, non-air blocks 843609, states 45
+compare: attempt 2: chunks 529, non-air blocks 843609, states 45
+compare: attempt 3: chunks 529, non-air blocks 843609, states 45
+compare: the save is settled - three readings in a row agree: chunks 529, ...
+compare: worldload: 528 of 529 chunks are not `minecraft:full` yet: ...
+compare: FAIL some chunks in the save are still only partly generated
+```
+
+Three things, all now fixed and all host-tested:
+
+1. **The forceload was refused and the script did not notice.** The box is 441 chunks and
+   the cap is 256. It is now sent as strips of at most 256 chunks, and a refusal fails the
+   step: `compare: FAIL forceload -160 -160 175 95 was refused: Too many chunks ...`.
+2. **"The file stopped changing" is not the same as "the world is finished."** The save had
+   stalled - identical totals three times - with 528 of 529 chunks still generating. The
+   loop now also requires every chunk to be `minecraft:full`, and refuses otherwise:
+   `FAIL the save never reached a state where every chunk was finished`.
+3. **A save that is not finished is now refused by `worldload` itself**, not just by the
+   shell around it: `FAIL 528 of 529 chunks are finished; pass --incomplete-ok to read a
+   save that is still being written`. `--incomplete-ok` exists so the settling loop can
+   measure an unfinished save; nothing else uses it.
+
+The same run shows the rest of the gate is healthy on the settled save, read after the
+stop: `worldload: chunks 1089, non-air blocks 7351783, states 76, read errors 0`,
+`detail records that agree: 1146457 of 1146457 (100.00%)`, `PASS: two independent readers
+agree on every block of all 1089 chunks`, and the renderer `169 chunks, 2634366 non-air
+blocks, 0 read error(s)`. So the two-readers half of gate 6b is solid; only the
+server-comparison half was comparing against a world that had moved.
+
+**Not yet claimed:** the world workflow has not passed with these changes yet. What is
 host-verified here is the ordering (a stub RCON server shows `forceload` arriving before
 any `save-all`), the settling loop in both directions (a still save settles after three
 readings and the probe gets 153 of 153 confirmed; a save that grew every second failed with

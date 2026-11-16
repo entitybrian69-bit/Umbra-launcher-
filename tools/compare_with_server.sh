@@ -49,11 +49,30 @@ echo "== forcing the sample area to generate before anything is read"
 # generation: carvers cut caves, ores and plants are placed. Doing it after the read (as
 # the probe used to) meant the file Umbra had read was not the world the server was
 # answering about, and the difference looked like the reader lying.
-if ! python3 "$TOOLS/rcon.py" "$HOST" "$PORT" "$PW" \
-        "forceload add $BOX0 $BOX0 $BOX1 $BOX1"; then
-    echo "compare: FAIL the server did not accept forceload"
-    exit 1
-fi
+#
+# The server caps a single `forceload add` at 256 chunks and answers "Too many chunks in
+# the specified area (maximum 256, but specified 441)" for a radius-10 box. Run
+# 43855851186 ignored that reply, went on to compare 529 half-generated chunks, and the
+# only reason it was caught is that the loader now counts unfinished chunks. So the box is
+# covered in strips that fit, and every reply is read.
+FORCELOADED=0
+z="$BOX0"
+while [ "$z" -le "$BOX1" ]; do
+    z_end=$((z + 255))
+    [ "$z_end" -gt "$BOX1" ] && z_end="$BOX1"
+    reply="$(python3 "$TOOLS/rcon.py" "$HOST" "$PORT" "$PW" \
+             "forceload add $BOX0 $z $BOX1 $z_end" 2>&1)"
+    case "$reply" in
+        *"Too many chunks"*|*"FAIL"*|"")
+            echo "compare: FAIL forceload $BOX0 $z $BOX1 $z_end was refused: $reply"
+            exit 1
+            ;;
+    esac
+    echo "compare: forceload $BOX0 $z $BOX1 $z_end -> $reply"
+    FORCELOADED=$((FORCELOADED + 1))
+    z=$((z_end + 1))
+done
+echo "compare: force-loaded the sample area in $FORCELOADED strips"
 
 if [ ! -x "$ROOT/build/umbra_worldload" ] || [ "$ROOT/goose/worldload.goose" -nt "$ROOT/build/umbra_worldload" ]; then
     "$GOOSE" --standalone -o "$ROOT/build/worldload.c" "$ROOT/goose/worldload.goose" || exit 1
@@ -90,11 +109,23 @@ for attempt in 1 2 3 4 5 6; do
         echo "compare: FAIL the server did not accept save-all flush"
         exit 1
     fi
+    # `--incomplete-ok` because a save that is still being written has to be readable to
+    # be measured; the loop below is what decides whether it is finished.
     "$ROOT/build/umbra_worldload" "$RUN/world" "$RUN/goose-settle.txt" "$RADIUS" \
-        > "$RUN/settle.log" 2>&1
+        --incomplete-ok > "$RUN/settle.log" 2>&1
     now="$(fingerprint)"
     totals="${now%%|*}"
-    echo "compare: attempt $attempt: ${totals:-no totals}"
+    if grep -q "chunks are not .minecraft:full. yet" "$RUN/settle.log"; then
+        # The world is not finished, so it does not matter that it has stopped changing:
+        # its carvers have not run and more blocks are still to come. Keep waiting.
+        unfinished="$(grep -oE "[0-9]+ of [0-9]+ chunks are not" "$RUN/settle.log" | head -1)"
+        echo "compare: attempt $attempt: ${totals:-no totals} - not finished (${unfinished:-?})"
+        prev=""
+        same=0
+        sleep 5
+        continue
+    fi
+    echo "compare: attempt $attempt: ${totals:-no totals}, every chunk finished"
     if [ "$now" = "$prev" ]; then
         same=$((same + 1))
         if [ "$same" -ge 2 ]; then
@@ -109,13 +140,10 @@ for attempt in 1 2 3 4 5 6; do
     sleep 3
 done
 if [ "$settled" = 0 ]; then
-    echo "compare: FAIL the save never stopped changing, so a comparison would be"
-    echo "compare:      against a world that is not the one that was read"
-    exit 1
-fi
-if grep -q "chunks are not .minecraft:full. yet" "$RUN/settle.log"; then
-    grep "chunks are not" "$RUN/settle.log" | sed 's/^/compare: /'
-    echo "compare: FAIL some chunks in the save are still only partly generated"
+    echo "compare: FAIL the save never reached a state where every chunk was finished"
+    echo "compare:      and had stopped changing, so a comparison would be against a"
+    echo "compare:      world that is not the one that was read"
+    grep "chunks are not" "$RUN/settle.log" 2>/dev/null | sed 's/^/compare: /'
     exit 1
 fi
 
