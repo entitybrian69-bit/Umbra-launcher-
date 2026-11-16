@@ -763,8 +763,46 @@ Error: LinkageError occurred while loading main class net.minecraft.bundler.Main
 - the workflow installed Java 21, and 26.3's bundler is class file 69 (Java 25). The
 version JSON already says this (`server needed Java 25`, printed by `fetch_server.sh` on
 every run); `fetch_server.sh` now writes that number to `build/server/java_major.txt` and
-the workflow installs *that* major through a step output instead of a hard-coded 21. What
-the real server does is still unknown, so no real-world match rate may be claimed.
+the workflow installs *that* major through a step output instead of a hard-coded 21.
+
+The third cause, from run `43802948052`: with Java 25 the server finally ran, generated the
+world and said `Done (3.168s)`, and still wrote **no region files**:
+
+```
+world generated after 14s; stopping the server so it saves
+server exit status 143
+[04:18:11] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+region files written: 0
+ERROR: the server wrote no region files
+```
+
+- `exit status 143` is SIGTERM, and the vanilla server does not convert that into a clean
+  stop: it was killed in the middle of its own save, which is why `level.dat` existed and
+  no `region/*.mca` did. The script now runs the server with RCON on loopback
+  (`enable-rcon`, port 25575, a throwaway password) and `tools/rcon.py` sends the documented
+  `stop`; SIGTERM stays only as a fallback, and the log says which one happened. Host-verified
+  against a stub `java` that speaks RCON: clean stop, `region files written: 1`, `PASS`; and
+  against one that ignores RCON: `WARNING: rcon did not answer`, `exit status 143`, the loud
+  region error. `tools/rcon.py` itself is checked against a fake RCON server (auth, command,
+  `stop` closing without an answer = success), a refused password and no server at all.
+
+The fourth failure, from run `43803520288`: **the world was generated and saved**
+(`PASS: the real server generated a world with 4 region file(s)`, `2.4M world`), and step 10
+failed instead:
+
+```
+worldload: FAIL cannot list build/server/run/world/region
+```
+
+- 26.3 keeps the overworld's regions in
+  `world/dimensions/minecraft/overworld/region/`, not `world/region/`. Both readers now ask
+  for the classic path first and then the 26.3 one, print which one answered
+  (`worldload: region dir ...`, `oracle: region dir ...`), and both are host-checked on the
+  synthetic world in *both* layouts (classic `4 of 4 chunks`, and the same world copied into
+  `dimensions/minecraft/overworld/region` gives the same 24673 blocks and `PASS`). The next
+  run is the first one that will read a real save.
+
+So: a real world has still not been read, and no real-world match rate may be claimed.
 
 ## Step 5 in the working tree: hands (break and place), host-verified
 
