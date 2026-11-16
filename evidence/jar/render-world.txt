@@ -1,10 +1,10 @@
-goose/jrender.goose:179: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/jrender.goose:180: warning: redundant `as f32`: an i64 converts to f32 implicitly here
               " bytes, sampled at ", (cu * (jp_colormap_w() as f32)) as i64, ",",
                                             ^~~~~~~~~~~~~~~~~~~~~~
-goose/jrender.goose:180: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/jrender.goose:181: warning: redundant `as f32`: an i64 converts to f32 implicitly here
               (cv * (jp_colormap_h() as f32)) as i64, "\n");
                      ^~~~~~~~~~~~~~~~~~~~~~
-goose/jrender.goose:230: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/jrender.goose:231: warning: redundant `as f32`: an i64 converts to f32 implicitly here
     let aspect = (width as f32) / (height as f32);
                                    ^~~~~~~~~~~~~
 goose/core/raster.goose:64: warning: redundant `as f32`: (((f[0] * f[0]) + (f[1] * f[1])) + (f[2] * f[2])) is already f32
@@ -199,19 +199,19 @@ goose/core/modelstore.goose:293: warning: redundant `as i64`: side is already i6
 goose/core/modelstore.goose:295: warning: redundant `as i64`: side is already i64
                         msf_face.push(side as i64);
                                       ^~~~~~~~~~~
-goose/core/modelstore.goose:434: warning: redundant `as i64`: key.len is already i64
+goose/core/modelstore.goose:445: warning: redundant `as i64`: key.len is already i64
     mts_cond_key_len.push(key.len as i64);
                           ^~~~~~~~~~~~~~
-goose/core/modelstore.goose:437: warning: redundant `as i64`: values.len is already i64
+goose/core/modelstore.goose:448: warning: redundant `as i64`: values.len is already i64
     mts_cond_val_len.push(values.len as i64);
                           ^~~~~~~~~~~~~~~~~
-goose/core/modelstore.goose:485: warning: redundant `as i64`: want.len is already i64
+goose/core/modelstore.goose:496: warning: redundant `as i64`: want.len is already i64
         model_path_len: want.len as i64,
                         ^~~~~~~~~~~~~~~
-goose/core/modelstore.goose:493: warning: redundant `as i64`: key.len is already i64
+goose/core/modelstore.goose:504: warning: redundant `as i64`: key.len is already i64
         variant_key_len: key.len as i64,
                          ^~~~~~~~~~~~~~
-goose/core/modelstore.goose:504: warning: redundant `as i64`: name.len is already i64
+goose/core/modelstore.goose:515: warning: redundant `as i64`: name.len is already i64
         name_len: name.len as i64,
                   ^~~~~~~~~~~~~~~
 goose/core/mesh.goose:379: warning: redundant `as f32`: an i32 converts to f32 implicitly here
@@ -312,7 +312,7 @@ jr: jar 41483720 bytes
 
 jr: models 4192 built, 4192 in the store, 0 refused
 
-jr: blockstates 1288 built, 1288 in the store, 4 rules linked to a model
+jr: blockstates 1288 built, 1288 in the store, 10290 rules, 4 linked here, 0 with no model at all
 
 jr: 28564 faces in the models, 1214 texture paths
 
