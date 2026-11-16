@@ -55,24 +55,35 @@ echo "== forcing the sample area to generate before anything is read"
 # 43855851186 ignored that reply, went on to compare 529 half-generated chunks, and the
 # only reason it was caught is that the loader now counts unfinished chunks. So the box is
 # covered in strips that fit, and every reply is read.
+# The count the server caps is the number of *chunk columns the block box touches*, which
+# for a box on chunk boundaries is just its width and depth in chunks. The first version
+# of this divided the block range into 256-block slices and asked for 336 chunks, and the
+# server said so; this works in chunks and never asks for more than the cap.
+CHUNKS_ACROSS=$(( (BOX1 - BOX0 + 1) / 16 ))
+STRIP=$(( 256 / CHUNKS_ACROSS ))
+[ "$STRIP" -lt 1 ] && STRIP=1
+CHUNKS_DOWN=$(( (BOX1 - BOX0 + 1) / 16 ))
 FORCELOADED=0
-z="$BOX0"
-while [ "$z" -le "$BOX1" ]; do
-    z_end=$((z + 255))
-    [ "$z_end" -gt "$BOX1" ] && z_end="$BOX1"
+row=0
+while [ "$row" -lt "$CHUNKS_DOWN" ]; do
+    rows=$(( CHUNKS_DOWN - row ))
+    [ "$rows" -gt "$STRIP" ] && rows="$STRIP"
+    # Chunk (0,0) starts at block 0, so column c of the box is chunk c.
+    z0=$(( BOX0 + row * 16 ))
+    z1=$(( z0 + rows * 16 - 1 ))
     reply="$(python3 "$TOOLS/rcon.py" "$HOST" "$PORT" "$PW" \
-             "forceload add $BOX0 $z $BOX1 $z_end" 2>&1)"
+             "forceload add $BOX0 $z0 $BOX1 $z1" 2>&1)"
     case "$reply" in
         *"Too many chunks"*|*"FAIL"*|"")
-            echo "compare: FAIL forceload $BOX0 $z $BOX1 $z_end was refused: $reply"
+            echo "compare: FAIL forceload $BOX0 $z0 $BOX1 $z1 was refused: $reply"
             exit 1
             ;;
     esac
-    echo "compare: forceload $BOX0 $z $BOX1 $z_end -> $reply"
+    echo "compare: forceload $BOX0 $z0 $BOX1 $z1 ($CHUNKS_ACROSS x $rows chunks) -> $reply"
     FORCELOADED=$((FORCELOADED + 1))
-    z=$((z_end + 1))
+    row=$((row + rows))
 done
-echo "compare: force-loaded the sample area in $FORCELOADED strips"
+echo "compare: force-loaded the sample area in $FORCELOADED strips of at most 256 chunks"
 
 if [ ! -x "$ROOT/build/umbra_worldload" ] || [ "$ROOT/goose/worldload.goose" -nt "$ROOT/build/umbra_worldload" ]; then
     "$GOOSE" --standalone -o "$ROOT/build/worldload.c" "$ROOT/goose/worldload.goose" || exit 1
