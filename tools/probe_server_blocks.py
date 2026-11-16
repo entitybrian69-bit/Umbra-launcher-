@@ -7,6 +7,11 @@ Writes one line per coordinate the server answered:
 
     x y z minecraft:stone[axis=y]
 
+A position is only readable when its chunk is *loaded*, and a server with no players has
+nothing loaded: the first run of this answered "not loaded" for all 144 coordinates. So
+the grid is force-loaded first (`forceload add`) and any coordinate that still comes back
+unloaded is retried once after a pause.
+
 Why: the second half of gate 6b asks whether Umbra's render matches the real client.
 The client cannot be run in CI (no display, no GPU, and the game needs an account), so
 the brief allows the alternative it names: compare the *block data* with what the real
@@ -20,6 +25,7 @@ import re
 import socket
 import struct
 import sys
+import time
 
 sys.path.insert(0, __file__.rsplit("/", 1)[0])
 from rcon import packet, read_packet  # noqa: E402  (same directory, same protocol)
@@ -83,7 +89,20 @@ def main() -> int:
     sock = connect(host, port, password)
     lines, unloaded, errors = [], 0, 0
     rid = 10
+    pending = []
     try:
+        # Load the chunks the grid lives in. Without this the server answers "not
+        # loaded" for every coordinate, which is a fact about the server (no players,
+        # nothing loaded) and not about the world.
+        rid += 1
+        try:
+            answer = command(sock, rid, f"forceload add {-radius - 8} {-radius - 8} "
+                                        f"{radius + 8} {radius + 8}")
+            print(f"probe: forceload: {answer.strip()[:160]}")
+        except (EOFError, OSError) as exc:
+            print(f"probe: forceload failed: {exc}", file=sys.stderr)
+        time.sleep(2.0)
+
         for (x, y, z) in coords:
             rid += 1
             try:
@@ -96,6 +115,7 @@ def main() -> int:
             if state is None:
                 low = answer.lower()
                 if "not loaded" in low or "outside" in low or "unknown" in low:
+                    pending.append((x, y, z))
                     unloaded += 1
                 else:
                     errors += 1
@@ -104,6 +124,25 @@ def main() -> int:
                               file=sys.stderr)
                 continue
             lines.append(f"{x} {y} {z} {state}")
+
+        if pending:
+            # A chunk that was force-loaded a moment ago may still be on its way; one
+            # retry turns "not loaded" into an answer, or confirms it really is outside.
+            time.sleep(3.0)
+            still = 0
+            for (x, y, z) in pending:
+                rid += 1
+                try:
+                    answer = command(sock, rid, f"data get block {x} {y} {z}")
+                except (EOFError, OSError):
+                    still += 1
+                    continue
+                state = parse_state(answer)
+                if state is None:
+                    still += 1
+                    continue
+                lines.append(f"{x} {y} {z} {state}")
+            unloaded = still
     finally:
         sock.close()
 
