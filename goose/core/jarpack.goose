@@ -372,6 +372,10 @@ fn jp_read_colormap(name: const u8[:]) -> bool {
     return true;
 }
 
+fn jp_colormap_w() -> i64 { return jp_cmap_w }
+fn jp_colormap_h() -> i64 { return jp_cmap_h }
+fn jp_colormap_bytes() -> i64 { return jp_cmap_px.len }
+
 // The RGB at the plains sample point, as 0..1 floats.
 fn jp_colormap_color(u: f32, v: f32, out: f32[3]&) {
     out[0] = 1.0; out[1] = 1.0; out[2] = 1.0;
