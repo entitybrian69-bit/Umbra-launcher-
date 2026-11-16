@@ -36,12 +36,39 @@ let UMBRA_VERSION = "0.3.5";
 // scene that exercises every mesh batch.
 
 
-// Mesh every column of the demo world into one set of arenas, offsetting each
-// column's vertices to its world position.
+// --- where the world's geometry lives -----------------------------------
+//
+// The world is meshed into one vertex arena and one index arena, but not as one
+// undifferentiated mass: every (batch, column) pair owns a *slot*, a range of both
+// arenas with a little slack. That is what lets an edit re-mesh the one column it
+// touched instead of the world, which is the rule the current brief sets
+// ("re-meshing after an edit must not rebuild the world").
+//
+// Indices are absolute (they point into the vertex arena), so a slot can be drawn
+// without touching the vertex attribute pointers: one glDrawElements per slot, with
+// the slot's index range as the offset. The slack is there so a column whose face
+// count grows by a few can be rewritten where it sits; a column that outgrows its
+// slot moves to the end of the arena and the whole buffers are re-uploaded, which
+// the log counts because it is the case worth noticing.
 var world_verts: Vertex[>..] = [];
 var world_indices: u32[>..] = [];
-var world_batches: i64[3] = [0, 0, 0];
-var world_starts: i64[3] = [0, 0, 0];
+
+var sl_col: i64[>..] = [];     // slot -> column index in demo
+var sl_batch: i64[>..] = [];   // slot -> 0 opaque, 1 cutout, 2 translucent
+var sl_v_off: i64[>..] = [];   // slot -> first vertex in world_verts
+var sl_v_cap: i64[>..] = [];   // slot -> vertices reserved
+var sl_v_len: i64[>..] = [];   // slot -> vertices used
+var sl_i_off: i64[>..] = [];   // slot -> first index in world_indices
+var sl_i_cap: i64[>..] = [];
+var sl_i_len: i64[>..] = [];
+
+// What changed since the last upload: slot ids. `dm_moved` means the arena itself
+// changed length, so every byte has to go up again.
+var dm_dirty: i64[>..] = [];
+var dm_moved: bool = false;
+
+// The columns the last edit touched, for the log and for the stepper.
+var edit_cols: i64[>..] = [];
 
 // --- meshing, in slices ------------------------------------------------
 //
@@ -51,83 +78,171 @@ var world_starts: i64[3] = [0, 0, 0];
 // with a time budget, and each call completes as many sections as fit. The
 // result is byte-identical to meshing everything at once, which is what
 // tools/run_tests.sh checks.
+//
+// One column is meshed once, in three passes (opaque, cutout, translucent), and
+// then its three batches are copied into their slots. Until 0.3.7 the batch loop
+// was outside the column loop, so every column was meshed three times and thrown
+// away twice: the loading screen said five seconds for work that takes one and a
+// half.
 
 // The budget is measured on this side, so one call cannot overrun it by much.
 extern fn umbra_c_now_us() -> i64 = "umbra_c_now_us";
 
 var dm_state: i64 = 0;   // 0 not begun, 1 running, 2 done
-var dm_b: i64 = 0;       // batch pass
-var dm_col: i64 = 0;     // column
+var dm_cols: i64[>..] = [];  // the columns this pass meshes
+var dm_ci: i64 = 0;      // index into dm_cols
 var dm_pass: i64 = 0;    // one of the column's three passes
 var dm_sy: i64 = -4;     // section y within the column
-var dm_running: i64 = 0; // indices emitted so far, for world_starts
 var dm_units: i64 = 0;   // sections (and copies) completed
 var dm_worst_unit_us: i64 = 0;
+var dm_edit: bool = false;   // this pass is a re-mesh after an edit
+var dm_remap: u32[>..] = [];
 
+fn dm_slot_table() {
+    sl_col = [];
+    sl_batch = [];
+    sl_v_off = [];
+    sl_v_cap = [];
+    sl_v_len = [];
+    sl_i_off = [];
+    sl_i_cap = [];
+    sl_i_len = [];
+    for b in 3 {
+        for c in demo.len {
+            sl_col.push(c);
+            sl_batch.push(b);
+            sl_v_off.push(-1);
+            sl_v_cap.push(0);
+            sl_v_len.push(0);
+            sl_i_off.push(-1);
+            sl_i_cap.push(0);
+            sl_i_len.push(0);
+        }
+    }
+}
+
+fn dm_reset_pass(cols: i64[:], edit: bool) {
+    dm_cols = [];
+    for c in cols.len { dm_cols.push(cols[c]) }
+    dm_edit = edit;
+    dm_state = 1;
+    dm_ci = 0;
+    dm_pass = 0;
+    dm_sy = -4;
+    dm_units = 0;
+    dm_worst_unit_us = 0;
+    dm_dirty = [];
+}
+
+// The whole world, into empty arenas.
 fn demo_mesh_begin() {
     world_verts = [];
     world_indices = [];
-    for b in 3 {
-        world_starts[b] = 0;
-        world_batches[b] = 0;
-    }
-    dm_state = 1;
-    dm_b = 0;
-    dm_col = 0;
-    dm_pass = 0;
-    dm_sy = -4;
-    dm_running = 0;
-    dm_units = 0;
-    dm_worst_unit_us = 0;
+    dm_slot_table();
+    var all: i64[>..] = [];
+    for c in demo.len { all.push(c); }
+    dm_reset_pass(all[..], false);
+    dm_moved = true;
 }
 
-// One batch's slice of one column, copied into world space. This is the tail of
-// the old per-column loop, unchanged apart from its inputs.
-fn demo_copy_column(b: i64, i: i64) {
-    let base_vert = (world_verts.len as u32);
-    let start_idx = if b == 0 { 0 } else if b == 1 { batch_starts[1] } else { batch_starts[2] };
+// Only these columns. The geometry of every other column stays where it is; that
+// is the whole point of the slot table.
+fn demo_mesh_begin_edit(cols: i64[:]) {
+    if sl_col.len != 3 * demo.len { return; }   // no slots yet: nothing to patch
+    dm_reset_pass(cols, true);
+}
+
+// Copies one batch of the column just meshed into its slot. Vertices land in the
+// slot's reserved range, indices are made absolute, and the slot is marked dirty
+// for the next upload.
+fn demo_place_column(b: i64, c: i64) {
+    let sid = b * demo.len + c;
+    let start = batch_starts[b];
     let count = batch_counts[b];
-    if count <= 0 { return; }
-    let ox = (demo[i].x as f32) * 16.0;
-    let oz = (demo[i].z as f32) * 16.0;
-    var remap: u32[65536] = [0; 65536];
-    var next: u32 = 0;
+    let ox = (demo[c].x as f32) * 16.0;
+    let oz = (demo[c].z as f32) * 16.0;
+    // Which mesh vertices this slice uses, and in what order.
+    dm_remap = [];
+    for k in mesh_verts.len { dm_remap.push(4294967295) }
+    var need_v: i64 = 0;
     for k in count {
-        let vi = mesh_indices[start_idx + k];
-        if remap[vi as i64] == 0 {
-            let src = mesh_verts[vi as i64];
-            world_verts.push(Vertex {
-                x: src.x + ox, y: src.y + oz, z: src.z,
-                nx: src.nx, ny: src.ny, nz: src.nz,
-                u: src.u, v: src.v, r: src.r, g: src.g, b: src.b, ao: src.ao,
-            });
-            next += 1;
-            remap[vi as i64] = base_vert + next;
+        let vi = mesh_indices[start + k];
+        if dm_remap[vi as i64] == 4294967295 {
+            dm_remap[vi as i64] = need_v as u32;
+            need_v += 1;
         }
-        world_indices.push(remap[vi as i64] - 1);
     }
+    var reuse = false;
+    if sl_v_off[sid] >= 0 && sl_v_cap[sid] >= need_v && sl_i_cap[sid] >= count {
+        reuse = true;
+    }
+    if !reuse {
+        // A new or grown slot: reserve at the end of both arenas, with slack so the
+        // next edit of this column can rewrite it in place.
+        let vbase = world_verts.len;
+        let vpad = need_v / 4 + 64;
+        var n: i64 = 0;
+        while n < need_v + vpad {
+            world_verts.push(Vertex {
+                x: 0.0, y: 0.0, z: 0.0, nx: 0.0, ny: 1.0, nz: 0.0,
+                u: 0.0, v: 0.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0,
+            });
+            n += 1;
+        }
+        let ipad = count / 4 + 128;
+        let ibase = world_indices.len;
+        var m: i64 = 0;
+        while m < count + ipad {
+            world_indices.push(0);
+            m += 1;
+        }
+        sl_v_off[sid] = vbase;
+        sl_v_cap[sid] = need_v + vpad;
+        sl_i_off[sid] = ibase;
+        sl_i_cap[sid] = count + ipad;
+        dm_moved = true;
+    }
+    let vbase = sl_v_off[sid];
+    // Vertices, in the order they first appear in this slice, moved to the column's
+    // world position in x and z (y is the block's own height and is not offset).
+    for k in mesh_verts.len {
+        let local = dm_remap[k];
+        if local == 4294967295 { continue; }
+        let src = mesh_verts[k];
+        world_verts[vbase + (local as i64)] = Vertex {
+            x: src.x + ox, y: src.y, z: src.z + oz,
+            nx: src.nx, ny: src.ny, nz: src.nz,
+            u: src.u, v: src.v, r: src.r, g: src.g, b: src.b, ao: src.ao,
+        };
+    }
+    // Indices, absolute.
+    let ibase = sl_i_off[sid];
+    for k in count {
+        let local = dm_remap[mesh_indices[start + k] as i64] as i64;
+        world_indices[ibase + k] = (vbase + local) as u32;
+    }
+    sl_i_len[sid] = count;
+    sl_v_len[sid] = need_v;
+    var known = false;
+    for d in dm_dirty.len {
+        if dm_dirty[d] == sid { known = true; }
+    }
+    if !known { dm_dirty.push(sid); }
 }
 
 // One section of one pass of one column, or the copy that closes a column.
 fn demo_mesh_unit() {
     if dm_state != 1 { return; }
-    if dm_col >= demo.len {
-        world_batches[dm_b] = dm_running - world_starts[dm_b];
-        dm_b += 1;
-        dm_col = 0;
-        dm_pass = 0;
-        dm_sy = -4;
-        if dm_b >= 3 { dm_state = 2; }
+    if dm_ci >= dm_cols.len {
+        dm_state = 2;
         return;
     }
+    let c = dm_cols[dm_ci];
     // A fresh column starts with an empty mesh arena.
     if dm_pass == 0 && dm_sy == -4 { mesh_reset(); }
-    if dm_sy == -4 {
-        if dm_pass == 0 && dm_col == 0 { world_starts[dm_b] = dm_running; }
-        batch_starts[dm_pass] = mesh_indices.len;
-    }
+    if dm_sy == -4 { batch_starts[dm_pass] = mesh_indices.len; }
     let want = if dm_pass == 0 { RC_OPAQUE } else if dm_pass == 1 { RC_CUTOUT } else { RC_TRANSLUCENT };
-    mesh_section_class(demo[dm_col], dm_sy as i32, want);
+    mesh_section_class(demo[c], dm_sy as i32, want);
     dm_sy += 1;
     if dm_sy <= 19 { return; }
     // That pass is finished.
@@ -136,9 +251,8 @@ fn demo_mesh_unit() {
     dm_pass += 1;
     if dm_pass < 3 { return; }
     dm_pass = 0;
-    demo_copy_column(dm_b, dm_col);
-    dm_running += batch_counts[dm_b];
-    dm_col += 1;
+    for b in 3 { demo_place_column(b, c); }
+    dm_ci += 1;
 }
 
 // Runs units until the budget is spent. Returns true when the mesh is complete.
@@ -400,16 +514,32 @@ export "umbra_demo_mesh_step" fn demo_mesh_step_export(budget_us: i64) -> i64 {
     return if demo_mesh_step(budget_us) { 1 } else { 0 }
 }
 export "umbra_demo_mesh_finish" fn demo_mesh_finish_export() { serialize_mesh() }
+
+// Re-mesh only the columns an edit touched. The C side calls this instead of
+// demo_mesh_begin, then steps the same stepper: the geometry of every other column
+// stays in its slot, so the cost is this column's sections and nothing else.
+export "umbra_demo_mesh_edit" fn demo_mesh_edit_export(cols: i64[:]) -> i64 {
+    if dm_state == 1 { return 0; }   // one pass at a time
+    demo_mesh_begin_edit(cols[..]);
+    return if dm_state == 1 { 1 } else { 0 }
+}
+
+// What the last pass was: how many columns, whether it was an edit, and how much
+// work it took. The numbers behind "an edit does not rebuild the world".
+export fn umbra_mesh_columns() -> i64 { return dm_cols.len }
+export fn umbra_mesh_is_edit() -> i64 { return if dm_edit { 1 } else { 0 } }
+export fn umbra_mesh_worst_unit_ms() -> f32 { return (dm_worst_unit_us as f32) / 1000.0 }
+
 // Progress in permille, for the loading screen.
-// How many units the whole mesh takes. Counted from the same structure the
-// stepper walks, because the first version of this was wrong and showed the
-// owner "LOADING WORLD 224%": three batches, each with every column's three
-// passes of 24 sections, plus the one unit that closes the batch. Copying a
-// column into world space happens inside the last section's unit, which the
-// headless check `units == total` proves by comparing the two numbers.
+// How many units this pass takes. Counted from the same structure the stepper
+// walks, because the first version of this was wrong and showed the owner
+// "LOADING WORLD 224%": every column's three passes of 24 sections, plus the one
+// unit that closes the column. The headless check `units == total` compares the
+// two numbers.
+// Every section is a unit (3 passes of 24), and the last section of a column also
+// does that column's three copies; one more unit ends the pass.
 export fn umbra_demo_mesh_total_units() -> i64 {
-    let per_batch = demo.len * 3 * 24 + 1;
-    return per_batch * 3;
+    return dm_cols.len * (3 * 24) + 1;
 }
 
 export "umbra_demo_mesh_progress" fn demo_mesh_progress() -> i64 {
@@ -678,8 +808,9 @@ export fn umbra_world_max_z() -> f32 { return 48.0 }
 //
 // A re-mesh after an edit is the same sliced state machine as the first one, so an edit
 // cannot freeze the frame loop: the C loop asks for the next slice with a budget and
-// draws between them. On the CI emulator the whole world re-meshes in about five
-// seconds, which is the cost of not yet having per-column caching (see STATUS).
+// draws between them. It re-meshes only the column the edit touched (and the neighbour
+// across a chunk border), into that column's slot: the rest of the world keeps the
+// geometry it already has.
 
 var hb_ids: u32[>..] = [];
 var hb_sel: i64 = 0;
@@ -736,7 +867,8 @@ export "umbra_player_act" fn player_act(kind: i64, ex: f32, ey: f32, ez: f32,
             return -1;
         }
         act_say("broke", bs_path(name), h.x, h.y, h.z);
-        demo_mesh_begin();
+        edit_cols = edit_columns_for(h.x, h.z);
+        demo_mesh_begin_edit(edit_cols[..]);
         return 1;
     }
     // A place needs a face to place against.
@@ -756,7 +888,8 @@ export "umbra_player_act" fn player_act(kind: i64, ex: f32, ey: f32, ez: f32,
         return -1;
     }
     act_say("placed", bs_path(bs_name(id)), cell[0], cell[1], cell[2]);
-    demo_mesh_begin();
+    edit_cols = edit_columns_for(cell[0], cell[2]);
+    demo_mesh_begin_edit(edit_cols[..]);
     return 1;
 }
 
@@ -777,8 +910,75 @@ export "umbra_set_block" fn set_block_export(x: i32, y: i32, z: i32, name: const
     return if demo_set_block(x, y, z, id) { 1 } else { 0 }
 }
 
-export "umbra_batch_start" fn world_batch_start(b: i64) -> i64 { return world_starts[b] }
-export "umbra_batch_count" fn world_batch_count(b: i64) -> i64 { return world_batches[b] }
+// --- the world's draw ranges -------------------------------------------
+//
+// One range per (batch, column) slot: where its indices start, how many there are,
+// and which pass it belongs to. C draws each range with the offset in the index
+// buffer, so an edit that rewrites one slot changes one range and no others. The
+// ranges are ordered by pass, which is the order the world has to be drawn in:
+// opaque, cutout, then the translucent water last.
+export fn umbra_range_slots() -> i64 { return sl_col.len }
+export fn umbra_range_batch(sid: i64) -> i64 {
+    if sid < 0 || sid >= sl_batch.len { return 0; }
+    return sl_batch[sid]
+}
+export fn umbra_range_vertex(sid: i64) -> i64 {
+    if sid < 0 || sid >= sl_v_off.len { return 0; }
+    return sl_v_off[sid]
+}
+export fn umbra_range_vertex_len(sid: i64) -> i64 {
+    if sid < 0 || sid >= sl_v_len.len { return 0; }
+    return sl_v_len[sid]
+}
+export fn umbra_range_index(sid: i64) -> i64 {
+    if sid < 0 || sid >= sl_i_off.len { return 0; }
+    return sl_i_off[sid]
+}
+export fn umbra_range_index_len(sid: i64) -> i64 {
+    if sid < 0 || sid >= sl_i_len.len { return 0; }
+    return sl_i_len[sid]
+}
+
+// Slots rewritten since the last upload. `umbra_mesh_moved` means the arena itself
+// changed shape, so the whole buffers go up again; otherwise C uploads only these.
+export fn umbra_dirty_count() -> i64 { return dm_dirty.len }
+export fn umbra_dirty_slot(i: i64) -> i64 {
+    if i < 0 || i >= dm_dirty.len { return -1; }
+    return dm_dirty[i]
+}
+export fn umbra_mesh_moved() -> i64 { return if dm_moved { 1 } else { 0 } }
+export "umbra_dirty_clear" fn dirty_clear() {
+    dm_dirty = [];
+    dm_moved = false;
+}
+
+// The columns an edit at a world position touches: its own, plus the neighbour
+// across a chunk border, because a face on a border is decided by the block on the
+// other side of it even though this column draws it.
+fn edit_columns_for(x: i32, z: i32) -> i64[>..] {
+    var cols: i64[>..] = [];
+    var i = demo_column_of(x, z);
+    if i >= 0 { cols.push(i); }
+    if x % 16 == 0 { i = demo_column_of(x - 1, z); if i >= 0 { cols.push(i); } }
+    if x % 16 == 15 { i = demo_column_of(x + 1, z); if i >= 0 { cols.push(i); } }
+    if z % 16 == 0 { i = demo_column_of(x, z - 1); if i >= 0 { cols.push(i); } }
+    if z % 16 == 15 { i = demo_column_of(x, z + 1); if i >= 0 { cols.push(i); } }
+    return cols
+}
+
+export fn umbra_edit_column_count() -> i64 { return edit_cols.len }
+export fn umbra_world_columns() -> i64 { return demo.len }
+
+// What the player's hand does, without the ray: set one block, then start the re-mesh
+// of the columns it touches. The host suite and the emulator harness drive edits
+// through this, so the numbers they report are the numbers the phone gets.
+export "umbra_edit_block" fn edit_block_export(x: i32, y: i32, z: i32, name: const u8[:]) -> i64 {
+    let id = bs_intern(name, "");
+    if !demo_set_block(x, y, z, id) { return 0; }
+    edit_cols = edit_columns_for(x, z);
+    demo_mesh_begin_edit(edit_cols[..]);
+    return 1;
+}
 
 // A world-space AABB of the demo mesh, so the C camera can frame it without
 // duplicating the layout knowledge.

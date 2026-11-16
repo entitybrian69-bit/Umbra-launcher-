@@ -23,6 +23,8 @@
 #include "umbra_core.h"
 #include "umbra_vertex.h"
 #include "umbra_hud.h"
+// The edit budget the app holds itself to; the suite checks the same number.
+#define UMBRA_EDIT_BUDGET_MS 50
 #include "umbra_results.h"
 #include "umbra_camera.h"
 #include "umbra_player.h"
@@ -77,6 +79,43 @@ static const char *slice_text(const uint8_t *p, int64_t n) {
     return buf;
 }
 
+// The geometry the ranges actually draw, in draw order: every index resolved to its
+// vertex, hashed. Two meshes of the same world agree on this even when their arena
+// capacities differ, which is what an edit changes and a rebuild does not.
+static uint64_t used_geometry_hash(void) {
+    int64_t vlen = 0, ilen = 0;
+    const uint8_t *verts = umbra_verts_ptr(&vlen);
+    const uint8_t *indices = umbra_indices_ptr(&ilen);
+    uint64_t h = 1469598103934665603ULL;
+    int slots = (int)umbra_range_slots();
+    if (!verts || !indices) return 0;
+    for (int pass = 0; pass < 3; pass++) {
+        for (int i = 0; i < slots; i++) {
+            if ((int)umbra_range_batch(i) != pass) continue;
+            int64_t n = umbra_range_index_len(i), ioff = umbra_range_index(i);
+            for (int64_t k = 0; k < n; k++) {
+                uint32_t vi = 0;
+                memcpy(&vi, indices + (ioff + k) * 4, 4);
+                if ((int64_t)vi >= vlen / (int64_t)sizeof(umbra_vertex)) return 0;
+                const uint8_t *v = verts + (size_t)vi * sizeof(umbra_vertex);
+                for (size_t b = 0; b < sizeof(umbra_vertex); b++) {
+                    h ^= v[b];
+                    h *= 1099511628211ULL;
+                }
+            }
+        }
+    }
+    return h;
+}
+
+// How many indices the ranges draw: one number a break or a place has to change.
+static int64_t used_index_total(void) {
+    int64_t total = 0;
+    int slots = (int)umbra_range_slots();
+    for (int i = 0; i < slots; i++) total += umbra_range_index_len(i);
+    return total;
+}
+
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
     printf("umbra headless self-test\n");
@@ -115,14 +154,17 @@ int main(int argc, char **argv) {
     for (int64_t i = 0; i < vcount; i++) {
         float len = sqrtf(v[i].nx*v[i].nx + v[i].ny*v[i].ny + v[i].nz*v[i].nz);
         if (fabsf(len - 1.0f) > 1e-3f) bad_normal++;
-        if (!(v[i].x > -64.0f && v[i].x < 128.0f && v[i].y > -80.0f && v[i].y < 400.0f &&
-              v[i].z > -64.0f && v[i].z < 128.0f)) bad_pos++;
+        // The demo world is 48x48 and 128 blocks tall. The height bound used to be 400,
+        // and that is why nobody saw that three of the four columns were stacked 16, 32
+        // and 48 blocks up by a `y: src.y + oz` in the column copy.
+        if (!(v[i].x > -1.0f && v[i].x < 49.0f && v[i].y > -80.0f && v[i].y < 160.0f &&
+              v[i].z > -1.0f && v[i].z < 49.0f)) bad_pos++;
     }
     printf("mesh checks: %d bad indices, %d bad normals, %d positions out of bounds\n",
            bad_index, bad_normal, bad_pos);
     check(bad_index == 0, "all indices address real vertices");
     check(bad_normal == 0, "all normals are unit length");
-    check(bad_pos == 0, "all positions are inside the demo world");
+    check(bad_pos == 0, "all positions are inside the demo world, height included");
 
     // 2b. The sliced mesher (what the phone runs) must produce exactly the same
     //     bytes as the all-at-once path (what the tools run), and it must respect
@@ -189,19 +231,106 @@ int main(int argc, char **argv) {
               "the sliced mesh has the same indices as the whole-mesh path");
         free(whole_verts);
         free(whole_indices);
-        for (int b = 0; b < 3; b++) {
-            check(umbra_batch_start(b) == umbra_batch_start(b), "batch starts are stable");
-        }
     }
 
-    // 3. The batches partition the index buffer.
-    int64_t total = 0;
-    for (int b = 0; b < 3; b++) total += umbra_batch_count(b);
-    printf("batches: %lld + %lld + %lld = %lld of %lld indices\n",
-           (long long)umbra_batch_count(0), (long long)umbra_batch_count(1),
-           (long long)umbra_batch_count(2), (long long)total, (long long)icount);
-    check(total == icount, "batches cover every index");
-    check(umbra_batch_count(0) > 0, "the opaque batch is not empty");
+    // 2c. The world is held as one range per (pass, column), and the ranges have to
+    //     account for every index, stay inside the buffers, and be ordered so the
+    //     passes are drawn in order.
+    int slots = (int)umbra_range_slots();
+    int64_t per_pass[3] = {0, 0, 0};
+    int64_t used_indices = 0, bad_range = 0, order_breaks = 0, last_pass = -1;
+    printf("ranges: %d slots for %lld columns\n", slots, (long long)umbra_world_columns());
+    check(slots == 3 * (int)umbra_world_columns(), "one range per pass and column");
+    for (int i = 0; i < slots; i++) {
+        int b = (int)umbra_range_batch(i);
+        int64_t voff = umbra_range_vertex(i), vlen_i = umbra_range_vertex_len(i);
+        int64_t ioff = umbra_range_index(i), ilen_i = umbra_range_index_len(i);
+        if (b < 0 || b > 2) bad_range++;
+        if (b < last_pass) order_breaks++;
+        last_pass = b > last_pass ? b : last_pass;
+        if (ilen_i > 0) {
+            if (ioff < 0 || ioff + ilen_i > icount) bad_range++;
+            if (voff < 0 || vlen_i <= 0 || voff + vlen_i > vcount) bad_range++;
+            for (int64_t k = ioff; k < ioff + ilen_i; k++) {
+                if (idx[k] >= (uint32_t)(voff + vlen_i)) { bad_range++; break; }
+            }
+        }
+        per_pass[b] += ilen_i;
+        used_indices += ilen_i;
+    }
+    printf("ranges: %lld + %lld + %lld = %lld indices used of %lld in the arena\n",
+           (long long)per_pass[0], (long long)per_pass[1], (long long)per_pass[2],
+           (long long)used_indices, (long long)icount);
+    check(bad_range == 0, "every range is inside its buffers and every index in its range");
+    check(order_breaks == 0, "the ranges are ordered by pass, so opaque draws first");
+    check(used_indices > 0 && used_indices <= icount, "the ranges use real geometry");
+    check(per_pass[0] > 0, "the opaque pass is not empty");
+
+    // 2d. An edit re-meshes the column it touched and nothing else, and no slice of it
+    //     may hold a frame for long. Before the edit, the mesh is copied; after it, the
+    //     world is meshed again from scratch; the two have to agree, which is what
+    //     proves the slot patching did not drop or duplicate geometry.
+    {
+        int64_t evlen = 0;
+        (void)umbra_verts_ptr(&evlen);
+        check(evlen > 0, "there is a mesh to edit");
+
+        // Edit a block in the middle of a column, then a block on a chunk border, which
+        // is the case that also re-meshes the neighbour.
+        int edits[2][3] = {{8, 66, 40}, {16, 64, 40}};
+        for (int e = 0; e < 2; e++) {
+            const char *block = "minecraft:stone";
+            int did = (int)umbra_edit_block(edits[e][0], edits[e][1], edits[e][2],
+                                            (sl_u8){(uint8_t *)block,
+                                                    (int64_t)strlen(block)});
+            check(did == 1, "a block was placed for the edit test");
+            int64_t columns = umbra_mesh_columns();
+            int64_t total_units = umbra_demo_mesh_total_units();
+            printf("edit %d: %lld columns, %lld units of work, is_edit %lld\n", e,
+                   (long long)columns, (long long)total_units,
+                   (long long)umbra_mesh_is_edit());
+            check(umbra_mesh_is_edit() == 1, "the edit pass knows it is an edit");
+            check(columns >= 1 && columns <= 4, "an edit re-meshes a few columns, not the world");
+            check(total_units == columns * 72 + 1, "the work is that column's sections only");
+            int64_t calls = 0, worst_us = 0;
+            int done = 0;
+            while (!done && calls < 100000) {
+                int64_t t = umbra_now_us_headless();
+                done = umbra_demo_mesh_step(6000) != 0;
+                int64_t took = umbra_now_us_headless() - t;
+                if (took > worst_us) worst_us = took;
+                calls++;
+            }
+            umbra_demo_mesh_finish();
+            printf("edit %d: %lld calls, worst call %.2f ms, worst slice %.2f ms\n", e,
+                   (long long)calls, worst_us / 1000.0, umbra_mesh_worst_unit_ms());
+            check(done, "the edit's re-mesh finished");
+            check(worst_us < (int64_t)UMBRA_EDIT_BUDGET_MS * 1000,
+                  "no slice of an edit blocked a frame for 50 ms");
+            check(umbra_mesh_worst_unit_ms() < (float)UMBRA_EDIT_BUDGET_MS,
+                  "no single section of an edit took 50 ms");
+            check(calls < 100000, "the edit converged");
+        }
+
+        // The patched world against one meshed from scratch: the same geometry, in the
+        // same draw order. The arenas differ (a slot keeps the slack it was given), so
+        // the comparison is the geometry itself, not the bytes around it.
+        uint64_t patched_hash = used_geometry_hash();
+        int64_t patched_used = used_index_total();
+        umbra_demo_mesh_begin();
+        while (umbra_demo_mesh_step(1000000) == 0) { }
+        umbra_demo_mesh_finish();
+        uint64_t rebuilt_hash = used_geometry_hash();
+        int64_t rebuilt_used = used_index_total();
+        printf("edit: patched geometry %016llx (%lld indices), rebuilt %016llx (%lld)\n",
+               (unsigned long long)patched_hash, (long long)patched_used,
+               (unsigned long long)rebuilt_hash, (long long)rebuilt_used);
+        check(patched_hash != 0 && patched_used > 0, "the patched geometry can be hashed");
+        check(patched_used == rebuilt_used, "the edit drew the same number of indices as a rebuild");
+        check(patched_hash == rebuilt_hash,
+              "the columns patched by the edit match a mesh built from scratch");
+
+    }
 
     // 4. The self-test's expected pattern is deterministic and non-trivial.
     umbra_selftest_reset();
@@ -747,7 +876,7 @@ int main(int argc, char **argv) {
               "the ray hit a grass block, by name");
 
         // Break it: the world changes and a re-mesh starts.
-        int64_t v0 = umbra_vert_count();
+        int64_t v0 = used_index_total();
         int64_t code = umbra_player_act(0, 24.5f, 70.0f, 24.5f, 0.0f, -1.0f, 0.0f, 5.0f);
         check(code == 1, "breaking the block under the ray reports that the world changed");
         int64_t alen = 0;
@@ -765,7 +894,7 @@ int main(int argc, char **argv) {
             if (tries > 20000) break;
         }
         check(done == 1, "the re-mesh after an edit finishes");
-        int64_t v1 = umbra_vert_count();
+        int64_t v1 = used_index_total();
         check(v1 != v0, "and the mesh is not the same size as before the edit");
 
         // Put a slab into the hole: the ray reaches the dirt under it, and a placement

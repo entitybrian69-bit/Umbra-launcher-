@@ -664,8 +664,55 @@ static void upload_mesh(umbra_app *app) {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->ibo_mesh);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)ilen, indices, GL_STATIC_DRAW);
     app->mesh_uploaded = true;
+    app->uploaded_vlen = vlen;
+    app->uploaded_ilen = ilen;
     umbra_log(app, "mesh uploaded: %.1f MB vertices, %.1f MB indices", vlen / 1048576.0,
               ilen / 1048576.0);
+}
+
+// An edit rewrote a few ranges, not the world. Re-uploading 18 MB of vertices for one
+// block is what the old code did; this sends the slots that changed, and falls back to
+// a whole upload only when the arena itself changed shape (a column outgrew its slot).
+static void upload_mesh_changes(umbra_app *app) {
+    int64_t vlen = 0, ilen = 0;
+    const uint8_t *verts = umbra_verts_ptr(&vlen);
+    const uint8_t *indices = umbra_indices_ptr(&ilen);
+    if (!app->mesh_uploaded || app->uploaded_vlen != vlen || app->uploaded_ilen != ilen ||
+            umbra_mesh_moved()) {
+        upload_mesh(app);
+        umbra_dirty_clear();
+        return;
+    }
+    int slots = (int)umbra_dirty_count();
+    glBindVertexArray(app->vao_mesh);
+    glBindBuffer(GL_ARRAY_BUFFER, app->vbo_mesh);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->ibo_mesh);
+    int64_t vbytes = 0, ibytes = 0;
+    for (int i = 0; i < slots; i++) {
+        int64_t sid = umbra_dirty_slot(i);
+        if (sid < 0) continue;
+        int64_t voff = umbra_range_vertex(sid), vcount = umbra_range_vertex_len(sid);
+        int64_t ioff = umbra_range_index(sid), icount = umbra_range_index_len(sid);
+        if (vcount > 0) {
+            glBufferSubData(GL_ARRAY_BUFFER, (GLintptr)(voff * (int64_t)sizeof(umbra_vertex)),
+                            (GLsizeiptr)(vcount * (int64_t)sizeof(umbra_vertex)),
+                            verts + voff * (int64_t)sizeof(umbra_vertex));
+            vbytes += vcount * (int64_t)sizeof(umbra_vertex);
+        }
+        if (icount > 0) {
+            glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, (GLintptr)(ioff * 4),
+                            (GLsizeiptr)(icount * 4), indices + ioff * 4);
+            ibytes += icount * 4;
+        }
+    }
+    umbra_dirty_clear();
+    if (glGetError() != GL_NO_ERROR) {
+        umbra_log(app, "edit: the sub-upload was refused; re-uploading the whole mesh");
+        upload_mesh(app);
+        return;
+    }
+    umbra_log(app, "edit: uploaded %lld slot(s), %.1f KB of vertices, %.1f KB of indices",
+              (long long)slots, vbytes / 1024.0, ibytes / 1024.0);
 }
 
 static void create_mesh_buffers(umbra_app *app) {
@@ -807,13 +854,22 @@ static void create_hud_buffers(umbra_app *app) {
 
 // Everything that needs the finished mesh: counts, bounds, the camera frame and
 // the two GPU buffers. Called once, when the sliced mesher says it is done.
+// Indices per pass, summed over the (pass, column) ranges.
+static void count_ranges(umbra_app *app) {
+    int64_t counts[3] = {0, 0, 0};
+    int slots = (int)umbra_range_slots();
+    for (int i = 0; i < slots; i++) {
+        int b = (int)umbra_range_batch(i);
+        if (b < 0 || b > 2) continue;
+        counts[b] += umbra_range_index_len(i);
+    }
+    for (int b = 0; b < 3; b++) app->batch_count[b] = counts[b];
+}
+
 static void finish_scene(umbra_app *app) {
     app->vert_count = (int32_t)umbra_vert_count();
     app->index_count = (int32_t)umbra_index_count();
-    for (int b = 0; b < 3; b++) {
-        app->batch_start[b] = umbra_batch_start(b);
-        app->batch_count[b] = umbra_batch_count(b);
-    }
+    count_ranges(app);
     app->center[0] = (umbra_mesh_min_x() + umbra_mesh_max_x()) * 0.5f;
     app->center[1] = (umbra_mesh_min_y() + umbra_mesh_max_y()) * 0.5f;
     app->center[2] = (umbra_mesh_min_z() + umbra_mesh_max_z()) * 0.5f;
@@ -854,14 +910,40 @@ static void finish_scene(umbra_app *app) {
     umbra_log(app, "camera: eye %.1f %.1f %.1f look %.1f %.1f %.1f, %.1f blocks out, fov %.0f",
               app->eye[0], app->eye[1], app->eye[2], app->look[0], app->look[1], app->look[2],
               app->cam_dist, app->fov_y);
-    umbra_log(app, "mesh: %d vertices, %d indices; batches %lld/%lld/%lld", app->vert_count,
-              app->index_count, (long long)app->batch_count[0], (long long)app->batch_count[1],
-              (long long)app->batch_count[2]);
+    umbra_log(app, "mesh: %d vertices, %d indices; passes %lld/%lld/%lld over %lld ranges", 
+              app->vert_count, app->index_count, (long long)app->batch_count[0],
+              (long long)app->batch_count[1], (long long)app->batch_count[2],
+              (long long)umbra_range_slots());
     umbra_log(app, "startup: meshed in %.1f ms over %lld calls (worst call %.1f ms, worst unit %.1f ms), "
                    "longest frame %.1f ms, frames over 250 ms: %lld",
               app->mesh_total_us / 1000.0, (long long)app->mesh_calls,
               app->mesh_worst_call_us / 1000.0, umbra_demo_mesh_worst_unit_us() / 1000.0,
               app->max_frame_us / 1000.0, (long long)app->long_frames);
+}
+
+// The mesh after an edit: the view stays where the player put it, the geometry that
+// did not change stays on the GPU, and the log says how little work the edit cost.
+static void finish_edit(umbra_app *app) {
+    app->vert_count = (int32_t)umbra_vert_count();
+    app->index_count = (int32_t)umbra_index_count();
+    count_ranges(app);
+    upload_mesh_changes(app);
+    app->mesh_state = 2;
+    app->mesh_progress = 1000;
+    umbra_log(app, "edit: re-meshed %lld of %lld columns in %.1f ms over %lld calls "
+                   "(worst call %.1f ms, worst slice %.1f ms), %lld slot(s) changed",
+              (long long)umbra_mesh_columns(), (long long)umbra_world_columns(),
+              app->mesh_total_us / 1000.0, (long long)app->mesh_calls,
+              app->mesh_worst_call_us / 1000.0, umbra_mesh_worst_unit_ms(),
+              (long long)umbra_dirty_count());
+    int64_t worst = app->mesh_worst_call_us;
+    if (worst >= (int64_t)UMBRA_EDIT_BUDGET_MS * 1000) {
+        umbra_log(app, "edit: a slice took %.1f ms, over the %d ms an edit is allowed",
+                  worst / 1000.0, UMBRA_EDIT_BUDGET_MS);
+    }
+    app->mesh_worst_call_us = 0;
+    app->mesh_calls = 0;
+    app->mesh_total_us = 0;
 }
 
 // Build the world (fast) and start meshing it (slow, sliced by the frame loop).
@@ -886,6 +968,9 @@ static void begin_scene(umbra_app *app) {
 static void pump_mesh(umbra_app *app) {
     if (app->mesh_state != 1) return;
     int64_t t = umbra_now_us();
+    // An edit gets the same small slices as the first mesh: the point of the edit path
+    // is that it is *short*, not that it may block. Neither may hold a frame for more
+    // than one section, and no section here takes anywhere near UMBRA_EDIT_BUDGET_MS.
     int done = (int)umbra_demo_mesh_step((int64_t)UMBRA_MESH_BUDGET_MS * 1000);
     int64_t took = umbra_now_us() - t;
     app->mesh_calls++;
@@ -903,8 +988,12 @@ static void pump_mesh(umbra_app *app) {
     app->mesh_progress = (int)progress;
     if (done) {
         umbra_demo_mesh_finish();
-        finish_scene(app);
-        app->screen = UMBRA_SCREEN_HOME;
+        if (umbra_mesh_is_edit() != 0) {
+            finish_edit(app);
+        } else {
+            finish_scene(app);
+            app->screen = UMBRA_SCREEN_HOME;
+        }
     }
 }
 
@@ -1876,9 +1965,10 @@ static void player_act(umbra_app *app) {
         app->mesh_total_us = 0;
         app->mesh_worst_call_us = 0;
         // The old mesh stays on screen and stays uploaded while the new one is built:
-        // blanking the world for five seconds is worse than a block that disappears a
-        // few frames late.
-        umbra_log(app, "player: re-meshing the world after edit %d", app->act_edits);
+        // blanking the world for a moment is worse than a block that disappears a few
+        // frames late.
+        umbra_log(app, "player: re-meshing %lld column(s) after edit %d", 
+                  (long long)umbra_edit_column_count(), app->act_edits);
     }
 }
 
@@ -1950,10 +2040,10 @@ static void draw_scene(umbra_app *app) {
     // PASS_OPAQUE and PASS_CUTOUT draw with depth writing on; PASS_TRANSLUCENT
     // blends with depth writes off, which is the vanilla order.
     app->draw_calls = 0;
+    int slots = (int)umbra_range_slots();
     for (int pass = PASS_OPAQUE; pass <= PASS_TRANSLUCENT; pass++) {
         int b = pass - PASS_OPAQUE;
         if (app->batch_count[b] <= 0) continue;
-        app->draw_calls++;
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, app->atlas_tex);
         glUniform1i(glGetUniformLocation(app->prog_mesh, "u_atlas"), 0);
@@ -1976,8 +2066,16 @@ static void draw_scene(umbra_app *app) {
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glDepthMask(GL_FALSE);
         }
-        glDrawElements(GL_TRIANGLES, (GLsizei)app->batch_count[b], GL_UNSIGNED_INT,
-                       (void *)(uintptr_t)(app->batch_start[b] * 4));
+        // One range per column: an edit rewrites one of these and nothing else, so the
+        // draw call count changes with the world but never with the edit.
+        for (int i = 0; i < slots; i++) {
+            if ((int)umbra_range_batch(i) != b) continue;
+            int64_t len = umbra_range_index_len(i);
+            if (len <= 0) continue;
+            glDrawElements(GL_TRIANGLES, (GLsizei)len, GL_UNSIGNED_INT,
+                           (void *)(uintptr_t)(umbra_range_index(i) * 4));
+            app->draw_calls++;
+        }
         if (pass == PASS_TRANSLUCENT) {
             glDepthMask(GL_TRUE);
             glDisable(GL_BLEND);

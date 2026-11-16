@@ -33,6 +33,12 @@ typedef enum {
 // milliseconds leaves the loop responsive by three orders of magnitude.
 #define UMBRA_MESH_BUDGET_MS 6
 
+// The brief for an edit: re-meshing one column after a break or a place must not hold
+// a frame for more than about 50 ms. The slice budget for an edit is the same six
+// milliseconds; this is the number the finish line is held to, and the one the CI
+// smoke test reads out of the log.
+#define UMBRA_EDIT_BUDGET_MS 50
+
 typedef struct umbra_app umbra_app;
 
 struct umbra_app {
@@ -50,7 +56,10 @@ struct umbra_app {
 
     // Demo scene, built and meshed by Goose
     int32_t vert_count, index_count;
-    int64_t batch_start[3], batch_count[3];
+    // Indices per pass, summed over the ranges. The world is drawn and uploaded per
+    // range now (one per pass and column), so there is no single start per pass.
+    int64_t batch_count[3];
+    int64_t uploaded_vlen, uploaded_ilen;   // bytes the GPU holds, for sub-uploads
     float center[3];
     // Extent of the demo mesh, in blocks, used to frame the camera and to set
     // a sane near/far range instead of a guess.
