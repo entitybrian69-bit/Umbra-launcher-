@@ -265,6 +265,14 @@ fn main() {
         print("worldload: FAIL no chunks: ", region_dir, " holds ", files, " region file(s)\n");
         exit(1);
     }
+    if blocks == 0 {
+        // A save with hundreds of chunks and no non-air block in any of them is not an
+        // empty world, it is a reader that does not understand the file. Saying PASS here
+        // would be the exact failure this gate exists to catch.
+        print("worldload: FAIL ", chunks, " chunks read and not one non-air block: the chunk",
+              " format is not the one this reader expects\n");
+        exit(1);
+    }
 
     // Per state, sorted by name: a stable order that does not depend on how the chunks
     // happened to be read.

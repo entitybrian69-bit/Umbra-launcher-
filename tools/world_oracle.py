@@ -246,7 +246,12 @@ def main() -> int:
     states = {}
     for name in files:
         for nbt in file_chunks(os.path.join(region_dir, name)):
-            cx, cz, n, h, counts, det = chunk_records(nbt, radius)
+            try:
+                cx, cz, n, h, counts, det = chunk_records(nbt, radius)
+            except (ValueError, struct.error) as exc:
+                print(f"oracle: FAIL {name}: the chunk is not the shape this reader expects: {exc}",
+                      file=sys.stderr)
+                return 1
             lines.append(f"chunk {cx} {cz} blocks {n} hash {h}")
             chunks += 1
             blocks += n
