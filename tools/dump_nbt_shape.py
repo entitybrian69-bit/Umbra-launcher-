@@ -92,48 +92,83 @@ def read_chunk(path, offset):
     return zlib.decompress(raw)
 
 
+TAG_NAMES = {
+    1: "byte", 2: "short", 3: "int", 4: "long", 5: "float", 6: "double",
+    7: "byte[]", 8: "string", 9: "list", 10: "compound", 11: "int[]", 12: "long[]",
+}
+
+
+def entry_shape(entry):
+    """What a palette entry looks like: its tag type, or a compound's key names."""
+    if isinstance(entry, str):
+        return f"string len {len(entry)}"
+    if isinstance(entry, list) and entry and isinstance(entry[0], tuple):
+        return "compound keys " + ",".join(k for k, _ in entry)
+    if isinstance(entry, list):
+        return f"list of {len(entry)}"
+    if isinstance(entry, int):
+        return "int"
+    return type(entry).__name__
+
+
+def describe_shapes(path):
+    """A histogram of how every section in the file is written, plus the odd ones.
+
+    The first version printed section[0] of the first chunk, which on a real save is an
+    empty chunk: 24 sections of air, palette 1, string entries, and nothing about the 50
+    sections that read as a state with no name."""
+    hist = {}
+    odd = []
+    chunks = 0
+    for nbt in world_oracle.file_chunks(path):
+        chunks += 1
+        root = world_oracle.parse(nbt)
+        body = world_oracle.get(root, "Level") or root
+        cx, cz = world_oracle.get(root, "xPos"), world_oracle.get(root, "zPos")
+        for sec in world_oracle.get(body, "sections") or []:
+            y = world_oracle.get(sec, "Y")
+            bs = world_oracle.get(sec, "block_states")
+            if bs is None:
+                key = "no block_states"
+                hist[key] = hist.get(key, 0) + 1
+                odd.append((cx, cz, y, key))
+                continue
+            palette = world_oracle.get(bs, "palette")
+            data = world_oracle.get(bs, "data")
+            if palette and len(palette) == 1 and palette[0] == "minecraft:air":
+                key = "one entry, all air"
+                hist[key] = hist.get(key, 0) + 1
+                continue
+            form = entry_shape(palette[0]) if palette else "palette missing"
+            key = f"{form}, data {'none' if data is None else 'present'}"
+            hist[key] = hist.get(key, 0) + 1
+            if not (form.startswith("compound keys Name") or form.startswith("string len")
+                    or form == "int"):
+                odd.append((cx, cz, y, f"{key}, palette {len(palette) if palette else 0}, "
+                                      f"data {len(data) if data is not None else 'none'}"))
+    print(f"{chunks} chunks read")
+    for key in sorted(hist, key=lambda k: -hist[k]):
+        print(f"  {hist[key]:6d} sections: {key}")
+    if odd:
+        print(f"  {len(odd)} section(s) in a form the readers do not know:")
+        for cx, cz, y, what in odd[:8]:
+            print(f"    chunk {cx},{cz} Y={y}: {what}")
+    return
+
+
 def main(argv):
     if len(argv) < 2:
         print(__doc__.strip(), file=sys.stderr)
         return 1
     path = argv[1]
-    want = int(argv[2]) if len(argv) > 2 else None
-    index = 0
-    for slot, offset in chunks_of(path):
-        if want is not None and slot != want:
-            continue
-        print(f"chunk slot {slot} (x {slot % 32}, z {slot // 32}), offset {offset}")
-        try:
-            nbt = read_chunk(path, offset)
-        except OSError as exc:
-            print(f"  cannot read the chunk: {exc}")
-            continue
-        print(f"  nbt bytes {len(nbt)}")
-        try:
-            root = world_oracle.parse(nbt)
-        except (ValueError, struct.error) as exc:
-            print(f"  the parser refused it: {exc}")
-            return 0
-        print("  top level:")
-        describe(root, 1, 3)
-        body = world_oracle.get(root, "Level") or root
-        sections = world_oracle.get(body, "sections")
-        if isinstance(sections, list):
-            print(f"  sections: {len(sections)}")
-            for sec in sections[:1]:
-                print("  section[0]:")
-                describe(sec, 2, 2)
-                bs = world_oracle.get(sec, "block_states")
-                if bs is not None:
-                    print("  block_states:")
-                    describe(bs, 2, 2)
-                    palette = world_oracle.get(bs, "palette") or []
-                    for entry in palette[:2]:
-                        print("  palette entry:")
-                        describe(entry, 2, 2)
-        index += 1
-        if index >= 1 and want is None:
-            break
+    slots = list(chunks_of(path))
+    print(f"{len(slots)} chunks in {path}")
+    if not slots:
+        return 1
+    try:
+        describe_shapes(path)
+    except (ValueError, struct.error) as exc:
+        print(f"  the parser refused the first chunk: {exc}")
     return 0
 
 
