@@ -1337,6 +1337,39 @@ agree on every block of all 1089 chunks`, and the renderer `169 chunks, 2634366 
 blocks, 0 read error(s)`. So the two-readers half of gate 6b is solid; only the
 server-comparison half was comparing against a world that had moved.
 
+### The third run: the refusal was right but too wide (43858549623)
+
+`c4224a2` got further than anything before it — the strips were accepted
+(`forceload -160 -160 175 31 (21 x 12 chunks) -> Marked 252 chunks`, then `189`) and the
+save held **794 chunks and 19,953,328 non-air blocks** — and then the new rule refused it:
+
+```
+compare: attempt 6: chunks 794, non-air blocks 19954001, states 141 - not finished (169 of 794 chunks are not)
+compare: FAIL the save never reached a state where every chunk was finished
+compare: worldload: 169 of 794 chunks are not `minecraft:full` yet
+```
+
+The 169 are not in the sample area. They are chunks the *first* forceload strip reached
+through: that strip covers 21 x 12 chunks for a 21 x 21 box, so nine of its rows run
+beyond the window, and a chunk that is force-loaded part-way through generation is left
+partly generated for as long as it stays loaded. A chunk 11 rows away cannot make the game
+deny a claim about a block inside the window, so refusing the whole world for it was the
+wrong rule.
+
+The refusal is now scoped to the detail window, which is the only set of chunks that can
+produce a denial:
+
+```
+worldload: 1 of 4 chunks are not `minecraft:full` yet (1 of them within 2 of the origin)
+worldload: FAIL 1 chunks in the detail window are still being generated, so nothing read
+           from them can be trusted; pass --incomplete-ok to read a save that is still
+           being written
+```
+
+and a partial chunk *outside* the window no longer blocks a read (host-tested: the same
+save at radius 1 reports `1 of 1 chunks are not ... (0 of them within 1 of the origin)` and
+does not refuse on that account).
+
 **Not yet claimed:** the world workflow has not passed with these changes yet. What is
 host-verified here is the ordering (a stub RCON server shows `forceload` arriving before
 any `save-all`), the settling loop in both directions (a still save settles after three

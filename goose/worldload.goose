@@ -188,6 +188,11 @@ fn main() {
     // with the game is comparing two different worlds, and the denials that follow are
     // the reader's fault in appearance only.
     var partial_chunks: i64 = 0;
+    // The same count restricted to the detail window. A chunk outside the window cannot
+    // make the game deny a claim about a block inside it, so only these make a comparison
+    // invalid: run 43858549623 read a settled 794-chunk save of which 169 chunks were
+    // still not full, and all 169 were outside the 441-chunk sample area.
+    var partial_window: i64 = 0;
 
     // list_dir hands back one name per line.
     var i: i64 = 0;
@@ -252,9 +257,14 @@ fn main() {
                 var c = column_new();
                 column_from_nbt(root, c);
                 let status = nbt_string(root, "Status");
-                if !eq_bytes(status, "minecraft:full") { partial_chunks += 1; }
+                let unfinished = !eq_bytes(status, "minecraft:full");
+                if unfinished { partial_chunks += 1; }
                 let ccx = c.x as i64;
                 let ccz = c.z as i64;
+                if unfinished && ccx >= 0 - radius && ccx <= radius && ccz >= 0 - radius
+                    && ccz <= radius {
+                    partial_window += 1;
+                }
                 // Chunk NBT may hold only some sections; the rest stays air, which is
                 // what the game means by a section it did not write.
                 var count: i64 = 0;
@@ -365,14 +375,14 @@ fn main() {
     // next read, after the server finished generating, held 1089 chunks instead.
     if partial_chunks > 0 {
         print("worldload: ", partial_chunks, " of ", chunks, " chunks are not ",
-              "`minecraft:full` yet: this save is still being generated, so ",
-              partial_chunks, " chunks hold terrain that the game has not finished\n");
-        if !incomplete_ok {
-            print("worldload: FAIL ", chunks - partial_chunks, " of ", chunks,
-                  " chunks are finished; pass --incomplete-ok to read a save that is ",
-                  "still being written\n");
-            exit(1);
-        }
+              "`minecraft:full` yet (", partial_window, " of them within ", radius,
+              " of the origin)\n");
+    }
+    if partial_window > 0 && !incomplete_ok {
+        print("worldload: FAIL ", partial_window, " chunks in the detail window are still",
+              " being generated, so nothing read from them can be trusted; pass ",
+              "--incomplete-ok to read a save that is still being written\n");
+        exit(1);
     }
     if read_errors > 0 {
         print("worldload: FAIL ", read_errors, " chunks could not be read\n");
