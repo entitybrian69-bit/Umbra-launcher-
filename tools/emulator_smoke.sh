@@ -732,18 +732,46 @@ if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: break -> 1"; then
 else
     die "hands: a break on the ground ahead changed nothing: $(adb logcat -d -s umbra:V 2>/dev/null | grep "player: break" | tail -2 | tr '\n' '|')"
 fi
-# The edit re-meshes the world; the app is only ready again when it says so - a *new*
-# "meshed in" line, counted, because the start-up one is already there.
-MESH_BEFORE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -c "startup: meshed in")"
+# The edit re-meshes its one column, not the world, and the app is only ready again
+# when it says so - a *new* "edit: re-meshed" line, because the start-up one is not
+# there at all. That line also carries the numbers this gate is about: the columns it
+# rebuilt and the longest slice it took.
+EDIT_BEFORE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -c "edit: re-meshed")"
 REMESHED=0
 DEADLINE=$((SECONDS + 120))
 while [ $SECONDS -lt $DEADLINE ]; do
-    MESH_NOW="$(adb logcat -d -s umbra:V 2>/dev/null | grep -c "startup: meshed in")"
-    if [ "$MESH_NOW" -gt "$MESH_BEFORE" ]; then REMESHED=1; break; fi
+    EDIT_NOW="$(adb logcat -d -s umbra:V 2>/dev/null | grep -c "edit: re-meshed")"
+    if [ "$EDIT_NOW" -gt "$EDIT_BEFORE" ]; then REMESHED=1; break; fi
     sleep 2
 done
-[ "$REMESHED" = 1 ] && say "hands: the world was re-meshed after the edit" \
-    || err "hands: no re-mesh line after the edit"
+if [ "$REMESHED" = 1 ]; then
+    EDIT_LINE="$(adb logcat -d -s umbra:V 2>/dev/null | grep "edit: re-meshed" | tail -1 \
+        | sed 's/.*umbra   : //')"
+    say "edit: $EDIT_LINE"
+    # Re-meshing one column, or a column and its neighbour across a border -- never
+    # the world. Nine columns on this demo world.
+    EDIT_COLS="$(printf '%s' "$EDIT_LINE" | sed -n 's/.*re-meshed \([0-9]*\) of \([0-9]*\) columns.*/\1/p')"
+    EDIT_TOTAL="$(printf '%s' "$EDIT_LINE" | sed -n 's/.*re-meshed \([0-9]*\) of \([0-9]*\) columns.*/\2/p')"
+    EDIT_WORST="$(printf '%s' "$EDIT_LINE" | sed -n 's/.*worst call \([0-9.]*\) ms.*/\1/p')"
+    if [ -n "$EDIT_COLS" ] && [ -n "$EDIT_TOTAL" ]; then
+        if [ "$EDIT_COLS" -ge "$EDIT_TOTAL" ]; then
+            die "edit: the edit re-meshed $EDIT_COLS of $EDIT_TOTAL columns: that is the whole world"
+        fi
+        [ "$EDIT_COLS" -le 4 ] || die "edit: the edit re-meshed $EDIT_COLS columns, not one and its neighbours"
+        say "edit: re-meshed $EDIT_COLS of $EDIT_TOTAL columns, which is the point"
+    else
+        die "edit: the re-mesh line has no column counts: $EDIT_LINE"
+    fi
+    if [ -n "$EDIT_WORST" ]; then
+        OVER="$(awk -v v="$EDIT_WORST" 'BEGIN { print (v >= 50.0) ? 1 : 0 }')"
+        [ "$OVER" = 0 ] || die "edit: a slice took ${EDIT_WORST} ms, over the 50 ms an edit is allowed"
+        say "edit: the longest slice was ${EDIT_WORST} ms (under the 50 ms an edit is allowed)"
+    else
+        die "edit: the re-mesh line has no slice time: $EDIT_LINE"
+    fi
+else
+    err "hands: no re-mesh line after the edit"
+fi
 sleep 2
 tap_hand "place"
 sleep 3

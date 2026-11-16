@@ -1,6 +1,6 @@
 # Status
 
-Updated 2026-11-15 (stage 3, step 3: the jar draws the world). This file is the contract between sessions: if the work is
+Updated 2026-11-16 (the jar draws the phone's world; an edit re-meshes one column). This file is the contract between sessions: if the work is
 interrupted, a single "continue" resumes from **Next steps** with nothing lost.
 
 Everything below was produced by a command whose output is quoted or linked.
@@ -529,9 +529,11 @@ number quoted above from CI came through one of those channels.
 
 The owner set the order; it survives interruptions.
 
-**Continuing: (a) `v0.3.6-pre` is tagged from the green run, so read
-`RELEASE_VERIFY.txt` when it lands and record the asset sizes and hashes here; (b) then
-gate 6b's second half (client-vs-client rendered parity) and threaded meshing.**
+**Continuing: the brief's items 1 and 2 are implemented and host-verified; the runs that
+prove them on the device are `android` 43831301454 (the jar in the app, the on-device
+atlas texel check, the edit's slice time) and the second `world`/`jar` run, which
+compares against the references recorded by the first. Item 3 (rendered parity against
+the real client) is next; item 4 is the player.**
 
 The hands phase on the emulator, from `evidence/ci/summary.txt` of run `43808551815`
 (android, success):
@@ -1015,11 +1017,111 @@ and host-tested but not re-run:
 | Block models: every model in the jar parses | yes | `4192 block models parsed, 0 refused`, `1205 elements, 4300 faces` (jar 26.3, CI) |
 | Models are drawn from their geometry | every block, from the jar | `blocks drawn from a model 1498125, faces 454261` over the synthetic jar, host-verified; the demo slab's 6 faces, `y+0.5` top and culled bottom are still host-tested (`mesh 354`) |
 | Binding the jar's blockstates to models at load | yes, host-verified | `1731 rules linked to a model`, `0 refused` (synthetic jar); the real jar runs in the `jar` workflow (D-042) |
-| Textures from the jar | yes, host-verified | 469 textures packed into a 512x512 atlas, `6144` texels compared with the jar's PNGs, `0 differ`; the phone still ships the 12 placeholder tiles (D-039) |
-| A world drawn from the jar's models and textures | CI-verified picture | `goose/jrender.goose` -> `evidence/jar/world.png`, compared with its reference by `tools/check_world_shot.py` |
+| Textures from the jar | yes: the renderer **and the phone** | real jar 26.3: atlas 1024x1024, 1225 cells, 1214 textures used, 1213 decoded, 1 missing, 52 animated; `6144 sampled, 0 differ` against the jar's own PNGs (run 43831301517). The phone loads a jar at start-up (`UMBRA_JAR`, `<files>/client.jar`, `/data/local/tmp/umbra-client.jar`) and the GPU self-test compares its 256 sampled atlas texels with the jar's decoded pixels |
+| A world drawn from the jar's models and textures | yes, with numbers | demo picture: `evidence/jar/world.png`, `0.00` from its reference. **A save read from disk:** `evidence/jar/save.png` + `docs/reference/jar_save.png`. **The world the real server generated:** `evidence/world/real.png` + `docs/reference/real_world.png` -- 156 chunks, 503215 non-air blocks, **26240715 blocks drawn from a model, 0 with no model**, 328628 triangles drawn of 328628, `missing-tile magenta 0`, coverage 680 permille (run 43831301517) |
 | A body you can walk with | yes | 24 host checks, and the device run above |
 | Breaking and placing blocks | yes, host-verified | 36 host checks over the ray, the edit, the re-mesh, the 44 dp target size and all three layouts; the emulator `hands` phase is unverified |
 | Water, ladders, sneaking, swimming, mobs, survival, multiplayer | **no** | not implemented |
 | Reading a world from a real save | **CI-verified on a real 26.3 save** | `529 of 529` chunks, `843609 of 843609` blocks, `45 of 45` states, two independent readers, run `43808551824`; plus five synthetic flavours on every push |
 | Rendered world matches the real client | **not measured** | gate 6b second half: nothing compares two renders yet |
-| Threaded meshing | **no** | one step per frame on the render thread; a re-mesh after an edit stalls nothing but takes ~5 s |
+| An edit re-meshes only its own chunk | yes, host-verified | per (pass, column) ranges: an edit re-meshes `1 of 9` columns (`2 of 9` on a chunk border), `73` or `145` units instead of the world's `649`, and the patched geometry hash equals a mesh built from scratch (`5753a44b6995c9bd`, 556062 indices) |
+| An edit never blocks a frame for 50 ms | yes, host-verified | worst step call `7.1 ms`, worst single section `2.5 ms` in the PC suite; the emulator run reads the same numbers out of `edit: re-meshed ...` and fails above 50 ms |
+| Threaded meshing | **no** | one step per frame on the render thread; the pieces are now small (a section, or one column on an edit) so moving them to a worker is a change of thread, not of algorithm |
+
+## Step 6, item 1: is the world on screen drawn with the jar's textures and every block's own model?
+
+It was not, and the gap was in two places. The CPU renderer in CI drew with the jar
+(`goose/jrender.goose`); the phone did not — it uploaded a twelve-tile placeholder atlas
+(D-039) and meshed the demo world with a single bound model. A world loaded from a real
+save had never been drawn at all.
+
+Now:
+
+* **The phone loads a jar and everything follows from it.** `umbra_jar_load` (goose/main.goose)
+  opens the jar, builds every model and blockstate, links them, packs the atlas from the
+  jar's own PNGs, sets the tile UVs and the colormap tints, and switches the mesher to the
+  model store. It is all-or-nothing: a jar that fails changes nothing, so the app can never
+  draw half a pack. The app looks for `UMBRA_JAR`, then `<files>/client.jar`, then
+  `/data/local/tmp/umbra-client.jar`; it logs which source it got and the self-test verdict
+  names it (`atlas from the jar` / `atlas placeholder`).
+* **The on-device texel check is now the jar's texels.** The existing self-test samples one
+  atlas tile through the production GL path and compares 256 read-back texels with the same
+  tile's decoded pixels; both sides now come from the jar. `tools/emulator_smoke.sh`
+  pushes the jar, then requires: the jar loaded, `atlas: source is the client jar`,
+  `atlas from the jar` in the verdict, and `atlas 0 of 256 texels differ`.
+* **A save is drawn, not just read.** `goose/core/savegame.goose` turns a save directory
+  into world columns (both `region/` and `dimensions/minecraft/overworld/region/`), and
+  `jrender` takes one as a fifth argument (an optional chunk radius sixth). The renderer is
+  deterministic: two runs on the same save produce the same PPM, and the picture is held to
+  a recorded reference by `tools/check_world_shot.py`.
+
+The numbers, from run `43831301517` (`world`, success) on the world the real 26.3 server
+generated, drawn with the real jar:
+
+```
+jr: models 4192 built, 4192 in the store, 0 refused
+jr: blockstates 1288 built, 1288 in the store, 10290 rules, 4 linked here, 0 with no model at all
+jr: atlas 1024x1024 tile 16 gutter 2 cells 1225
+jr: textures used 1214, decoded 1213, missing 1, animated 52
+jr: save 4 region file(s), 156 chunks, 503215 non-air blocks, 0 read error(s)
+jr: blocks drawn from a model 26240715, faces 13815486, blocks whose blockstate had no model 0
+jr: drawn triangles 328628 of 328628, clipped 0
+jr: coverage 680 permille of the frame (352845 of 518400 px), missing-tile magenta 0
+jr: atlas texels compared with the jar's PNGs: 6144 sampled, 0 differ
+jr: PASS - a world drawn with the jar's own models and textures
+```
+
+That is the answer to the question: 26 240 715 blocks of a real save's 156 chunks, every
+one of them drawn from its own model, with zero blocks whose blockstate had no model, and
+the atlas that draws them checked texel-for-texel against the jar's PNGs. The same gate
+renders the synthetic save (`evidence/jar/save.png`) and the demo world
+(`evidence/jar/world.png`, `0.00` from its reference).
+
+**A defect this found:** the phone copied each column into world space with
+`y: src.y + oz` — the z offset added to the *height*. Three of the four columns floated 16,
+32 and 48 blocks above the ground since commit `2a36f1e`, and the host tests could not see
+it because both the whole-mesh and sliced paths had the same bug. Fixed, with the comment
+saying so; the headless suite now also checks that every column's vertices stay inside the
+chunk they belong to.
+
+**Not claimed:** the atlas comparison is between the app's own decode and the GPU's
+readback of it — it proves the upload, the row order and the packing, not that Mojang's
+art is reproduced exactly beyond the 6144 sampled texels. The picture references were
+recorded on the first run; the next run compares against them, which is where the
+similarity number comes from.
+
+## Step 6, item 2: an edit re-meshes one column, not the world
+
+The world's geometry is no longer one flat mass. Every (pass, column) pair owns a *slot*:
+a range of the vertex arena with slack, and a range of the index arena, with indices
+absolute. C draws one `glDrawElements` per range, in pass order, and after an edit uploads
+only the slots that changed (`glBufferSubData`), falling back to a whole upload only when
+the arena itself grew because a column outgrew its slack.
+
+Three numbers say whether it worked, and the headless suite checks all of them
+(`PASS: 230 checks, 0 failures`):
+
+```
+ranges: 27 slots for 9 columns
+ranges: 543276 + 12786 + 0 = 556062 indices used of 698529 in the arena
+edit 0: 1 columns, 73 units of work, is_edit 1
+edit 0: 7 calls, worst call 7.04 ms, worst slice 2.52 ms
+edit 1: 2 columns, 145 units of work, is_edit 1
+edit 1: 13 calls, worst call 7.13 ms, worst slice 2.51 ms
+edit: patched geometry 5753a44b6995c9bd (556062 indices), rebuilt 5753a44b6995c9bd (556062)
+```
+
+* an edit does `73` units of work (its column's 72 sections plus the close) or `145` on a
+  chunk border, against `649` for the whole world — and the old code re-meshed the world;
+* the worst single slice was **2.5 ms**, the worst step call 7.1 ms on this host, against
+  the 50 ms an edit is allowed;
+* the patched world hashes to the same geometry as a mesh built from scratch, pass by pass
+  and index by index, so patching dropped nothing and duplicated nothing.
+
+The same code path re-meshes on the device, and the emulator smoke test now fails if
+`edit: re-meshed` reports more than four columns, or a slice of 50 ms or more.
+
+**Also fixed while in here:** the column loop was outside the batch loop, so every column
+was meshed three times and two of the meshes were thrown away. The loading screen's five
+seconds was one and a half seconds of work; the unit count is `9*72+1` now, not
+`3*(9*72+1)`.
