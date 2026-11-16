@@ -23,6 +23,7 @@ set -uo pipefail
 TOOLS="$(cd "$(dirname "$0")" && pwd)"
 JAR="$(realpath "${1:-build/server/server.jar}")"
 RUN="$(realpath -m "${2:-build/server/run}")"
+RUN_DIR="$RUN"
 WAIT="${WORLD_WAIT:-600}"
 
 tidy() {
@@ -79,6 +80,18 @@ if [ "$ready" = 0 ]; then
     tidy
     exit 1
 fi
+
+# What the server itself says is at a grid of coordinates, taken before it stops. This
+# is the oracle the readers are held to afterwards: not a second implementation of
+# Anvil, but the game saying "at x y z there is this block, with these properties".
+echo "== asking the server what is at a grid of coordinates"
+if python3 "$TOOLS/probe_server_blocks.py" 127.0.0.1 25575 umbra-ci \
+        "$RUN_DIR/server-blocks.txt" 2>&1 | tee "$RUN_DIR/probe.log"; then
+    echo "probe: $(wc -l < "$RUN_DIR/server-blocks.txt") coordinates recorded"
+else
+    echo "WARNING: the server answered too few coordinates; see probe.log"
+fi
+head -5 "$RUN_DIR/server-blocks.txt" 2>/dev/null || true
 
 echo "world generated after ${waited}s; asking the server to stop so it saves"
 if python3 "$TOOLS/rcon.py" 127.0.0.1 25575 umbra-ci stop; then
