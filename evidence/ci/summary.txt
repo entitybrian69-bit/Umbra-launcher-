@@ -1,11 +1,11 @@
-run: 43922373288, commit: 73970377cad51a037ee87ebd6256bbf5de897e7a
+run: 43923617962, commit: 2860d9e33526fd22e0b77ea8dfb224d771d1392c
 sdk: /usr/local/lib/android/sdk
 adb: /usr/local/lib/android/sdk/platform-tools/adb
 emulator: /usr/local/lib/android/sdk/emulator/emulator
-apk: ./android/app/build/outputs/apk/release/app-release.apk (644039 bytes, sha256 1d06e986211b4c233c11997e12bd46b1327cef5222f08ab8e9954d807fffce59)
+apk: ./android/app/build/outputs/apk/release/app-release.apk (644039 bytes, sha256 77919dc19b3efe16906058b326b4010c71a4b36b0b92a6479a0db939335c26a4)
 
 == phase: kvm ==
-kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 16 17:53 /dev/kvm
+kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 16 18:01 /dev/kvm
 cpu: 4 flags match vmx/svm
 
 == phase: sdk-packages ==
@@ -16,14 +16,14 @@ sdk-image: ok (3 lines)
 avd: umbra_ci from device profile pixel_2 at /home/runner/.android/avd
 
 == phase: emulator-boot ==
-emulator: started as pid 2695
-emulator: booted in 26 s
+emulator: started as pid 2928
+emulator: booted in 31 s
 android: api 30 (11)
 display: 1080x1920
 
 == phase: unlock ==
 wake: 
-focus before launch:  mCurrentFocus=Window{7205c8e u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
+focus before launch:  mCurrentFocus=Window{9e7a47a u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
 component: org.umbra.client.UmbraNet$UmbraActivity (from the APK's own manifest)
 
 == phase: install ==
@@ -47,9 +47,9 @@ ERROR: launch: am start failed: mand.java:44)
 
 == collected diagnostics ==
 app pid at exit: 
-focus:  mCurrentFocus=Window{7205c8e u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
-focus:  mFocusedApp=ActivityRecord{1909272 u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t8}
-logcat: 34032 lines, 3905862 bytes
+focus:  mCurrentFocus=Window{9e7a47a u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
+focus:  mFocusedApp=ActivityRecord{bfdb4dc u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t8}
+logcat: 30736 lines, 3618398 bytes
 activity manager mentions of umbra:
 app log lines: 3
 app: --------- beginning of kernel
