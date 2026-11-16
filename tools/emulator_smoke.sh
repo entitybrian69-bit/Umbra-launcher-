@@ -261,7 +261,7 @@ else
 fi
 
 phase "launch"
-adb shell am start -W -n "$COMPONENT" > launch.log 2>&1 \
+adb shell "am start -W -n '$COMPONENT'" > launch.log 2>&1 \
     || die "am start failed: $(tail -c 500 launch.log)"
 say "launch: $(grep -E 'Status|TotalTime|Error' launch.log | tr '\n' ' ' | tr -s ' ')"
 # A native activity often reports "Status: timeout" even when it is starting,
@@ -827,7 +827,7 @@ done
 adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
 sleep 3
 adb logcat -c > /dev/null 2>&1 || true
-adb shell am start -W -n "$COMPONENT" > relaunch.log 2>&1 \
+adb shell "am start -W -n '$COMPONENT'" > relaunch.log 2>&1 \
     || say "relaunch: am start said $(tail -1 relaunch.log)"
 REL_LINES=""
 RELAUNCHED=0
@@ -861,7 +861,7 @@ if [ -n "$PIDK" ]; then
     adb shell "kill -9 $PIDK" > /dev/null 2>&1 || say "crash-detect: kill failed"
     sleep 3
     adb logcat -c > /dev/null 2>&1 || true
-    adb shell am start -W -n "$COMPONENT" > crash-restart.log 2>&1 || true
+    adb shell "am start -W -n '$COMPONENT'" > crash-restart.log 2>&1 || true
     FOUND=0
     DEADLINE=$((SECONDS + 90))
     while [ $SECONDS -lt $DEADLINE ]; do
@@ -899,7 +899,7 @@ phase "gamefiles"
 adb shell pm clear org.umbra.client > /dev/null 2>&1 || true
 adb shell rm -f /data/local/tmp/umbra-client.jar > /dev/null 2>&1 || true
 adb logcat -c > /dev/null 2>&1 || true
-adb shell am start -W -n "$COMPONENT" > gamefiles-launch.log 2>&1 || true
+adb shell "am start -W -n '$COMPONENT'" > gamefiles-launch.log 2>&1 || true
 say "gamefiles: launched with an empty app directory: $(grep -E 'Status|Error' gamefiles-launch.log | tr '\n' ' ')"
 FOUND=0
 DEADLINE=$((SECONDS + 150))
@@ -920,10 +920,24 @@ adb exec-out screencap -p > shot-gamefiles.png 2>/dev/null || true
 say "gamefiles: shot-gamefiles.png is $(stat -c%s shot-gamefiles.png 2>/dev/null || echo 0) bytes"
 RECT="$(adb logcat -d -s umbra:V 2>/dev/null | grep -o 'hud: gamefiles button 0 at [-0-9]*,[-0-9]* size [0-9]*x[0-9]*' | tail -1)"
 [ -n "$RECT" ] || die "gamefiles: the app never logged the screen's buttons"
-NUMS="$(printf '%s' "$RECT" | sed 's/.*at //; s/ size / /; s/x/ /; s/,/ /')"
-set -- $NUMS
-GX=$(( ${1:-0} + ${3:-0} / 2 )); GY=$(( ${2:-0} + ${4:-0} / 2 ))
-say "gamefiles: button 0 at ${1:-?},${2:-?} size ${3:-?}x${4:-?}, tapping $GX,$GY"
+# The app logs the screen's buttons in its own pixel space; the tap is the centre
+# of button 0, read back out of the log. The orientation is read from the same
+# layout: a 1080-wide surface inside a 1080x1920 display is a rotated window.
+GX0=""; GY0=""
+while read -r GBX GBY GBW GBH; do
+    [ -n "$GBX" ] || continue
+    GX0=$(( GBX + GBW / 2 )); GY0=$(( GBY + GBH / 2 ))
+    say "gamefiles: button 0 at $GBX,$GBY size ${GBW}x${GBH}, centre $GX0,$GY0"
+done <<< "$(printf '%s\n' "$RECT" | sed 's/.*at //; s/ size / /; s/x/ /; s/,/ /')"
+[ -n "$GX0" ] || die "gamefiles: the logged button rectangle could not be read: $RECT"
+USURF="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "gamefiles: screen .*x" | sed 's/.*screen \([0-9]*\)x.*/\1/')"
+if [ -n "$USURF" ] && [ "${USURF:-0}" -lt "$DISP_W" ]; then
+    GX=$(( DISP_H - GY0 )); GY=$GX0
+    say "gamefiles: the surface is ${USURF} wide in a ${DISP_W}x${DISP_H} display, so the tap is rotated"
+else
+    GX=$GX0; GY=$GY0
+fi
+say "gamefiles: tapping $GX,$GY"
 adb shell input tap "$GX" "$GY" > /dev/null 2>&1 || die "gamefiles: the tap failed"
 DONE=0
 DEADLINE=$((SECONDS + 420))
