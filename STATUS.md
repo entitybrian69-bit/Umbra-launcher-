@@ -1237,9 +1237,14 @@ Fixed by ordering, and each half is host-tested:
   - see the next section, where a stalled save agreed with itself six times over while
   528 of its 529 chunks were unfinished.
 - It covers the sample area in strips that fit the server's 256-chunk cap on a single
-  `forceload add`, and fails if any strip is refused. Run `43855851186` showed that a
-  radius-10 box is 441 chunks, that the server answers `Too many chunks in the specified
-  area (maximum 256, but specified 441)`, and that the previous version ignored the reply.
+  `forceload add`, and fails if any strip is refused. Two runs taught this. `43855851186`
+  showed that the reply (`Too many chunks in the specified area (maximum 256, but
+  specified 441)`) was being ignored; `43857378184` showed that the first repair was still
+  wrong, because it sliced in *blocks* (`-160 -160 175 95`, which the server counts as 336
+  chunks). The count the server caps is the number of chunk columns the box touches, so
+  the splits are computed in chunks now: a radius-10 box is 441 chunks and goes as 252 +
+  189. Both branches are host-tested against a stub that counts chunks the way the server
+  does and refuses anything over 256.
 - `tools/probe_server_blocks.py` no longer loads anything itself. The probe is purely a
   question-asker now; loading belongs to the shell, before the read.
 - `goose/worldload.goose` counts chunks whose `Status` is not `minecraft:full` and says so
