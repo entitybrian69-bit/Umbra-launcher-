@@ -112,42 +112,78 @@ def entry_shape(entry):
 
 
 def describe_shapes(path):
-    """One line per section of the first chunk: what it holds and how it is written."""
+    """A histogram of how every section in the file is written, plus the odd ones.
+
+    The first version printed section[0] of the first chunk, which on a real save is an
+    empty chunk: 24 sections of air, palette 1, string entries, and nothing about the 50
+    sections that read as a state with no name."""
+    hist = {}
+    odd = []
+    chunks = 0
     for nbt in world_oracle.file_chunks(path):
+        chunks += 1
         root = world_oracle.parse(nbt)
         body = world_oracle.get(root, "Level") or root
-        sections = world_oracle.get(body, "sections") or []
-        print(f"  chunk root keys: {','.join(k for k, _ in root)}")
-        print(f"  sections: {len(sections)}")
-        for index, sec in enumerate(sections):
-            keys = ",".join(k for k, _ in sec) if isinstance(sec, list) else type(sec).__name__
+        cx, cz = world_oracle.get(root, "xPos"), world_oracle.get(root, "zPos")
+        for sec in world_oracle.get(body, "sections") or []:
+            y = world_oracle.get(sec, "Y")
             bs = world_oracle.get(sec, "block_states")
             if bs is None:
-                print(f"  section[{index}] Y={world_oracle.get(sec, 'Y')} keys {keys}: no block_states")
+                key = "no block_states"
+                hist[key] = hist.get(key, 0) + 1
+                odd.append((cx, cz, y, key))
                 continue
             palette = world_oracle.get(bs, "palette")
             data = world_oracle.get(bs, "data")
-            n_pal = len(palette) if palette is not None else "none"
-            n_data = len(data) if data is not None else "none"
-            first = entry_shape(palette[0]) if palette else "empty"
-            print(f"  section[{index}] Y={world_oracle.get(sec, 'Y')} keys {keys}: "
-                  f"palette {n_pal} data {n_data} first entry {first}")
-        return
+            if palette and len(palette) == 1 and palette[0] == "minecraft:air":
+                key = "one entry, all air"
+                hist[key] = hist.get(key, 0) + 1
+                continue
+            form = entry_shape(palette[0]) if palette else "palette missing"
+            n_pal = len(palette) if palette else 0
+            if n_pal <= 1:
+                bucket = "1"
+            elif n_pal <= 4:
+                bucket = "2-4"
+            elif n_pal <= 16:
+                bucket = "5-16 (4 bits)"
+            elif n_pal <= 32:
+                bucket = "17-32 (5 bits)"
+            elif n_pal <= 64:
+                bucket = "33-64 (6 bits)"
+            elif n_pal <= 128:
+                bucket = "65-128 (7 bits)"
+            elif n_pal <= 256:
+                bucket = "129-256 (8 bits)"
+            else:
+                bucket = ">256 (direct?)"
+            key = (f"{form}, palette {bucket}, "
+                   f"data {'none' if data is None else 'present'}")
+            hist[key] = hist.get(key, 0) + 1
+            if not (form.startswith("compound keys Name") or form.startswith("string len")
+                    or form == "int"):
+                odd.append((cx, cz, y, f"{key}, palette {len(palette) if palette else 0}, "
+                                      f"data {len(data) if data is not None else 'none'}"))
+    print(f"  {chunks} chunks read")
+    for key in sorted(hist, key=lambda k: -hist[k]):
+        print(f"  {hist[key]:6d} sections: {key}")
+    if odd:
+        print(f"  {len(odd)} section(s) in a form the readers do not know:")
+        for cx, cz, y, what in odd[:8]:
+            print(f"    chunk {cx},{cz} Y={y}: {what}")
+    return
 
 
 def main(argv):
     if len(argv) < 2:
         print(__doc__.strip(), file=sys.stderr)
         return 1
-    path = argv[1]
-    slots = list(chunks_of(path))
-    print(f"{len(slots)} chunks in {path}")
-    if not slots:
-        return 1
-    try:
-        describe_shapes(path)
-    except (ValueError, struct.error) as exc:
-        print(f"  the parser refused the first chunk: {exc}")
+    for path in argv[1:]:
+        print(f"== {path}")
+        try:
+            describe_shapes(path)
+        except (ValueError, struct.error) as exc:
+            print(f"  the parser refused a chunk: {exc}")
     return 0
 
 
