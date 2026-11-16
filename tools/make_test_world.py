@@ -72,6 +72,22 @@ def pack_indices(indices: list, bits: int) -> list:
     return out
 
 
+# How palette entries are written. "compound" is the classic form,
+# `{Name: ..., Properties: {...}}`, and "string" is what 26.3 writes for a section whose
+# states have no properties at all: a list of bare names. The readers take both, and the
+# workflow generates a world of each so neither path can rot unnoticed - a reader that only
+# ever saw the classic form reported 529 real chunks as full of air.
+PALETTE_STYLE = "compound"
+
+
+def set_palette_style(style: str) -> None:
+    global PALETTE_STYLE
+    if style not in ("compound", "string"):
+        print(f"unknown palette style {style!r} (compound or string)", file=sys.stderr)
+        sys.exit(2)
+    PALETTE_STYLE = style
+
+
 def section(y: int, fill: str, extra: dict) -> bytes:
     """One 16^3 section: `fill` for everything, with `extra` overriding cells. The
     palette is written in the order the states are first seen, like the game does."""
@@ -95,21 +111,24 @@ def section(y: int, fill: str, extra: dict) -> bytes:
     entry = [
         tag(1, "Y", t_byte(y)),
     ]
+    bare = PALETTE_STYLE == "string" and not any(s.get("Properties") for s in palette)
+    if bare:
+        entries = tag(9, "palette", t_list(8, [t_string(s["Name"]) for s in palette]))
+    else:
+        entries = tag(9, "palette", t_list(10, [
+            t_compound([tag(8, "Name", t_string(s["Name"]))]
+                       + ([tag(10, "Properties", t_compound([
+                           tag(8, k, t_string(v)) for k, v in sorted(s["Properties"].items())
+                       ]))] if s.get("Properties") else []))
+            for s in palette
+        ]))
     if bits == 0:
         # A single-state section: the game writes the palette with no data at all.
-        entry.append(tag(10, "block_states", t_compound([
-            tag(9, "palette", t_list(10, [t_compound([tag(8, "Name", t_string(palette[0]["Name"]))])])),
-        ])))
+        entry.append(tag(10, "block_states", t_compound([entries])))
     else:
         words = pack_indices(cells, bits)
         entry.append(tag(10, "block_states", t_compound([
-            tag(9, "palette", t_list(10, [
-                t_compound([tag(8, "Name", t_string(s["Name"]))]
-                           + ([tag(10, "Properties", t_compound([
-                               tag(8, k, t_string(v)) for k, v in sorted(s["Properties"].items())
-                           ]))] if s.get("Properties") else []))
-                for s in palette
-            ])),
+            entries,
             tag(12, "data", t_long_array(words)),
         ])))
     # A list element carries no tag id and no name: just the compound's payload.
@@ -224,4 +243,6 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(__doc__.strip(), file=sys.stderr)
         sys.exit(2)
+    if len(sys.argv) > 3:
+        set_palette_style(sys.argv[3])
     build(sys.argv[1], int(sys.argv[2]) if len(sys.argv) > 2 else 2)

@@ -35,6 +35,12 @@ jobs:
           python3 tools/make_test_world.py build/world-test 2 2>&1 | tee evidence/world/synthetic.txt
           GOOSE=build/bin/goose bash tools/check_real_world.sh build/world-test build/world-test-out \
             2>&1 | tee -a evidence/world/synthetic.txt
+          # And once in the 26.3 form, where a section whose states have no properties is a
+          # list of bare names: reading only the classic form is what made 529 real chunks
+          # look like air.
+          python3 tools/make_test_world.py build/world-test-str 2 string 2>&1 | tee -a evidence/world/synthetic.txt
+          GOOSE=build/bin/goose bash tools/check_real_world.sh build/world-test-str build/world-test-str-out \
+            2>&1 | tee -a evidence/world/synthetic.txt
       - name: Download the pinned server jar (never committed)
         run: |
           set -o pipefail
