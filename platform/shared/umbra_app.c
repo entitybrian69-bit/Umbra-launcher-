@@ -867,7 +867,9 @@ static void count_ranges(umbra_app *app) {
 }
 
 static void finish_scene(umbra_app *app) {
-    app->vert_count = (int32_t)umbra_vert_count();
+    // What the ranges draw: the arena also holds the slack an edit needs, and a HUD
+    // that counted the slack would report a world bigger than the one on screen.
+    app->vert_count = (int32_t)umbra_used_vertices();
     app->index_count = (int32_t)umbra_index_count();
     count_ranges(app);
     app->center[0] = (umbra_mesh_min_x() + umbra_mesh_max_x()) * 0.5f;
@@ -899,6 +901,9 @@ static void finish_scene(umbra_app *app) {
     float band_frac = fit.band_fraction;
     camera_eye(app, app->eye);
     upload_mesh(app);
+    // The initial mesh marked everything dirty and moved the arena; now that the whole
+    // buffer is up, the next upload is an edit's sub-upload, not another 25 MB.
+    umbra_dirty_clear();
     app->mesh_state = 2;
     app->mesh_progress = 1000;
     umbra_log(app, "mesh bounds x %.1f..%.1f y %.1f..%.1f z %.1f..%.1f, camera %.1f blocks out, "
@@ -910,8 +915,8 @@ static void finish_scene(umbra_app *app) {
     umbra_log(app, "camera: eye %.1f %.1f %.1f look %.1f %.1f %.1f, %.1f blocks out, fov %.0f",
               app->eye[0], app->eye[1], app->eye[2], app->look[0], app->look[1], app->look[2],
               app->cam_dist, app->fov_y);
-    umbra_log(app, "mesh: %lld vertices drawn of %d in the arena, passes %lld/%lld/%lld over %lld ranges",
-              (long long)umbra_used_vertices(), app->vert_count, (long long)app->batch_count[0],
+    umbra_log(app, "mesh: %d vertices drawn, passes %lld/%lld/%lld over %lld ranges",
+              app->vert_count, (long long)app->batch_count[0],
               (long long)app->batch_count[1], (long long)app->batch_count[2],
               (long long)umbra_range_slots());
     umbra_log(app, "startup: meshed in %.1f ms over %lld calls (worst call %.1f ms, worst unit %.1f ms), "
@@ -924,7 +929,7 @@ static void finish_scene(umbra_app *app) {
 // The mesh after an edit: the view stays where the player put it, the geometry that
 // did not change stays on the GPU, and the log says how little work the edit cost.
 static void finish_edit(umbra_app *app) {
-    app->vert_count = (int32_t)umbra_vert_count();
+    app->vert_count = (int32_t)umbra_used_vertices();
     app->index_count = (int32_t)umbra_index_count();
     count_ranges(app);
     // The count has to be read before the upload clears the list.

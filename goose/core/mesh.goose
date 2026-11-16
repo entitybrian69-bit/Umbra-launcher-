@@ -308,8 +308,12 @@ fn mesh_full_cube(id: u32) -> bool {
     if bs < 0 { return true; }   // no blockstate: the fallback cube is full
     let n = ms_select(bs, bs_props_of(id), 0);
     if n == 0 { return false; }
-    for k in n {
-        let m = ms_rule_model(ms_sel_at(k));
+    // Copied for the same reason as in mesh_emit_model: nothing may hold an index into
+    // the shared selection across a call that can select again.
+    var rules: i64[>..] = [];
+    for k in n { rules.push(ms_sel_at(k)) }
+    for k in rules.len {
+        let m = ms_rule_model(rules[k]);
         if m < 0 || !ms_model_full(m) { return false; }
     }
     return true;
@@ -404,9 +408,15 @@ fn mesh_emit_model(c: ChunkColumn&, bx: i32, by: i32, bz: i32, id: u32) -> i64 {
     let hash = (bx * 3129871 + by * 116129781 + bz * 31) as i64;
     let n = ms_select(bs, bs_props_of(id), hash);
     if n == 0 { return 0; }
+    // The selection lives in one shared buffer, and the cullface test below runs
+    // ms_select again (mesh_full_cube) for every face: the second block of a multipart
+    // state then read index 1 of a one-entry buffer and the real-world render died at
+    // 5.5 million blocks with "index 1 out of bounds (length 1)". Copy it out first.
+    var rules: i64[>..] = [];
+    for sel in n { rules.push(ms_sel_at(sel)) }
     var drew: i64 = 0;
-    for sel in n {
-        let rule = ms_sel_at(sel);
+    for sel in rules.len {
+        let rule = rules[sel];
         let m = ms_rule_model(rule);
         if m < 0 { continue; }
         let start = ms_face_start(m);

@@ -724,6 +724,10 @@ sleep 1
 PITCH_NOW="$(adb logcat -d -s umbra:V 2>/dev/null | grep "player: at " | tail -1 \
     | sed 's/.*pitch \([-0-9]*\).*/\1/')"
 say "hands: looking down at pitch $PITCH_NOW"
+# Counted *before* the tap: the edit can be finished and logged within a second, which is
+# what happened on the run where this counted afterwards and then waited two minutes for
+# a line that had already been written.
+EDIT_BEFORE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -c "edit: re-meshed")"
 tap_hand "break"
 sleep 3
 if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: break -> 1"; then
@@ -736,7 +740,6 @@ fi
 # when it says so - a *new* "edit: re-meshed" line, because the start-up one is not
 # there at all. That line also carries the numbers this gate is about: the columns it
 # rebuilt and the longest slice it took.
-EDIT_BEFORE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -c "edit: re-meshed")"
 REMESHED=0
 DEADLINE=$((SECONDS + 120))
 while [ $SECONDS -lt $DEADLINE ]; do

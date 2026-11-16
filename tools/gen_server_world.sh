@@ -81,17 +81,17 @@ if [ "$ready" = 0 ]; then
     exit 1
 fi
 
-# What the server itself says is at a grid of coordinates, taken before it stops. This
-# is the oracle the readers are held to afterwards: not a second implementation of
-# Anvil, but the game saying "at x y z there is this block, with these properties".
-echo "== asking the server what is at a grid of coordinates"
-if python3 "$TOOLS/probe_server_blocks.py" 127.0.0.1 25575 umbra-ci \
-        "$RUN_DIR/server-blocks.txt" 2>&1 | tee "$RUN_DIR/probe.log"; then
-    echo "probe: $(wc -l < "$RUN_DIR/server-blocks.txt") coordinates recorded"
-else
-    echo "WARNING: the server answered too few coordinates; see probe.log"
+# While the server is still up and holding this world in memory, ask it whether the
+# blocks Umbra reads out of the save it wrote are really there. This is gate 6b's second
+# half, done the way the brief allows when the real client cannot run in CI.
+if [ -n "${WORLD_HOOK:-}" ]; then
+    echo "== running ${WORLD_HOOK} while the server is still up"
+    if bash "$WORLD_HOOK" "$RUN_DIR" 127.0.0.1 25575 umbra-ci 2>&1 | tee "$RUN_DIR/compare.log"; then
+        echo "compare: the server answered every claim"
+    else
+        echo "WARNING: the server comparison did not pass; see compare.log"
+    fi
 fi
-head -5 "$RUN_DIR/server-blocks.txt" 2>/dev/null || true
 
 echo "world generated after ${waited}s; asking the server to stop so it saves"
 if python3 "$TOOLS/rcon.py" 127.0.0.1 25575 umbra-ci stop; then

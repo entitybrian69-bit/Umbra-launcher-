@@ -81,6 +81,10 @@ jobs:
           distribution: temurin
           java-version: ${{ steps.java.outputs.major }}
       - name: Generate a real world with the real server
+        env:
+          # Run while the server is still up: Umbra reads the flushed save, and the game
+          # confirms or denies each block it read.
+          WORLD_HOOK: ${{ github.workspace }}/tools/compare_with_server.sh
         run: |
           set -o pipefail
           java -version 2>&1 | head -2
@@ -135,16 +139,16 @@ jobs:
           python3 tools/check_render_counts.py evidence/world/real-render.txt
           python3 tools/check_world_shot.py evidence/world/real.png \
             --reference docs/reference/real_world.png --record 2>&1 | tee evidence/world/real-shot.txt
-      - name: Hold Umbra's blocks to the blocks the server itself reported
+      - name: Hold Umbra's blocks to the answers the server gave while it held the world
         # The client cannot run in CI, so gate 6b's second half is met the other way the
-        # brief allows: the game's own answer for a grid of coordinates, taken over RCON
-        # before it stopped, against what Umbra read out of the save it wrote.
+        # brief allows: the game's own verdict on every block Umbra read out of the save
+        # it wrote, taken over RCON before it stopped.
         run: |
           set -o pipefail
           cp build/server/run/server-blocks.txt evidence/world/server-blocks.txt
-          cp build/server/run/probe.log evidence/world/server-probe.log 2>/dev/null || true
-          python3 tools/check_server_blocks.py build/world-real/goose.txt \
-            evidence/world/server-blocks.txt --min 10 2>&1 | tee evidence/world/server-compare.txt
+          cp build/server/run/compare.log evidence/world/server-compare.log 2>/dev/null || true
+          python3 tools/check_server_blocks.py evidence/world/server-blocks.txt --min 10 \
+            2>&1 | tee evidence/world/server-compare.txt
       - name: Report the numbers
         if: always()
         run: |

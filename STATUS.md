@@ -1125,3 +1125,48 @@ The same code path re-meshes on the device, and the emulator smoke test now fail
 was meshed three times and two of the meshes were thrown away. The loading screen's five
 seconds was one and a half seconds of work; the unit count is `9*72+1` now, not
 `3*(9*72+1)`.
+
+## The device, with the jar: item 1 and item 2 on the emulator (run 43833119867, android)
+
+The emulator job pushes the real 26.3 jar and runs the same app the owner would:
+
+```
+jar: pushed 41483720 bytes, device says 41483720
+jar: /data/local/tmp/umbra-client.jar, 41483720 bytes: 4192 models, 1288 blockstates,
+     1214 textures (1 missing) -- the atlas and the models are the jar's
+jar: atlas source is the client jar
+self-test: atlas tile 749 sampled in 0.2 ms
+self-test: atlas 0 of 256 texels differ
+SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 3505 ms, offscreen, atlas from the jar)
+```
+
+and after a break on the ground:
+
+```
+player: break -> 1 (broke grass_block at 25 65 23)
+player: re-meshing 1 column(s) after edit 1
+edit: re-meshed 1 of 9 columns in 149.1 ms over 17 calls
+      (worst call 21.0 ms, worst slice 21.0 ms), 3 slot(s) changed
+```
+
+One column of nine, 149 ms of work, and no slice over 21 ms on the emulator's software
+renderer. The place edit took the incremental path: `edit: uploaded 3 slot(s), 2277.8 KB of
+vertices, 284.7 KB of indices` out of a 25 MB mesh.
+
+**What this run also exposed, and what was fixed because of it:**
+
+* The smoke test counted `edit: re-meshed` *after* tapping break, and the edit finished
+  within a second: the count was already incremented, so the test waited two minutes for a
+  line it had missed. The count is taken before the tap now.
+* The first edit after start-up re-uploaded the whole 25 MB mesh, because the initial mesh
+  left the "everything moved" flag set. `finish_scene` clears it after its upload.
+* The real-world render on a bigger world died with `goose runtime error: index 1 out of
+  bounds (length 1)` in `ms_sel_at`: the blockstate selection lives in one shared buffer,
+  and the cullface test runs `ms_select` again for every face, so the second rule of a
+  multipart state read past the end of a one-rule buffer. The selection is copied out
+  before it is walked, in both places that walk it.
+* The home screenshot no longer matched `docs/reference/emulator_home.png` (26.68 of 255,
+  over the 24 limit). It should not: the reference was a picture of the twelve placeholder
+  tiles with three of four columns floating in the air. The reference is now this run's
+  home screen -- the jar's grass, dirt, leaves and stone, one island on the ground -- and
+  the gate compares against that.
