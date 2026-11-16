@@ -1,5 +1,6 @@
 import std;
 import test.mem_test;
+import test.sha1_test;
 import test.inflate_test;
 import test.zip_test;
 import test.png_test;
@@ -15,6 +16,7 @@ import test.raster_test;
 fn main() {
     print("umbra core tests");
     run_mem();
+    run_sha1();
     run_inflate();
     run_zip();
     run_png();

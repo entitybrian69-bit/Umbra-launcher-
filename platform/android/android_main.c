@@ -371,6 +371,153 @@ void umbra_share_log(umbra_app *app) {
     free(text);
 }
 
+
+// --- the "get game files" hooks ----------------------------------------
+//
+// The app's screen asks for the jar; these three functions are how the platform
+// answers. TLS is Java's (the NDK has no TLS client) and the file picker is an
+// activity result, which android.app.NativeActivity cannot receive -- so both live
+// in org.umbra.client.UmbraNet, and the app's activity is UmbraNet$UmbraActivity
+// (see AndroidManifest.xml).
+//
+// The class is looked up once, in JNI_OnLoad, while a class loader that knows the
+// app's own classes is on the stack. FindClass from a worker thread would look in
+// the system loader and fail, which is a mistake worth not making twice.
+static JavaVM *g_vm = NULL;
+static jclass g_umbra_net = NULL;
+static jmethodID g_m_download = NULL;
+static jmethodID g_m_pick = NULL;
+static jmethodID g_m_got = NULL;
+static jmethodID g_m_total = NULL;
+static jmethodID g_m_error = NULL;
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
+    (void)reserved;
+    g_vm = vm;
+    JNIEnv *env = NULL;
+    if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) return JNI_ERR;
+    jclass local = (*env)->FindClass(env, "org/umbra/client/UmbraNet");
+    if (!local) {
+        if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+        ALOGE("JNI_OnLoad: org.umbra.client.UmbraNet is not in this APK: "
+              "the game-files screen cannot download or import");
+        return JNI_VERSION_1_6;
+    }
+    g_umbra_net = (jclass)(*env)->NewGlobalRef(env, local);
+    g_m_download = (*env)->GetStaticMethodID(env, g_umbra_net, "download",
+                                             "(Ljava/lang/String;Ljava/lang/String;)J");
+    g_m_pick = (*env)->GetStaticMethodID(env, g_umbra_net, "pickAndCopy",
+                                         "(Landroid/app/Activity;Ljava/lang/String;Ljava/lang/String;)J");
+    g_m_got = (*env)->GetStaticMethodID(env, g_umbra_net, "progressGot", "()J");
+    g_m_total = (*env)->GetStaticMethodID(env, g_umbra_net, "progressTotal", "()J");
+    g_m_error = (*env)->GetStaticMethodID(env, g_umbra_net, "lastError", "()Ljava/lang/String;");
+    if (!g_m_download || !g_m_pick || !g_m_got || !g_m_total || !g_m_error) {
+        if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+        ALOGE("JNI_OnLoad: UmbraNet is missing a method the app calls");
+        g_umbra_net = NULL;
+    } else {
+        ALOGI("JNI_OnLoad: UmbraNet loaded: download and the file picker are available");
+    }
+    return JNI_VERSION_1_6;
+}
+
+static JNIEnv *net_env(void) {
+    if (!g_vm) return NULL;
+    JNIEnv *env = NULL;
+    if ((*g_vm)->GetEnv(g_vm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
+        if ((*g_vm)->AttachCurrentThread(g_vm, &env, NULL) != JNI_OK) return NULL;
+    }
+    return env;
+}
+
+static jstring net_string(JNIEnv *env, const char *s) {
+    return (*env)->NewStringUTF(env, s ? s : "");
+}
+
+static void net_throw_away(JNIEnv *env) {
+    if ((*env)->ExceptionCheck(env)) {
+        // An exception left pending would abort the next call; the message is kept
+        // for the screen instead of the process being killed for it.
+        (*env)->ExceptionClear(env);
+    }
+}
+
+// Copies the Java-side error message into the app's buffer.
+static void net_record_error(umbra_app *app) {
+    JNIEnv *env = net_env();
+    if (!env || !g_umbra_net || !g_m_error) return;
+    jstring s = (jstring)(*env)->CallStaticObjectMethod(env, g_umbra_net, g_m_error);
+    if ((*env)->ExceptionCheck(env)) { net_throw_away(env); return; }
+    if (!s) return;
+    const char *utf = (*env)->GetStringUTFChars(env, s, NULL);
+    if (utf) {
+        snprintf(app->gf_platform_error, sizeof app->gf_platform_error, "%s", utf);
+        (*env)->ReleaseStringUTFChars(env, s, utf);
+    }
+    (*env)->DeleteLocalRef(env, s);
+}
+
+// The download: URL in, a file on disk out, and the byte count. Runs on the worker
+// thread the app's game-files job started.
+static int android_download(void *ctx, const char *url, const char *dest, long long *got) {
+    android_state *st = (android_state *)ctx;
+    umbra_app *app = st ? &st->app : NULL;
+    JNIEnv *env = net_env();
+    if (!env || !g_umbra_net || !g_m_download) {
+        if (app) snprintf(app->gf_platform_error, sizeof app->gf_platform_error,
+                          "no Java network class in this APK");
+        return -1;
+    }
+    jstring jurl = net_string(env, url);
+    jstring jdest = net_string(env, dest);
+    jlong n = (*env)->CallStaticLongMethod(env, g_umbra_net, g_m_download, jurl, jdest);
+    int failed = 0;
+    if ((*env)->ExceptionCheck(env)) { net_throw_away(env); failed = 1; }
+    (*env)->DeleteLocalRef(env, jurl);
+    (*env)->DeleteLocalRef(env, jdest);
+    if (got) *got = (long long)n;
+    ALOGI("download: %s -> %s: %lld bytes%s", url, dest, (long long)n, failed ? " (threw)" : "");
+    if (n <= 0 && app) net_record_error(app);
+    return (n > 0) ? 0 : -1;
+}
+
+// The picker: the activity shows ACTION_OPEN_DOCUMENT, the worker waits for the
+// result, and the chosen stream is copied to `dest`.
+static int android_pick_file(void *ctx, const char *dest, const char *mime, long long *got) {
+    android_state *st = (android_state *)ctx;
+    umbra_app *app = st ? &st->app : NULL;
+    JNIEnv *env = net_env();
+    if (!env || !g_umbra_net || !g_m_pick || !st || !st->state || !st->state->activity) {
+        if (app) snprintf(app->gf_platform_error, sizeof app->gf_platform_error,
+                          "no file picker in this build");
+        return -1;
+    }
+    jobject activity = st->state->activity->clazz;
+    jstring jdest = net_string(env, dest);
+    jstring jmime = net_string(env, mime ? mime : "*/*");
+    jlong n = (*env)->CallStaticLongMethod(env, g_umbra_net, g_m_pick, activity, jdest, jmime);
+    int failed = 0;
+    if ((*env)->ExceptionCheck(env)) { net_throw_away(env); failed = 1; }
+    (*env)->DeleteLocalRef(env, jdest);
+    (*env)->DeleteLocalRef(env, jmime);
+    if (got) *got = (long long)n;
+    ALOGI("pick: -> %s: %lld bytes%s", dest, (long long)n, failed ? " (threw)" : "");
+    if (n <= 0 && app) net_record_error(app);
+    return (n > 0) ? 0 : -1;
+}
+
+static void android_progress(void *ctx, long long *got, long long *total) {
+    (void)ctx;
+    JNIEnv *env = net_env();
+    if (!env || !g_umbra_net || !g_m_got || !g_m_total) return;
+    jlong g = (*env)->CallStaticLongMethod(env, g_umbra_net, g_m_got);
+    if ((*env)->ExceptionCheck(env)) { net_throw_away(env); return; }
+    jlong t = (*env)->CallStaticLongMethod(env, g_umbra_net, g_m_total);
+    if ((*env)->ExceptionCheck(env)) { net_throw_away(env); return; }
+    if (got) *got = (long long)g;
+    if (total) *total = (long long)t;
+}
+
 // --- input and lifecycle -----------------------------------------------
 
 static int32_t handle_input(struct android_app *state, AInputEvent *event) {
@@ -461,7 +608,12 @@ void android_main(struct android_app *state) {
     state->userData = &g_st;
     state->onAppCmd = handle_cmd;
     state->onInputEvent = handle_input;
+    // The app's private directory: where the log, the marker, the results and the
+    // client jar live. Nothing here is readable by another app, and uninstalling
+    // Umbra removes the jar with it -- which is what keeps the game's files out of
+    // anything the owner did not ask for.
     snprintf(g_st.files_dir, sizeof g_st.files_dir, "%s", state->activity->internalDataPath);
+    snprintf(g_st.app.files_dir, sizeof g_st.app.files_dir, "%s", g_st.files_dir);
     snprintf(g_st.app.log_path, sizeof g_st.app.log_path, "%s/umbra.log", g_st.files_dir);
     snprintf(g_st.app.marker_path, sizeof g_st.app.marker_path, "%s/session.marker", g_st.files_dir);
     ALOGI("android_main: files %s", g_st.files_dir);
@@ -514,6 +666,14 @@ void android_main(struct android_app *state) {
             // Before init: umbra_app_init keeps these across its memset.
             g_st.app.swap_interval_fn = android_swap_interval;
             g_st.app.swap_interval_ctx = &g_st;
+            // The game-files screen's hooks: a download, a file picker and the
+            // progress of both. Without them the app says so on the screen rather
+            // than pretending it can fetch a jar.
+            g_st.app.download_fn = android_download;
+            g_st.app.pick_file_fn = android_pick_file;
+            g_st.app.progress_fn = android_progress;
+            g_st.app.net_ctx = &g_st;
+            snprintf(g_st.app.files_dir, sizeof g_st.app.files_dir, "%s", g_st.files_dir);
             fill_insets(&g_st);
             if (!umbra_app_init(&g_st.app)) {
                 ALOGE("app init failed");

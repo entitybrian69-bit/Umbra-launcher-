@@ -7,6 +7,7 @@
 #include <stddef.h>
 
 typedef int32_t jint;
+typedef int64_t jlong;
 typedef int8_t jboolean;
 typedef int32_t jsize;
 typedef void *jobject;
@@ -20,6 +21,8 @@ typedef struct _jobject *jref;
 typedef union jvalue { jboolean z; int8_t b; uint16_t c; int16_t s; jint i; int64_t j; float f; double d; jobject l; } jvalue;
 
 #define JNI_VERSION_1_6 0x00010006
+#define JNIEXPORT
+#define JNICALL
 #define JNI_OK 0
 #define JNI_ERR (-1)
 
@@ -89,6 +92,7 @@ typedef struct JNINativeInterface {
     jsize (*GetStringUTFLength)(JNIEnv *, jstring);
     const char *(*GetStringUTFChars)(JNIEnv *, jstring, jboolean *);
     void (*ReleaseStringUTFChars)(JNIEnv *, jstring, const char *);
+    jlong (*CallStaticLongMethod)(JNIEnv *, jclass, jmethodID, ...);
     jsize (*GetArrayLength)(JNIEnv *, jarray);
 } JNINativeInterface;
 

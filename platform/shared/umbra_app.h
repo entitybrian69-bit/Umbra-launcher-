@@ -22,11 +22,15 @@ typedef enum {
     UMBRA_SCREEN_SELFTEST,
     UMBRA_SCREEN_BENCH,
     UMBRA_SCREEN_LOADING,
+    // The screen a phone needs and an emulator never does: where the game's own
+    // files come from. It is shown when no jar was found, and it is the only way a
+    // phone can obtain one (download from Mojang, or import a file already there).
+    UMBRA_SCREEN_GAMEFILES,
 } umbra_screen;
 
 // The app's own version, next to the git commit the build records. Bumped with
 // the tag that publishes it (see .github/workflows/release.yml).
-#define UMBRA_APP_VERSION "0.3.6"
+#define UMBRA_APP_VERSION "0.3.7"
 
 // How much meshing a frame may do before it must draw and poll input again.
 // Android starts warning about an unresponsive app after about five seconds; six
@@ -134,6 +138,30 @@ struct umbra_app {
     // why not), so the log can say which of the two the picture on screen uses.
     char jar_path[512];
     int jar_code;
+    // The "get game files" screen: which state it is in, what it last said, and
+    // whether the work it asked for is running. `gf_download` is 1 while Java is
+    // streaming the jar and 2 while a picked document is being copied; the frame
+    // loop polls the platform for progress and never blocks on it.
+    int gf_state;              // 0 idle, 1 downloading, 2 checking, 3 ready, 4 failed, 5 imported
+    int gf_job;                // 1 download, 2 import, 0 nothing
+    int gf_done;               // the job finished, one frame of handling left
+    int gf_quit;               // a button asked to close the screen
+    char gf_text[192];         // the headline, from Goose (core/gamefiles.goose)
+    char gf_detail[192];       // the second line: a number, a reason, or a path
+    long long gf_got, gf_total;  // bytes, for the bar and the log
+    char files_dir[512];       // where client.jar goes, from the platform
+    // Set by the platform shell: run the download / pick a file. Both return when
+    // the job is over, and write the number of bytes into *got. Null on a platform
+    // with no way to do it (the PC host), which the screen says out loud.
+    int (*download_fn)(void *ctx, const char *url, const char *dest, long long *got);
+    int (*pick_file_fn)(void *ctx, const char *dest, const char *mime, long long *got);
+    void (*progress_fn)(void *ctx, long long *got, long long *total);
+    void *net_ctx;
+    char gf_url[512];          // where the jar comes from, from Goose's version JSON
+    char gf_platform_error[160];  // the last thing the platform's job said
+    int gf_logged_width;       // the width the screen's buttons were logged at
+    int gf_adopt;              // a verified jar is waiting to be loaded
+    int gf_pending_open;       // open the screen as soon as the surface is real
     bool jar_loaded;
     int jar_models, jar_blockstates, jar_textures, jar_textures_missing;
     long long jar_bytes;
@@ -203,6 +231,14 @@ struct umbra_app {
 
 // The app's own entry points, called by whichever platform shell is hosting it.
 int umbra_app_init(umbra_app *app);
+// Which screen the app is on. Setting it logs the change, because a screen that
+// changed without a line in the log is a screen nobody can explain later.
+void umbra_app_set_screen(umbra_app *app, int screen);
+// Opens the "get game files" screen: it asks Goose where the jar goes, logs what it
+// is about to offer, and marks the screen. Called at start-up when no jar was found
+// and from the home screen's button when the owner wants a different one.
+void open_gamefiles_screen(umbra_app *app);
+void close_gamefiles_screen(umbra_app *app);
 void umbra_app_shutdown(umbra_app *app);
 // "running", "clean" or "suspended": the platform calls this when the app goes to
 // the background and when it comes back, so that a swipe-away is not reported as

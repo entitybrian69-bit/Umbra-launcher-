@@ -3,6 +3,7 @@
 #define UMBRA_STUB_ANDROID_NATIVE_ACTIVITY_H
 #include <jni.h>
 #include <android/native_window.h>
+#include <android/log.h>
 typedef struct ANativeActivityCallbacks ANativeActivityCallbacks;
 typedef struct ANativeActivity {
     ANativeActivityCallbacks *callbacks;

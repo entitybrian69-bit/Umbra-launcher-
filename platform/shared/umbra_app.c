@@ -20,6 +20,13 @@
 static void set_run_paths(umbra_app *app);
 static void load_last_run(umbra_app *app);
 static void camera_eye(const umbra_app *app, float eye[3]);
+// The game-files screen's helpers: the screen is opened from init, which is above
+// their definitions.
+static void gf_copy(umbra_app *app, const uint8_t *text, int64_t len, char *dst, size_t cap);
+static void gf_say(umbra_app *app, int kind, long long now, long long total, const char *extra);
+static void begin_scene(umbra_app *app);
+static void upload_atlas(umbra_app *app);
+static void gf_pump(umbra_app *app);
 #include <stdarg.h>
 #include <time.h>
 #include <math.h>
@@ -27,6 +34,7 @@ static void camera_eye(const umbra_app *app, float eye[3]);
 #ifdef __ANDROID__
 #include <GLES3/gl3.h>
 #include <EGL/egl.h>
+#include <pthread.h>
 #include <android/log.h>
 #define LOG_TAG "umbra"
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -953,6 +961,79 @@ static void finish_edit(umbra_app *app) {
     app->mesh_total_us = 0;
 }
 
+// --- screens -------------------------------------------------------------
+//
+// One number says which screen is up, and every change is logged: the emulator run
+// reads the log to know what it is looking at, so a screen that changed without a
+// line is a screen the harness cannot drive.
+static const char *screen_name(int screen) {
+    switch (screen) {
+        case UMBRA_SCREEN_HOME: return "home";
+        case UMBRA_SCREEN_SELFTEST: return "self-test";
+        case UMBRA_SCREEN_BENCH: return "benchmark";
+        case UMBRA_SCREEN_LOADING: return "loading";
+        case UMBRA_SCREEN_GAMEFILES: return "game files";
+        default: return "unknown";
+    }
+}
+
+void umbra_app_set_screen(umbra_app *app, int screen) {
+    if (app->screen == (umbra_screen)screen) return;
+    umbra_log(app, "screen: %s -> %s", screen_name((int)app->screen), screen_name(screen));
+    app->screen = (umbra_screen)screen;
+}
+
+// The jar's destination and the URL it comes from, both asked of Goose, so the
+// path the screen shows is the path jar_try() reads at start-up.
+static void gf_resolve_paths(umbra_app *app, char *hex, size_t hex_cap) {
+    int64_t n = 0;
+    int64_t sha_len = 0;
+    const uint8_t *sha = umbra_gf_pinned_sha1(&sha_len);
+    gf_copy(app, sha, sha_len, hex, hex_cap);
+    const uint8_t *p = umbra_gf_jar_path((sl_u8){(uint8_t *)app->files_dir,
+                                                 (int64_t)strlen(app->files_dir)}, &n);
+    gf_copy(app, p, n, app->jar_path, sizeof app->jar_path);
+    // The jar's URL comes out of the version JSON the manifest names, which is
+    // another fetch; the pinned object URL is the same file and needs no second
+    // request, so it is what a download uses. It is checked against the pin's sha1
+    // either way, which is what makes trusting the URL harmless.
+    snprintf(app->gf_url, sizeof app->gf_url,
+             "https://piston-data.mojang.com/v1/objects/%s/client.jar", hex);
+}
+
+void open_gamefiles_screen(umbra_app *app) {
+    app->gf_job = 0;
+    app->gf_done = 0;
+    app->gf_adopt = 0;
+    app->gf_got = 0;
+    app->gf_total = (long long)umbra_gf_pinned_bytes();
+    app->gf_logged_width = 0;
+    umbra_app_set_screen(app, UMBRA_SCREEN_GAMEFILES);
+    char hex[64];
+    gf_resolve_paths(app, hex, sizeof hex);
+    int present = (int)umbra_gf_jar_present((sl_u8){(uint8_t *)app->files_dir,
+                                                    (int64_t)strlen(app->files_dir)});
+    if (present) {
+        gf_say(app, (int)umbra_gf_state_ready(), 0, 0, app->jar_path);
+    } else {
+        gf_say(app, (int)umbra_gf_state_idle(), 0, 0, "");
+    }
+    umbra_log(app, "gamefiles: the screen is up; jar path %s, %lld bytes pinned (sha1 %s), "
+                   "a jar is %s here",
+              app->jar_path, (long long)umbra_gf_pinned_bytes(), hex,
+              present ? "already" : "not");
+    umbra_log(app, "gamefiles: download would fetch %s", app->gf_url);
+    if (!app->download_fn) {
+        umbra_log(app, "gamefiles: this build cannot download (no platform hook); "
+                       "import is %s", app->pick_file_fn ? "available" : "unavailable too");
+    }
+}
+
+void close_gamefiles_screen(umbra_app *app) {
+    if (app->screen != UMBRA_SCREEN_GAMEFILES) return;
+    umbra_app_set_screen(app, app->mesh_state == 2 ? UMBRA_SCREEN_HOME : UMBRA_SCREEN_LOADING);
+}
+
 // Build the world (fast) and start meshing it (slow, sliced by the frame loop).
 static void begin_scene(umbra_app *app) {
     int64_t t0 = umbra_now_us();
@@ -964,7 +1045,7 @@ static void begin_scene(umbra_app *app) {
     app->mesh_calls = 0;
     app->mesh_worst_call_us = 0;
     app->mesh_total_us = 0;
-    app->screen = UMBRA_SCREEN_LOADING;
+    umbra_app_set_screen(app, UMBRA_SCREEN_LOADING);
     umbra_log(app, "demo world built in %.1f ms; meshing starts in slices of at most %d ms",
               (t1 - t0) / 1000.0, UMBRA_MESH_BUDGET_MS);
 }
@@ -999,7 +1080,7 @@ static void pump_mesh(umbra_app *app) {
             finish_edit(app);
         } else {
             finish_scene(app);
-            app->screen = UMBRA_SCREEN_HOME;
+            umbra_app_set_screen(app, UMBRA_SCREEN_HOME);
         }
     }
 }
@@ -1110,6 +1191,15 @@ int umbra_app_init(umbra_app *app) {
         }
         jar_try(app, files);
     }
+    // No jar, no jar's textures: on a phone there is no way to put one at
+    // /data/local/tmp, so the world would be drawn with the twelve-tile placeholder
+    // set (D-039) and nobody would be told. The game-files screen is what turns that
+    // into a question the owner can answer (D-043); it goes up before the world is
+    // meshed, so the placeholder geometry is never what the owner sees first.
+    // The screen needs a real surface to lay out its buttons, so the frame loop
+    // opens it (see gf_open_when_ready) rather than this function: at this point the
+    // window may still be 1x1.
+    app->gf_pending_open = (!app->jar_loaded && app->files_dir[0] && app->download_fn) ? 1 : 0;
     // The atlas goes up before the world: the mesher's UVs already point into it.
     upload_atlas(app);
     create_hud_buffers(app);
@@ -2180,6 +2270,326 @@ static void draw_hands(umbra_app *app) {
     }
 }
 
+// --- the "get game files" screen -----------------------------------------
+//
+// The CI emulator gets its jar pushed to /data/local/tmp by the harness; a phone
+// gets nothing, so before this screen existed the phone drew the placeholder atlas
+// (D-043). This is the C half of the flow: the buttons, the job, and the state the
+// screen shows. The rules are Goose's -- the pin, the sha1 check, the wording --
+// and the bytes come from the platform (Java's HttpURLConnection, or a content Uri
+// copy). Nothing here decides whether a jar is the right one.
+
+static void gf_copy(umbra_app *app, const uint8_t *text, int64_t len, char *dst, size_t cap) {
+    size_t n = 0;
+    if (text) {
+        for (int64_t i = 0; i < len && n + 1 < cap; i++) dst[n++] = (char)text[i];
+    }
+    dst[n] = 0;
+    (void)app;
+}
+
+// Refreshes the screen's words from Goose, in the state the flow is in.
+static void gf_say(umbra_app *app, int kind, long long now, long long total, const char *extra) {
+    const char *ex = extra ? extra : "";
+    umbra_gf_state_set((int64_t)kind, (int64_t)now, (int64_t)total,
+                       (sl_u8){(uint8_t *)ex, (int64_t)strlen(ex)});
+    int64_t n = 0;
+    gf_copy(app, umbra_gf_state_text(&n), n, app->gf_text, sizeof app->gf_text);
+    gf_copy(app, umbra_gf_state_detail(&n), n, app->gf_detail, sizeof app->gf_detail);
+    app->gf_state = kind;
+}
+
+// The jar is in place: load it, then build the atlas and the world from it. This
+// is the same path start-up takes when it finds a jar; the difference is that the
+// app is already running, so the old (placeholder) mesh has to be thrown away.
+static void gf_adopt_jar(umbra_app *app) {
+    int64_t code = umbra_jar_load((sl_u8){(uint8_t *)app->jar_path,
+                                          (int64_t)strlen(app->jar_path)});
+    app->jar_code = (int)code;
+    if (code != 1) {
+        umbra_log(app, "gamefiles: the verified jar would not load (code %lld)", (long long)code);
+        gf_say(app, (int)umbra_gf_state_failed(), 0, 0,
+               "the jar passed its checksum but could not be read as a jar");
+        return;
+    }
+    app->jar_loaded = true;
+    app->jar_models = (int)umbra_jar_models();
+    app->jar_blockstates = (int)umbra_jar_blockstates();
+    app->jar_textures = (int)umbra_jar_textures();
+    app->jar_textures_missing = (int)umbra_jar_textures_missing();
+    app->jar_bytes = (long long)umbra_jar_bytes();
+    umbra_log(app, "jar: %s, %lld bytes: %d models, %d blockstates, %d textures "
+                   "(%d missing) -- the atlas and the models are the jar's",
+              app->jar_path, app->jar_bytes, app->jar_models, app->jar_blockstates,
+              app->jar_textures, app->jar_textures_missing);
+    upload_atlas(app);
+    // The placeholder geometry is the wrong geometry now: the demo world is rebuilt
+    // and re-meshed in slices, exactly as at start-up.
+    begin_scene(app);
+    char detail[192];
+    snprintf(detail, sizeof detail, "%d models, %d textures, %d missing",
+             app->jar_models, app->jar_textures, app->jar_textures_missing);
+    gf_say(app, (int)umbra_gf_state_ready(), 0, 0, detail);
+    umbra_log(app, "gamefiles: ready: %s", app->gf_detail);
+}
+
+// Runs a job to completion on the calling thread and records what to do next. Both
+// jobs take tens of seconds over the network, which is why the caller is a worker
+// thread and not the frame loop.
+typedef struct {
+    umbra_app *app;
+    int kind;            // 1 download, 2 import
+} gf_job_args;
+
+static void *gf_job_thread(void *arg) {
+    gf_job_args *job = (gf_job_args *)arg;
+    umbra_app *app = job->app;
+    char part[512];
+    int64_t n = 0;
+    // The .part name comes from Goose (core/gamefiles.goose), so the name the app
+    // writes and the name the check and the rename use are one string, decided in
+    // the file the tests can reach.
+    const uint8_t *pp = umbra_gf_part_path((sl_u8){(uint8_t *)app->files_dir,
+                                                   (int64_t)strlen(app->files_dir)}, &n);
+    gf_copy(app, pp, n, part, sizeof part);
+    long long got = -1;
+    if (job->kind == 1) {
+        got = -1;
+        if (!app->download_fn) {
+            gf_say(app, (int)umbra_gf_state_failed(), 0, 0,
+                   "this build has no way to download files");
+            app->gf_done = 1;
+            free(job);
+            return NULL;
+        }
+        gf_say(app, (int)umbra_gf_state_downloading(), 0, (long long)umbra_gf_pinned_bytes(), "");
+        umbra_log(app, "gamefiles: downloading %lld bytes from Mojang", (long long)umbra_gf_pinned_bytes());
+        int rc = app->download_fn(app->net_ctx, (const char *)app->gf_url, part, &got);
+        if (rc != 0 || got <= 0) {
+            char why[192];
+            snprintf(why, sizeof why, "the download failed (%s)", app->gf_platform_error);
+            umbra_log(app, "gamefiles: %s", why);
+            gf_say(app, (int)umbra_gf_state_failed(), 0, 0, why);
+            app->gf_done = 1;
+            free(job);
+            return NULL;
+        }
+        umbra_log(app, "gamefiles: the download finished: %lld bytes in %s", got, part);
+    } else {
+        if (!app->pick_file_fn) {
+            gf_say(app, (int)umbra_gf_state_failed(), 0, 0,
+                   "this build has no way to open a file picker");
+            app->gf_done = 1;
+            free(job);
+            return NULL;
+        }
+        got = -1;
+        int rc = app->pick_file_fn(app->net_ctx, part, "*/*", &got);
+        if (rc != 0 || got <= 0) {
+            char why[192];
+            snprintf(why, sizeof why, "no file was imported (%s)", app->gf_platform_error);
+            umbra_log(app, "gamefiles: %s", why);
+            gf_say(app, (int)umbra_gf_state_failed(), 0, 0, why);
+            app->gf_done = 1;
+            free(job);
+            return NULL;
+        }
+        umbra_log(app, "gamefiles: the picked file was copied: %lld bytes in %s", got, part);
+    }
+
+    // Whatever arrived has to prove itself before it is given the jar's name.
+    gf_say(app, (int)umbra_gf_state_verifying(), 0, 0, "");
+    int64_t ok;
+    if (job->kind == 1) {
+        ok = umbra_gf_check_file((sl_u8){(uint8_t *)part, (int64_t)strlen(part)});
+    } else {
+        ok = umbra_gf_import_verdict((sl_u8){(uint8_t *)part, (int64_t)strlen(part)}, got);
+    }
+    const uint8_t *why = NULL;
+    if (job->kind == 1) {
+        why = umbra_gf_check_reason(&n);
+    } else {
+        why = umbra_gf_import_message(&n);
+    }
+    char reason[192];
+    gf_copy(app, why, n, reason, sizeof reason);
+    char digest[64];
+    gf_copy(app, umbra_gf_digest(&n), n, digest, sizeof digest);
+    if (ok != 1) {
+        umbra_log(app, "gamefiles: the file was refused: %s", reason);
+        remove(part);
+        char detail[192];
+        snprintf(detail, sizeof detail, "%s", reason);
+        gf_say(app, (int)umbra_gf_state_failed(), 0, 0, detail);
+        app->gf_done = 1;
+        free(job);
+        return NULL;
+    }
+    umbra_log(app, "gamefiles: the file is the pinned jar: %lld bytes, sha1 %s", got, digest);
+    if (rename(part, app->jar_path) != 0) {
+        char why2[192];
+        snprintf(why2, sizeof why2, "the checked file could not be renamed into place");
+        umbra_log(app, "gamefiles: %s", why2);
+        remove(part);
+        gf_say(app, (int)umbra_gf_state_failed(), 0, 0, why2);
+        app->gf_done = 1;
+        free(job);
+        return NULL;
+    }
+    umbra_log(app, "gamefiles: %s is now the app's client jar (%lld bytes, sha1 %s)",
+              app->jar_path, got, digest);
+    app->gf_adopt = 1;
+    app->gf_state = (int)umbra_gf_state_ready();
+    gf_say(app, (int)umbra_gf_state_ready(), 0, 0, "checking it as the world's textures");
+    app->gf_done = 1;
+    free(job);
+    return NULL;
+}
+
+// Starts a job on a worker thread. The frame loop never blocks: it polls
+// umbra_gf_progress() for the bar and gf_done for the end.
+static void gf_start(umbra_app *app, int kind) {
+    if (app->gf_job != 0) {
+        umbra_log(app, "gamefiles: a job is already running (%d)", app->gf_job);
+        return;
+    }
+    gf_job_args *job = (gf_job_args *)calloc(1, sizeof *job);
+    if (!job) {
+        gf_say(app, (int)umbra_gf_state_failed(), 0, 0, "out of memory");
+        return;
+    }
+    job->app = app;
+    job->kind = kind;
+    app->gf_job = kind;
+    app->gf_done = 0;
+    app->gf_adopt = 0;
+    app->gf_got = 0;
+    app->gf_total = (long long)umbra_gf_pinned_bytes();
+    umbra_log(app, "gamefiles: %s started", kind == 1 ? "download" : "import");
+#ifdef __ANDROID__
+    // A worker, because the job is tens of seconds of network I/O, and the whole
+    // point of the sliced mesher is that the frame loop never waits.
+    pthread_t th;
+    if (pthread_create(&th, NULL, gf_job_thread, job) == 0) {
+        pthread_detach(th);
+    } else {
+        umbra_log(app, "gamefiles: could not start a worker; running the job on this thread");
+        gf_job_thread(job);
+    }
+#else
+    // The desktop host has no network hook and no picker: run it here so the
+    // failure is immediate and says so.
+    gf_job_thread(job);
+#endif
+}
+
+// Called once per frame while a job is running: progress for the bar, and the end
+// of the job.
+static void gf_pump(umbra_app *app) {
+    if (app->gf_job == 0) return;
+    long long got = 0, total = 0;
+    if (app->progress_fn) app->progress_fn(app->net_ctx, &got, &total);
+    if (got > 0 || total > 0) {
+        app->gf_got = got;
+        if (total > 0) app->gf_total = total;
+        if (app->gf_state == (int)umbra_gf_state_downloading()) {
+            gf_say(app, (int)umbra_gf_state_downloading(), app->gf_got, app->gf_total, "");
+        }
+    }
+    if (!app->gf_done) return;
+    app->gf_job = 0;
+    app->gf_done = 0;
+    if (app->gf_adopt) {
+        app->gf_adopt = 0;
+        gf_adopt_jar(app);
+    }
+    if (app->gf_state == (int)umbra_gf_state_ready()) {
+        // The screen has done its job; the world it built is behind it.
+        umbra_log(app, "gamefiles: leaving the game-files screen for the world");
+        umbra_app_set_screen(app, UMBRA_SCREEN_LOADING);
+        close_gamefiles_screen(app);
+    }
+}
+
+// What the screen draws: the headline, the detail line, a progress bar while a job
+// runs, and the four buttons. Every button is logged with its rectangle the first
+// time it is drawn, so the automated run taps what is on screen rather than a
+// coordinate someone worked out by hand.
+static void draw_gamefiles(umbra_app *app) {
+    hud_begin();
+    float s = hud_scale(app);
+    float bs = umbra_gf_scale(app->dpi_scale, app->width, app->height);
+    static const char *labels[UMBRA_GF_BUTTONS] = {
+        "DOWNLOAD FROM MOJANG", "IMPORT A JAR I HAVE", "RETRY", "BACK TO THE WORLD"
+    };
+    if (app->gf_logged_width != app->width) {
+        app->gf_logged_width = app->width;
+        for (int i = 0; i < UMBRA_GF_BUTTONS; i++) {
+            umbra_rect r = umbra_hud_gf_button(i, app->width, app->height, app->insets, bs);
+            umbra_log(app, "hud: gamefiles button %d at %d,%d size %dx%d on %dx%d",
+                      i, (int)r.x, (int)r.y, (int)r.w, (int)r.h, app->width, app->height);
+        }
+        umbra_log(app, "gamefiles: screen %dx%d, state %d, jar %s", app->width, app->height,
+                  app->gf_state, app->jar_path[0] ? app->jar_path : "(none)");
+    }
+    // The backdrop covers the whole screen: there is no world to show yet.
+    hud_rect(0, 0, (float)app->width, (float)app->height, 0.05f, 0.06f, 0.10f, 0.94f);
+    umbra_rect t = umbra_hud_gf_text(app->width, app->height, app->insets, bs);
+    float x = t.x, y = t.y;
+    float line = UMBRA_HUD_ROW_HEIGHT * s;
+    hud_text(x, y, s * 1.2f, 1, 1, 1, 1, "GET THE GAME'S FILES");
+    y += line * 1.8f;
+    hud_text(x, y, s, 0.85f, 0.9f, 1, 1, app->gf_text);
+    y += line * 1.2f;
+    // The detail line can be long (a checksum mismatch names two digests), so it is
+    // wrapped on the width the text area actually has.
+    {
+        float max_chars = hud_text_width("X", s) > 0 ? t.w / hud_text_width("X", s) : 80.0f;
+        int per_line = (int)max_chars;
+        if (per_line < 16) per_line = 16;
+        if (per_line > 90) per_line = 90;
+        const char *p = app->gf_detail;
+        int guard = 0;
+        while (*p && guard < 4) {
+            int n = (int)strlen(p);
+            if (n > per_line) n = per_line;
+            char tmp[96];
+            memcpy(tmp, p, (size_t)n);
+            tmp[n] = 0;
+            hud_text(x, y, s * 0.9f, 0.75f, 0.8f, 0.9f, 1, tmp);
+            y += line * 0.95f;
+            p += n;
+            guard++;
+        }
+    }
+    // The bar: what the download has and what it is expected to have.
+    if (app->gf_state == (int)umbra_gf_state_downloading() && app->gf_total > 0) {
+        float frac = (float)app->gf_got / (float)app->gf_total;
+        if (frac < 0.0f) frac = 0.0f;
+        if (frac > 1.0f) frac = 1.0f;
+        float bw = t.w * 0.8f, bh = 8.0f * bs;
+        y += line * 0.4f;
+        hud_rect(x, y, bw, bh, 0.2f, 0.2f, 0.25f, 1);
+        hud_rect(x, y, bw * frac, bh, 0.3f, 0.8f, 0.4f, 1);
+        y += bh + line * 0.4f;
+    }
+    for (int i = 0; i < UMBRA_GF_BUTTONS; i++) {
+        umbra_rect r = umbra_hud_gf_button(i, app->width, app->height, app->insets, bs);
+        int busy = app->gf_job != 0;
+        // RETRY only makes sense after a failure; BACK only once a jar is loaded.
+        int dim = (busy && i != UMBRA_GF_BUTTONS - 1) ||
+                  (i == 2 && app->gf_state != (int)umbra_gf_state_failed()) ||
+                  (i == 3 && !app->jar_loaded);
+        hud_rect(r.x, r.y, r.w, r.h, dim ? 0.10f : 0.18f, dim ? 0.10f : 0.34f,
+                 dim ? 0.12f : 0.20f, 0.92f);
+        float ts = s * 0.9f;
+        float tw = hud_text_width(labels[i], ts);
+        hud_text(r.x + (r.w - tw) * 0.5f, r.y + (r.h - 8.0f * ts) * 0.5f, ts,
+                 dim ? 0.6f : 1.0f, dim ? 0.6f : 1.0f, dim ? 0.6f : 1.0f, 1, labels[i]);
+    }
+    hud_flush(app);
+}
+
 static void draw_hud(umbra_app *app) {
     hud_begin();
     float s = hud_scale(app);
@@ -2370,6 +2780,11 @@ void umbra_app_frame(umbra_app *app) {
     }
     pump_mesh(app);
     player_act(app);
+    gf_pump(app);
+    if (app->gf_pending_open && app->width >= 320 && app->mesh_state == 2) {
+        app->gf_pending_open = 0;
+        open_gamefiles_screen(app);
+    }
 
     // The self-test goes first, and one bounded step of it per frame: it draws
     // into its own target, and in the fallback path (no offscreen target) it reads
@@ -2395,6 +2810,12 @@ void umbra_app_frame(umbra_app *app) {
         glClearColor(0.55f, 0.70f, 0.92f, 1.0f);
     }
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    if (app->screen == UMBRA_SCREEN_GAMEFILES) {
+        draw_gamefiles(app);
+        app->frames_drawn++;
+        gpu_timer_collect(app);
+        return;
+    }
     if (app->mesh_uploaded && !app->render_fallback) {
         player_update(app);
         gpu_timer_begin(app);
@@ -2480,6 +2901,33 @@ void umbra_app_touch_id(umbra_app *app, int32_t id, int32_t x, int32_t y, int32_
         app->touch_last_x = (float)x;
         app->touch_last_y = (float)y;
         app->touch_moved = 0;
+    }
+    if (app->screen == UMBRA_SCREEN_GAMEFILES) {
+        // The screen's own buttons, above the "is the world ready" test: there is
+        // no world yet, which is the whole reason the screen is up.
+        if (phase == 0) {
+            float bs = umbra_gf_scale(app->dpi_scale, app->width, app->height);
+            int hit = umbra_hud_gf_hit(x, y, app->width, app->height, app->insets, bs);
+            if (hit >= 0) {
+                app->tap_used = 1;
+                umbra_log(app, "gamefiles: button %d tapped%s", hit,
+                          app->gf_job ? " (a job is already running)" : "");
+                if (hit == 0) {
+                    gf_start(app, 1);
+                } else if (hit == 1) {
+                    gf_start(app, 2);
+                } else if (hit == 2) {
+                    if (app->gf_state == (int)umbra_gf_state_failed()) gf_start(app, 1);
+                } else if (hit == 3) {
+                    if (app->jar_loaded) {
+                        close_gamefiles_screen(app);
+                    } else {
+                        umbra_log(app, "gamefiles: back refused, no jar is loaded yet");
+                    }
+                }
+            }
+        }
+        return;
     }
     if (app->mesh_state != 2) {
         // The buttons need the finished world: the self-test draws into its own

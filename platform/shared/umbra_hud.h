@@ -277,3 +277,121 @@ static int umbra_flatten(char *dst, size_t cap, const char *src) {
     dst[n] = 0;
     return (int)n;
 }
+
+// --- the "get game files" screen ----------------------------------------
+//
+// A phone has no way to receive a file the way the CI harness pushes one to
+// /data/local/tmp, so the app grows a screen that asks for it: download the pinned
+// client jar from Mojang, or import a jar the owner already has. The layout is
+// here, with the rest of the pure HUD arithmetic, because the taps are tested
+// against the same rectangles that are drawn -- the emulator run taps by reading
+// these numbers back out of the log.
+//
+// Four buttons, in a column on the left of the panel area, because the screen has
+// no world to look at yet and there is room. The bounds are checked by the host
+// suite on a landscape phone, a portrait one and the emulator's 1920x1080.
+#define UMBRA_GF_BUTTONS 4
+
+static int umbra_gf_is_wide(int width, int height) {
+    return height > 0 && (float)width / (float)height > 1.5f;
+}
+
+// The button's scale: a finger, not the overlay's text.
+static float umbra_gf_scale(float dpi_scale, int width, int height) {
+    float dp = (dpi_scale > 1.0f) ? dpi_scale : 1.0f;
+    // 22 units tall, so 48 dp is s = 48 * dp / 22 -- and the ceiling is the
+    // vertical budget, not a fraction of the short side: a 22-unit button at scale
+    // 7.6 on a 1080-pixel screen was 167 px tall and four of them were 668 px,
+    // which is two thirds of the screen. Four buttons plus their gaps must fit in
+    // a third of the height, so the scale is capped by that.
+    float s = 48.0f * dp / 22.0f;
+    if (width < 16 || height < 16) return (s < 1.0f) ? 1.0f : s;
+    // Landscape lays the four buttons out two by two, portrait stacks them: the
+    // budget is a third of the height either way, and two rows is what lets a
+    // button be a thumb's size (48 dp) on a phone instead of a label's.
+    float budget = (float)height * 0.34f;
+    int rows = (width / (height > 0 ? height : 1) > 1.5f) ? 2 : 4;
+    float limit = budget / ((float)rows * 22.0f + (float)(rows - 1) * 5.0f);
+    if (s > limit) s = limit;
+    if (s < 1.0f) s = 1.0f;
+    return s;
+}
+
+static umbra_rect umbra_hud_gf_button(int i, int width, int height, const int32_t insets[4],
+                                      float scale) {
+    umbra_rect r = { 0, 0, 0, 0 };
+    if (i < 0 || i >= UMBRA_GF_BUTTONS || width < 16 || height < 16) return r;
+    float bh = 22.0f * scale;
+    float gap = 5.0f * scale;
+    float margin = 10.0f * scale;
+    float top = (float)insets[1] + margin;
+    if (umbra_gf_is_wide(width, height)) {
+        // A column on the left, under the panel, so the text of the screen has the
+        // right-hand side to itself.
+        // Two by two in the left half: the headline and the paragraph run down the
+        // right-hand side, and two rows is what lets each button be 48 dp tall on a
+        // phone without eating the screen.
+        float col_gap = gap;
+        float half = ((float)width * 0.5f - (float)insets[0] - 2.0f * margin - col_gap) * 0.5f;
+        if (half < 40.0f) half = 40.0f;
+        float stack = 2.0f * bh + gap;
+        float room_top = (float)insets[1] + margin;
+        float room_bottom = (float)height - (float)insets[3] - margin;
+        float y0 = room_top + ((room_bottom - room_top) - stack) * 0.5f;
+        if (y0 < room_top) y0 = room_top;
+        r.x = margin + (float)insets[0] + (float)(i % 2) * (half + col_gap);
+        r.w = half;
+        r.y = y0 + (float)(i / 2) * (bh + gap);
+        r.h = bh;
+        return r;
+    }
+    // Portrait: full width, in the lower half, so the paragraph above it has the
+    // top of the screen to itself.
+    float w = (float)width - (float)insets[0] - (float)insets[2] - 2.0f * margin;
+    if (w < 1.0f) w = 1.0f;
+    r.x = margin + (float)insets[0];
+    r.w = w;
+    r.h = bh;
+    float stack = (float)UMBRA_GF_BUTTONS * bh + (float)(UMBRA_GF_BUTTONS - 1) * gap;
+    float room_bottom = (float)height - (float)insets[3] - margin;
+    float y0 = room_bottom - stack;
+    if (y0 < (float)height * 0.42f) y0 = (float)height * 0.42f;
+    if (y0 + stack > room_bottom) y0 = room_bottom - stack;
+    r.y = y0 + (float)i * (bh + gap);
+    return r;
+}
+
+static int umbra_hud_gf_hit(int x, int y, int width, int height, const int32_t insets[4],
+                            float scale) {
+    for (int i = 0; i < UMBRA_GF_BUTTONS; i++) {
+        umbra_rect r = umbra_hud_gf_button(i, width, height, insets, scale);
+        // Overlap, not containment: a thumb is not a pixel.
+        if ((float)(x + 1) > r.x && (float)x < r.x + r.w &&
+            (float)(y + 1) > r.y && (float)y < r.y + r.h) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// The paragraph's left edge and the width it may use: the screen's own text, kept
+// inside the insets and, in landscape, to the right of the button column.
+static umbra_rect umbra_hud_gf_text(int width, int height, const int32_t insets[4], float scale) {
+    umbra_rect r = { 0, 0, 0, 0 };
+    if (width < 16 || height < 16) return r;
+    float margin = 10.0f * scale;
+    if (umbra_gf_is_wide(width, height)) {
+        // The right-hand button of the top row: the text starts past both columns.
+        umbra_rect b = umbra_hud_gf_button(1, width, height, insets, scale);
+        r.x = b.x + b.w + margin;
+        r.w = (float)width - (float)insets[2] - margin - r.x;
+        r.y = (float)insets[1] + margin;
+        r.h = (float)height - (float)insets[3] - margin - r.y;
+    } else {
+        r.x = margin + (float)insets[0];
+        r.w = (float)width - (float)insets[0] - (float)insets[2] - 2.0f * margin;
+        r.y = (float)insets[1] + margin;
+        r.h = (float)height - (float)insets[3] - margin - r.y;
+    }
+    return r;
+}

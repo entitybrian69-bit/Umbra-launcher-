@@ -50,6 +50,21 @@ jobs:
           GOOSE=build/bin/goose bash tools/render_world.sh build/fake-client.jar \
             build/world-fake.ppm 640 360 build/world-fake.png 2>&1 | tee build/render-fake.log
           python3 tools/check_world_shot.py build/world-fake.png 2>&1 | tee -a build/render-fake.log
+      - name: The game-files flow, checked without a network
+        # The "get game files" screen decides three things in Goose -- which version
+        # is pinned, what a downloaded file has to prove, and what the screen says in
+        # each state. The first two are checked against a manifest shaped like
+        # Mojang's own and against two real files: a jar that is deliberately not the
+        # pinned one, and (when this job has it) the pinned one. The sha1 itself is
+        # checked against the published vectors by the core suite (sha1_test.goose).
+        run: |
+          set -o pipefail
+          python3 tools/make_test_manifest.py build/manifest.json build/version.json
+          python3 tools/gen_fake_jar.py build/fake-client.jar > /dev/null
+          build/bin/goose build goose/gamefiles_check.goose -o build/gamefiles_check > /dev/null
+          build/gamefiles_check build/manifest.json build/version.json - build/fake-client.jar \
+            2>&1 | tee build/gamefiles.txt
+          grep -q "^PASS gamefiles" build/gamefiles.txt
       - name: Compile-check the shared C without the NDK (both branches)
         run: GOOSE=build/bin/goose tools/gen_core.sh && bash tools/check_c.sh
       - name: Commit the numbers
@@ -68,6 +83,9 @@ jobs:
             tail -20 build/core-tests.log
             echo
             grep -E "^(jr:|==|PASS|FAIL)" build/render-fake.log | tail -14
+            echo
+            echo "== the game-files flow =="
+            grep -E "^(gamefiles:|PASS|FAIL)" build/gamefiles.txt | tail -12
           } > evidence/ci/core-tests-x86_64.txt
           git add -f evidence/ci
           bash tools/commit_evidence.sh "ci: x86_64 core-test evidence from run $GITHUB_RUN_ID [skip ci]"

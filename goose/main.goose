@@ -25,8 +25,10 @@ import core.models;
 import core.modelstore;
 import core.jarpack;
 import core.demo;
+import core.sha1;
+import core.gamefiles;
 
-let UMBRA_VERSION = "0.3.5";
+let UMBRA_VERSION = "0.3.7";
 
 // --- a demo world ------------------------------------------------------
 //
@@ -1011,3 +1013,90 @@ fn mesh_bound(axis: i64, want_min: bool) -> f32 {
 export "umbra_core_selftest_name" fn core_selftest_name() -> const u8[:] {
     return "umbra core: formats and meshing";
 }
+
+// --- the "get game files" flow ------------------------------------------
+//
+// A phone has no path to /data/local/tmp, so the app itself has to obtain the jar
+// (D-043). The policy lives in core/gamefiles.goose: the pinned version, the URL
+// shape, and the rule a file has to pass before it may become the world's
+// textures. These exports are the four things the C screen needs to ask.
+//
+// The network and the file picker are the platform's: Java's HttpURLConnection for
+// TLS (the NDK has no TLS client) and ACTION_OPEN_DOCUMENT for a file the owner
+// already has. Both hand back bytes; nothing they say is trusted.
+
+// Where the jar goes, and where a download lands before it is checked.
+export "umbra_gf_jar_path" fn gf_jar_path(files_dir: const u8[:]) -> const u8[:] {
+    gf_paths_jar = um_jar_path(files_dir);
+    return gf_paths_jar[..]
+}
+export "umbra_gf_part_path" fn gf_part_path(files_dir: const u8[:]) -> const u8[:] {
+    gf_paths_part = um_part_path(files_dir);
+    return gf_paths_part[..]
+}
+var gf_paths_jar: u8[>..] = [];
+var gf_paths_part: u8[>..] = [];
+
+// Is a verified jar already in place? 1 when client.jar exists.
+export "umbra_gf_jar_present" fn gf_jar_present(files_dir: const u8[:]) -> i64 {
+    return if um_jar_present(files_dir) { 1 } else { 0 }
+}
+
+// The manifest URL, the pinned version, and the two numbers a download is held to.
+export "umbra_gf_manifest_url" fn gf_manifest_url() -> const u8[:] { return UM_MANIFEST_URL }
+export "umbra_gf_version" fn gf_version() -> const u8[:] { return UM_VERSION }
+export "umbra_gf_pinned_bytes" fn gf_pinned_bytes() -> i64 { return UM_CLIENT_BYTES }
+export "umbra_gf_pinned_sha1" fn gf_pinned_sha1() -> const u8[:] { return UM_CLIENT_SHA1 }
+
+// The manifest names the pinned version's JSON: its URL and its sha1.
+export "umbra_gf_manifest_lookup" fn gf_manifest_lookup(text: const u8[:]) -> i64 {
+    return if um_manifest_lookup(text) { 1 } else { 0 }
+}
+export "umbra_gf_version_url" fn gf_version_url() -> const u8[:] { return um_version_url() }
+export "umbra_gf_version_sha1" fn gf_version_sha1() -> const u8[:] { return um_version_sha1() }
+export "umbra_gf_manifest_summary" fn gf_manifest_summary() -> const u8[:] {
+    return um_manifest_summary()
+}
+// How many bytes of the version JSON the manifest's own sha1 covers: the platform
+// fetches the text and hands it here; a file that is not the pinned version's JSON
+// fails um_manifest_lookup or um_version_lookup, and the screen says so.
+export "umbra_gf_version_lookup" fn gf_version_lookup(text: const u8[:]) -> i64 {
+    return if um_version_lookup(text) { 1 } else { 0 }
+}
+export "umbra_gf_client_url" fn gf_client_url() -> const u8[:] { return um_client_url() }
+export "umbra_gf_client_sha1" fn gf_client_sha1() -> const u8[:] { return um_client_sha1() }
+export "umbra_gf_client_size" fn gf_client_size() -> i64 { return um_client_size() }
+
+// The check: a jar, the pin's size, the pin's sha1, in that order. 1 passes; 0 does
+// not, and umbra_gf_check_reason() says which of the three failed.
+export "umbra_gf_check_file" fn gf_check_file(path: const u8[:]) -> i64 {
+    let ok = um_check_file(path, UM_CLIENT_BYTES, UM_CLIENT_SHA1);
+    um_remember_digest();
+    return if ok { 1 } else { 0 }
+}
+export "umbra_gf_check_reason" fn gf_check_reason() -> const u8[:] { return um_check_reason() }
+export "umbra_gf_digest" fn gf_digest() -> const u8[:] { return um_checksum_text() }
+
+// The import path's verdict on a picked file: 1 accepted, 0 refused with a reason
+// in umbra_gf_import_message().
+export "umbra_gf_import_verdict" fn gf_import_verdict(path: const u8[:], got: i64) -> i64 {
+    return um_import_verdict(path, got)
+}
+export "umbra_gf_import_message" fn gf_import_message() -> const u8[:] {
+    return um_import_message()
+}
+
+// The screen's words. umbra_gf_state_set() returns the kind it was given, so a
+// caller that passes a number it made up reads it back in the log.
+export "umbra_gf_state_set" fn gf_state_set(kind: i64, now: i64, total: i64,
+                                           extra: const u8[:]) -> i64 {
+    return um_state_set(kind, now, total, extra)
+}
+export "umbra_gf_state_text" fn gf_state_text() -> const u8[:] { return um_state_text() }
+export "umbra_gf_state_detail" fn gf_state_detail() -> const u8[:] { return um_state_detail() }
+export fn umbra_gf_state_idle() -> i64 { return UM_ST_IDLE }
+export fn umbra_gf_state_downloading() -> i64 { return UM_ST_DOWNLOADING }
+export fn umbra_gf_state_verifying() -> i64 { return UM_ST_VERIFYING }
+export fn umbra_gf_state_ready() -> i64 { return UM_ST_READY }
+export fn umbra_gf_state_failed() -> i64 { return UM_ST_FAILED }
+export fn umbra_gf_state_imported() -> i64 { return UM_ST_IMPORTED }

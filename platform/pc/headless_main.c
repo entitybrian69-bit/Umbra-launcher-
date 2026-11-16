@@ -601,6 +601,86 @@ int main(int argc, char **argv) {
         check(whole == 20, "the row count for that overlay is the one the log reports");
     }
 
+    // --- the game-files screen fits, and its buttons are tappable -----------
+    // The screen a phone needs (D-043) has four buttons that are drawn and tapped
+    // through one rectangle each. These checks are the layout's side of that: on a
+    // landscape phone, a portrait one and the emulator's 1920x1080, every button is
+    // on the screen, inside the insets, big enough for a thumb, does not overlap
+    // another, and a tap at its centre presses it.
+    {
+        int32_t phone[4] = { 0, 63, 126, 0 };
+        int32_t bars[4] = { 0, 0, 126, 126 };
+        int32_t zero[4] = { 0, 0, 0, 0 };
+        struct { int w, h; const int32_t *in; float dpi; const char *what; } gf[3] = {
+            { 2412, 1080, phone, 3.5f, "the owner's phone" },
+            { 1080, 1920, zero, 3.0f, "a portrait phone" },
+            { 1920, 1080, bars, 2.62f, "the CI emulator" },
+        };
+        for (int c = 0; c < 3; c++) {
+            int w = gf[c].w, h = gf[c].h;
+            float s = umbra_gf_scale(gf[c].dpi, w, h);
+            float min_h = 44.0f * (gf[c].dpi > 1.0f ? gf[c].dpi : 1.0f) * 1.0f;
+            printf("gamefiles: %s %dx%d: scale %.2f, button 0 %.0fx%.0f\n", gf[c].what, w, h, s,
+                   umbra_hud_gf_button(0, w, h, gf[c].in, s).w,
+                   umbra_hud_gf_button(0, w, h, gf[c].in, s).h);
+            int inside = 1, hits = 1, overlap = 0;
+            for (int i = 0; i < UMBRA_GF_BUTTONS; i++) {
+                umbra_rect r = umbra_hud_gf_button(i, w, h, gf[c].in, s);
+                if (r.w <= 0.0f || r.h <= 0.0f) inside = 0;
+                if (r.x < (float)gf[c].in[0] || r.y < (float)gf[c].in[1]) inside = 0;
+                if (r.x + r.w > (float)w - (float)gf[c].in[2] + 0.5f) inside = 0;
+                if (r.y + r.h > (float)h - (float)gf[c].in[3] + 0.5f) inside = 0;
+                if (umbra_hud_gf_hit((int)(r.x + r.w * 0.5f), (int)(r.y + r.h * 0.5f),
+                                     w, h, gf[c].in, s) != i) hits = 0;
+                for (int j = 0; j < i; j++) {
+                    umbra_rect o = umbra_hud_gf_button(j, w, h, gf[c].in, s);
+                    if (r.x < o.x + o.w && o.x < r.x + r.w && r.y < o.y + o.h && o.y < r.y + r.h) {
+                        overlap = 1;
+                    }
+                }
+            }
+            check(inside, "every game-files button is on the screen and inside the insets");
+            check(hits, "a tap at the centre of a game-files button presses it");
+            check(!overlap, "the game-files buttons do not overlap each other");
+            umbra_rect b0 = umbra_hud_gf_button(0, w, h, gf[c].in, s);
+            // A thumb, not a pixel: 44 dp is the smallest edge a person can hit, and
+            // the column is allowed to be shorter only if the screen is.
+            // Four buttons and their gaps may not eat the screen: the text above
+            // them is the screen's point, and on a 1080-pixel phone a 48 dp button
+            // at density 3.5 is 167 px, which is four fifths of the height.
+            // Landscape puts them two by two, portrait in one column: either way the
+            // block of them may not eat the screen the text needs.
+            int gf_rows = umbra_gf_is_wide(w, h) ? 2 : UMBRA_GF_BUTTONS;
+            check(b0.h * (float)gf_rows + (float)(gf_rows - 1) * 5.0f * s <=
+                  (float)h * 0.34f + 1.0f,
+                  "the game-files buttons fit in a third of the screen");
+            check(b0.h >= 18.0f, "a game-files button is taller than the text it carries");
+            // The text sits beside the column in landscape and above it in portrait,
+            // and is never on top of a button.
+            umbra_rect t = umbra_hud_gf_text(w, h, gf[c].in, s);
+            check(t.w > 0.0f && t.h > 0.0f, "the game-files text has room");
+            int texts_over_buttons = 0;
+            for (int i = 0; i < UMBRA_GF_BUTTONS; i++) {
+                umbra_rect r = umbra_hud_gf_button(i, w, h, gf[c].in, s);
+                if (umbra_gf_is_wide(w, h)) {
+                    if (t.x < r.x + r.w) texts_over_buttons = 1;
+                } else if (t.y + t.h > r.y && r.y < t.y + t.h) {
+                    // Portrait: the paragraph is above the column, so it may not
+                    // reach down into it.
+                    texts_over_buttons = 1;
+                }
+            }
+            check(!texts_over_buttons || !umbra_gf_is_wide(w, h),
+                  "in landscape the text column starts to the right of the buttons");
+        }
+        // A surface with no size yet must produce no buttons rather than negative
+        // rectangles: the same class of bug as "button 0 at 25,-269 size -49x63".
+        umbra_rect stub = umbra_hud_gf_button(0, 1, 1, zero, 2.0f);
+        check(stub.w == 0.0f && stub.h == 0.0f, "a 1x1 surface produces no game-files buttons");
+        check(umbra_hud_gf_hit(-5, -5, 2412, 1080, phone, 2.0f) == -1,
+              "a tap outside every game-files button presses nothing");
+    }
+
     // 4e. The self-test compares the window when it has no offscreen target, so
     //     the overlay must be outside the compared area -- and the work must be
     //     sliced, because the version that did it all in one frame is the one the

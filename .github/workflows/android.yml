@@ -138,6 +138,11 @@ jobs:
           printf '%s\n' "$SIGNED" | head -12
           printf '%s\n' "$SIGNED" | grep -m1 'Verified using' | while IFS= read -r l; do
             echo "::notice title=apk-signature::${l//\%/%25}"; done
+          # The game-files screen's Java (org.umbra.client.UmbraNet) has to be in the
+          # APK, with the activity the manifest names, or a phone shows the screen and
+          # neither button works. Checked as a file, because a missing class is exactly
+          # what an APK can look complete without.
+          python3 tools/check_apk_java.py "$APK"
           echo "== native libraries per ABI =="
           unzip -l "$APK" | grep -E 'lib/(arm64-v8a|x86_64)/libumbra\.so' || {
             echo "missing a native library for an ABI"; exit 1; }

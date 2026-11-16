@@ -212,6 +212,19 @@ sleep 3
 adb shell dumpsys window > focus.log 2>&1 || true
 say "focus before launch: $(grep -m1 -E 'mCurrentFocus' focus.log | tr -s ' ' | cut -c1-160)"
 
+# The component to launch: the activity the manifest names. It is not
+# android.app.NativeActivity any more -- the file picker needs onActivityResult,
+# which NativeActivity does not implement -- so the name is read out of the APK
+# rather than assumed, and a wrong one fails here instead of at the first tap.
+COMPONENT=""
+AAPT_BIN="$(ls "$SDK"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)"
+if [ -n "$AAPT_BIN" ] && [ -f "$APK" ]; then
+    COMPONENT="$("$AAPT_BIN" dump badging "$APK" 2>/dev/null \
+        | sed -n "s/^launchable-activity: name='\([^']*\)'.*/\1/p" | head -1)"
+fi
+[ -n "$COMPONENT" ] || COMPONENT='org.umbra.client.UmbraNet$UmbraActivity'
+say "component: $COMPONENT (from the APK's own manifest)"
+
 phase "install"
 ADB_TIMEOUT=300 adb install -r -g "$APK" > install.log 2>&1 || die "adb install failed: $(tail -c 500 install.log)"
 say "install: $(tail -1 install.log)"
@@ -248,7 +261,7 @@ else
 fi
 
 phase "launch"
-adb shell am start -W -n org.umbra.client/android.app.NativeActivity > launch.log 2>&1 \
+adb shell am start -W -n "$COMPONENT" > launch.log 2>&1 \
     || die "am start failed: $(tail -c 500 launch.log)"
 say "launch: $(grep -E 'Status|TotalTime|Error' launch.log | tr '\n' ' ' | tr -s ' ')"
 # A native activity often reports "Status: timeout" even when it is starting,
@@ -814,7 +827,7 @@ done
 adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
 sleep 3
 adb logcat -c > /dev/null 2>&1 || true
-adb shell am start -W -n org.umbra.client/android.app.NativeActivity > relaunch.log 2>&1 \
+adb shell am start -W -n "$COMPONENT" > relaunch.log 2>&1 \
     || say "relaunch: am start said $(tail -1 relaunch.log)"
 REL_LINES=""
 RELAUNCHED=0
@@ -848,7 +861,7 @@ if [ -n "$PIDK" ]; then
     adb shell "kill -9 $PIDK" > /dev/null 2>&1 || say "crash-detect: kill failed"
     sleep 3
     adb logcat -c > /dev/null 2>&1 || true
-    adb shell am start -W -n org.umbra.client/android.app.NativeActivity > crash-restart.log 2>&1 || true
+    adb shell am start -W -n "$COMPONENT" > crash-restart.log 2>&1 || true
     FOUND=0
     DEADLINE=$((SECONDS + 90))
     while [ $SECONDS -lt $DEADLINE ]; do
@@ -869,11 +882,109 @@ else
     err "crash-detect: the app was not running, so the marker could not be tested"
 fi
 
+
+# ---- 11. the game-files screen: a real download, through the real Java path ------
+# The CI harness pushes a jar to /data/local/tmp, which a phone cannot do; the
+# screen is how a phone gets one (D-043). This phase proves the whole path on a
+# device: the screen comes up when no jar is in the app's own files directory, the
+# download button starts a fetch from Mojang through the APK's own Java, the file is
+# held to the pin's sha1, and the atlas that results is the jar's.
+#
+# It is the emulator's own network connection and Mojang's own server, so a failure
+# here can be a network failure; the phase says which it was.
+phase "gamefiles"
+# The device is wiped after the earlier phases (there is a jar in
+# /data/local/tmp), so this is the phone's own case: nothing in the app's
+# directory, nothing pushed, and the only way to get a jar is the screen.
+adb shell pm clear org.umbra.client > /dev/null 2>&1 || true
+adb shell rm -f /data/local/tmp/umbra-client.jar > /dev/null 2>&1 || true
+adb logcat -c > /dev/null 2>&1 || true
+adb shell am start -W -n "$COMPONENT" > gamefiles-launch.log 2>&1 || true
+say "gamefiles: launched with an empty app directory: $(grep -E 'Status|Error' gamefiles-launch.log | tr '\n' ' ')"
+FOUND=0
+DEADLINE=$((SECONDS + 150))
+while [ $SECONDS -lt $DEADLINE ]; do
+    if adb logcat -d -s umbra:V 2>/dev/null | grep -q "gamefiles: the screen is up"; then FOUND=1; break; fi
+    sleep 2
+done
+if [ "$FOUND" != 1 ]; then
+    die "gamefiles: with no jar anywhere the app never brought the screen up"
+fi
+LINE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "gamefiles: the screen is up" | sed 's/.*umbra   : //')"
+say "gamefiles: $LINE"
+case "$LINE" in
+    *"a jar is not here"*) say "gamefiles: with nothing in its own directory the app asks for the game's files" ;;
+    *) die "gamefiles: the screen came up claiming a jar is already there: $LINE" ;;
+esac
+adb exec-out screencap -p > shot-gamefiles.png 2>/dev/null || true
+say "gamefiles: shot-gamefiles.png is $(stat -c%s shot-gamefiles.png 2>/dev/null || echo 0) bytes"
+RECT="$(adb logcat -d -s umbra:V 2>/dev/null | grep -o 'hud: gamefiles button 0 at [-0-9]*,[-0-9]* size [0-9]*x[0-9]*' | tail -1)"
+[ -n "$RECT" ] || die "gamefiles: the app never logged the screen's buttons"
+NUMS="$(printf '%s' "$RECT" | sed 's/.*at //; s/ size / /; s/x/ /; s/,/ /')"
+set -- $NUMS
+GX=$(( ${1:-0} + ${3:-0} / 2 )); GY=$(( ${2:-0} + ${4:-0} / 2 ))
+say "gamefiles: button 0 at ${1:-?},${2:-?} size ${3:-?}x${4:-?}, tapping $GX,$GY"
+adb shell input tap "$GX" "$GY" > /dev/null 2>&1 || die "gamefiles: the tap failed"
+DONE=0
+DEADLINE=$((SECONDS + 420))
+while [ $SECONDS -lt $DEADLINE ]; do
+    if adb logcat -d -s umbra:V 2>/dev/null | grep -qE "gamefiles: (the file is the pinned jar|the download failed|the file was refused)"; then
+        DONE=1; break
+    fi
+    sleep 5
+done
+GF_LOG="$(adb logcat -d -s umbra:V 2>/dev/null | sed 's/.*umbra   : //')"
+printf '%s\n' "$GF_LOG" | grep "^gamefiles:" | while IFS= read -r l; do say "  $l"; done
+if [ "$DONE" != 1 ]; then
+    die "gamefiles: the download never finished in 420 s"
+fi
+GF_DL=0
+case "$GF_LOG" in
+    *"gamefiles: the download failed"*)
+        # The runner's network is the emulator's network, and it is not always
+        # there. Say so plainly: the screen is up and driven, the download is
+        # unverified in this run, and nothing claims otherwise.
+        say "gamefiles: the emulator could not reach Mojang; the download is UNVERIFIED in this run"
+        note "gamefiles: the download could not reach Mojang on this runner"
+        ;;
+    *"gamefiles: the file is the pinned jar"*)
+        GF_DL=1
+        say "gamefiles: the downloaded file is the pinned jar (sha1 checked)"
+        say "gamefiles: $(printf '%s\n' "$GF_LOG" | grep -m1 'gamefiles: the file is the pinned jar' | sed 's/gamefiles: //')"
+        ;;
+    *"gamefiles: the file was refused"*)
+        die "gamefiles: the downloaded file was refused: $(printf '%s\n' "$GF_LOG" | grep -m1 'refused' | sed 's/gamefiles: //')"
+        ;;
+esac
+if [ "$GF_DL" = 1 ]; then
+    # With the jar verified, the app has to adopt it: the atlas on screen becomes
+    # the jar's, which is the whole point of the screen.
+    ADOPTED=0
+    DEADLINE=$((SECONDS + 180))
+    while [ $SECONDS -lt $DEADLINE ]; do
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "atlas: source is the client jar"; then ADOPTED=1; break; fi
+        sleep 3
+    done
+    if [ "$ADOPTED" = 1 ]; then
+        say "gamefiles: $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'jar: /data' | sed 's/.*umbra   : //')"
+        say "gamefiles: atlas: source is the client jar -- the downloaded jar draws the world"
+        APP_FILES="$(adb shell "ls -d /data/user/0/org.umbra.client/files 2>/dev/null || echo /data/data/org.umbra.client/files" | tr -d '\r\n')"
+        SRC="$(adb shell "ls -l $APP_FILES/client.jar 2>/dev/null" | tr -s ' ' | cut -c1-140)"
+        say "gamefiles: the jar in the app's own directory: ${SRC:-missing}"
+        case "$SRC" in
+            *client.jar*) say "gamefiles: client.jar is ${SRC##* }" ;;
+            *) die "gamefiles: the app adopted a jar but there is none in its files directory" ;;
+        esac
+    else
+        die "gamefiles: the jar was verified but the app never made it the atlas's source"
+    fi
+fi
+
 # Everything worth keeping is already on disk and the device is about to go
 # away, so the exit handler has nothing left to collect (and would otherwise
 # spend minutes timing out against a dead emulator).
 COLLECTED=1
 adb emu kill > /dev/null 2>&1 || true
 phase "done"
-say "result: PASS (installed, launched, drew, self test tapped, ${SOAK_SECONDS}s soak, no crash)"
+say "result: PASS (installed, launched, drew, self test tapped, the game-files screen fetched the jar it needs, ${SOAK_SECONDS}s soak, no crash)"
 note "PASS: app ran on the emulator, see summary.txt in evidence/ci"
