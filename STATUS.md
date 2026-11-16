@@ -1202,3 +1202,83 @@ UMBRA_YES` came back empty even for bedrock at the bottom of the world, and an e
 cannot be told from a refusal. Before the sample, the same predicate is asked about a block
 that is certainly not there; if that scores 1, the oracle accepts everything and the probe
 stops instead of printing a meaningless pass.
+
+## The denials and the 3x gap were one thing: the save was read while it was still growing
+
+Run `43847395025` (commit `e59ea6f`) failed at step 13 with 17 of 168 coordinates denied,
+and two numbers in the same run looked like a reader bug: the hook read `529 chunks,
+844904 non-air blocks, states 44` while the renderer, on the same save, said `169 chunks,
+2634366 non-air blocks`. Both are explained by the run's own evidence, and neither was a
+reader fault. The evidence is the run's committed artifact (`cd1fb89`,
+`evidence/world/*`), not a re-run:
+
+```
+gen-world.txt   worldload: chunks 529, non-air blocks 844904, states 44   <- at 10:19:25
+read-real.txt   worldload: chunks 1089, non-air blocks 7351783, states 76 <- after the stop
+```
+
+**One: the world moved between the read and the question.** The hook read the save while
+the server was still generating it (529 of the eventual 1089 chunks, 44 of 76 states). It
+then handed the coordinates to `probe_server_blocks.py`, which *force-loaded* exactly those
+chunks - and force-loading completes generation: carvers cut caves, ores and plants are
+placed. So the game answered about a finished world while Umbra had read an unfinished one.
+The denial pattern says so: 10 of the 17 denials were `stone` at y=54 and 4 more at y=24,
+confirmed at those same heights 26 and 28 times, in different columns. That is stone that
+became a cave, not a reader that lies about where stone is.
+
+Fixed by ordering, and each half is host-tested:
+
+- `tools/compare_with_server.sh` force-loads the sample area **first**, before anything is
+  read, and fails if the server refuses it.
+- It then flushes and reads the save repeatedly until **three consecutive readings agree**
+  in chunk count, block count, state count, total region-file bytes *and* the newest mtime.
+  A save that never settles fails the step with "the save never stopped changing" instead of
+  comparing against a world that is not the one it read. Two agreeing readings were not
+  enough: chunks appear in bursts, so a lull can look settled (observed while testing).
+- `tools/probe_server_blocks.py` no longer loads anything itself. The probe is purely a
+  question-asker now; loading belongs to the shell, before the read.
+- `goose/worldload.goose` counts chunks whose `Status` is not `minecraft:full` and says so
+  by name, because that is the condition that made the numbers wrong.
+
+**Two: 169 vs 529 was never the same question.** The renderer's `jr: save` line is a
+radius-6 window; the hook printed the *whole save*. The radius argument in
+`worldload` only ever governed **detail lines**, not the totals - the `compare: at radius 6`
+line was added to prove otherwise and printed the same whole-save totals, which is exactly
+what it should have done. `worldload` now prints the windowed totals on its own line
+(`detail lines for chunks within N of the origin: C chunks, B non-air blocks`), the
+cross-check uses that line, and the CI read after the stop uses radius 10, the same window
+the server is asked about (it was 3, which does not even cover the probe's box: x -96..-30,
+z 64..130 is chunks -6..-2 by 4..8).
+
+**What that uncovered, and is a real bug:** `demo_is_air` (the renderer's non-air test) did
+not treat `minecraft:void_air` as air, while `wl_is_air` (the loader's) always has. Fixed.
+On the fixture where the two are now compared directly they agree exactly:
+
+```
+worldload: detail lines for chunks within 2 of the origin: 9 chunks, 55625 non-air blocks
+jr: save 1 region file(s), 9 chunks, 55625 non-air blocks, 0 read error(s)
+```
+
+**A section's palette width is now a gate of its own.** The real save holds 5- and 6-bit
+sections, and above four bits a value runs across a 64-bit word. `tools/check_reader_bits.py`
+builds a save with 2-, 6-, 20- and 40-entry palettes using the project's independent Anvil
+writer, reads it with both the Goose loader and the Python oracle, and requires all 13104
+blocks:
+
+```
+bits: the oracle PASS: two independent readers agree on every block of all 1 chunks
+bits: 13104 blocks expected over palettes of [2, 6, 20, 40] entries, 13104 read
+PASS: every block of every palette width was read back, 13104 of 13104
+```
+
+`tools/make_test_save.py` was removed: nothing referenced it, and it could not write a save
+the loader would read. The types `tools/__pycache__/*.pyc` that had been committed are
+untracked and ignored.
+
+**Not yet claimed:** the world workflow has not been re-run with these changes. What is
+host-verified here is the ordering (a stub RCON server shows `forceload` arriving before
+any `save-all`), the settling loop in both directions (a still save settles after three
+readings and the probe gets 153 of 153 confirmed; a save that grew every second failed with
+"never stopped changing"), and the partial-status warning (`1 of 4 chunks are not
+... minecraft:full ... yet`) on a copy of a save with one chunk's status downgraded, with
+all four chunks still read).

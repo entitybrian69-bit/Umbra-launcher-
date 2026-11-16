@@ -164,6 +164,18 @@ fn main() {
     var blocks: i64 = 0;
     var read_errors: i64 = 0;
     var files: i64 = 0;
+    // Totals restricted to the detail window, because the radius is only a detail radius:
+    // the whole save is always summed above. These two are what a renderer given the same
+    // radius reports, so the two numbers finally mean the same thing.
+    var window_chunks: i64 = 0;
+    var window_blocks: i64 = 0;
+    // How many chunks on disk are only partly generated. A save written by a server that
+    // is still generating holds chunks whose `Status` is not `minecraft:full`: their
+    // terrain has been laid down but the carvers, ores and plants that come later have
+    // not run, so stone sits where the finished world has a cave. Comparing such a read
+    // with the game is comparing two different worlds, and the denials that follow are
+    // the reader's fault in appearance only.
+    var partial_chunks: i64 = 0;
 
     // list_dir hands back one name per line.
     var i: i64 = 0;
@@ -227,6 +239,8 @@ fn main() {
                 }
                 var c = column_new();
                 column_from_nbt(root, c);
+                let status = nbt_string(root, "Status");
+                if !eq_bytes(status, "minecraft:full") { partial_chunks += 1; }
                 let ccx = c.x as i64;
                 let ccz = c.z as i64;
                 // Chunk NBT may hold only some sections; the rest stays air, which is
@@ -263,6 +277,10 @@ fn main() {
                 format(summary, ccx, " ", ccz, " blocks ", count, " hash ", wl_hash, "\n");
                 chunks += 1;
                 blocks += count;
+                if detailed {
+                    window_chunks += 1;
+                    window_blocks += count;
+                }
             }
         }
     }
@@ -323,7 +341,13 @@ fn main() {
     }
     print("worldload: chunks ", chunks, ", non-air blocks ", blocks, ", states ", states,
           ", region files ", files, ", read errors ", read_errors, "\n");
-    print("worldload: detail lines for chunks within ", radius, " of the origin\n");
+    print("worldload: detail lines for chunks within ", radius, " of the origin: ",
+          window_chunks, " chunks, ", window_blocks, " non-air blocks\n");
+    if partial_chunks > 0 {
+        print("worldload: ", partial_chunks, " of ", chunks, " chunks are not ",
+              "`minecraft:full` yet: this save was read while it was still being ",
+              "generated, so more blocks are still to come\n");
+    }
     if read_errors > 0 {
         print("worldload: FAIL ", read_errors, " chunks could not be read\n");
         exit(1);

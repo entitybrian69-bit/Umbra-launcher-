@@ -143,17 +143,17 @@ def main() -> int:
     confirmed = denied = errors = 0
     lines = []
     try:
-        # The chunks have to be loaded for a predicate to answer. The reader only kept
-        # chunks that exist in the save, so this is the same region.
+        # This deliberately does NOT forceload. It used to, and that was the bug behind the
+        # denials in run 43847395025: forceloading a chunk finishes generating it, so the
+        # reader's honest "stone at y=54" was answered by a world that had since grown a
+        # cave there. Loading is `tools/compare_with_server.sh`'s job, and it does it
+        # *before* the save is read and before the save is proved to have stopped changing.
+        # By the time this runs, every coordinate below is already in a loaded chunk; if
+        # one is not, that is a finding and the sample says so rather than fixing it.
         rid += 1
-        try:
-            x0, x1 = min(c[0] for c in coords), max(c[0] for c in coords)
-            z0, z1 = min(c[2] for c in coords), max(c[2] for c in coords)
-            a = command(sock, rid, f"forceload add {x0 - 16} {z0 - 16} {x1 + 16} {z1 + 16}")
-            print(f"probe: forceload: {a.strip()[:140]}")
-        except (EOFError, OSError) as exc:
-            print(f"probe: forceload failed: {exc}", file=sys.stderr)
-        time.sleep(2.0)
+        x0, x1 = min(c[0] for c in coords), max(c[0] for c in coords)
+        z0, z1 = min(c[2] for c in coords), max(c[2] for c in coords)
+        print(f"probe: asking inside {x0}..{x1} {z0}..{z1} without loading anything here")
         rid += 1
         # Creating it twice is an error the server reports; the objective only has to exist.
         print(f"probe: scoreboard: {command(sock, rid, 'scoreboard objectives add umbra_probe dummy')[:100]}")
@@ -191,9 +191,18 @@ def main() -> int:
                 lines.append(f"{x} {y} {z} {state} ok")
             elif value == 0:
                 denied += 1
-                lines.append(f"{x} {y} {z} {state} DENIED")
-                if denied <= 5:
-                    print(f"probe: the server denied {state} at {x} {y} {z}")
+                # A denial is either a wrong block or a right block in the wrong place.
+                # The six neighbours settle which: a reader that shifts a section by one
+                # y, or one column by one x, shows up here as the answer moving with it.
+                shifted = []
+                for (dx, dy, dz) in ((0, -1, 0), (0, 1, 0), (-1, 0, 0), (1, 0, 0),
+                                     (0, 0, -1), (0, 0, 1)):
+                    if ask(x + dx, y + dy, z + dz, state) == 1:
+                        shifted.append(f"{dx:+d}{dy:+d}{dz:+d}")
+                mark = ("moved " + ",".join(shifted)) if shifted else "nowhere near"
+                lines.append(f"{x} {y} {z} {state} DENIED {mark}")
+                if denied <= 6:
+                    print(f"probe: the server denied {state} at {x} {y} {z}: {mark}")
             else:
                 errors += 1
                 if errors <= 3:
@@ -207,7 +216,8 @@ def main() -> int:
     print(f"probe: {confirmed} confirmed, {denied} denied, {errors} errors -> {out}")
     if denied and not confirmed:
         print("probe: every coordinate was denied, which is what an unloaded chunk also "
-              "looks like; the forceload above is the first thing to check", file=sys.stderr)
+              "looks like; the load in compare_with_server.sh is the first thing to check",
+              file=sys.stderr)
     if confirmed < MIN_CONFIRMED:
         print(f"probe: FAIL fewer than {MIN_CONFIRMED} coordinates were confirmed")
         return 1

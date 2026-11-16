@@ -50,6 +50,18 @@ jobs:
             GOOSE=build/bin/goose bash tools/check_real_world.sh "$out" "$out-out" \
               2>&1 | tee -a evidence/world/synthetic.txt
           done
+      - name: Every palette width a section can use, read back block for block
+        # A section's palette decides its bit width: two entries fit in four bits (where
+        # every packing agrees), twenty need five, forty need six -- and above four bits a
+        # value runs on across a 64-bit word. A reader that gets that wrong reports almost
+        # the whole section as air. The real save holds 5- and 6-bit sections, so this is
+        # checked on a fixture the independent writer builds here, before any download.
+        run: |
+          set -o pipefail
+          python3 tools/check_reader_bits.py 2>&1 | tee -a evidence/world/synthetic.txt
+          grep -qF "PASS: every block of every palette width was read back" \
+            evidence/world/synthetic.txt
+
       - name: Download the pinned server jar (never committed)
         run: |
           set -o pipefail
@@ -107,14 +119,64 @@ jobs:
           python3 tools/dump_nbt_shape.py $files 2>&1 | tee evidence/world/chunk-shape.txt
           echo "== the raw bytes of one palette the readers cannot read"
           python3 tools/dump_nbt_shape.py --hex $files 2>&1 | tee -a evidence/world/chunk-shape.txt
+      - name: A save read while it is still being generated is refused, not compared
+        # Run 43847395025 read 529 chunks and 44 states at 10:19:25; the same save after the
+        # stop held 1089 chunks and 76 states. The probe then force-loaded the sample area,
+        # finished its generation, and 17 of 168 coordinates "failed" against a world that
+        # had moved under them. The loader now names that condition, and this proves it
+        # does, on a copy of the real save with one chunk's status downgraded.
+        run: |
+          set -o pipefail
+          rm -rf build/partial && mkdir -p build/partial
+          cp -r build/server/run/world build/partial/world
+          python3 - <<'PYEOF'
+import glob, struct, zlib
+path = sorted(glob.glob("build/partial/world/dimensions/minecraft/overworld/region/*.mca")
+              or glob.glob("build/partial/world/region/*.mca"))[0]
+# Only the first chunk in the file: its status becomes a stage that is not "full",
+# which is exactly the shape of a save read mid-generation. The other chunks and the
+# header's sector table are left alone, so the only thing this changes is the status.
+raw = open(path, "rb").read()
+head = raw[:8192]
+start = struct.unpack(">I", head[0:4])[0] >> 8
+at = start * 4096
+size = struct.unpack(">I", raw[at:at + 4])[0]
+nbt = zlib.decompress(raw[at + 5:at + 4 + size])
+key = b"\x08\x00\x06Status"
+i = nbt.index(key)
+ln = struct.unpack(">H", nbt[i + len(key):i + len(key) + 2])[0]
+new = b"minecraft:features"
+out = nbt[:i + len(key)] + struct.pack(">H", len(new)) + new + nbt[i + len(key) + 2 + ln:]
+z = zlib.compress(out, 6)
+rec = struct.pack(">I", len(z) + 1) + b"\x02" + z
+# The new record has to occupy exactly as many sectors as the old one, or every chunk
+# after it in the file moves and the header's offsets stop matching. That is the whole
+# subtlety of editing a region file in place.
+was = 4 + size
+if len(rec) > was:
+    raise SystemExit(f"the new record is {len(rec)} bytes, the old one {was}")
+rec += b"\x00" * (was - len(rec))
+open(path, "wb").write(head + rec + raw[at + was:])
+print(f"downgraded one chunk's status in {path}")
+PYEOF
+          if build/umbra_worldload build/partial/world build/partial/dump.txt 2 \
+                2>&1 | tee build/partial/log.txt | grep -q "chunks are not .minecraft:full. yet"; then
+            grep "not .minecraft:full" build/partial/log.txt | sed 's/^/world: /'
+            echo "PASS: a partly generated save is named as such"
+          else
+            echo "::error title=partial save::a partly generated save was not detected"
+            exit 1
+          fi
+
       - name: Read the real world twice and compare it block by block
         run: |
           set -o pipefail
-          # Radius 3 covers the grid of coordinates the server answered, so the block
-          # data can be compared with the game's own answer as well as with the second
-          # reader.
+          # Radius 10, the same window the server was asked about. This used to be 3,
+          # which does not even cover the probe's boxes (x -96..-30, z 64..130 is chunks
+          # -6..-2 by 4..8), so the two halves of gate 6b were never looking at the same
+          # ground. This read happens after the clean stop, on the settled save.
           GOOSE=build/bin/goose bash tools/check_real_world.sh build/server/run/world \
-            build/world-real 3 2>&1 | tee evidence/world/read-real.txt
+            build/world-real 10 2>&1 | tee evidence/world/read-real.txt
           grep -qF "PASS: two independent readers agree on every block" evidence/world/read-real.txt
 
       - name: Draw the real world with the game's own models and textures

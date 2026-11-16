@@ -149,6 +149,10 @@ fn demo_is_air(id: u32) -> bool {
     let n = bs_name(id);
     if eq_bytes(n, "minecraft:air") { return true; }
     if eq_bytes(n, "minecraft:cave_air") { return true; }
+    // `void_air` is the air beyond the world's edge, and the loader has always counted it
+    // as air. Without this the renderer's non-air total included it and the loader's did
+    // not, so the two numbers were never comparable even on a world that held still.
+    if eq_bytes(n, "minecraft:void_air") { return true; }
     return false;
 }
 

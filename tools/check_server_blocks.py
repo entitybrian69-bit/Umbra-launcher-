@@ -33,7 +33,7 @@ def main() -> int:
     states = {}
     for line in open(path, errors="replace"):
         parts = line.split()
-        if len(parts) != 5:
+        if len(parts) < 5:
             continue
         state, verdict = parts[3], parts[4]
         if verdict == "ok":
@@ -41,16 +41,28 @@ def main() -> int:
             states[state] = states.get(state, 0) + 1
         else:
             denied += 1
-            denials.append((parts[0], parts[1], parts[2], state))
+            denials.append((parts[0], parts[1], parts[2], state, " ".join(parts[5:])))
 
     total = confirmed + denied
     print(f"server blocks: {total} coordinates asked, {confirmed} confirmed, {denied} denied")
+    # A denial is only a fact about the reader if the world held still between the read and
+    # the question. Run 43847395025 compared a save read mid-generation (529 chunks, 44
+    # states) with a world that generation then finished (1089 chunks, 76 states), and the
+    # 17 "denials" were the difference. The note below makes the shape of a denial visible
+    # instead of leaving a bare FAIL: `moved +0-10` means the same block was found one
+    # block below, which is what a shifted section looks like, and `nowhere near` means the
+    # block is not in any neighbouring cell at all.
+    moved = sum(1 for d in denials if d[4].startswith("moved"))
+    nowhere = sum(1 for d in denials if d[4].startswith("nowhere"))
+    if denials:
+        print(f"server blocks: of the denials, {moved} are a block one cell away "
+              f"(a shifted read) and {nowhere} are not in any neighbouring cell")
     if states:
         top = ", ".join(f"{k} {v}" for k, v in sorted(states.items(), key=lambda kv: -kv[1])[:6])
         print(f"server blocks: the confirmed sample is {top}")
-    for (x, y, z, state) in denials[:10]:
+    for (x, y, z, state, note) in denials[:10]:
         print(f"server blocks: the server says {state} is NOT at {x} {y} {z}, "
-              f"but Umbra read it there")
+              f"but Umbra read it there ({note})")
     if total == 0:
         print("FAIL: no coordinates were asked; nothing was compared")
         return 1
