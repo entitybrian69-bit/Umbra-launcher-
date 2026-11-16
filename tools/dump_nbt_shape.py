@@ -140,13 +140,31 @@ def describe_shapes(path):
                 hist[key] = hist.get(key, 0) + 1
                 continue
             form = entry_shape(palette[0]) if palette else "palette missing"
-            key = f"{form}, data {'none' if data is None else 'present'}"
+            n_pal = len(palette) if palette else 0
+            if n_pal <= 1:
+                bucket = "1"
+            elif n_pal <= 4:
+                bucket = "2-4"
+            elif n_pal <= 16:
+                bucket = "5-16 (4 bits)"
+            elif n_pal <= 32:
+                bucket = "17-32 (5 bits)"
+            elif n_pal <= 64:
+                bucket = "33-64 (6 bits)"
+            elif n_pal <= 128:
+                bucket = "65-128 (7 bits)"
+            elif n_pal <= 256:
+                bucket = "129-256 (8 bits)"
+            else:
+                bucket = ">256 (direct?)"
+            key = (f"{form}, palette {bucket}, "
+                   f"data {'none' if data is None else 'present'}")
             hist[key] = hist.get(key, 0) + 1
             if not (form.startswith("compound keys Name") or form.startswith("string len")
                     or form == "int"):
                 odd.append((cx, cz, y, f"{key}, palette {len(palette) if palette else 0}, "
                                       f"data {len(data) if data is not None else 'none'}"))
-    print(f"{chunks} chunks read")
+    print(f"  {chunks} chunks read")
     for key in sorted(hist, key=lambda k: -hist[k]):
         print(f"  {hist[key]:6d} sections: {key}")
     if odd:
@@ -160,15 +178,12 @@ def main(argv):
     if len(argv) < 2:
         print(__doc__.strip(), file=sys.stderr)
         return 1
-    path = argv[1]
-    slots = list(chunks_of(path))
-    print(f"{len(slots)} chunks in {path}")
-    if not slots:
-        return 1
-    try:
-        describe_shapes(path)
-    except (ValueError, struct.error) as exc:
-        print(f"  the parser refused the first chunk: {exc}")
+    for path in argv[1:]:
+        print(f"== {path}")
+        try:
+            describe_shapes(path)
+        except (ValueError, struct.error) as exc:
+            print(f"  the parser refused a chunk: {exc}")
     return 0
 
 
