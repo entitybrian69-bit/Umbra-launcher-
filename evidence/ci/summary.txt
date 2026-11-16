@@ -1,12 +1,12 @@
-run: 43949156466, commit: d852c1473d13a19ee1f8fe76b08b03b6101aa1e6
+run: 43951429395, commit: 239a12532ffa74339353bce2e5690c6161ad6260
 sdk: /usr/local/lib/android/sdk
 adb: /usr/local/lib/android/sdk/platform-tools/adb
 emulator: /usr/local/lib/android/sdk/emulator/emulator
-apk: ./android/app/build/outputs/apk/release/app-release.apk (644295 bytes, sha256 e59920ece855af090d529fb9fc722a3958f7b50f917a8039d39397b823d8a067)
+apk: ./android/app/build/outputs/apk/release/app-release.apk (644295 bytes, sha256 eeb627da12441bc3105d262d0702aac323cee51ccd934e16d62e5714b8e362ad)
 
 == phase: kvm ==
-kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 16 20:26 /dev/kvm
-cpu: 4 flags match vmx/svm
+kvm: crw-rw-rw- 1 root kvm 10, 232 Nov 16 20:40 /dev/kvm
+cpu: 8 flags match vmx/svm
 
 == phase: sdk-packages ==
 sdk-platform-tools: ok (3 lines)
@@ -16,14 +16,14 @@ sdk-image: ok (3 lines)
 avd: umbra_ci from device profile pixel_2 at /home/runner/.android/avd
 
 == phase: emulator-boot ==
-emulator: started as pid 2720
-emulator: booted in 25 s
+emulator: started as pid 2982
+emulator: booted in 51 s
 android: api 30 (11)
 display: 1080x1920
 
 == phase: unlock ==
 wake: 
-focus before launch:  mCurrentFocus=Window{5109594 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
+focus before launch:  mCurrentFocus=Window{5aceaa2 u0 com.google.android.apps.nexuslauncher/com.google.android.apps.nexuslauncher.NexusLauncherActivity}
 component: org.umbra.client/org.umbra.client.UmbraNet$UmbraActivity (the APK's own launchable activity)
 
 == phase: install ==
@@ -37,113 +37,112 @@ insets: simulating "0,63,126,0" for this run (device says "0,63,126,0")
 
 == phase: launch ==
 launch: Status: ok 
-running: pid 4091
+running: pid 4219
 app: android_main: files /data/user/0/org.umbra.client/files
 app: goose core initialised
 app: app cmd 10, window 0x0
-app: app cmd 11, window 0x0
 app: no window yet: waiting for the activity to become visible
+app: app cmd 11, window 0x0
 app: app cmd 0, window 0x0
-app: app cmd 1, window 0x77ffa6d464c0
+app: app cmd 1, window 0x742555c2e0a0
 app: EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-app: app cmd 3, window 0x77ffa6d464c0
+app: app cmd 3, window 0x742555c2e0a0
 app: insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
-app: app cmd 5, window 0x77ffa6d464c0
-app: app cmd 4, window 0x77ffa6d464c0
-app: app cmd 6, window 0x77ffa6d464c0
+app: app cmd 5, window 0x742555c2e0a0
+app: app cmd 4, window 0x742555c2e0a0
 app: insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 1920x1080, density bucket 420 (scale 2.62)
-app: 20:28:39 last run: nothing recorded yet
-app: 20:28:39 ---- Umbra starting, build d852c14 ----
-app: 20:28:39 core: umbra core: formats and meshing
-app: 20:28:39 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
-app: 20:28:39 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-app: 20:28:39 GL_VENDOR Google (Google Inc.)
-app: 20:28:39 depth bits 24, vertex highp 127^23, fragment highp 127^23
-app: 20:28:41 jar: /data/local/tmp/umbra-client.jar, 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's
-app: 20:28:41 gamefiles: platform hooks download, picker import, files dir /data/user/0/org.umbra.client/files
-app: 20:28:41 atlas: 1024x1024, 4194304 bytes, 1225 tiles, hash 3ca6170e, 1 missing
-app: 20:28:41 atlas: source is the client jar
-app: 20:28:41 atlas: 1 block faces asked for a tile that is missing
-app: 20:28:41 screen: home -> loading
-app: 20:28:41 demo world built in 2.2 ms; meshing starts in slices of at most 6 ms
-app: 20:28:41 check: renderer Android Emulator OpenGL ES Translator (Google SwiftShader)
-app: 20:28:41 check: gl version OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-app: 20:28:41 check: max texture size 8192 px
-app: 20:28:41 check: gpu timer query none (not available)
-app: 20:28:41 check: shader programs mesh ok, hud ok, pattern ok, cube ok, atlas ok
-app: 20:28:41 check: depth buffer 24 bits
-app: 20:28:41 check: extension string 1412 chars
-app: 20:28:41 check: all device checks passed
-app: 20:28:41 hud: button 0 at 22,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
-app: 20:28:41 hud: button 1 at 611,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
-app: 20:28:41 hud: button 2 at 1199,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
-app: 20:28:41 hud: 11 rows, content ends at 484 px inside a 486 px panel, fits
-app: app cmd 4, window 0x77ffa6d464c0
-app: 20:28:50 mesh uploaded: 25.0 MB vertices, 3.1 MB indices
-app: 20:28:50 mesh bounds x 0.0..48.0 y -64.0..76.0 z 0.0..48.0, camera 37.6 blocks out, free band 497..989 of 1080 (45%), fog 66..146
-app: 20:28:50 camera: eye 47.2 75.2 48.1 look 24.0 58.0 24.0, 37.6 blocks out, fov 55
-app: 20:28:50 mesh: 436052 vertices drawn, passes 619500/34578/0 over 27 ranges
-app: 20:28:50 startup: meshed in 2560.4 ms over 235 calls (worst call 43.9 ms, worst unit 43.9 ms), longest frame 178.5 ms, frames over 250 ms: 0
-app: 20:28:50 screen: loading -> home
-app: 20:28:50 long frame 271.2 ms (mesh 100%, 235 calls)
+app: 20:42:40 last run: nothing recorded yet
+app: 20:42:40 ---- Umbra starting, build 239a125 ----
+app: 20:42:40 core: umbra core: formats and meshing
+app: 20:42:40 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
+app: 20:42:40 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+app: 20:42:40 GL_VENDOR Google (Google Inc.)
+app: 20:42:40 depth bits 24, vertex highp 127^23, fragment highp 127^23
+app: 20:42:42 jar: /data/local/tmp/umbra-client.jar, 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's
+app: 20:42:42 gamefiles: platform hooks download, picker import, files dir /data/user/0/org.umbra.client/files
+app: 20:42:42 atlas: 1024x1024, 4194304 bytes, 1225 tiles, hash 3ca6170e, 1 missing
+app: 20:42:42 atlas: source is the client jar
+app: 20:42:42 atlas: 1 block faces asked for a tile that is missing
+app: 20:42:42 screen: home -> loading
+app: 20:42:42 demo world built in 2.7 ms; meshing starts in slices of at most 6 ms
+app: 20:42:42 check: renderer Android Emulator OpenGL ES Translator (Google SwiftShader)
+app: 20:42:42 check: gl version OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+app: 20:42:42 check: max texture size 8192 px
+app: 20:42:42 check: gpu timer query none (not available)
+app: 20:42:42 check: shader programs mesh ok, hud ok, pattern ok, cube ok, atlas ok
+app: 20:42:42 check: depth buffer 24 bits
+app: 20:42:42 check: extension string 1412 chars
+app: 20:42:42 check: all device checks passed
+app: 20:42:42 hud: button 0 at 22,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
+app: 20:42:42 hud: button 1 at 611,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
+app: 20:42:42 hud: button 2 at 1199,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
+app: 20:42:42 hud: 11 rows, content ends at 484 px inside a 486 px panel, fits
+app: app cmd 6, window 0x742555c2e0a0
+app: 20:42:48 mesh uploaded: 25.0 MB vertices, 3.1 MB indices
+app: 20:42:48 mesh bounds x 0.0..48.0 y -64.0..76.0 z 0.0..48.0, camera 37.6 blocks out, free band 497..989 of 1080 (45%), fog 66..146
+app: 20:42:48 camera: eye 47.2 75.2 48.1 look 24.0 58.0 24.0, 37.6 blocks out, fov 55
+app: 20:42:48 mesh: 436052 vertices drawn, passes 619500/34578/0 over 27 ranges
+app: 20:42:48 startup: meshed in 1898.8 ms over 190 calls (worst call 35.7 ms, worst unit 35.7 ms), longest frame 152.5 ms, frames over 250 ms: 0
+app: 20:42:48 screen: loading -> home
+app: 20:42:48 long frame 343.3 ms (mesh 100%, 190 calls)
 
 == phase: wait-for-mesh ==
-mesh: 20:28:50 startup: meshed in 2560.4 ms over 235 calls (worst call 43.9 ms, worst unit 43.9 ms), longest frame 178.5 ms, frames over 250 ms: 0
-mesh: longest frame 178.5 ms (under the 1000 ms budget)
+mesh: 20:42:48 startup: meshed in 1898.8 ms over 190 calls (worst call 35.7 ms, worst unit 35.7 ms), longest frame 152.5 ms, frames over 250 ms: 0
+mesh: longest frame 152.5 ms (under the 1000 ms budget)
 
 == phase: insets ==
 insets: insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
 insets: the override was applied
 insets: source is the override, as asked
 overlay: button 0 starts at y=999, below the 63 px top inset
-overlay: 20:28:41 hud: 11 rows, content ends at 484 px inside a 486 px panel, fits
-camera: 20:28:50 camera: eye 47.2 75.2 48.1 look 24.0 58.0 24.0, 37.6 blocks out, fov 55
+overlay: 20:42:42 hud: 11 rows, content ends at 484 px inside a 486 px panel, fits
+camera: 20:42:48 camera: eye 47.2 75.2 48.1 look 24.0 58.0 24.0, 37.6 blocks out, fov 55
 
 == phase: display-size ==
-size: 20:28:41 hud: button 0 at 22,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
+size: 20:42:42 hud: button 0 at 22,999 size 571x57 on 1920x1080 (insets 0,63,126,0)
 size: the HUD was laid out for a 1920 pixel wide surface
 
 == phase: screenshot-home ==
-shot1: 1001100 bytes, sha256 9b38f3e2dc33ea89a76d6bb2f06df412cf241be6f59a2bd41e554856e1a45ed2
-focus while drawing:  mCurrentFocus=Window{e6ef297 u0 org.umbra.client/org.umbra.client.UmbraNet$UmbraActivity}
+shot1: 1001375 bytes, sha256 fea029aeb81545d322d018b3dd68dba5902362b0e05a6830aee765da1e0db2fd
+focus while drawing:  mCurrentFocus=Window{804e071 u0 org.umbra.client/org.umbra.client.UmbraNet$UmbraActivity}
 
 == phase: selftest-tap ==
 tap: self-test button at 22,999 size 571x57, tapping 307,1027
 tap: attempt 1 at 307,1027
 tap: the app reported a self-test
-shot2: 1006265 bytes, sha256 8c2628e5baf1ca8edbcf8ea0e336266a03a5cc547804c42d36df369268476b23
-app: 20:29:24 self-test: requested
-app: 20:29:24 self-test: begin (1920x1080), tile 78 rows
-app: 20:29:24 self-test: pattern drawn in 63.2 ms into the offscreen target
-app: 20:29:24 self-test: reading the offscreen target in 78-row tiles
-app: 20:29:26 self-test: pattern compared, 0 of 2073600 px differ, max channel diff 0
-app: 20:29:26 self-test: cube drawn in 64.4 ms
-app: 20:29:28 self-test: cube compared, 0 of 2073600 px differ
-app: 20:29:28 self-test: atlas tile 749 sampled in 0.3 ms
-app: 20:29:28 self-test: atlas 0 of 256 texels differ
-app: 20:29:28 self-test: end after 3703 ms, 34 steps
-app: 20:29:28 last run: self-test saved to /data/user/0/org.umbra.client/files/last_selftest.txt
-self-test: SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 3703 ms, offscreen, atlas from the jar)
+shot2: 1005965 bytes, sha256 4b44f1c80a377350e2dcd036710791c53763e5da4d22029c1aa1f755db20f925
+app: 20:43:25 self-test: requested
+app: 20:43:25 self-test: begin (1920x1080), tile 78 rows
+app: 20:43:25 self-test: pattern drawn in 73.3 ms into the offscreen target
+app: 20:43:26 self-test: reading the offscreen target in 78-row tiles
+app: 20:43:27 self-test: pattern compared, 0 of 2073600 px differ, max channel diff 0
+app: 20:43:27 self-test: cube drawn in 60.0 ms
+app: 20:43:29 self-test: cube compared, 0 of 2073600 px differ
+app: 20:43:29 self-test: atlas tile 749 sampled in 0.2 ms
+app: 20:43:29 self-test: atlas 0 of 256 texels differ
+app: 20:43:29 self-test: end after 3604 ms, 34 steps
+app: 20:43:29 last run: self-test saved to /data/user/0/org.umbra.client/files/last_selftest.txt
+self-test: SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 3604 ms, offscreen, atlas from the jar)
 
 == phase: jar-atlas ==
-jar: 20:28:41 jar: /data/local/tmp/umbra-client.jar, 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's
+jar: 20:42:42 jar: /data/local/tmp/umbra-client.jar, 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's
 jar: atlas source is the client jar
 jar: the self-test compared the jar's texels
 jar: self-test: atlas 0 of 256 texels differ
 
 == phase: benchmark-tap ==
 benchmark: button at 611,999, tapping 896,1027
-benchmark: 20:30:38 bench: 674 frames  avg 89.13 ms (11 fps)
+benchmark: 20:44:39 bench: 662 frames  avg 90.79 ms (11 fps)
 benchmark: the 1% low is reported
 benchmark: saved for the next run's home screen
 
 == phase: player ==
 player: physical display 1080x1920, current display 1920x1080
 player: touching the world at 960,648
-player: 20:30:42 player: spawned at 24.50 66.01 24.50 (floor 66.00), eye 67.63
+player: 20:44:41 player: spawned at 24.50 66.01 24.50 (floor 66.00), eye 67.63
 player: standing on the floor the world reported
 player: hold 1 walked 0.20 blocks (24.50,24.50 -> 24.50,24.30)
-player: hold 2 walked 1.20 blocks (24.50,24.30 -> 25.70,24.13)
+player: hold 2 walked 1.20 blocks (24.50,24.30 -> 25.70,23.81)
 player: a held finger walked the body
 player: the drag turned the head (yaw -1)
 player: the body is standing on the ground after walking
@@ -151,49 +150,60 @@ player: a tap asked for a jump
 
 == phase: hands ==
 hands: the app answers at 1239,955, so input is 'identity' of the surface
-hands: the hotbar selected the slab: 20:30:58 player: hotbar slot 4 selected (oak_slab)
+hands: the hotbar selected the slab: 20:44:57 player: hotbar slot 4 selected (oak_slab)
 hands: the surface is 1920x1080, the panel 1080x1920
 hands: looking down at pitch -1
 hands: tapped break at 1587,601 (frame identity, rect 1447,535 size 280x132)
-hands: 20:31:04 player: break -> 1 (broke grass_block at 25 63 24)
-edit: 20:31:05 edit: re-meshed 1 of 9 columns in 191.7 ms over 22 calls (worst call 20.7 ms, worst slice 20.7 ms), 3 slot(s) changed
+hands: 20:45:04 player: break -> 1 (broke grass_block at 25 65 23)
+edit: 20:45:06 edit: re-meshed 1 of 9 columns in 145.9 ms over 18 calls (worst call 12.2 ms, worst slice 12.0 ms), 3 slot(s) changed
 edit: re-meshed 1 of 9 columns, which is the point
-edit: the longest slice was 20.7 ms (under the 50 ms an edit is allowed)
+edit: the longest slice was 12.2 ms (under the 50 ms an edit is allowed)
 hands: tapped place at 1587,758 (frame identity, rect 1447,692 size 280x132)
-hands: 20:31:12 player: place -> 1 (placed oak_slab at 25 63 24)
-hands: shot-hands.png is 501175 bytes
+hands: 20:45:13 player: place -> 1 (placed oak_slab at 25 65 23)
+hands: shot-hands.png is 531570 bytes
 
 == phase: soak ==
 soak: holding for 60s
-soak: survived, pid 4091
+soak: survived, pid 4219
 soak: no FATAL EXCEPTION
-meminfo:  Native Heap 40096 40076 0 51 41124 49016 43039 1282| Native Heap: 40076 41124| TOTAL PSS: 204309 TOTAL RSS: 300028 TOTAL SWAP PSS: 270|
+meminfo:  Native Heap 40154 40108 20 47 41424 49016 43028 1250| Native Heap: 40108 41424| TOTAL PSS: 204545 TOTAL RSS: 300516 TOTAL SWAP PSS: 287|
 
 == phase: relaunch ==
-results: total 40|-rw------- 1 u0_a167 u0_a167  200 2026-11-16 20:30 last_bench.txt|-rw------- 1 u0_a167 u0_a167   95 2026-11-16 20:29 last_selftest.txt|-rw------- 1 u0_a167 u0_a167    8 2026-11-16 20:28 session.marker|-rw------- 1 u0_a167 u0_a167 9843 2026-11-16 20:32 umbra.log|
-last_selftest.txt: SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 3703 ms, offscreen, atlas from the jar) 
-last_bench.txt: bench: 674 frames  avg 89.13 ms (11 fps) 1% low 8 fps (124.76 ms) median 86.78 ms  worst 138.06 ms Android Emulator OpenGL ES Translator (Google SwiftShader) | Android OpenGL ES 3.0 gpu n/a (no GPU t 
+results: total 40|-rw------- 1 u0_a167 u0_a167  200 2026-11-16 20:44 last_bench.txt|-rw------- 1 u0_a167 u0_a167   95 2026-11-16 20:43 last_selftest.txt|-rw------- 1 u0_a167 u0_a167    8 2026-11-16 20:42 session.marker|-rw------- 1 u0_a167 u0_a167 9874 2026-11-16 20:46 umbra.log|
+last_selftest.txt: SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 3604 ms, offscreen, atlas from the jar) 
+last_bench.txt: bench: 662 frames  avg 90.79 ms (11 fps) 1% low 7 fps (128.33 ms) median 88.63 ms  worst 140.49 ms Android Emulator OpenGL ES Translator (Google SwiftShader) | Android OpenGL ES 3.0 gpu n/a (no GPU t 
 relaunch: Status: ok 
-20:32:22 last run: LAST RUN SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 3703 ms, offscreen, atlas from the jar) bench: 674 frames  avg 89.13 ms (11 fps) 1% low 8 fps (124.76 ms) median 86.78 ms  worst 138.06 ms Android Emulator OpenGL ES Translator (Google SwiftShade
+20:46:24 last run: LAST RUN SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 3604 ms, offscreen, atlas from the jar) bench: 662 frames  avg 90.79 ms (11 fps) 1% low 7 fps (128.33 ms) median 88.63 ms  worst 140.49 ms Android Emulator OpenGL ES Translator (Google SwiftShade
 relaunch: the previous self-test verdict is on the home screen
 relaunch: the previous benchmark numbers are on the home screen
-shot3: 46880 bytes (the home screen with last run)
+shot3: 46896 bytes (the home screen with last run)
 
 == phase: crash-detect ==
-crash-detect: kill -9 6305
+crash-detect: kill -9 6835
 crash-detect: restarting: Status: ok 
 crash-detect: the killed run was reported on the next start
-shot4: 13386 bytes (the crash screen)
+shot4: 46842 bytes (the crash screen)
 
 == phase: gamefiles ==
 gamefiles: launched with an empty app directory (Status: ok )
-gamefiles: 20:32:39 gamefiles: the screen is up; jar path /data/user/0/org.umbra.client/files/client.jar, 41483720 bytes pinned (sha1 e877b6a07acd633fb3bb475002175cec036e7b87), a jar is not here
+gamefiles: 20:46:42 gamefiles: the screen is up; jar path /data/user/0/org.umbra.client/files/client.jar, 41483720 bytes pinned (sha1 e877b6a07acd633fb3bb475002175cec036e7b87), a jar is not here
 gamefiles: with nothing in its own directory the app asks for the game's files
+gamefiles: the device's own route to Mojang: PING mr-afd-azuredge.tm-azurefd.net (150.171.109.73) 56(84) bytes of data. 64 bytes from 150.171.109.73: icmp_seq=1 ttl=255 time=12.5 ms  --- mr-afd-azuredge.tm-azurefd.net ping statistics --- 1 packe
 gamefiles: shot-gamefiles.png is 24992 bytes
 gamefiles: button 0 at 35,484 size 435x78, centre 252,523
 gamefiles: tapping 252,523
-gamefiles: the emulator could not reach Mojang; the download is UNVERIFIED in this run
-notice: gamefiles: the download could not reach Mojang on this runner
+  gamefiles: platform hooks download, picker import, files dir /data/user/0/org.umbra.client/files
+  gamefiles: platform hooks download, picker import, files dir /data/user/0/org.umbra.client/files
+  gamefiles: the screen is up; jar path /data/user/0/org.umbra.client/files/client.jar, 41483720 bytes pinned (sha1 e877b6a07acd633fb3bb475002175cec036e7b87), a jar is not here
+  gamefiles: download would fetch https://piston-data.mojang.com/v1/objects/e877b6a07acd633fb3bb475002175cec036e7b87/client.jar
+  gamefiles: screen 1920x1080, state 0, jar /data/user/0/org.umbra.client/files/client.jar
+  gamefiles: button 0 tapped
+  gamefiles: download started
+  gamefiles: downloading 41483720 bytes from Mojang
+  gamefiles: the download failed (no Java network class in this APK)
+gamefiles: gamefiles: the download failed (no Java network class in this APK)
+gamefiles: the download is UNVERIFIED in this run (the screen, the tap and the job all ran)
+notice: gamefiles: download UNVERIFIED: gamefiles: the download failed (no Java network class in this APK)
 
 == phase: done ==
 result: PASS (installed, launched, drew, self test tapped, the game-files screen fetched the jar it needs, 60s soak, no crash)
