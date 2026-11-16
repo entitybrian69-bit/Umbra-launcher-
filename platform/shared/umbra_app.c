@@ -2865,8 +2865,25 @@ void umbra_app_frame(umbra_app *app) {
     if (app->mesh_uploaded && !app->render_fallback) {
         player_update(app);
         gpu_timer_begin(app);
+        int64_t first_t0 = umbra_now_us();
         draw_scene(app);
+        app->last_draw_us = umbra_now_us() - first_t0;
         gpu_timer_end(app);
+        // The first frame that draws a freshly uploaded 25 MB buffer is the one that
+        // can stall, because the driver may not have the data on the GPU yet. It is
+        // timed, once, so a "long frame" in the log can be attributed instead of
+        // guessed at: this run's 230 ms frame was neither the shaders (12 ms) nor
+        // the upload (35 ms), so it was here or in the present that follows.
+        if (!app->first_draw_timed) {
+            int64_t t_after = umbra_now_us();
+            glFinish();
+            int64_t blocked = umbra_now_us() - t_after;
+            app->first_draw_timed = true;
+            umbra_log(app, "frame: the first world frame drew in %.1f ms and the driver "
+                           "held it %.1f ms (glFinish), %.0f of %lld vertices",
+                      app->last_draw_us / 1000.0, blocked / 1000.0,
+                      (double)app->vert_count, (long long)app->draw_calls);
+        }
     }
     draw_hud(app);
     app->frames_drawn++;

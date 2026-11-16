@@ -203,6 +203,8 @@ struct umbra_app {
     int mesh_progress;         // permille
     int64_t mesh_calls, mesh_worst_call_us, mesh_total_us;
     int64_t upload_us;         // the one whole-arena upload, timed on its own
+    int64_t last_draw_us;      // the scene draw, timed every frame
+    int first_draw_timed;      // the first world frame has been timed and logged
     bool mesh_uploaded;
 
     // Frame timing
