@@ -158,7 +158,10 @@ fn chunk_set_block(c: ChunkColumn&, x: i32, y: i32, z: i32, id: u32) {
 // registry uses. Keys arrive in NBT order, which for a written state is the
 // order the game sorts them in (alphabetical).
 fn state_props_text(state: i64, out: u8[>..]&) {
-    let props = nbt_child(state, "Properties");
+    // "Properties" is the classic spelling; 26.3 writes "properties" next to "id", and the
+    // property names themselves are the same lower-case names either way.
+    var props = nbt_child(state, "Properties");
+    if !nbt_valid(props) { props = nbt_child(state, "properties"); }
     if !nbt_valid(props) { return; }
     var c = nbt_nodes[props].first;
     var first = true;
@@ -173,8 +176,21 @@ fn state_props_text(state: i64, out: u8[>..]&) {
     }
 }
 
+// The block name of a palette entry, in any of the forms a save uses:
+//   {Name: "minecraft:stone", Properties: {...}}   classic
+//   "minecraft:stone"                              a bare string in a string palette
+//   {id: "minecraft:oak_leaves", properties: {...}} 26.3, a state with properties
+//   {"": "minecraft:stone"}                        26.3, a state without properties,
+//                                                 inside a palette whose element type is
+//                                                 compound: one member with no name
 fn state_name_text(state: i64) -> u8[:] {
-    return nbt_string(state, "Name");
+    var name = nbt_string(state, "Name");
+    if name.len > 0 { return name; }
+    name = nbt_string(state, "id");
+    if name.len > 0 { return name; }
+    let first = nbt_nodes[state].first;
+    if first >= 0 { return nbt_bytes_at(first); }
+    return name;
 }
 
 // Unpack a paletted container's long array into 4096 indices.

@@ -128,7 +128,7 @@ def set_packing(packing: str) -> None:
 
 def set_palette_style(style: str) -> None:
     global PALETTE_STYLE
-    if style not in ("compound", "string"):
+    if style not in ("compound", "string", "id"):
         print(f"unknown palette style {style!r} (compound or string)", file=sys.stderr)
         sys.exit(2)
     PALETTE_STYLE = style
@@ -158,7 +158,18 @@ def section(y: int, fill: str, extra: dict) -> bytes:
         tag(1, "Y", t_byte(y)),
     ]
     bare = PALETTE_STYLE == "string" and not any(s.get("Properties") for s in palette)
-    if bare:
+    if PALETTE_STYLE == "id":
+        # What a 26.3 save actually holds inside a compound palette: a state with
+        # properties is {id, properties}, and a state without is a compound with a single
+        # member whose name is empty, {"": name}. Both were found by dumping the bytes.
+        entries = tag(9, "palette", t_list(10, [
+            t_compound([tag(8, "id", t_string(s["Name"]))] + (
+                [tag(10, "properties", t_compound([
+                    tag(8, k, t_string(v)) for k, v in sorted(s["Properties"].items())
+                ]))] if s.get("Properties") else [tag(8, "", t_string(s["Name"]))]))
+            for s in palette
+        ]))
+    elif bare:
         entries = tag(9, "palette", t_list(8, [t_string(s["Name"]) for s in palette]))
     else:
         entries = tag(9, "palette", t_list(10, [

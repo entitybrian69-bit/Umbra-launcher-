@@ -110,8 +110,20 @@ def section_states(sec):
         if isinstance(entry, str):
             palette.append((entry, ""))
             continue
-        name = get(entry, "Name", "minecraft:air")
-        props = ",".join(f"{k}={v}" for k, v in (get(entry, "Properties", []) or []))
+        # The classic form is {Name, Properties}; 26.3 writes {id, properties} for a state
+        # that has properties, and a compound with a single unnamed member - {"": name} -
+        # for one that does not.
+        name = get(entry, "Name")
+        if name is None:
+            name = get(entry, "id")
+        if name is None and len(entry) == 1 and isinstance(entry[0][1], str):
+            name = entry[0][1]
+        if name is None:
+            name = "minecraft:air"
+        props_node = get(entry, "Properties")
+        if props_node is None:
+            props_node = get(entry, "properties")
+        props = ",".join(f"{k}={v}" for k, v in (props_node or []))
         palette.append((name, props))
     if not palette:
         return None, None
