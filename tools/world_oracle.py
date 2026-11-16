@@ -104,6 +104,12 @@ def section_states(sec):
         return None, None
     palette = []
     for entry in get(bs, "palette", []) or []:
+        # A palette entry is either a compound {Name, Properties} or, for a state with no
+        # properties, the bare name - which is what 26.3 writes, and what made this reader
+        # raise instead of reading the save.
+        if isinstance(entry, str):
+            palette.append((entry, ""))
+            continue
         name = get(entry, "Name", "minecraft:air")
         props = ",".join(f"{k}={v}" for k, v in (get(entry, "Properties", []) or []))
         palette.append((name, props))
@@ -113,16 +119,34 @@ def section_states(sec):
     if data is None:
         return palette, [0] * 4096
     bits = max(4, (len(palette) - 1).bit_length())
-    per = 64 // bits
     mask = (1 << bits) - 1
-    out = []
-    for word in data:
-        w = word & 0xFFFFFFFFFFFFFFFF
-        for k in range(per):
-            out.append((w >> (k * bits)) & mask)
-        if len(out) >= 4096:
-            break
-    return palette, out[:4096]
+    # Two packings exist and the length says which: since 1.16 a value runs on across a
+    # word boundary, so there are ceil(4096 * bits / 64) longs; before that each word
+    # started a new value, so there are ceil(4096 / (64 // bits)). They differ at 5, 6 and
+    # 7 bits, and reading one as the other turns a real save into a different world
+    # (958903 blocks one way, 732557 the other, on the same file).
+    per = 64 // bits
+    padded_longs = (4096 + per - 1) // per
+    contiguous = len(data) != padded_longs or bits == 4
+    out = [0] * 4096
+    words = [w & 0xFFFFFFFFFFFFFFFF for w in data]
+    for i in range(4096):
+        if contiguous:
+            bit = i * bits
+            li = bit // 64
+            shift = bit % 64
+            if li >= len(words):
+                break
+            v = words[li] >> shift
+            if shift + bits > 64 and li + 1 < len(words):
+                v |= words[li + 1] << (64 - shift)
+            out[i] = v & mask
+        else:
+            li = i // per
+            if li >= len(words):
+                break
+            out[i] = (words[li] >> ((i % per) * bits)) & mask
+    return palette, out
 
 
 def chunk_records(nbt, radius):

@@ -35,6 +35,20 @@ jobs:
           python3 tools/make_test_world.py build/world-test 2 2>&1 | tee evidence/world/synthetic.txt
           GOOSE=build/bin/goose bash tools/check_real_world.sh build/world-test build/world-test-out \
             2>&1 | tee -a evidence/world/synthetic.txt
+          # And in the three other flavours the real save turned out to use, because one
+          # flavour passing is what let 529 real chunks read as air:
+          #   string   - a section with no properties is a list of bare names (26.3)
+          #   20 states- a palette wide enough that the bit packing matters (bits 5)
+          #   padded   - the pre-1.16 packing, which at 4 bits is the same bytes and at
+          #              5 is not
+          for flavour in "string contiguous 0" "compound contiguous 20" "compound padded 20"; do
+            set -- $flavour
+            out="build/world-test-$1-$2-$3"
+            echo "== flavour: palette $1, packing $2, $3 states in one section"
+            python3 tools/make_test_world.py "$out" 2 "$1" "$2" "$3" 2>&1 | tee -a evidence/world/synthetic.txt
+            GOOSE=build/bin/goose bash tools/check_real_world.sh "$out" "$out-out" \
+              2>&1 | tee -a evidence/world/synthetic.txt
+          done
       - name: Download the pinned server jar (never committed)
         run: |
           set -o pipefail

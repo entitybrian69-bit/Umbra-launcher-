@@ -183,7 +183,14 @@ fn unpack_indices(data: const u8[:], count: i64, bits: i64, out: u16[4096]&) {
     if bits == 0 { return; }
     let mask: u64 = if bits >= 64 { 0xFFFFFFFFFFFFFFFF } else { ((1 as u64) << bits) - 1 };
     let per_long = 64 / bits;
-    let packed_with_padding = count < (4096 * bits + 63) / 64 && per_long * count >= 4096;
+    // Two packings exist and the length says which: since 1.16 a value runs on across a
+    // word boundary, so the array is ceil(4096 * bits / 64) longs; before that every word
+    // started a new value, so it was ceil(4096 / (64 / bits)). The old test here said
+    // "padded" only when the array was *shorter* than a contiguous one, which is never
+    // true, so every padded section was read as the wrong format - and at 4 bits the two
+    // are identical, which is why a 7-state synthetic world could not show it.
+    let padded_longs = (4096 + per_long - 1) / per_long;
+    let packed_with_padding = bits != 4 && count == padded_longs;
     for i in 4096 {
         var v: u64 = 0;
         if packed_with_padding {
@@ -236,9 +243,18 @@ fn resolve_palette(palette: i64, out: u32[1024]&) -> i32 {
     var c = nbt_nodes[palette].first;
     var props: u8[>..] = [];
     while c >= 0 {
-        props = [];
-        state_props_text(c, props);
-        out[n as i64] = bs_intern(state_name_text(c), props);
+        // A palette entry is either a compound (`{Name, Properties}`) or, for a state with
+        // no properties, the bare name. 26.3's saves use the bare form, and this reader
+        // used to call state_name_text on it, get nothing, and report every section as
+        // air: 529 chunks, 0 blocks, and a PASS. Biome palettes have been handled both
+        // ways all along; blocks now are too.
+        if nbt_nodes[c].tag == 8 {
+            out[n as i64] = bs_intern(nbt_bytes_at(c), "");
+        } else {
+            props = [];
+            state_props_text(c, props);
+            out[n as i64] = bs_intern(state_name_text(c), props);
+        }
         n += 1;
         if n >= 1024 { break; }
         c = nbt_nodes[c].next;
