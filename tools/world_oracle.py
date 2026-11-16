@@ -104,6 +104,12 @@ def section_states(sec):
         return None, None
     palette = []
     for entry in get(bs, "palette", []) or []:
+        # A palette entry is either a compound {Name, Properties} or, for a state with no
+        # properties, the bare name - which is what 26.3 writes, and what made this reader
+        # raise instead of reading the save.
+        if isinstance(entry, str):
+            palette.append((entry, ""))
+            continue
         name = get(entry, "Name", "minecraft:air")
         props = ",".join(f"{k}={v}" for k, v in (get(entry, "Properties", []) or []))
         palette.append((name, props))

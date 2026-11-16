@@ -236,9 +236,18 @@ fn resolve_palette(palette: i64, out: u32[1024]&) -> i32 {
     var c = nbt_nodes[palette].first;
     var props: u8[>..] = [];
     while c >= 0 {
-        props = [];
-        state_props_text(c, props);
-        out[n as i64] = bs_intern(state_name_text(c), props);
+        // A palette entry is either a compound (`{Name, Properties}`) or, for a state with
+        // no properties, the bare name. 26.3's saves use the bare form, and this reader
+        // used to call state_name_text on it, get nothing, and report every section as
+        // air: 529 chunks, 0 blocks, and a PASS. Biome palettes have been handled both
+        // ways all along; blocks now are too.
+        if nbt_nodes[c].tag == 8 {
+            out[n as i64] = bs_intern(nbt_bytes_at(c), "");
+        } else {
+            props = [];
+            state_props_text(c, props);
+            out[n as i64] = bs_intern(state_name_text(c), props);
+        }
         n += 1;
         if n >= 1024 { break; }
         c = nbt_nodes[c].next;
