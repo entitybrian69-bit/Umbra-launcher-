@@ -1,18 +1,18 @@
 wrote build/world-test: 4 chunks in r.0.0.mca
 == building the loader
-goose/worldload.goose:34: warning: redundant `as u64`: a u8 converts to u64 implicitly here
+goose/worldload.goose:38: warning: redundant `as u64`: a u8 converts to u64 implicitly here
     wl_hash = (wl_hash ^ (b as u64)) * 1099511628211;
                           ^~~~~~~~
-goose/worldload.goose:61: warning: redundant `as i64`: name.len is already i64
+goose/worldload.goose:65: warning: redundant `as i64`: name.len is already i64
         if wl_state_len[i] != name.len as i64 { continue; }
                               ^~~~~~~~~~~~~~~
-goose/worldload.goose:72: warning: redundant `as i64`: name.len is already i64
+goose/worldload.goose:76: warning: redundant `as i64`: name.len is already i64
     wl_state_len.push(name.len as i64);
                       ^~~~~~~~~~~~~~~
-goose/worldload.goose:220: warning: redundant `as i64`: cx is already i64
+goose/worldload.goose:232: warning: redundant `as i64`: cx is already i64
                 let wx = nums[0] * 32 + (cx as i64);
                                          ^~~~~~~~~
-goose/worldload.goose:221: warning: redundant `as i64`: cz is already i64
+goose/worldload.goose:233: warning: redundant `as i64`: cz is already i64
                 let wz = nums[1] * 32 + (cz as i64);
                                          ^~~~~~~~~
 goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
@@ -108,19 +108,19 @@ PASS: two independent readers agree on every block of all 4 chunks
 PASS: the world the server generated is read the same way twice
 wrote build/world-test-string-contiguous-0: 4 chunks in r.0.0.mca
 == building the loader
-goose/worldload.goose:34: warning: redundant `as u64`: a u8 converts to u64 implicitly here
+goose/worldload.goose:38: warning: redundant `as u64`: a u8 converts to u64 implicitly here
     wl_hash = (wl_hash ^ (b as u64)) * 1099511628211;
                           ^~~~~~~~
-goose/worldload.goose:61: warning: redundant `as i64`: name.len is already i64
+goose/worldload.goose:65: warning: redundant `as i64`: name.len is already i64
         if wl_state_len[i] != name.len as i64 { continue; }
                               ^~~~~~~~~~~~~~~
-goose/worldload.goose:72: warning: redundant `as i64`: name.len is already i64
+goose/worldload.goose:76: warning: redundant `as i64`: name.len is already i64
     wl_state_len.push(name.len as i64);
                       ^~~~~~~~~~~~~~~
-goose/worldload.goose:220: warning: redundant `as i64`: cx is already i64
+goose/worldload.goose:232: warning: redundant `as i64`: cx is already i64
                 let wx = nums[0] * 32 + (cx as i64);
                                          ^~~~~~~~~
-goose/worldload.goose:221: warning: redundant `as i64`: cz is already i64
+goose/worldload.goose:233: warning: redundant `as i64`: cz is already i64
                 let wz = nums[1] * 32 + (cz as i64);
                                          ^~~~~~~~~
 goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
@@ -216,19 +216,19 @@ PASS: two independent readers agree on every block of all 4 chunks
 PASS: the world the server generated is read the same way twice
 wrote build/world-test-compound-contiguous-20: 4 chunks in r.0.0.mca
 == building the loader
-goose/worldload.goose:34: warning: redundant `as u64`: a u8 converts to u64 implicitly here
+goose/worldload.goose:38: warning: redundant `as u64`: a u8 converts to u64 implicitly here
     wl_hash = (wl_hash ^ (b as u64)) * 1099511628211;
                           ^~~~~~~~
-goose/worldload.goose:61: warning: redundant `as i64`: name.len is already i64
+goose/worldload.goose:65: warning: redundant `as i64`: name.len is already i64
         if wl_state_len[i] != name.len as i64 { continue; }
                               ^~~~~~~~~~~~~~~
-goose/worldload.goose:72: warning: redundant `as i64`: name.len is already i64
+goose/worldload.goose:76: warning: redundant `as i64`: name.len is already i64
     wl_state_len.push(name.len as i64);
                       ^~~~~~~~~~~~~~~
-goose/worldload.goose:220: warning: redundant `as i64`: cx is already i64
+goose/worldload.goose:232: warning: redundant `as i64`: cx is already i64
                 let wx = nums[0] * 32 + (cx as i64);
                                          ^~~~~~~~~
-goose/worldload.goose:221: warning: redundant `as i64`: cz is already i64
+goose/worldload.goose:233: warning: redundant `as i64`: cz is already i64
                 let wz = nums[1] * 32 + (cz as i64);
                                          ^~~~~~~~~
 goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
@@ -324,19 +324,19 @@ PASS: two independent readers agree on every block of all 4 chunks
 PASS: the world the server generated is read the same way twice
 wrote build/world-test-compound-padded-20: 4 chunks in r.0.0.mca
 == building the loader
-goose/worldload.goose:34: warning: redundant `as u64`: a u8 converts to u64 implicitly here
+goose/worldload.goose:38: warning: redundant `as u64`: a u8 converts to u64 implicitly here
     wl_hash = (wl_hash ^ (b as u64)) * 1099511628211;
                           ^~~~~~~~
-goose/worldload.goose:61: warning: redundant `as i64`: name.len is already i64
+goose/worldload.goose:65: warning: redundant `as i64`: name.len is already i64
         if wl_state_len[i] != name.len as i64 { continue; }
                               ^~~~~~~~~~~~~~~
-goose/worldload.goose:72: warning: redundant `as i64`: name.len is already i64
+goose/worldload.goose:76: warning: redundant `as i64`: name.len is already i64
     wl_state_len.push(name.len as i64);
                       ^~~~~~~~~~~~~~~
-goose/worldload.goose:220: warning: redundant `as i64`: cx is already i64
+goose/worldload.goose:232: warning: redundant `as i64`: cx is already i64
                 let wx = nums[0] * 32 + (cx as i64);
                                          ^~~~~~~~~
-goose/worldload.goose:221: warning: redundant `as i64`: cz is already i64
+goose/worldload.goose:233: warning: redundant `as i64`: cz is already i64
                 let wz = nums[1] * 32 + (cz as i64);
                                          ^~~~~~~~~
 goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
@@ -432,19 +432,19 @@ PASS: two independent readers agree on every block of all 4 chunks
 PASS: the world the server generated is read the same way twice
 wrote build/world-test-id-contiguous-20: 4 chunks in r.0.0.mca
 == building the loader
-goose/worldload.goose:34: warning: redundant `as u64`: a u8 converts to u64 implicitly here
+goose/worldload.goose:38: warning: redundant `as u64`: a u8 converts to u64 implicitly here
     wl_hash = (wl_hash ^ (b as u64)) * 1099511628211;
                           ^~~~~~~~
-goose/worldload.goose:61: warning: redundant `as i64`: name.len is already i64
+goose/worldload.goose:65: warning: redundant `as i64`: name.len is already i64
         if wl_state_len[i] != name.len as i64 { continue; }
                               ^~~~~~~~~~~~~~~
-goose/worldload.goose:72: warning: redundant `as i64`: name.len is already i64
+goose/worldload.goose:76: warning: redundant `as i64`: name.len is already i64
     wl_state_len.push(name.len as i64);
                       ^~~~~~~~~~~~~~~
-goose/worldload.goose:220: warning: redundant `as i64`: cx is already i64
+goose/worldload.goose:232: warning: redundant `as i64`: cx is already i64
                 let wx = nums[0] * 32 + (cx as i64);
                                          ^~~~~~~~~
-goose/worldload.goose:221: warning: redundant `as i64`: cz is already i64
+goose/worldload.goose:233: warning: redundant `as i64`: cz is already i64
                 let wz = nums[1] * 32 + (cz as i64);
                                          ^~~~~~~~~
 goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
@@ -540,19 +540,19 @@ PASS: two independent readers agree on every block of all 4 chunks
 PASS: the world the server generated is read the same way twice
 wrote build/world-test-id-padded-20: 4 chunks in r.0.0.mca
 == building the loader
-goose/worldload.goose:34: warning: redundant `as u64`: a u8 converts to u64 implicitly here
+goose/worldload.goose:38: warning: redundant `as u64`: a u8 converts to u64 implicitly here
     wl_hash = (wl_hash ^ (b as u64)) * 1099511628211;
                           ^~~~~~~~
-goose/worldload.goose:61: warning: redundant `as i64`: name.len is already i64
+goose/worldload.goose:65: warning: redundant `as i64`: name.len is already i64
         if wl_state_len[i] != name.len as i64 { continue; }
                               ^~~~~~~~~~~~~~~
-goose/worldload.goose:72: warning: redundant `as i64`: name.len is already i64
+goose/worldload.goose:76: warning: redundant `as i64`: name.len is already i64
     wl_state_len.push(name.len as i64);
                       ^~~~~~~~~~~~~~~
-goose/worldload.goose:220: warning: redundant `as i64`: cx is already i64
+goose/worldload.goose:232: warning: redundant `as i64`: cx is already i64
                 let wx = nums[0] * 32 + (cx as i64);
                                          ^~~~~~~~~
-goose/worldload.goose:221: warning: redundant `as i64`: cz is already i64
+goose/worldload.goose:233: warning: redundant `as i64`: cz is already i64
                 let wz = nums[1] * 32 + (cz as i64);
                                          ^~~~~~~~~
 goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
