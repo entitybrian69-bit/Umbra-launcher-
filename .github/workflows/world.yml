@@ -1,0 +1,88 @@
+name: world
+# Gate 6b, first half: a world the real server generated, read the way the renderer
+# reads one. The server jar and the save are downloaded and written at test time and
+# never enter the repository; only the readers' numbers and their agreement are.
+on:
+  push:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1"
+jobs:
+  world:
+    name: "Real server world: Anvil/NBT read twice and compared block by block"
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          fetch-depth: 1
+      - name: Toolchain versions
+        run: |
+          uname -a
+          python3 --version
+          nproc
+      - name: Build the pinned Goose compiler
+        run: tools/pin_goose.sh
+      - name: A synthetic world, read twice (no network, no game data)
+        # The same two readers over a world generated here, so the comparison itself is
+        # tested on every push even if the server download or the server run fails.
+        run: |
+          set -o pipefail
+          mkdir -p evidence/world
+          python3 tools/make_test_world.py build/world-test 2 2>&1 | tee evidence/world/synthetic.txt
+          GOOSE=build/bin/goose bash tools/check_real_world.sh build/world-test build/world-test-out \
+            2>&1 | tee -a evidence/world/synthetic.txt
+      - name: Download the pinned server jar (never committed)
+        run: |
+          set -o pipefail
+          mkdir -p evidence/world
+          if ! tools/fetch_server.sh build/server/server.jar 2>&1 | tee build/fetch-server.log; then
+            cp build/fetch-server.log evidence/world/fetch-server.log
+            echo "::error title=server download::$(tail -3 build/fetch-server.log | tr '\n' ' ')"
+            exit 1
+          fi
+          cp build/fetch-server.log evidence/world/fetch-server.log
+          tail -4 build/fetch-server.log | while IFS= read -r l; do
+            echo "::notice title=server::$l"; done
+      - name: Java for the server
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Generate a real world with the real server
+        run: |
+          set -o pipefail
+          java -version 2>&1 | head -2
+          tools/gen_server_world.sh build/server/server.jar build/server/run \
+            2>&1 | tee evidence/world/gen-world.txt
+      - name: Read the real world twice and compare it block by block
+        run: |
+          set -o pipefail
+          GOOSE=build/bin/goose bash tools/check_real_world.sh build/server/run/world \
+            build/world-real 2>&1 | tee evidence/world/read-real.txt
+          grep -qF "PASS: two independent readers agree on every block" evidence/world/read-real.txt
+      - name: Report the numbers
+        if: always()
+        run: |
+          for f in evidence/world/read-real.txt evidence/world/gen-world.txt; do
+            [ -f "$f" ] || continue
+            grep -E "^(worldload:|oracle:|chunks that|blocks in|block states|detail records|region files|PASS|FAIL)" "$f" \
+              | tail -20 | while IFS= read -r l; do
+                echo "::notice title=world::$l"; done
+          done
+      - name: Commit the numbers
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          set -euo pipefail
+          git add -f evidence/world
+          bash tools/commit_evidence.sh "ci: world evidence from run $GITHUB_RUN_ID [skip ci]"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: world-evidence
+          path: |
+            evidence/world
+            build/fetch-server.log

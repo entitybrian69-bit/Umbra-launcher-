@@ -695,6 +695,38 @@ atlas (D-039) with one bound model (D-040): the phone has no jar and cannot have
 so the jar-drawn world is a CI picture until the app is given the pack from a file it
 is allowed to read.
 
+## Stage 3, step 4: a real world, read twice
+
+`goose/worldload.goose` reads a save the way the renderer does: every `region/*.mca`,
+every chunk's NBT, `column_from_nbt` into the same `ChunkColumn` the mesher draws, and
+then one record per non-air block - position, name, properties - in a fixed order (y,
+then z, then x) folded into an FNV-1a 64 hash per chunk. `tools/world_oracle.py` is a
+second implementation of the same format, written from the description rather than from
+that code, and prints the same lines. `tools/check_world.py` compares them and reports a
+match rate per chunk and per block.
+
+The synthetic world (`tools/make_test_world.py`, generated here in Python, no game data)
+agrees exactly, on every push:
+
+```
+goose.txt: 4 chunks, 24673 blocks, 7 states
+oracle.txt: 4 chunks, 24673 blocks, 7 states
+chunks that agree: 4 of 4 (100.00%)
+blocks in agreeing chunks: 24673 of 24673 (100.00% of every non-air block in the save)
+block states that agree: 7 of 7
+detail records that agree: 24673 of 24673 (100.00%), block by block
+PASS: two independent readers agree on every block of all 4 chunks
+```
+
+The real half is the `world` workflow: `tools/fetch_server.sh` downloads the pinned
+server jar from Mojang and checks it against the version JSON, `tools/gen_server_world.sh`
+runs it with a fixed seed until it says `Done`, stops it cleanly, and the same two
+readers then read *that* save. The server jar and the save are never committed.
+
+**State: implemented and host-verified on the synthetic world, CI run pending.** No real
+world has been read yet, so there is no real-world match rate in this file and none may
+be claimed.
+
 ## Parity table (what is and is not the same as the game)
 
 | Thing | State | Proof |
@@ -707,4 +739,5 @@ is allowed to read.
 | A world drawn from the jar's models and textures | CI-verified picture | `goose/jrender.goose` -> `evidence/jar/world.png`, compared with its reference by `tools/check_world_shot.py` |
 | A body you can walk with | yes | 24 host checks, and the device run above |
 | Water, ladders, sneaking, swimming, mobs, survival, multiplayer | **no** | not implemented |
-| Rendered world matches the real client | **not measured** | gate 6b; nothing compares two renders yet |
+| Reading a world from a real save | implemented, synthetic-verified | two independent readers, `24673 of 24673` blocks, 100.00%; the real server's save runs in the `world` workflow |
+| Rendered world matches the real client | **not measured** | gate 6b second half: nothing compares two renders yet |
