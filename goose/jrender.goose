@@ -143,7 +143,8 @@ fn main() {
     print("jr: models ", models, " built, ", ms_model_count(), " in the store, ",
           jp_models_refused, " refused\n");
     print("jr: blockstates ", blockstates, " built, ", ms_bs_count(), " in the store, ",
-          linked, " rules linked to a model\n");
+          ms_rule_count(), " rules, ", linked, " linked here, ", ms_rules_unlinked(),
+          " with no model at all\n");
     print("jr: ", jp_faces, " faces in the models, ", ms_path_count(), " texture paths\n");
     if models < 100 { jr_fail("that is not a client jar: almost no models"); }
     if blockstates < 100 { jr_fail("that is not a client jar: almost no blockstates"); }
