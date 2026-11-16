@@ -57,7 +57,12 @@ public class UmbraNet {
         sRunning = true;
         HttpURLConnection conn = null;
         FileOutputStream out = null;
-        File tmp = new File(dest + ".part");
+        // dest is already the caller's temporary name (client.jar.part, from
+        // core/gamefiles.goose), so it is written as given. This used to write
+        // dest + ".part", which produced client.jar.part.part: the 41 MB the device
+        // did download sat under a name nothing looked at, and the run refused it
+        // with "the downloaded file could not be read back" (43958738406).
+        File tmp = new File(dest);
         try {
             URL u = new URL(url);
             conn = (HttpURLConnection) u.openConnection();
@@ -185,7 +190,12 @@ public class UmbraNet {
     public static long copyUriTo(Activity activity, String uriString, String dest) {
         InputStream in = null;
         OutputStream out = null;
-        File tmp = new File(dest + ".part");
+        // dest is already the caller's temporary name (client.jar.part, from
+        // core/gamefiles.goose), so it is written as given. This used to write
+        // dest + ".part", which produced client.jar.part.part: the 41 MB the device
+        // did download sat under a name nothing looked at, and the run refused it
+        // with "the downloaded file could not be read back" (43958738406).
+        File tmp = new File(dest);
         try {
             Uri uri = Uri.parse(uriString);
             if ("file".equals(uri.getScheme())) {

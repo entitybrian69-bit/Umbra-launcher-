@@ -127,6 +127,13 @@ def main():
             print(f"{NATIVE}:{line}: {name} is looked up as {sig} "
                   f"but {JAVA} declares {want}", file=sys.stderr)
             bad += 1
+    # One table, not two: JNI_OnLoad ran before the device proved it is never
+    # called, and its copy of the table kept a stale signature after the fix.
+    if native.count("GetStaticMethodID(env, g_umbra_net") > 5:
+        print(f"check_jni_signatures: {NATIVE} looks the UmbraNet methods up in more "
+              "than one place; the table has to be the one net_init uses",
+              file=sys.stderr)
+        return 1
     if checked == 0:
         print("check_jni_signatures: no method lookups found; the C changed shape",
               file=sys.stderr)
@@ -134,6 +141,15 @@ def main():
     if bad:
         print(f"check_jni_signatures: {bad} of {checked + bad} lookups disagree "
               f"with {JAVA}", file=sys.stderr)
+        return 1
+    # The caller names the file it wants written -- client.jar.part, decided in
+    # core/gamefiles.goose -- so the Java must write that path, not a variation of
+    # it. `new File(dest + ".part")` wrote client.jar.part.part and cost a run: the
+    # 41 MB download landed where nothing looked and was refused (43958738406).
+    code_only = "\n".join(re.sub(r"//.*$", "", line) for line in java.splitlines())
+    if re.search(r'dest\s*\+\s*"\.part"', code_only):
+        print(f"{JAVA}: a destination is being rewritten; the caller's path is the "
+              "path", file=sys.stderr)
         return 1
     print(f"check_jni_signatures: {checked} JNI lookups match {JAVA}")
     return 0

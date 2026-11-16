@@ -623,13 +623,23 @@ adb logcat -d -s umbra:V > logcat-umbra-player.txt 2>&1
 if [ "$SPAWNED" = 1 ]; then
     grep -m1 "player: spawned at" logcat-umbra-player.txt | sed 's/.*umbra   : //' \
         | while IFS= read -r l; do say "player: $l"; done
-    # The body spawns a centimetre above the floor, so the first position line can
-    # still say "in the air" for a few frames. What matters is that it lands; the end
-    # of the phase checks that it is standing after walking.
-    if grep "player: at " logcat-umbra-player.txt | grep -q "on ground"; then
-        say "player: standing on the floor the world reported"
+    # The body spawns a centimetre above the floor and falls, so the first position
+    # lines say "in the air" until it lands. Run 43958738406 checked the log the
+    # instant after the spawn line and called that a failure; the same log had the
+    # body standing at 66.00 two seconds later. So: wait for it to land, and only
+    # then decide.
+    LANDED=0
+    DEADLINE=$((SECONDS + 20))
+    while [ $SECONDS -lt $DEADLINE ]; do
+        adb logcat -d -s umbra:V > logcat-umbra-player.txt 2>&1
+        if grep "player: at " logcat-umbra-player.txt | grep -q "on ground"; then LANDED=1; break; fi
+        sleep 2
+    done
+    if [ "$LANDED" = 1 ]; then
+        say "player: standing on the floor the world reported ($(grep "player: at " logcat-umbra-player.txt \
+            | grep -m1 "on ground" | sed 's/.*player: at //'))"
     else
-        err "player: spawned but never reported standing on the ground"
+        err "player: spawned but never reported standing on the ground in 20 s"
     fi
 else
     say "player: focus at failure: $(adb shell dumpsys window 2>/dev/null | grep -m1 mCurrentFocus | tr -s ' ' | cut -c1-120)"
