@@ -127,40 +127,24 @@ jobs:
         # does, on a copy of the real save with one chunk's status downgraded.
         run: |
           set -o pipefail
-          rm -rf build/partial && mkdir -p build/partial
+          rm -rf build/partial
+          mkdir -p build/partial
           cp -r build/server/run/world build/partial/world
-          python3 - <<'PYEOF'
-import glob, struct, zlib
-path = sorted(glob.glob("build/partial/world/dimensions/minecraft/overworld/region/*.mca")
-              or glob.glob("build/partial/world/region/*.mca"))[0]
-# Only the first chunk in the file: its status becomes a stage that is not "full",
-# which is exactly the shape of a save read mid-generation. The other chunks and the
-# header's sector table are left alone, so the only thing this changes is the status.
-raw = open(path, "rb").read()
-head = raw[:8192]
-start = struct.unpack(">I", head[0:4])[0] >> 8
-at = start * 4096
-size = struct.unpack(">I", raw[at:at + 4])[0]
-nbt = zlib.decompress(raw[at + 5:at + 4 + size])
-key = b"\x08\x00\x06Status"
-i = nbt.index(key)
-ln = struct.unpack(">H", nbt[i + len(key):i + len(key) + 2])[0]
-new = b"minecraft:features"
-out = nbt[:i + len(key)] + struct.pack(">H", len(new)) + new + nbt[i + len(key) + 2 + ln:]
-z = zlib.compress(out, 6)
-rec = struct.pack(">I", len(z) + 1) + b"\x02" + z
-# The new record has to occupy exactly as many sectors as the old one, or every chunk
-# after it in the file moves and the header's offsets stop matching. That is the whole
-# subtlety of editing a region file in place.
-was = 4 + size
-if len(rec) > was:
-    raise SystemExit(f"the new record is {len(rec)} bytes, the old one {was}")
-rec += b"\x00" * (was - len(rec))
-open(path, "wb").write(head + rec + raw[at + was:])
-print(f"downgraded one chunk's status in {path}")
-PYEOF
-          if build/umbra_worldload build/partial/world build/partial/dump.txt 2 \
-                2>&1 | tee build/partial/log.txt | grep -q "chunks are not .minecraft:full. yet"; then
+          python3 tools/downgrade_chunk_status.py build/partial/world minecraft:features
+          # The downgrade must not cost a single chunk: if the rewritten record had moved
+          # the ones behind it, this would read fewer than the original.
+          before="$(build/umbra_worldload build/server/run/world build/partial/before.txt 1 \
+                    | grep -oE 'chunks [0-9]+, non-air blocks [0-9]+' | head -1)"
+          after="$(build/umbra_worldload build/partial/world build/partial/after.txt 1 \
+                   2>&1 | tee build/partial/log.txt \
+                   | grep -oE 'chunks [0-9]+, non-air blocks [0-9]+' | head -1)"
+          echo "partial: original $before"
+          echo "partial: downgraded $after"
+          if [ "$before" != "$after" ]; then
+            echo "::error title=partial save::downgrading one status changed the chunk count"
+            exit 1
+          fi
+          if grep -q "chunks are not .minecraft:full. yet" build/partial/log.txt; then
             grep "not .minecraft:full" build/partial/log.txt | sed 's/^/world: /'
             echo "PASS: a partly generated save is named as such"
           else
