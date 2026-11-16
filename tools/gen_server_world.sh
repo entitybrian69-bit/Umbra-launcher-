@@ -12,8 +12,12 @@
 #
 # usage: tools/gen_server_world.sh <server.jar> <run dir>
 set -uo pipefail
-JAR="${1:-build/server/server.jar}"
-RUN="${2:-build/server/run}"
+# Absolute paths, because the script changes directory into the run dir and a relative
+# jar path would then point at nothing: the first version of this did exactly that and
+# java exited at once with "Unable to access jarfile", which is not a fact about the
+# world.
+JAR="$(realpath "${1:-build/server/server.jar}")"
+RUN="$(realpath -m "${2:-build/server/run}")"
 WAIT="${WORLD_WAIT:-600}"
 
 tidy() {
@@ -39,6 +43,7 @@ enable-command-block=false
 motd=umbra world
 EOF
 
+[ -f "$JAR" ] || { echo "ERROR: no server jar at $JAR"; exit 1; }
 java -Xmx1600M -jar "$JAR" nogui < /dev/null > server.log 2>&1 &
 PID=$!
 echo "server pid $PID, waiting up to ${WAIT}s for it to finish generating"

@@ -529,6 +529,12 @@ number quoted above from CI came through one of those channels.
 
 The owner set the order; it survives interruptions.
 
+**Continuing: (a) read the `world` run that this push starts and copy the real numbers
+from `evidence/world/read-real.txt` into "Stage 3, step 4"; (b) read the `hands` phase in
+the `android` run - if the phone contradicts anything above, the phone wins; (c) publish
+`v0.3.6-pre` from a green run; (d) then gate 6b's second half (client-vs-client rendered
+parity) and threaded meshing.**
+
 1. **Done:** `v0.3.0-pre` and `v0.3.1-pre` are published, each verified by
    re-download (`RELEASE_VERIFY.txt`), and `0.3.1` ran on the owner's phone.
 2. **Done:** gate 4 is closed on ARM at the host-suite level, with the caveat that
@@ -723,9 +729,63 @@ server jar from Mojang and checks it against the version JSON, `tools/gen_server
 runs it with a fixed seed until it says `Done`, stops it cleanly, and the same two
 readers then read *that* save. The server jar and the save are never committed.
 
-**State: implemented and host-verified on the synthetic world, CI run pending.** No real
-world has been read yet, so there is no real-world match rate in this file and none may
-be claimed.
+**State: implemented and host-verified on the synthetic world; the real half is failing
+in CI at the generation step and the cause was found on 2026-11-16.** Run `43800033517`
+(commit `764da22`) failed at step 8 with
+
+```
+server pid 2857, waiting up to 600s for it to finish generating
+ERROR: the server exited before it said it was done
+```
+
+and no log tail, because the script changed into the run directory and then handed java a
+*relative* jar path, so java exited at once with "Unable to access jarfile" - and the tail
+helper looked for `build/server/run/...` from inside `build/server/run`, so it printed
+nothing either. Both are fixed: the jar and the run directory are absolute (`realpath`)
+and the failure paths print the server's own log tail. The fixed script is host-verified
+here against a stub `java` on `PATH`: a fake server that prints `Done (1.9s)` and writes
+`world/region/r.0.0.mca` gives `PASS: the real server generated a world with 1 region
+file(s)` with `-jar /tmp/fakejar.jar` absolute; a missing jar gives `ERROR: no server jar
+at ...`; a java that dies immediately now prints its log (`java.lang.OutOfMemoryError:
+Java heap space`) instead of nothing. What the real server does is still unknown, so no
+real-world match rate may be claimed.
+
+## Step 5 in the working tree: hands (break and place), host-verified
+
+The phone had no way to change the world. It has one now, and it is the same code path
+the game uses in the only way that matters: a ray from the eye, a block of the world, and
+a re-mesh of the columns that changed.
+
+- `goose/core/demo.goose`: `demo_column_of`, `demo_block_at`, `demo_set_block`,
+  `demo_is_air`, `demo_raycast` (Amanatides-Woo DDA, 512 steps, `RayHit.face` in the
+  mesher's face order 0 -Y, 1 +Y, 2 -Z, 3 +Z, 4 -X, 5 +X), `demo_face_neighbour`.
+- `goose/main.goose`: the hotbar (`umbra_hotbar_count/selected/name/select`), the act
+  (`umbra_player_act(kind, eye, dir, reach)` -> `1` changed, `0` nothing in reach, `-1`
+  refused, `-2` busy meshing), `umbra_act_text`, `umbra_player_target`, `umbra_block_at`,
+  `umbra_set_block`. Default hotbar: grass_block, dirt, stone, oak_log, oak_slab.
+- `platform/shared/umbra_hud.h`: five 40 px slots bottom-centre above the inset, two
+  action buttons (BREAK, PLACE) stacked bottom-right, and hit tests that use the same
+  arithmetic as the drawing.
+- `platform/shared/umbra_app.c`: the taps, the drawing, the "hands:" overlay line, and the
+  re-mesh. An edit does not blank the world: the old mesh stays uploaded until the new one
+  is complete, which matters because a whole-world re-mesh is about 5 s on the emulator
+  and there is no per-column cache yet (D-043).
+
+Host evidence (`platform/pc/headless_main.c`, `PASS: 207 checks, 0 failures`, was 174):
+
+- a ray from above the world hits the grass block by name (`minecraft:grass_block`);
+- breaking it returns `1`, says `broke ...`, the cell changes, the re-mesh finishes and the
+  mesh size differs;
+- placing the selected slab returns `1` and the cell then holds `minecraft:oak_slab`;
+- a ray that reaches nothing returns `0`; a placement that would land outside the world
+  returns `-1`;
+- the five slots are on screen at 1080x1920 with phone insets, 1920x1080 and 800x1280,
+  never overlap the action buttons, and a tap in the middle of a slot or a button hits
+  exactly that slot or button.
+
+The emulator run has a new `hands` phase that reads the rects the app logs, taps the slab
+slot, drags to look down, taps BREAK (fails the run if the world did not change), waits
+for the re-mesh, then taps PLACE. Its result is not in this file yet.
 
 ## Parity table (what is and is not the same as the game)
 
@@ -738,6 +798,8 @@ be claimed.
 | Textures from the jar | yes, host-verified | 469 textures packed into a 512x512 atlas, `6144` texels compared with the jar's PNGs, `0 differ`; the phone still ships the 12 placeholder tiles (D-039) |
 | A world drawn from the jar's models and textures | CI-verified picture | `goose/jrender.goose` -> `evidence/jar/world.png`, compared with its reference by `tools/check_world_shot.py` |
 | A body you can walk with | yes | 24 host checks, and the device run above |
+| Breaking and placing blocks | yes, host-verified | 33 host checks over the ray, the edit and the re-mesh, all three layouts; the emulator `hands` phase is unverified |
 | Water, ladders, sneaking, swimming, mobs, survival, multiplayer | **no** | not implemented |
-| Reading a world from a real save | implemented, synthetic-verified | two independent readers, `24673 of 24673` blocks, 100.00%; the real server's save runs in the `world` workflow |
+| Reading a world from a real save | implemented, synthetic-verified | two independent readers, `24673 of 24673` blocks, 100.00%; the real server's save has not been read yet (step 8 of the `world` workflow failed three times; the third cause is fixed and unverified) |
 | Rendered world matches the real client | **not measured** | gate 6b second half: nothing compares two renders yet |
+| Threaded meshing | **no** | one step per frame on the render thread; a re-mesh after an edit stalls nothing but takes ~5 s |

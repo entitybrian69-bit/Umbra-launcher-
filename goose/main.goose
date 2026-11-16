@@ -545,6 +545,114 @@ export fn umbra_world_max_x() -> f32 { return 48.0 }
 export fn umbra_world_min_z() -> f32 { return 0.0 }
 export fn umbra_world_max_z() -> f32 { return 48.0 }
 
+// --- the player's hands --------------------------------------------------
+//
+// A short list of blocks to put down, and one action on the block under the crosshair.
+// The ray, the world edit and the re-mesh all happen on this side: C owns the finger and
+// the pixels, and asking it to also know what a block is would put the same rule in two
+// places.
+//
+// A re-mesh after an edit is the same sliced state machine as the first one, so an edit
+// cannot freeze the frame loop: the C loop asks for the next slice with a budget and
+// draws between them. On the CI emulator the whole world re-meshes in about five
+// seconds, which is the cost of not yet having per-column caching (see STATUS).
+
+var hb_ids: u32[>..] = [];
+var hb_sel: i64 = 0;
+var act_text: u8[>..] = [];
+
+fn hotbar_init() {
+    if hb_ids.len > 0 { return; }
+    hb_ids.push(bs_intern("minecraft:grass_block", "snowy=false"));
+    hb_ids.push(bs_intern("minecraft:dirt", ""));
+    hb_ids.push(bs_intern("minecraft:stone", ""));
+    hb_ids.push(bs_intern("minecraft:oak_log", "axis=y"));
+    hb_ids.push(bs_intern("minecraft:oak_slab", "type=bottom"));
+}
+
+export fn umbra_hotbar_count() -> i64 { hotbar_init(); return hb_ids.len }
+export fn umbra_hotbar_selected() -> i64 { return hb_sel }
+
+// The block's name without its namespace: what the HUD has room for.
+export "umbra_hotbar_name" fn hotbar_name(i: i64) -> const u8[:] {
+    hotbar_init();
+    if i < 0 || i >= hb_ids.len { return ""; }
+    return bs_path(bs_name(hb_ids[i]))
+}
+
+export "umbra_hotbar_select" fn hotbar_select(i: i64) -> i64 {
+    hotbar_init();
+    if i >= 0 && i < hb_ids.len { hb_sel = i; }
+    return hb_sel;
+}
+
+export "umbra_act_text" fn act_text_export() -> const u8[:] { return act_text }
+
+fn act_say(what: const u8[:], name: const u8[:], x: i32, y: i32, z: i32) {
+    act_text = [];
+    act_text.append(what);
+    act_text.append(" ");
+    act_text.append(name);
+    act_text.append(" at ");
+    format(act_text, x, " ", y, " ", z);
+}
+
+// 0 breaks, 1 places. Returns 1 when the world changed, 0 when nothing was in reach,
+// -1 when the edit was refused, -2 when a re-mesh is already running.
+export "umbra_player_act" fn player_act(kind: i64, ex: f32, ey: f32, ez: f32,
+                                       dx: f32, dy: f32, dz: f32, reach: f32) -> i64 {
+    hotbar_init();
+    if dm_state == 1 { act_text = []; act_text.append("busy: still meshing"); return -2; }
+    let h = demo_raycast(ex, ey, ez, dx, dy, dz, reach);
+    if kind == 0 {
+        if !h.hit { act_text = []; act_text.append("nothing in reach"); return 0; }
+        let name = bs_name(h.id);
+        if !demo_set_block(h.x, h.y, h.z, 0) {
+            act_text = []; act_text.append("that block is outside the world");
+            return -1;
+        }
+        act_say("broke", bs_path(name), h.x, h.y, h.z);
+        demo_mesh_begin();
+        return 1;
+    }
+    // A place needs a face to place against.
+    if !h.hit || h.face < 0 {
+        act_text = []; act_text.append("nothing to build on");
+        return 0;
+    }
+    var cell: i32[3] = [0, 0, 0];
+    demo_face_neighbour(h, cell);
+    if !demo_is_air(demo_block_at(cell[0], cell[1], cell[2])) {
+        act_text = []; act_text.append("that space is taken");
+        return -1;
+    }
+    let id = hb_ids[hb_sel];
+    if !demo_set_block(cell[0], cell[1], cell[2], id) {
+        act_text = []; act_text.append("outside the world");
+        return -1;
+    }
+    act_say("placed", bs_path(bs_name(id)), cell[0], cell[1], cell[2]);
+    demo_mesh_begin();
+    return 1;
+}
+
+// What a ray from the player's eye would hit, for the host checks and the HUD.
+export "umbra_player_target" fn player_target(ex: f32, ey: f32, ez: f32, dx: f32, dy: f32,
+                                              dz: f32, reach: f32) -> i64 {
+    let h = demo_raycast(ex, ey, ez, dx, dy, dz, reach);
+    if !h.hit { return -1; }
+    return (h.y as i64) * 1000000 + (h.z as i64) * 1000 + (h.x as i64);
+}
+
+export "umbra_block_at" fn block_at_export(x: i32, y: i32, z: i32) -> const u8[:] {
+    return bs_name(demo_block_at(x, y, z))
+}
+
+export "umbra_set_block" fn set_block_export(x: i32, y: i32, z: i32, name: const u8[:]) -> i64 {
+    let id = bs_intern(name, "");
+    return if demo_set_block(x, y, z, id) { 1 } else { 0 }
+}
+
 export "umbra_batch_start" fn world_batch_start(b: i64) -> i64 { return world_starts[b] }
 export "umbra_batch_count" fn world_batch_count(b: i64) -> i64 { return world_batches[b] }
 

@@ -600,6 +600,83 @@ else
     err "player: a tap did not ask for a jump"
 fi
 
+# ---- 6c. the hands: a hotbar, a break and a place --------------------------------
+# The two action buttons and the five slots are drawn from the same arithmetic the taps
+# are tested against, and the app logs their rects, so this taps what is on the screen
+# rather than what the script hopes is there.
+phase "hands"
+HANDS_READY=0
+DEADLINE=$((SECONDS + 30))
+while [ $SECONDS -lt $DEADLINE ]; do
+    if adb logcat -d -s umbra:V 2>/dev/null | grep -q "hud: hand place at "; then HANDS_READY=1; break; fi
+    sleep 2
+done
+[ "$HANDS_READY" = 1 ] || die "hands: the app never drew the hand controls in first person"
+# "hud: hand hotbar 4 at 900,1550 size 49x49 on 1080x1920"
+hand_rect() {
+    adb logcat -d -s umbra:V 2>/dev/null | grep "hud: hand $1 at " | tail -1 \
+        | sed 's/.* at //' | sed 's/ on .*//'
+}
+tap_hand() {
+    RECT="$(hand_rect "$1")"
+    POS="${RECT%% size *}"
+    SIZE="${RECT#*size }"
+    HX="${POS%%,*}"
+    HY="${POS#*,}"
+    HW="${SIZE%%x*}"
+    HH="${SIZE#*x}"
+    adb shell input tap $(( HX + HW / 2 )) $(( HY + HH / 2 )) > /dev/null 2>&1 \
+        || say "hands: the tap at $(( HX + HW / 2 )),$(( HY + HH / 2 )) failed"
+    say "hands: tapped $1 at $(( HX + HW / 2 )),$(( HY + HH / 2 )) (rect $RECT)"
+}
+say "hands: $(adb logcat -d -s umbra:V 2>/dev/null | grep -c "hud: hand ") hand-control rects logged"
+# A slab is slot 4; selecting it must say so in the log.
+tap_hand "hotbar 4"
+sleep 1
+if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: hotbar slot 4 selected (oak_slab)"; then
+    say "hands: the hotbar selected the slab"
+else
+    die "hands: tapping the slab slot did not select it"
+fi
+# Look down at the ground before breaking: the crosshair has to be on a block within
+# reach, and a level gaze at the horizon reaches nothing.
+adb shell input swipe $(( P_WIDTH / 3 )) $(( P_HEIGHT / 2 )) \
+    $(( P_WIDTH / 3 )) $(( P_HEIGHT * 3 / 4 )) 500 > /dev/null 2>&1 \
+    || say "hands: the look-down drag failed"
+sleep 1
+PITCH_NOW="$(adb logcat -d -s umbra:V 2>/dev/null | grep "player: at " | tail -1 \
+    | sed 's/.*pitch \([-0-9]*\).*/\1/')"
+say "hands: looking down at pitch $PITCH_NOW"
+tap_hand "break"
+sleep 2
+if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: break -> 1"; then
+    say "hands: $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "player: break -> 1" \
+        | sed 's/.*umbra   : //')"
+else
+    die "hands: a break on the ground ahead changed nothing: $(adb logcat -d -s umbra:V 2>/dev/null | grep "player: break" | tail -2 | tr '\n' '|')"
+fi
+# The edit re-meshes the world; the app is only ready again when it says so.
+REMESHED=0
+DEADLINE=$((SECONDS + 60))
+while [ $SECONDS -lt $DEADLINE ]; do
+    if adb logcat -d -s umbra:V 2>/dev/null | grep -q "startup: meshed in"; then REMESHED=1; break; fi
+    sleep 2
+done
+[ "$REMESHED" = 1 ] && say "hands: the world was re-meshed after the edit" \
+    || err "hands: no re-mesh line after the edit"
+sleep 2
+tap_hand "place"
+sleep 2
+if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: place -> 1"; then
+    say "hands: $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "player: place -> 1" \
+        | sed 's/.*umbra   : //')"
+else
+    err "hands: the placement changed nothing: $(adb logcat -d -s umbra:V 2>/dev/null | grep "player: place" | tail -2 | tr '\n' '|')"
+fi
+adb exec-out screencap -p > "shot-hands.png" 2>/dev/null || true
+say "hands: shot-hands.png is $(stat -c%s shot-hands.png 2>/dev/null || echo 0) bytes"
+adb logcat -d -s umbra:V > logcat-umbra-hands.txt 2>&1
+
 # ---- 7. soak --------------------------------------------------------------------
 phase "soak"
 say "soak: holding for ${SOAK_SECONDS}s"

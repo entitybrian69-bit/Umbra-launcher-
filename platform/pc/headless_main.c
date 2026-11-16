@@ -716,6 +716,128 @@ int main(int argc, char **argv) {
         check(fabsf(fwd[0] - 1.0f) < 0.001f, "and at a quarter turn it looks down +X");
     }
 
+    // --- the hands: a hotbar, a ray, and an edit that survives a re-mesh ---
+    {
+        check(umbra_hotbar_count() == 5, "the hotbar has five slots");
+        int64_t len = 0;
+        const uint8_t *name = umbra_hotbar_name(0, &len);
+        check(len == (int64_t)strlen("grass_block") &&
+              memcmp(name, "grass_block", (size_t)len) == 0,
+              "slot 0 is a grass block, named without its namespace");
+        check(umbra_hotbar_select(2) == 2, "a slot can be selected");
+        name = umbra_hotbar_name(2, &len);
+        check(len == (int64_t)strlen("stone") && memcmp(name, "stone", (size_t)len) == 0,
+              "and the selected slot is stone");
+        check(umbra_hotbar_select(99) == 2, "a slot outside the hotbar is refused");
+        check(umbra_hotbar_select(0) == 0, "and the selection can go back");
+
+        // Looking straight down from above the world hits the top of the grass.
+        int64_t target = umbra_player_target(24.5f, 70.0f, 24.5f, 0.0f, -1.0f, 0.0f, 5.0f);
+        check(target > 0, "a ray from above the world hits a block");
+        int tx = (int)(target % 1000), tz = (int)((target / 1000) % 1000), ty = (int)(target / 1000000);
+        check(tx == 24 && tz == 24, "the hit is in the column the ray was fired down");
+        int64_t hit_len = 0;
+        const uint8_t *hit_name = umbra_block_at(tx, ty, tz, &hit_len);
+        check(hit_name != NULL && hit_len > 0, "the block that was hit has a name");
+
+        int64_t before_len = 0;
+        const uint8_t *before = umbra_block_at(tx, ty, tz, &before_len);
+        check(before_len == (int64_t)strlen("minecraft:grass_block") &&
+              memcmp(before, "minecraft:grass_block", (size_t)before_len) == 0,
+              "the ray hit a grass block, by name");
+
+        // Break it: the world changes and a re-mesh starts.
+        int64_t v0 = umbra_vert_count();
+        int64_t code = umbra_player_act(0, 24.5f, 70.0f, 24.5f, 0.0f, -1.0f, 0.0f, 5.0f);
+        check(code == 1, "breaking the block under the ray reports that the world changed");
+        int64_t alen = 0;
+        const uint8_t *said = umbra_act_text(&alen);
+        check(alen > 0 && memcmp(said, "broke ", 6) == 0, "and says what it broke");
+        int64_t after_len = 0;
+        const uint8_t *after = umbra_block_at(tx, ty, tz, &after_len);
+        check(after_len != before_len || memcmp(after, "minecraft:grass_block", (size_t)after_len) != 0,
+              "the cell the ray hit no longer holds that block");
+        int64_t tries = 0;
+        int done = 0;
+        while (!done && tries < 100000) {
+            done = (int)umbra_demo_mesh_step(1000000);
+            tries++;
+            if (tries > 20000) break;
+        }
+        check(done == 1, "the re-mesh after an edit finishes");
+        int64_t v1 = umbra_vert_count();
+        check(v1 != v0, "and the mesh is not the same size as before the edit");
+
+        // Put a slab into the hole: the ray reaches the dirt under it, and a placement
+        // goes on the face it hit.
+        check(umbra_hotbar_select(4) == 4, "the slab slot selects");
+        int64_t placed = umbra_player_act(1, 24.5f, 70.0f, 24.5f, 0.0f, -1.0f, 0.0f, 5.0f);
+        check(placed == 1, "placing a block reports that the world changed");
+        int64_t slab_len = 0;
+        // The ray now reaches the dirt under the hole, so the slab lands in the hole.
+        const uint8_t *slab = umbra_block_at(tx, ty, tz, &slab_len);
+        check(slab_len == (int64_t)strlen("minecraft:oak_slab") &&
+              memcmp(slab, "minecraft:oak_slab", (size_t)slab_len) == 0,
+              "and the selected block is what stands there now");
+
+        tries = 0;
+        done = 0;
+        while (!done && tries < 20000) {
+            done = (int)umbra_demo_mesh_step(1000000);
+            tries++;
+        }
+        check(done == 1, "the re-mesh after a placement finishes too");
+
+        // A ray that reaches nothing changes nothing, and says so.
+        int64_t nothing = umbra_player_act(0, 24.5f, 400.0f, 24.5f, 0.0f, -1.0f, 0.0f, 5.0f);
+        check(nothing == 0, "a ray that reaches nothing changes nothing");
+
+        // A placement that would land outside the world is refused, not wrapped into
+        // another column: aim at the world's edge column from the outside.
+        int64_t outside = umbra_player_act(1, -2.5f, 65.5f, 24.5f, 1.0f, 0.0f, 0.0f, 5.0f);
+        check(outside == -1, "a placement outside the world is refused");
+    }
+
+    // --- the hand controls fit the screen and the taps agree with the pixels ---
+    {
+        const int32_t no_insets[4] = { 0, 0, 0, 0 };
+        const int32_t phone_insets[4] = { 0, 63, 0, 126 };
+        struct { int w, h; const int32_t *in; float scale; } cases[3] = {
+            { 1080, 1920, phone_insets, 3.5f },
+            { 1920, 1080, no_insets, 3.5f },
+            { 800, 1280, no_insets, 1.0f },
+        };
+        for (int c = 0; c < 3; c++) {
+            int w = cases[c].w, h = cases[c].h;
+            float s = cases[c].scale;
+            int inside = 1, overlap = 0;
+            for (int i = 0; i < UMBRA_HOTBAR_SLOTS; i++) {
+                umbra_rect r = umbra_hud_hotbar_slot(i, w, h, cases[c].in, s);
+                if (r.x < 0 || r.y < 0 || r.x + r.w > (float)w || r.y + r.h > (float)h) inside = 0;
+                for (int a = 0; a < 2; a++) {
+                    umbra_rect b = umbra_hud_action(a, w, h, cases[c].in, s);
+                    if (r.x < b.x + b.w && b.x < r.x + r.w && r.y < b.y + b.h && b.y < r.y + r.h) overlap = 1;
+                }
+            }
+            check(inside, "every hotbar slot is on the screen");
+            check(!overlap, "the action buttons do not sit on top of the hotbar");
+            int hits = 1;
+            for (int i = 0; i < UMBRA_HOTBAR_SLOTS; i++) {
+                umbra_rect r = umbra_hud_hotbar_slot(i, w, h, cases[c].in, s);
+                if (umbra_hud_hotbar_hit((int)(r.x + r.w * 0.5f), (int)(r.y + r.h * 0.5f),
+                                         w, h, cases[c].in, s) != i) hits = 0;
+            }
+            check(hits, "a tap in the middle of a slot selects that slot");
+            int actions = 1;
+            for (int a = 0; a < 2; a++) {
+                umbra_rect r = umbra_hud_action(a, w, h, cases[c].in, s);
+                if (umbra_hud_action_hit((int)(r.x + r.w * 0.5f), (int)(r.y + r.h * 0.5f),
+                                         w, h, cases[c].in, s) != a) actions = 0;
+            }
+            check(actions, "a tap in the middle of a button presses that button");
+        }
+    }
+
     goose_exit();
     printf("%s: %d checks, %d failures\n", failures ? "FAILED" : "PASS", checks, failures);
     return failures ? 1 : 0;

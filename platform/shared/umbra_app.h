@@ -68,6 +68,16 @@ struct umbra_app {
     int touch_moved;        // this finger has turned the head instead of resting
     int64_t touch_down_us;
     int64_t player_logged_us;
+    // The hotbar and the two action buttons. `act_wanted` is what a tap asked for (0
+    // break, 1 place, -1 nothing) and is consumed once per frame; `act_text` is what
+    // Goose said it did, printed in the overlay and logged, so a phone report says
+    // "broke grass_block at 24 65 24" instead of "nothing happened".
+    int hotbar_sel;
+    int act_wanted;
+    char act_text[96];
+    int act_edits;              // how many blocks were changed this session
+    int tap_used;               // this finger was answered by a control, not the world
+    int hands_logged_width;     // the width the hand controls' rects were logged at
     float look[3];      // the point the home view is aimed at
     float eye[3];       // where the camera is; shown in the HUD and logged
     float fov_y;

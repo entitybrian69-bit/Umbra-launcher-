@@ -1753,6 +1753,53 @@ static void player_update(umbra_app *app) {
     }
 }
 
+// The block under the crosshair: what the ray from the eye hits, and what the two
+// buttons do to it. The work is Goose's (ray, edit, re-mesh); this only carries the
+// eye and the look direction and reports what came back.
+static void player_act(umbra_app *app) {
+    if (app->act_wanted < 0) return;
+    int kind = app->act_wanted;
+    app->act_wanted = -1;
+    if (!app->player_on) return;
+    if (app->mesh_state == 1) {
+        umbra_log(app, "player: %s refused, still meshing",
+                  kind == 0 ? "break" : "place");
+        return;
+    }
+    float eye[3], fwd[3];
+    umbra_player_eye(&app->player, eye);
+    umbra_player_forward(&app->player, fwd);
+    int64_t code = umbra_player_act((int64_t)kind, eye[0], eye[1], eye[2],
+                                    fwd[0], fwd[1], fwd[2], UMBRA_PLAYER_REACH);
+    const uint8_t *said = NULL;
+    int64_t said_len = 0;
+    said = umbra_act_text(&said_len);
+    int n = 0;
+    if (said && said_len > 0) {
+        for (int64_t i = 0; i < said_len && n + 1 < (int)sizeof app->act_text; i++) {
+            app->act_text[n++] = (char)said[i];
+        }
+    }
+    app->act_text[n] = 0;
+    umbra_log(app, "player: %s -> %lld (%s)", kind == 0 ? "break" : "place",
+              (long long)code, app->act_text[0] ? app->act_text : "no change");
+    if (code == 1) {
+        // The world changed, and Goose has begun a re-mesh: the frame loop picks it up
+        // through the same sliced stepper as the first mesh, so nothing is uploaded
+        // until the new mesh is complete.
+        app->act_edits++;
+        app->mesh_state = 1;
+        app->mesh_progress = 0;
+        app->mesh_calls = 0;
+        app->mesh_total_us = 0;
+        app->mesh_worst_call_us = 0;
+        // The old mesh stays on screen and stays uploaded while the new one is built:
+        // blanking the world for five seconds is worse than a block that disappears a
+        // few frames late.
+        umbra_log(app, "player: re-meshing the world after edit %d", app->act_edits);
+    }
+}
+
 // --- frame --------------------------------------------------------------
 
 static void draw_scene(umbra_app *app) {
@@ -1889,6 +1936,58 @@ static int hud_rows(const umbra_app *app) {
     return whole;
 }
 
+// The hotbar and the two action buttons. Drawn only in first person, because in the
+// overview the buttons belong to the home screen; drawn from the same rects the taps
+// are tested against (umbra_hud.h), so what is drawn and what is tapped is one thing.
+static void draw_hands(umbra_app *app) {
+    if (!app->player_on) return;
+    if (app->mesh_state == 1) return;
+    float s = hud_scale(app);
+    // The automated run taps these by reading their rects back, so a layout change
+    // cannot silently make it tap empty space (the home screen's buttons are logged the
+    // same way, for the same reason).
+    if (app->hands_logged_width != app->width) {
+        app->hands_logged_width = app->width;
+        for (int i = 0; i < UMBRA_HOTBAR_SLOTS; i++) {
+            umbra_rect r = umbra_hud_hotbar_slot(i, app->width, app->height, app->insets, s);
+            umbra_log(app, "hud: hand hotbar %d at %d,%d size %dx%d on %dx%d", i,
+                      (int)r.x, (int)r.y, (int)r.w, (int)r.h, app->width, app->height);
+        }
+        for (int i = 0; i < 2; i++) {
+            umbra_rect r = umbra_hud_action(i, app->width, app->height, app->insets, s);
+            umbra_log(app, "hud: hand %s at %d,%d size %dx%d on %dx%d",
+                      i == 0 ? "break" : "place", (int)r.x, (int)r.y, (int)r.w, (int)r.h,
+                      app->width, app->height);
+        }
+    }
+    for (int i = 0; i < UMBRA_HOTBAR_SLOTS; i++) {
+        umbra_rect r = umbra_hud_hotbar_slot(i, app->width, app->height, app->insets, s);
+        int sel = (i == app->hotbar_sel);
+        hud_rect(r.x, r.y, r.w, r.h, sel ? 1.0f : 0.0f, sel ? 0.85f : 0.0f,
+                 sel ? 0.3f : 0.0f, sel ? 0.55f : 0.35f);
+        const uint8_t *name = NULL;
+        int64_t name_len = 0;
+        name = umbra_hotbar_name((int64_t)i, &name_len);
+        char label[32];
+        int n = 0;
+        for (int64_t k = 0; k < name_len && n + 1 < (int)sizeof label; k++) {
+            label[n++] = (char)name[k];
+        }
+        label[n] = 0;
+        float tw = hud_text_width(label, s * 0.7f);
+        hud_text(r.x + (r.w - tw) * 0.5f, r.y - UMBRA_HUD_ROW_HEIGHT * s * 0.9f, s * 0.7f,
+                 sel ? 1.0f : 0.75f, sel ? 0.95f : 0.8f, sel ? 0.6f : 0.85f, 1, label);
+    }
+    static const char *action_names[2] = { "BREAK", "PLACE" };
+    for (int i = 0; i < 2; i++) {
+        umbra_rect r = umbra_hud_action(i, app->width, app->height, app->insets, s);
+        hud_rect(r.x, r.y, r.w, r.h, i == 0 ? 0.75f : 0.25f, i == 0 ? 0.25f : 0.55f, 0.25f, 0.5f);
+        float tw = hud_text_width(action_names[i], s * 0.8f);
+        hud_text(r.x + (r.w - tw) * 0.5f, r.y + (r.h - UMBRA_HUD_ROW_HEIGHT * s * 0.8f) * 0.5f,
+                 s * 0.8f, 1, 1, 1, 1, action_names[i]);
+    }
+}
+
 static void draw_hud(umbra_app *app) {
     hud_begin();
     float s = hud_scale(app);
@@ -1953,6 +2052,11 @@ static void draw_hud(umbra_app *app) {
     }
     hud_text(x, y, s, 0.7f, 0.85f, 0.7f, 1, buf);
     y += line;
+    if (app->act_text[0]) {
+        snprintf(buf, sizeof buf, "hands: %s  (%d edits)", app->act_text, app->act_edits);
+        hud_text(x, y, s, 0.9f, 0.9f, 0.6f, 1, buf);
+        y += line;
+    }
     if (app->selftest_ran) {
         hud_text(x, y, s, app->selftest_ok ? 0.4f : 1.0f, app->selftest_ok ? 1.0f : 0.3f, 0.4f, 1,
                  app->selftest_text);
@@ -2033,6 +2137,7 @@ static void draw_hud(umbra_app *app) {
                       hud_rows(app), content_bottom, panel_h);
         }
     }
+    draw_hands(app);
     hud_flush(app);
 }
 
@@ -2072,6 +2177,7 @@ void umbra_app_frame(umbra_app *app) {
                   app->mesh_progress / 10, (long long)app->mesh_calls);
     }
     pump_mesh(app);
+    player_act(app);
 
     // The self-test goes first, and one bounded step of it per frame: it draws
     // into its own target, and in the fallback path (no offscreen target) it reads
@@ -2160,8 +2266,14 @@ void umbra_app_touch_id(umbra_app *app, int32_t id, int32_t x, int32_t y, int32_
             // person is a jump. A long one was already walking.
             int64_t held = umbra_now_us() - app->touch_down_us;
             if (phase == 2 && !app->touch_moved && held < 180000 && app->player_on) {
-                app->jump_wanted = 1;
-                umbra_log(app, "player: tap, jumping");
+                // A tap that landed on the hotbar or on a hand button was already
+                // answered when the finger went down; only a tap on the world jumps.
+                if (app->tap_used) {
+                    app->tap_used = 0;
+                } else {
+                    app->jump_wanted = 1;
+                    umbra_log(app, "player: tap, jumping");
+                }
             }
         }
         if (app->touch_walk_id == id) {
@@ -2171,6 +2283,7 @@ void umbra_app_touch_id(umbra_app *app, int32_t id, int32_t x, int32_t y, int32_
         return;
     }
     if (phase == 0) {
+        app->tap_used = 0;
         app->touch_down_us = umbra_now_us();
         app->touch_last_x = (float)x;
         app->touch_last_y = (float)y;
@@ -2226,6 +2339,41 @@ void umbra_app_touch_id(umbra_app *app, int32_t id, int32_t x, int32_t y, int32_
         }
     }
     // Not a button: this finger is on the world.
+    if (app->player_on && app->mesh_state == 2) {
+        // The hotbar and the two action buttons take the tap when it lands on them.
+        float hs = hud_scale(app);
+        if (phase == 0) {
+            int slot = umbra_hud_hotbar_hit(x, y, app->width, app->height, app->insets, hs);
+            if (slot >= 0) {
+                app->hotbar_sel = (int)umbra_hotbar_select((int64_t)slot);
+                app->tap_used = 1;
+                const uint8_t *nm = NULL;
+                int64_t nm_len = 0;
+                nm = umbra_hotbar_name((int64_t)app->hotbar_sel, &nm_len);
+                char name[32];
+                int k = 0;
+                for (int64_t j = 0; j < nm_len && k + 1 < (int)sizeof name; j++) {
+                    name[k++] = (char)nm[j];
+                }
+                name[k] = 0;
+                umbra_log(app, "player: hotbar slot %d selected (%s)", app->hotbar_sel, name);
+                return;
+            }
+            int action = umbra_hud_action_hit(x, y, app->width, app->height, app->insets, hs);
+            if (action >= 0) {
+                // Consumed on the next frame, not here: the edit re-meshes, and an edit
+                // in the middle of event dispatch is an edit in the middle of the GL
+                // driver's state.
+                app->act_wanted = action;
+                app->tap_used = 1;
+                umbra_log(app, "player: %s tapped", action == 0 ? "break" : "place");
+                return;
+            }
+        } else if (phase == 1) {
+            // A finger that started on a hand control does not also turn the head.
+            if (app->tap_used) return;
+        }
+    }
     if (!app->player_on) {
         // The overview is where the buttons live; touching the world starts walking.
         // The first touch is not also a drag, so the view does not jump on entry.

@@ -114,3 +114,123 @@ fn demo_build(seed: i64) {
     }
 }
 
+
+// --- looking at a block, and changing one --------------------------------
+//
+// The demo world is 9 columns of 16, so a world position is a column index plus an
+// offset. Everything here refuses a position outside it rather than wrapping: an edit
+// that silently lands in another column looks like a rendering bug.
+
+fn demo_column_of(wx: i32, wz: i32) -> i64 {
+    if wx < 0 || wz < 0 { return -1; }
+    let cx = wx / 16;
+    let cz = wz / 16;
+    for i in demo.len {
+        if demo[i].x == cx as i32 && demo[i].z == cz as i32 { return i; }
+    }
+    return -1;
+}
+
+fn demo_block_at(wx: i32, wy: i32, wz: i32) -> u32 {
+    let i = demo_column_of(wx, wz);
+    if i < 0 { return 0; }
+    return chunk_block(demo[i], wx % 16, wy, wz % 16);
+}
+
+fn demo_set_block(wx: i32, wy: i32, wz: i32, id: u32) -> bool {
+    let i = demo_column_of(wx, wz);
+    if i < 0 { return false; }
+    chunk_set_block(demo[i], wx % 16, wy, wz % 16, id);
+    return true;
+}
+
+fn demo_is_air(id: u32) -> bool {
+    if id == 0 { return true; }
+    let n = bs_name(id);
+    if eq_bytes(n, "minecraft:air") { return true; }
+    if eq_bytes(n, "minecraft:cave_air") { return true; }
+    return false;
+}
+
+struct RayHit {
+    hit: bool,
+    x: i32, y: i32, z: i32,
+    // Which side of the block was hit, in the mesher's face order: 0 -Y, 1 +Y, 2 -Z,
+    // 3 +Z, 4 -X, 5 +X. A placement goes on that side.
+    face: i64,
+    id: u32,
+}
+
+// A ray walked cell by cell (the "amanatides and woo" traversal): step to whichever
+// axis boundary is nearest and check the cell entered. A ray that starts inside a block
+// hits it, which is what a body inside a wall should see.
+fn demo_raycast(fx: f32, fy: f32, fz: f32, dx: f32, dy: f32, dz: f32, reach: f32) -> RayHit {
+    var out = RayHit { hit: false, x: 0, y: 0, z: 0, face: -1, id: 0 };
+    var len = dx * dx + dy * dy + dz * dz;
+    if len <= 0.0 { return out; }
+    let inv = 1.0 / len;
+    let nx = dx * inv;
+    let ny = dy * inv;
+    let nz = dz * inv;
+    var x = fx as i32;
+    var y = fy as i32;
+    var z = fz as i32;
+    // Floor, not truncate: a negative coordinate truncates towards zero, which would
+    // put the ray in the wrong cell.
+    if fx < 0.0 && (fx as f32) != fx { x -= 1; }
+    if fy < 0.0 && (fy as f32) != fy { y -= 1; }
+    if fz < 0.0 && (fz as f32) != fz { z -= 1; }
+    let stepx: i32 = if nx > 0.0 { 1 } else if nx < 0.0 { -1 } else { 0 };
+    let stepy: i32 = if ny > 0.0 { 1 } else if ny < 0.0 { -1 } else { 0 };
+    let stepz: i32 = if nz > 0.0 { 1 } else if nz < 0.0 { -1 } else { 0 };
+    let inf: f32 = 1e30;
+    var tmax_x = if stepx == 0 { inf } else if stepx > 0 { (1.0 - (fx - (x as f32))) / nx } else { ((x as f32) - fx) / nx };
+    var tmax_y = if stepy == 0 { inf } else if stepy > 0 { (1.0 - (fy - (y as f32))) / ny } else { ((y as f32) - fy) / ny };
+    var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
+    let tdx = if nx == 0.0 { inf } else { 1.0 / (if nx < 0.0 { 0.0 - nx } else { nx }) };
+    let tdy = if ny == 0.0 { inf } else { 1.0 / (if ny < 0.0 { 0.0 - ny } else { ny }) };
+    let tdz = if nz == 0.0 { inf } else { 1.0 / (if nz < 0.0 { 0.0 - nz } else { nz }) };
+    var travelled: f32 = 0.0;
+    var face: i64 = -1;
+    for _guard in 512 {
+        let id = demo_block_at(x, y, z);
+        if !demo_is_air(id) {
+            out.hit = true;
+            out.x = x; out.y = y; out.z = z;
+            out.face = face;
+            out.id = id;
+            return out;
+        }
+        if tmax_x <= tmax_y && tmax_x <= tmax_z {
+            travelled = tmax_x;
+            if travelled > reach { return out; }
+            x += stepx;
+            tmax_x += tdx;
+            face = if stepx > 0 { 4 } else { 5 };
+        } else if tmax_y <= tmax_z {
+            travelled = tmax_y;
+            if travelled > reach { return out; }
+            y += stepy;
+            tmax_y += tdy;
+            face = if stepy > 0 { 0 } else { 1 };
+        } else {
+            travelled = tmax_z;
+            if travelled > reach { return out; }
+            z += stepz;
+            tmax_z += tdz;
+            face = if stepz > 0 { 2 } else { 3 };
+        }
+    }
+    return out;
+}
+
+// The cell on the far side of `face` from a block: where a block would be placed.
+fn demo_face_neighbour(h: RayHit, out: i32[3]&) {
+    out[0] = h.x; out[1] = h.y; out[2] = h.z;
+    if h.face == 0 { out[1] = h.y - 1; }
+    if h.face == 1 { out[1] = h.y + 1; }
+    if h.face == 2 { out[2] = h.z - 1; }
+    if h.face == 3 { out[2] = h.z + 1; }
+    if h.face == 4 { out[0] = h.x - 1; }
+    if h.face == 5 { out[0] = h.x + 1; }
+}

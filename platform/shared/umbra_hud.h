@@ -151,6 +151,76 @@ static float umbra_hud_scene_shift(float panel_height, int height) {
     return -covered;
 }
 
+// The hotbar: five square slots at the bottom of the screen, centred, above the
+// navigation inset. The selected one is drawn larger and brighter. Its arithmetic is
+// here so the taps and the pixels cannot disagree: the emulator taps the same rect the
+// app drew, and the host suite checks a phone, a tablet and a landscape window.
+#define UMBRA_HOTBAR_SLOTS 5
+
+static umbra_rect umbra_hud_hotbar_slot(int i, int width, int height, const int32_t insets[4],
+                                        float scale) {
+    umbra_rect r = { 0, 0, 0, 0 };
+    if (i < 0 || i >= UMBRA_HOTBAR_SLOTS) return r;
+    float size = 14.0f * scale;
+    float gap = 3.0f * scale;
+    float total = UMBRA_HOTBAR_SLOTS * size + (UMBRA_HOTBAR_SLOTS - 1) * gap;
+    float x0 = ((float)width - total) * 0.5f;
+    float y0 = (float)height - (float)insets[3] - size - 8.0f * scale;
+    if (x0 < 4.0f) x0 = 4.0f;
+    r.x = x0 + (float)i * (size + gap);
+    r.y = y0;
+    r.w = size;
+    r.h = size;
+    return r;
+}
+
+static int umbra_hud_hotbar_hit(int x, int y, int width, int height, const int32_t insets[4],
+                                float scale) {
+    // A finger is not a pixel: grow each slot by a few pixels so a tap that lands on the
+    // gap still selects the slot next to it, and never returns -1 for a near miss.
+    float pad = 4.0f * scale;
+    for (int i = 0; i < UMBRA_HOTBAR_SLOTS; i++) {
+        umbra_rect r = umbra_hud_hotbar_slot(i, width, height, insets, scale);
+        if ((float)x >= r.x - pad && (float)x <= r.x + r.w + pad &&
+            (float)y >= r.y - pad && (float)y <= r.y + r.h + pad) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// Two action buttons above the hotbar, on the right: break and place. They are buttons
+// rather than gestures on the world because one finger already means look, walk and
+// jump, and a fourth meaning would be a mode nobody can see.
+static umbra_rect umbra_hud_action(int which, int width, int height, const int32_t insets[4],
+                                   float scale) {
+    umbra_rect r = { 0, 0, 0, 0 };
+    if (which < 0 || which > 1) return r;
+    float w = 34.0f * scale;
+    float h = 16.0f * scale;
+    float gap = 3.0f * scale;
+    float x1 = (float)width - (float)insets[2] - 8.0f * scale;
+    float y0 = (float)height - (float)insets[3] - 14.0f * scale - 2.0f * (h + gap);
+    r.x = x1 - w;
+    r.y = y0 + (float)which * (h + gap);
+    r.w = w;
+    r.h = h;
+    if (r.x < 4.0f) r.x = 4.0f;
+    return r;
+}
+
+static int umbra_hud_action_hit(int x, int y, int width, int height, const int32_t insets[4],
+                                float scale) {
+    for (int i = 0; i < 2; i++) {
+        umbra_rect r = umbra_hud_action(i, width, height, insets, scale);
+        if ((float)(x + 1) > r.x && (float)x < r.x + r.w &&
+            (float)(y + 1) > r.y && (float)y < r.y + r.h) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 // Is this pixel inside something the overlay draws -- its backdrop panel or one
 // of its buttons? The self-test compares the window when it cannot have an
 // offscreen target, and the overlay is part of that window; a comparison that
