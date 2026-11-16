@@ -225,7 +225,15 @@ def main() -> int:
     out_path = sys.argv[2]
     radius = int(sys.argv[3]) if len(sys.argv) > 3 else 1
 
+    # The classic layout keeps the overworld in <world>/region; 26.3 keeps it in
+    # <world>/dimensions/minecraft/overworld/region. Both are asked, in that order, and the
+    # answer is printed so the two readers' logs name the same directory.
     region_dir = os.path.join(world, "region")
+    if not os.path.isdir(region_dir):
+        alt = os.path.join(world, "dimensions", "minecraft", "overworld", "region")
+        if os.path.isdir(alt):
+            region_dir = alt
+    print(f"oracle: region dir {region_dir}")
     files = sorted(f for f in os.listdir(region_dir) if f.endswith(".mca"))
     if not files:
         print(f"oracle: FAIL no region files in {region_dir}", file=sys.stderr)
