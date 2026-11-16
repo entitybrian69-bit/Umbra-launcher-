@@ -42,6 +42,12 @@ fi
 # Radius 10 chunks around the origin: the detail lines only exist for chunks that are in
 # the save, and a radius-3 dump of this world came back with none of them.
 "$ROOT/build/umbra_worldload" "$RUN/world" "$RUN/goose-dump.txt" 10 || exit 1
+# The renderer reads the same save at radius 6 and prints its own non-air total. Reading it
+# here at the same radius is what makes the two numbers comparable: they come from the same
+# files, and a difference between them is a reader difference, not a window difference.
+"$ROOT/build/umbra_worldload" "$RUN/world" "$RUN/goose-dump6.txt" 6 \
+    | grep "^worldload: chunks" | sed 's/^/compare: at radius 6 /'
+
 grep -c '^detail ' "$RUN/goose-dump.txt" | sed 's/^/compare: detail lines for the grid: /'
 
 echo "== asking the server about every claim"

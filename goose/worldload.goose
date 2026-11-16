@@ -116,6 +116,12 @@ fn wl_int_arg(i: i64, def: i64) -> i64 {
 
 fn main() {
     if arg_count() < 3 { wl_usage(); }
+    // Id 0 is air, and the chunk decoder leans on it: an unset palette entry and an absent
+    // block are both 0. Without this the *first* state the save mentions takes id 0 and
+    // every block of it is silently dropped - on the real world that was 844k blocks read
+    // where the renderer saw 2.6 million, and a comparison against the server that was
+    // missing nine tenths of the world.
+    bs_reset();
     var dir: u8[>..] = [];
     arg(1, dir);
     var out_path: u8[>..] = [];
