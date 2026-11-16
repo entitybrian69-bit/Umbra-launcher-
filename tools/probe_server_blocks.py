@@ -6,13 +6,23 @@ usage: tools/probe_server_blocks.py <host> <port> <password> <umbra dump> <out.t
 For each coordinate of a grid, take the block and properties Umbra read out of the save
 and put the question to the game itself:
 
-    execute if block <x> <y> <z> <name>[<props>] run say UMBRA_YES
+    scoreboard players set probe umbra_probe 0
+    execute if block <x> <y> <z> <name>[<props>] run scoreboard players add probe umbra_probe 1
+    scoreboard players get probe umbra_probe        -> "probe has 1 [umbra_probe]"
 
 `execute if block` is true only when the block *and every property* match, so a reader
 that confuses `oak_log[axis=x]` with `oak_log[axis=y]`, or that reports a block the world
-does not have, is denied. The answer is unambiguous (`UMBRA_YES` present or not), which
-matters over RCON: a failed predicate answers with a message whose wording changes
-between versions.
+does not have, is denied.
+
+The verdict is read off a scoreboard rather than out of the command's reply because the
+reply is not dependable: `... run say UMBRA_YES` came back as an empty string for a
+predicate that must have been true (bedrock at the bottom of the world), and an empty
+reply cannot be told from a refusal (`say`'s message goes to chat). A number cannot be
+misread.
+
+Before the sample is taken, the same predicate is asked about a block that is certainly
+*not* there; if that one also scores 1, the oracle answers yes to everything and the whole
+comparison is worthless, so the probe stops.
 
 Why not `data get block`: in this server version that command answers only for block
 entities -- the first version of this tool asked it and got "The target block is not a
@@ -52,6 +62,12 @@ def command(sock, rid, text):
     sock.sendall(packet(rid, COMMAND, text))
     _rid, _kind, body = read_packet(sock)
     return body
+
+
+def score_of(body):
+    """`probe has 1 [umbra_probe]` -> 1; `Can't get value...` -> None."""
+    m = re.search(r"has (-?\d+)", body or "")
+    return int(m.group(1)) if m else None
 
 
 def scan_dump(path):
@@ -123,9 +139,9 @@ def main() -> int:
           f"asking about {len(coords)} of them")
 
     sock = connect(host, port, password)
-    lines = []
-    confirmed = denied = errors = 0
     rid = 100
+    confirmed = denied = errors = 0
+    lines = []
     try:
         # The chunks have to be loaded for a predicate to answer. The reader only kept
         # chunks that exist in the save, so this is the same region.
@@ -138,32 +154,60 @@ def main() -> int:
         except (EOFError, OSError) as exc:
             print(f"probe: forceload failed: {exc}", file=sys.stderr)
         time.sleep(2.0)
+        rid += 1
+        # Creating it twice is an error the server reports; the objective only has to exist.
+        print(f"probe: scoreboard: {command(sock, rid, 'scoreboard objectives add umbra_probe dummy')[:100]}")
+
+        def ask(x, y, z, state):
+            """1 if the server says `state` is at x y z, 0 if it denies it, None on error."""
+            nonlocal rid
+            rid += 1
+            command(sock, rid, "scoreboard players set probe umbra_probe 0")
+            rid += 1
+            command(sock, rid,
+                    f"execute if block {x} {y} {z} {state} run "
+                    f"scoreboard players add probe umbra_probe 1")
+            rid += 1
+            return score_of(command(sock, rid, "scoreboard players get probe umbra_probe"))
+
+        # A control: ask about a block that is not there. If the oracle says yes to this,
+        # it says yes to everything and the sample below would prove nothing.
+        cx, cy, cz = coords[0]
+        wrong = "minecraft:bedrock" if not dump[(cx, cy, cz)].startswith("minecraft:bedrock") \
+            else "minecraft:stone"
+        control = ask(cx, cy, cz, wrong)
+        print(f"probe: control: {wrong} at {cx} {cy} {cz} scores {control} "
+              f"(0 means the oracle can say no)")
+        if control != 0:
+            print("probe: FAIL the oracle accepts a block that is not there", file=sys.stderr)
+            sock.close()
+            return 1
 
         for (x, y, z) in coords:
             state = dump[(x, y, z)]
-            rid += 1
-            try:
-                answer = command(sock, rid,
-                                 f"execute if block {x} {y} {z} {state} run say UMBRA_YES")
-            except (EOFError, OSError) as exc:
-                print(f"probe: the connection failed at {x} {y} {z}: {exc}", file=sys.stderr)
-                errors += 1
-                break
-            if "UMBRA_YES" in answer:
+            value = ask(x, y, z, state)
+            if value == 1:
                 confirmed += 1
                 lines.append(f"{x} {y} {z} {state} ok")
-            else:
+            elif value == 0:
                 denied += 1
                 lines.append(f"{x} {y} {z} {state} DENIED")
                 if denied <= 5:
-                    print(f"probe: the server denied {state} at {x} {y} {z}: "
-                          f"{answer.strip()[:120]!r}")
+                    print(f"probe: the server denied {state} at {x} {y} {z}")
+            else:
+                errors += 1
+                if errors <= 3:
+                    print(f"probe: no score came back at {x} {y} {z}", file=sys.stderr)
+
     finally:
         sock.close()
 
     with open(out, "w") as f:
         f.write("\n".join(lines) + ("\n" if lines else ""))
     print(f"probe: {confirmed} confirmed, {denied} denied, {errors} errors -> {out}")
+    if denied and not confirmed:
+        print("probe: every coordinate was denied, which is what an unloaded chunk also "
+              "looks like; the forceload above is the first thing to check", file=sys.stderr)
     if confirmed < MIN_CONFIRMED:
         print(f"probe: FAIL fewer than {MIN_CONFIRMED} coordinates were confirmed")
         return 1

@@ -1170,3 +1170,35 @@ vertices, 284.7 KB of indices` out of a 25 MB mesh.
   tiles with three of four columns floating in the air. The reference is now this run's
   home screen -- the jar's grass, dirt, leaves and stone, one island on the ground -- and
   the gate compares against that.
+
+## The real world, after the selection fix (run 43838861645)
+
+The crash is gone and the render is a picture of terrain drawn with the game's own art:
+
+```
+jr: coverage 739 permille of the frame (383425 of 518400 px), sky 134975
+jr: atlas texels compared with the jar's PNGs: 6144 sampled, 0 differ
+jr: PASS - a world drawn with the jar's own models and textures
+```
+
+`docs/reference/real_world.png` is re-recorded from that picture. The old one was drawn
+while `ms_sel_at` was reading past the end of the selection buffer, so it was a picture of
+a renderer that skipped faces; the new one draws every rule of every multipart state.
+
+## Asking the server, when the server will not answer "what is here"
+
+`/data get block` answers only for block entities in this server version, so the first
+version of the comparison collected 144 refusals and nothing else. The question is asked
+the other way round now -- the game confirms or denies the block Umbra claims:
+
+```
+scoreboard players set probe umbra_probe 0
+execute if block <x> <y> <z> <name>[<props>] run scoreboard players add probe umbra_probe 1
+scoreboard players get probe umbra_probe
+```
+
+and the verdict is read from the score, not from the command's reply: `... run say
+UMBRA_YES` came back empty even for bedrock at the bottom of the world, and an empty reply
+cannot be told from a refusal. Before the sample, the same predicate is asked about a block
+that is certainly not there; if that scores 1, the oracle accepts everything and the probe
+stops instead of printing a meaningless pass.
