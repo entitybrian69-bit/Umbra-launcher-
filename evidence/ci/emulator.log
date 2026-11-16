@@ -26,7 +26,7 @@ INFO         |   Checking: hasSufficientSystem
 INFO         |      Ok: System requirements to run avd: `umbra_ci` are met
 WARNING      | Feature QuickbootFileBacked is disabled due to stability issues, if you really want that, the environment variable ANDROID_EMU_FORCE_QUICKBOOT_FILE_BACKED need to set to 1
 WARNING      | FeatureControl is requesting a non existing feature.
-INFO         | Storing crashdata in: /tmp/android-runner/emu-crash-37.2.13.db, detection is enabled for process: 2714
+INFO         | Storing crashdata in: /tmp/android-runner/emu-crash-37.2.13.db, detection is enabled for process: 2724
 INFO         | Initializing gfxstream backend
 INFO         | startOpenglesRendererImpl: gpu info
 INFO         | 
@@ -93,14 +93,14 @@ INFO         |   qemu.skin=1080x1920
 INFO         |   qemu.uirenderer=skiagl
 INFO         |   qemu.virtiowifi=1
 INFO         |   qemu.vsync=60
-WARNING: cannnot unmap ptr 0x7e080d401000 as it is in the protected range from 0x7e078d400000 to 0x7e080d600000
+WARNING: cannnot unmap ptr 0x7ca741a01000 as it is in the protected range from 0x7ca6c1a00000 to 0x7ca741c00000
 INFO         | Monitoring duration of emulator setup.
 WARNING      | The emulator now requires a signed jwt token for gRPC access! Use the -grpc flag if you really want an open unprotected grpc port
 INFO         | Using security allow list from: /usr/local/lib/android/sdk/emulator/lib/emulator_access.json
-INFO         | The active JSON Web Key Sets can be found here: /run/user/1001/avd/running/2714/jwks/8d40b321-328c-4ba2-b3ed-036d4a7a4901/active.jwk
-INFO         | Scanning /run/user/1001/avd/running/2714/jwks/8d40b321-328c-4ba2-b3ed-036d4a7a4901 for jwk keys.
+INFO         | The active JSON Web Key Sets can be found here: /run/user/1001/avd/running/2724/jwks/7d51c155-c279-4efa-8f1f-f14fdab7d4a7/active.jwk
+INFO         | Scanning /run/user/1001/avd/running/2724/jwks/7d51c155-c279-4efa-8f1f-f14fdab7d4a7 for jwk keys.
 INFO         | Started GRPC server at 127.0.0.1:8554, security: Local, auth: +token
-INFO         | Advertising in: /run/user/1001/avd/running/pid_2714.ini
+INFO         | Advertising in: /run/user/1001/avd/running/pid_2724.ini
 INFO         | Successfully initialized netsim WiFi
 INFO         | Setting display: 0 configuration to: 1080x1920, dpi: 420x420 
 INFO         | setDisplayActiveConfig: id:0, 1080x1920
@@ -108,12 +108,14 @@ INFO         | emulatorSetupEnvironment: Environment scene is not required
 USER_INFO    | Emulator is performing a full startup. This may take upto two minutes, or more.
 WARNING      | Failed to process .ini file /home/runner/.android/emu-update-last-check.ini for reading.
 WARNING      | Failed to process .ini file /home/runner/.android/emu-update-last-check.ini for reading.
-INFO         | Boot completed in 26639 ms
+INFO         | Boot completed in 27313 ms
 INFO         | Increasing screen off timeout, logcat buffer size to 2M.
-INFO         | Wait for emulator (pid 2714) 20 seconds to shutdown gracefully before kill;you can set environment variable ANDROID_EMULATOR_WAIT_TIME_BEFORE_KILL(in seconds) to change the default value (20 seconds)
+ERROR        | DisplaySurfaceGlContextHelper context was preempted by others, current=0x3, needed=0x3, thread=0x5f424f05b548
+ERROR        | Failed to restore previous context: 12297
+INFO         | Wait for emulator (pid 2724) 20 seconds to shutdown gracefully before kill;you can set environment variable ANDROID_EMULATOR_WAIT_TIME_BEFORE_KILL(in seconds) to change the default value (20 seconds)
 
 USER_INFO    | Snapshots have been disabled by the user, save request is ignored.
-INFO         | Saving snapshot 'default_boot' took 0 ms
+INFO         | Saving snapshot 'default_boot' took 2 ms
 ERROR        | stop: Not implemented
 INFO         | removeAll
-WARNING      | Netsim Wifi dns:///localhost:46693 is gone due to Stream removed (CANCELLED)
+WARNING      | Netsim Wifi dns:///localhost:45317 is gone due to Stream removed (CANCELLED)
