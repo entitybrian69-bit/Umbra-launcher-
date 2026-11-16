@@ -74,6 +74,20 @@ jobs:
             echo "::error title=world generation::$(tail -3 evidence/world/gen-world.txt | tr '\n' ' ')"
             exit 1
           fi
+      - name: The shape of one real chunk (structure only, no block data)
+        # The first real save was read by two readers that disagreed with it: one found
+        # 529 chunks and no blocks, the other raised. This prints the chunk's keys, types
+        # and list lengths so the next change is made from the file, not from a guess.
+        if: always()
+        run: |
+          set -o pipefail
+          mkdir -p evidence/world
+          for f in build/server/run/world/dimensions/minecraft/overworld/region/*.mca \
+                   build/server/run/world/region/*.mca; do
+            [ -f "$f" ] || continue
+            python3 tools/dump_nbt_shape.py "$f" 2>&1 | tee evidence/world/chunk-shape.txt
+            break
+          done
       - name: Read the real world twice and compare it block by block
         run: |
           set -o pipefail
