@@ -1,7 +1,16 @@
-Starting: Intent { cmp=org.umbra.client/android.app.NativeActivity }
-Status: ok
-LaunchState: COLD
-Activity: org.umbra.client/android.app.NativeActivity
-TotalTime: 594
-WaitTime: 603
-Complete
+
+Exception occurred while executing 'start':
+java.lang.IllegalArgumentException: Bad component name: org.umbra.client.UmbraNet
+	at android.content.Intent.parseCommandArgs(Intent.java:7599)
+	at com.android.server.am.ActivityManagerShellCommand.makeIntent(ActivityManagerShellCommand.java:338)
+	at com.android.server.am.ActivityManagerShellCommand.runStartActivity(ActivityManagerShellCommand.java:435)
+	at com.android.server.am.ActivityManagerShellCommand.onCommand(ActivityManagerShellCommand.java:186)
+	at android.os.BasicShellCommandHandler.exec(BasicShellCommandHandler.java:98)
+	at android.os.ShellCommand.exec(ShellCommand.java:44)
+	at com.android.server.am.ActivityManagerService.onShellCommand(ActivityManagerService.java:10521)
+	at android.os.Binder.shellCommand(Binder.java:929)
+	at android.os.Binder.onTransact(Binder.java:813)
+	at android.app.IActivityManager$Stub.onTransact(IActivityManager.java:5027)
+	at com.android.server.am.ActivityManagerService.onTransact(ActivityManagerService.java:2883)
+	at android.os.Binder.execTransactInternal(Binder.java:1159)
+	at android.os.Binder.execTransact(Binder.java:1123)
