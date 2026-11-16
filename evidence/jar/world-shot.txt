@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/home/runner/work/Umbra-launcher-/Umbra-launcher-/tools/check_world_shot.py", line 75, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/home/runner/work/Umbra-launcher-/Umbra-launcher-/tools/check_world_shot.py", line 35, in main
+    w, h, px = read_png(shot)
+               ~~~~~~~~^^^^^^
+  File "/home/runner/work/Umbra-launcher-/Umbra-launcher-/tools/check_screenshot.py", line 14, in read_png
+    data = open(path, "rb").read()
+           ~~~~^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'evidence/jar/world.png'
