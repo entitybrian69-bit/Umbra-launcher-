@@ -391,6 +391,59 @@ static jmethodID g_m_got = NULL;
 static jmethodID g_m_total = NULL;
 static jmethodID g_m_error = NULL;
 
+// Set once the Java class is reachable from a thread that can see the app's own
+// classes. Not set by JNI_OnLoad: android.app.NativeActivity dlopens the library
+// itself with dlopen(), which does not call JNI_OnLoad at all, so on the device
+// that constructor never ran, every hook found g_umbra_net null, and the game-files
+// screen's download said "no Java network class in this APK" (run 43951429395).
+// The lookup therefore happens from android_main, on the thread the activity
+// started us on, where FindClass resolves against the app's class loader.
+static int g_net_ready = 0;
+
+static void net_init(ANativeActivity *activity) {
+    if (g_net_ready) return;
+    if (!g_vm && activity) g_vm = activity->vm;
+    if (!g_vm) {
+        ALOGE("net: no JavaVM from the activity: the game-files screen cannot download");
+        return;
+    }
+    JNIEnv *env = NULL;
+    int attached = 0;
+    if ((*g_vm)->GetEnv(g_vm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) {
+        if ((*g_vm)->AttachCurrentThread(g_vm, &env, NULL) != JNI_OK) {
+            ALOGE("net: this thread could not attach to the JVM");
+            return;
+        }
+        attached = 1;
+    }
+    jclass local = (*env)->FindClass(env, "org/umbra/client/UmbraNet");
+    if (!local) {
+        if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+        ALOGE("net: org.umbra.client.UmbraNet is not in this APK: "
+              "the game-files screen cannot download or import");
+        if (attached) (*g_vm)->DetachCurrentThread(g_vm);
+        return;
+    }
+    g_umbra_net = (jclass)(*env)->NewGlobalRef(env, local);
+    g_m_download = (*env)->GetStaticMethodID(env, g_umbra_net, "download",
+                                             "(Ljava/lang/String;Ljava/lang/String;)J");
+    g_m_pick = (*env)->GetStaticMethodID(env, g_umbra_net, "pickAndCopy",
+                                         "(Landroid/app/Activity;Ljava/lang/String;Ljava/lang/String;)J");
+    g_m_got = (*env)->GetStaticMethodID(env, g_umbra_net, "progressGot", "()J");
+    g_m_total = (*env)->GetStaticMethodID(env, g_umbra_net, "progressTotal", "()J");
+    g_m_error = (*env)->GetStaticMethodID(env, g_umbra_net, "lastError", "()Ljava/lang/String;");
+    if (!g_m_download || !g_m_pick || !g_m_got || !g_m_total || !g_m_error) {
+        if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+        ALOGE("net: UmbraNet is missing a method the app calls");
+        g_umbra_net = NULL;
+        if (attached) (*g_vm)->DetachCurrentThread(g_vm);
+        return;
+    }
+    g_net_ready = 1;
+    ALOGI("net: UmbraNet loaded: download and the file picker are available");
+    if (attached) (*g_vm)->DetachCurrentThread(g_vm);
+}
+
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     (void)reserved;
     g_vm = vm;
@@ -624,6 +677,9 @@ void android_main(struct android_app *state) {
     static char *goose_argv[] = {(char *)"umbra", NULL};
     goose_init(1, goose_argv);
     ALOGI("goose core initialised");
+    // Before anything can ask for the game's files: the Java bridge is looked up
+    // here, not in JNI_OnLoad, which NativeActivity never calls (see net_init).
+    net_init(state->activity);
 
     bool started = false;
     bool announced_wait = false;

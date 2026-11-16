@@ -74,4 +74,18 @@ for field in files_dir download_fn pick_file_fn progress_fn net_ctx; do
     fi
 done
 echo "check_c: umbra_app_init keeps the platform's game-files hooks and files dir"
+# The Java bridge cannot be looked up from JNI_OnLoad: android.app.NativeActivity
+# dlopens the library itself, which does not call it. The lookup has to happen on
+# the thread the activity started, from android_main. The device said so the hard
+# way -- "no Java network class in this APK" after a tap that worked (run
+# 43951429395) -- and nothing in a desktop build can notice it, so it is checked.
+if ! grep -q 'net_init(state->activity);' platform/android/android_main.c; then
+    echo "check_c: android_main never looks up the Java bridge (JNI_OnLoad is not called by NativeActivity)" >&2
+    exit 1
+fi
+if ! sed -n '/^static void net_init/,/^}/p' platform/android/android_main.c | grep -q 'FindClass'; then
+    echo "check_c: net_init does not FindClass(org/umbra/client/UmbraNet)" >&2
+    exit 1
+fi
+echo "check_c: the Java bridge is looked up from android_main, not from JNI_OnLoad"
 echo "check_c: both branches parse and type-check, and both platform mains do too"
