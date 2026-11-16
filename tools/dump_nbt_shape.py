@@ -172,7 +172,9 @@ def describe_shapes(path):
             key = (f"{form}, palette {bucket}, "
                    f"data {'none' if data is None else 'present'}")
             hist[key] = hist.get(key, 0) + 1
-            known = form.startswith("compound {Name:") or form.startswith("string len") or form == "int"
+            known = (form.startswith("compound {Name:") or form.startswith("compound {id:")
+                     or form.startswith("compound {:") or form.startswith("string len")
+                     or form == "int")
             if not known:
                 entries = ", ".join(entry_shape(e) for e in (palette or [])[:4])
                 odd.append((cx, cz, y, f"{key}; first entries: {entries}"))

@@ -41,7 +41,8 @@ jobs:
           #   20 states- a palette wide enough that the bit packing matters (bits 5)
           #   padded   - the pre-1.16 packing, which at 4 bits is the same bytes and at
           #              5 is not
-          for flavour in "string contiguous 0" "compound contiguous 20" "compound padded 20"; do
+          for flavour in "string contiguous 0" "compound contiguous 20" "compound padded 20" \
+                         "id contiguous 20" "id padded 20"; do
             set -- $flavour
             out="build/world-test-$1-$2-$3"
             echo "== flavour: palette $1, packing $2, $3 states in one section"
