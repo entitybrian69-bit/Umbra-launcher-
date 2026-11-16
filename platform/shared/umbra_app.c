@@ -910,8 +910,8 @@ static void finish_scene(umbra_app *app) {
     umbra_log(app, "camera: eye %.1f %.1f %.1f look %.1f %.1f %.1f, %.1f blocks out, fov %.0f",
               app->eye[0], app->eye[1], app->eye[2], app->look[0], app->look[1], app->look[2],
               app->cam_dist, app->fov_y);
-    umbra_log(app, "mesh: %d vertices, %d indices; passes %lld/%lld/%lld over %lld ranges", 
-              app->vert_count, app->index_count, (long long)app->batch_count[0],
+    umbra_log(app, "mesh: %lld vertices drawn of %d in the arena, passes %lld/%lld/%lld over %lld ranges",
+              (long long)umbra_used_vertices(), app->vert_count, (long long)app->batch_count[0],
               (long long)app->batch_count[1], (long long)app->batch_count[2],
               (long long)umbra_range_slots());
     umbra_log(app, "startup: meshed in %.1f ms over %lld calls (worst call %.1f ms, worst unit %.1f ms), "
@@ -927,6 +927,8 @@ static void finish_edit(umbra_app *app) {
     app->vert_count = (int32_t)umbra_vert_count();
     app->index_count = (int32_t)umbra_index_count();
     count_ranges(app);
+    // The count has to be read before the upload clears the list.
+    int64_t changed = umbra_dirty_count();
     upload_mesh_changes(app);
     app->mesh_state = 2;
     app->mesh_progress = 1000;
@@ -935,7 +937,7 @@ static void finish_edit(umbra_app *app) {
               (long long)umbra_mesh_columns(), (long long)umbra_world_columns(),
               app->mesh_total_us / 1000.0, (long long)app->mesh_calls,
               app->mesh_worst_call_us / 1000.0, umbra_mesh_worst_unit_ms(),
-              (long long)umbra_dirty_count());
+              (long long)changed);
     int64_t worst = app->mesh_worst_call_us;
     if (worst >= (int64_t)UMBRA_EDIT_BUDGET_MS * 1000) {
         umbra_log(app, "edit: a slice took %.1f ms, over the %d ms an edit is allowed",
