@@ -1,6 +1,10 @@
-server pid 2931, waiting up to 600s for it to finish generating
+server pid 2930, waiting up to 600s for it to finish generating
 == asking the server what is at a grid of coordinates
-probe: 0 coordinates answered, 144 not loaded, 0 unreadable -> /home/runner/work/Umbra-launcher-/Umbra-launcher-/build/server/run/server-blocks.txt
+probe: no block in the answer for -40 60 -40: 'The target block is not a block entity'
+probe: no block in the answer for -40 64 -40: 'The target block is not a block entity'
+probe: no block in the answer for -40 70 -40: 'The target block is not a block entity'
+probe: forceload: Marked 49 chunks in minecraft:overworld from [-3, -3] to [3, 3] to be force loaded
+probe: 0 coordinates answered, 0 not loaded, 144 unreadable -> /home/runner/work/Umbra-launcher-/Umbra-launcher-/build/server/run/server-blocks.txt
 probe: FAIL the server answered fewer than ten coordinates
 WARNING: the server answered too few coordinates; see probe.log
 world generated after 16s; asking the server to stop so it saves
@@ -8,50 +12,51 @@ Stopping the server
 stop sent over rcon
 server exit status 0
 == last lines of the server's log
-
 WARNING: A terminally deprecated method in sun.misc.Unsafe has been called
 WARNING: sun.misc.Unsafe::objectFieldOffset has been called by org.joml.MemUtil$MemUtilUnsafe (file:/home/runner/work/Umbra-launcher-/Umbra-launcher-/build/server/run/libraries/org/joml/joml/1.10.9/joml-1.10.9.jar)
 WARNING: Please consider reporting this to the maintainers of class org.joml.MemUtil$MemUtilUnsafe
 WARNING: sun.misc.Unsafe::objectFieldOffset will be removed in a future release
-[08:38:43] [ServerMain/INFO]: Environment: Environment[discoveryUrl=https://discovery.minecraftservices.com/minecraft/client, name=PROD]
-[08:38:44] [Worker-Main-3/INFO]: No existing world data, creating new world
-[08:38:45] [Worker-Main-2/INFO]: Loaded 1866 advancements
-[08:38:46] [Server thread/INFO]: Starting minecraft server version 26.3
-[08:38:46] [Server thread/INFO]: Loading properties
-[08:38:46] [Server thread/INFO]: Default game type: SURVIVAL
-[08:38:46] [Server thread/INFO]: Generating keypair
-[08:38:46] [Server thread/INFO]: Starting Minecraft server on *:25565
-[08:38:46] [Server thread/WARN]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
-[08:38:46] [Server thread/WARN]: The server will make no attempt to authenticate usernames. Beware.
-[08:38:46] [Server thread/WARN]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
-[08:38:46] [Server thread/WARN]: To change this, set "online-mode" to "true" in the server.properties file.
-[08:38:46] [Server thread/INFO]: Preparing level "world"
-[08:38:46] [Server thread/INFO]: Selecting global world spawn...
-[08:38:49] [Server thread/INFO]: Loading 0 persistent chunks...
-[08:38:49] [Server thread/INFO]: Preparing spawn area: 100%
-[08:38:49] [Server thread/INFO]: Time elapsed: 3249 ms
-[08:38:49] [Server thread/INFO]: Done (3.488s)! For help, type "help"
-[08:38:49] [Server thread/INFO]: Starting remote control listener
-[08:38:49] [Server thread/INFO]: Thread RCON Listener started
-[08:38:49] [Server thread/INFO]: RCON running on 0.0.0.0:25575
-[08:38:49] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
-[08:38:50] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
-[08:38:50] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
-[08:38:51] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
-[08:38:51] [RCON Client /127.0.0.1 #2/INFO]: Thread RCON Client /127.0.0.1 shutting down
-[08:38:51] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
-[08:38:51] [RCON Client /127.0.0.1 #3/INFO]: Thread RCON Client /127.0.0.1 shutting down
-[08:38:51] [Server thread/INFO]: Stopping server
-[08:38:51] [Server thread/INFO]: Saving players
-[08:38:51] [Server thread/INFO]: Saving worlds
-[08:38:51] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
-[08:38:51] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
-[08:38:51] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
-[08:38:51] [Server thread/INFO]: Thread RCON Listener stopped
-region files written: 4
+[08:43:32] [ServerMain/INFO]: Environment: Environment[discoveryUrl=https://discovery.minecraftservices.com/minecraft/client, name=PROD]
+[08:43:33] [Worker-Main-2/INFO]: No existing world data, creating new world
+[08:43:34] [Worker-Main-3/INFO]: Loaded 1866 advancements
+[08:43:34] [Server thread/INFO]: Starting minecraft server version 26.3
+[08:43:34] [Server thread/INFO]: Loading properties
+[08:43:34] [Server thread/INFO]: Default game type: SURVIVAL
+[08:43:34] [Server thread/INFO]: Generating keypair
+[08:43:34] [Server thread/INFO]: Starting Minecraft server on *:25565
+[08:43:35] [Server thread/WARN]: **** SERVER IS RUNNING IN OFFLINE/INSECURE MODE!
+[08:43:35] [Server thread/WARN]: The server will make no attempt to authenticate usernames. Beware.
+[08:43:35] [Server thread/WARN]: While this makes the game possible to play without internet access, it also opens up the ability for hackers to connect with any username they choose.
+[08:43:35] [Server thread/WARN]: To change this, set "online-mode" to "true" in the server.properties file.
+[08:43:35] [Server thread/INFO]: Preparing level "world"
+[08:43:35] [Server thread/INFO]: Selecting global world spawn...
+[08:43:38] [Server thread/INFO]: Loading 0 persistent chunks...
+[08:43:38] [Server thread/INFO]: Preparing spawn area: 100%
+[08:43:38] [Server thread/INFO]: Time elapsed: 3247 ms
+[08:43:38] [Server thread/INFO]: Done (3.434s)! For help, type "help"
+[08:43:38] [Server thread/INFO]: Starting remote control listener
+[08:43:38] [Server thread/INFO]: Thread RCON Listener started
+[08:43:38] [Server thread/INFO]: RCON running on 0.0.0.0:25575
+[08:43:38] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[08:43:38] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[08:43:38] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[08:43:39] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
+[08:43:44] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 4788ms or 95 ticks behind
+[08:43:46] [RCON Client /127.0.0.1 #2/INFO]: Thread RCON Client /127.0.0.1 shutting down
+[08:43:46] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
+[08:43:46] [RCON Client /127.0.0.1 #3/INFO]: Thread RCON Client /127.0.0.1 shutting down
+[08:43:46] [Server thread/INFO]: Stopping server
+[08:43:46] [Server thread/INFO]: Saving players
+[08:43:46] [Server thread/INFO]: Saving worlds
+[08:43:46] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[08:43:47] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[08:43:47] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[08:43:47] [Server thread/INFO]: Thread RCON Listener stopped
+region files written: 6
+world/dimensions/minecraft/overworld/entities/r.-1.0.mca
 world/dimensions/minecraft/overworld/region/r.0.-1.mca
 world/dimensions/minecraft/overworld/region/r.-1.-1.mca
 world/dimensions/minecraft/overworld/region/r.-1.0.mca
 world/dimensions/minecraft/overworld/region/r.0.0.mca
-2.4M	world
-PASS: the real server generated a world with 4 region file(s)
+5.4M	world
+PASS: the real server generated a world with 6 region file(s)
