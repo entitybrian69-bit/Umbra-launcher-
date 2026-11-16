@@ -2,6 +2,41 @@
 
 Newest first. Each entry says what was decided, why, and what it costs.
 
+## D-044 Six device-only faults, and the host checks that stop them recurring
+
+Getting the game-files screen from "written" to "proved" took seven emulator runs, and
+every failure was invisible to a desktop build: the C compiled, the host suite passed
+253 checks, and the app was wrong on the only machine that runs it. The list, in order,
+with what now catches each one without a device:
+
+1. `am start -n` given a class with no package, then a package-relative class with a
+   nested `$`. Two runs, both in the harness.
+2. `umbra_app_init`'s blanket `memset` erased `files_dir`, `download_fn`,
+   `pick_file_fn`, `progress_fn` and `net_ctx`, which `android_main` sets before init --
+   so on the phone the app believed it had no way to get a jar and never opened the
+   screen. This is the third field group that memset has eaten (log path in 0.3.0,
+   swap-interval hook in 0.3.5). `check_c.sh` now reads init and fails unless each of
+   the five is saved before the memset and restored after it.
+3. `JNI_OnLoad` never runs: `android.app.NativeActivity` `dlopen`s the library itself.
+   The documented place to cache a class is not a place that executes. `check_c.sh`
+   requires the lookup in `android_main`.
+4. `FindClass` on a thread attached from native code searches the *system* class
+   loader, which cannot see the app's classes; the activity's `getClassLoader()`
+   can. `check_c.sh` requires that path.
+5. `pickAndCopy(Activity, String, String[])` looked up as `(…)Ljava/lang/String;)J`:
+   `GetStaticMethodID` returns NULL for a wrong descriptor and nothing type-checks a
+   string. New `tools/check_jni_signatures.py` compares every descriptor with the Java
+   source, and `android.yml` runs it before the build.
+6. `download()` writing `dest + ".part"` when `dest` *is* `client.jar.part`: the 41 MB
+   arrived as `client.jar.part.part` and failed verification. The same tool fails if the
+   Java rewrites a destination again.
+
+The pattern is the point: a claim about the phone needs the phone, and every phone-only
+failure that costs a run should cost a static check afterwards. The costs are four small
+`sed`-and-`grep` checks in `check_c.sh` and one 130-line Python script -- cheap next to
+one 20-minute emulator round trip, and they fail on the code that caused each fault (each
+was verified by reverting the fix and watching the check fail).
+
 ## D-043 The game's files come from the owner's phone, through the app, and the app is no longer pure native code
 
 The phone was drawing the placeholder atlas, and the reason was structural rather than

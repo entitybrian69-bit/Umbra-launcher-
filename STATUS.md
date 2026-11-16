@@ -531,30 +531,34 @@ number quoted above from CI came through one of those channels.
 
 The owner set the order; it survives interruptions.
 
-**Continuing: the brief's items are being worked in its own order.** Item 1 (are the
-phone's textures the jar's?) is answered in "Step 6, item 1, the truth" above: on the
-emulator yes, on the phone placeholders until 0.3.7, and 0.3.7 is the fix. Item 2 (an
-edit re-meshes one chunk inside 50 ms) was already met by the earlier work and is
-host-checked on every push. Item 3 of the brief's own list -- per-chunk sliced re-mesh
-with no frame over ~50 ms, then threaded meshing -- is therefore already partly true,
-and threaded meshing is the open part. The jar-download path is in the branch and has
-to be proved by a run before it is claimed.
+**Continuing: the brief's items are being worked in its own order.** Items 1 and 2 are
+now settled by evidence rather than by argument. Item 1 ("are the phone's textures the
+jar's?") is answered twice over: in "Step 6, item 1, the truth" for the case with no jar,
+and in "The evidence a phone's copy of the game files is real" for the case where the
+phone fetches one -- run `43960566328` downloaded 41 483 720 bytes from Mojang through
+the app's own button and drew with them. Item 2 (an edit re-meshes one chunk inside
+50 ms) was already met and is host-checked on every push; the emulator's own numbers put
+the worst edit at 7.1 ms and the worst start-up frame at 165 ms against a 250 ms
+budget.
 
-The hands phase on the emulator, from `evidence/ci/summary.txt` of run `43808551815`
-(android, success):
+What is left of the brief's item 3 is **threaded meshing for world loading**, and then
+item 4 (the player: full-block steps, swimming, sneak, hotbar and inventory, saving
+edits) before worldgen parity.
+
+The hands phase on the emulator, from `evidence/ci/summary.txt` of run `43960566328`
+(android, success) -- the same run that fetched the jar:
 
 ```
 hands: the app answers at 1239,955, so input is 'identity' of the surface
 hands: the hotbar selected the slab: player: hotbar slot 4 selected (oak_slab)
 hands: looking down at pitch -1
 hands: player: break -> 1 (broke grass_block at 25 65 23)
-hands: the world was re-meshed after the edit
+edit: re-meshed 1 of 9 columns in 133.9 ms over 17 calls (worst call 18.5 ms,
+      worst slice 18.5 ms), 3 slot(s) changed
+edit: the longest slice was 18.5 ms (under the 50 ms an edit is allowed)
 hands: player: place -> 1 (placed oak_slab at 25 65 23)
-hands: shot-hands.png is 306466 bytes
+hands: shot-hands.png is 578451 bytes
 ```
-
-and again at the tip (android run `43824520091`, success): `broke grass_block at 25 65 23`,
-re-meshed, `placed oak_slab at 25 65 23`.
 
 1. **Done:** `v0.3.0-pre` and `v0.3.1-pre` are published, each verified by
    re-download (`RELEASE_VERIFY.txt`), and `0.3.1` ran on the owner's phone.
@@ -1022,10 +1026,10 @@ and host-tested but not re-run:
 | Block models: every model in the jar parses | yes | `4192 block models parsed, 0 refused`, `1205 elements, 4300 faces` (jar 26.3, CI) |
 | Models are drawn from their geometry | every block, from the jar | `blocks drawn from a model 1498125, faces 454261` over the synthetic jar, host-verified; the demo slab's 6 faces, `y+0.5` top and culled bottom are still host-tested (`mesh 354`) |
 | Binding the jar's blockstates to models at load | yes, host-verified | `1731 rules linked to a model`, `0 refused` (synthetic jar); the real jar runs in the `jar` workflow (D-042) |
-| Textures from the jar | yes in the renderer; on the phone **only when a jar is present**, and until 0.3.7 a phone had no way to put one there (see the item-1 truth section) | real jar 26.3: atlas 1024x1024, 1225 cells, 1214 textures used, 1213 decoded, 1 missing, 52 animated; `6144 sampled, 0 differ` against the jar's own PNGs (run 43831301517). The phone loads a jar at start-up (`UMBRA_JAR`, `<files>/client.jar`, `/data/local/tmp/umbra-client.jar`) and the GPU self-test compares its 256 sampled atlas texels with the jar's decoded pixels |
+| Textures from the jar | yes, and since 0.3.7 the phone can fetch the jar itself: run `43960566328` downloaded it through the app's own button and drew the world with it (see the evidence section) | real jar 26.3: atlas 1024x1024, 1225 cells, 1214 textures used, 1213 decoded, 1 missing, 52 animated; `6144 sampled, 0 differ` against the jar's own PNGs (run 43831301517). The phone loads a jar at start-up (`UMBRA_JAR`, `<files>/client.jar`, `/data/local/tmp/umbra-client.jar`) and the GPU self-test compares its 256 sampled atlas texels with the jar's decoded pixels |
 | A world drawn from the jar's models and textures | yes, with numbers | demo picture: `evidence/jar/world.png`, `0.00` from its reference. **A save read from disk:** `evidence/jar/save.png` + `docs/reference/jar_save.png`. **The world the real server generated:** `evidence/world/real.png` + `docs/reference/real_world.png` -- 156 chunks, 503215 non-air blocks, **26240715 blocks drawn from a model, 0 with no model**, 328628 triangles drawn of 328628, `missing-tile magenta 0`, coverage 680 permille (run 43831301517) |
 | A body you can walk with | yes | 24 host checks, and the device run above |
-| Breaking and placing blocks | yes, host-verified | 36 host checks over the ray, the edit, the re-mesh, the 44 dp target size and all three layouts; the emulator `hands` phase is unverified |
+| Breaking and placing blocks | yes, host-verified **and device-verified** | 36 host checks over the ray, the edit, the re-mesh, the 44 dp target size and all three layouts; the emulator `hands` phase breaks and places on the device (run `43960566328`) |
 | Water, ladders, sneaking, swimming, mobs, survival, multiplayer | **no** | not implemented |
 | Reading a world from a real save | **CI-verified on a real 26.3 save** | `529 of 529` chunks, `843609 of 843609` blocks, `45 of 45` states, two independent readers, run `43808551824`; plus five synthetic flavours on every push |
 | Rendered world matches the real client | **not measured** | gate 6b second half: nothing compares two renders yet |
@@ -1159,26 +1163,55 @@ The jar is fetched by the *app*, at the owner's tap, from Mojang, on the owner's
 phone, after the screen says Java Edition ownership is the condition. Nothing about
 the download is in the repository, and no byte of it is redistributed.
 
-## The evidence a phone's copy of the game files is real (to be filled by the run)
+## The evidence a phone's copy of the game files is real
 
-The tags below are the strings the emulator phase `gamefiles` checks, and until a run
-prints them they are **not** evidence. The phase wipes the app's directory, removes
-the pushed jar, starts the app, demands the screen come up saying a jar is not there,
-taps the app's own logged rectangle for the download button, waits for the pin's sha1
-to be checked, and then demands `atlas: source is the client jar` and a `client.jar`
-in the app's own directory:
+Run `43960566328`, evidence commit `4b0a817`. The emulator phase `gamefiles` wipes the
+app's private directory, deletes the jar the harness normally pushes, starts the app,
+and then does what an owner does: it reads the download button's own logged rectangle,
+taps its centre, and waits. The device is on the runner's network; the jar that arrives
+is Mojang's, over TLS, through the APK's own Java.
 
 ```
-gamefiles: the screen is up; jar path /data/user/0/org.umbra.client/files/client.jar, 41483720 bytes pinned (sha1 e877b6a0…), a jar is not here
-gamefiles: button 0 at …
-gamefiles: the download finished: …
-gamefiles: the file is the pinned jar: 41483720 bytes, sha1 e877b6a0…
-gamefiles: /data/user/0/org.umbra.client/files/client.jar is now the app's client jar …
-atlas: source is the client jar
+gamefiles: the screen is up; jar path /data/user/0/org.umbra.client/files/client.jar,
+           41483720 bytes pinned (sha1 e877b6a0…7b87), a jar is not here
+gamefiles: button 0 at 35,484 size 435x78, centre 252,523
+gamefiles: tapping 252,523
+gamefiles: downloading 41483720 bytes from Mojang
+gamefiles: the download finished: 41483720 bytes in
+           /data/user/0/org.umbra.client/files/client.jar.part
+gamefiles: the file is the pinned jar: 41483720 bytes, sha1 e877b6a0…7b87
+gamefiles: /data/user/0/org.umbra.client/files/client.jar is now the app's client jar
+           (41483720 bytes, sha1 e877b6a0…7b87)
+jar: /data/user/0/org.umbra.client/files/client.jar, 41483720 bytes: 4192 models,
+     1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's
+gamefiles: the jar in the app's own directory: -rw------- 1 u0_a167 u0_a167 41483720
+           /data/user/0/org.umbra.client/files/client.jar
 ```
 
-If the runner cannot reach Mojang the phase says so and claims nothing: the screen's
-layout, its buttons and the app wiring are still checked, the download is UNVERIFIED.
+`atlas: source is the client jar` follows the adoption, and the phase asserts it: the
+atlas on screen after the download is the downloaded jar's, not the placeholder set.
+That is item 1's claim made true on a device for the first time -- **with no jar pushed
+by the harness and nothing in the app's directory, the app fetched the game's own files
+and drew with them.**
+
+The same run is green on every other gate (`pc`, `core`, `world`, `jar`), and the
+emulator's own verdict is `PASS (installed, launched, drew, self test tapped, the
+game-files screen fetched the jar it needs, 60s soak, no crash)`.
+
+Six device-only faults stood between the code and that line. Each one is now also a host
+check, because on a desktop build none of them is visible:
+
+| Fault (run) | What the device said | The check that now catches it |
+|---|---|---|
+| `am start` with a class but no package (43922373288) | `Bad component name` | — |
+| package-relative class (43925231546) | `Error type 3 … does not exist` | — |
+| `umbra_app_init`'s memset erased the platform hooks (43946503664) | `jar: none found`, the screen never opened | `check_c.sh` reads init for the five save/restore pairs |
+| `JNI_OnLoad` is never called by `NativeActivity` (43951429395) | `no Java network class in this APK` | `check_c.sh` requires `net_init(state->activity)` |
+| `FindClass` on a native thread sees only system classes (43953686713) | `UmbraNet is not in this APK` on an APK that has it | `check_c.sh` requires the activity's class loader |
+| `pickAndCopy`'s `String[]` written as `String`; Java appending a second `.part` (43956343069, 43958738406) | `missing a method`, then `could not be read back` | `check_jni_signatures.py` compares every descriptor with the Java source |
+
+The placeholder sentence in item 1 is still true for a phone that has not tapped the
+button: the app only draws with the jar's files once they are in its own directory.
 
 ## Step 6, item 2: an edit re-meshes one column, not the world
 
