@@ -954,6 +954,11 @@ case "$LINE" in
     *"a jar is not here"*) say "gamefiles: with nothing in its own directory the app asks for the game's files" ;;
     *) die "gamefiles: the screen came up claiming a jar is already there: $LINE" ;;
 esac
+# What the device can reach, before the tap: the download runs on the emulator's
+# own network, not the runner's, and a run that cannot resolve Mojang has to say
+# that rather than look like a bug in the app.
+GF_NET="$(adb shell "ping -c 1 -W 4 piston-data.mojang.com" 2>&1 | tr -d '\r' | tr '\n' ' ' | cut -c1-200)"
+say "gamefiles: the device's own route to Mojang: ${GF_NET:-nothing}"
 adb exec-out screencap -p > shot-gamefiles.png 2>/dev/null || true
 say "gamefiles: shot-gamefiles.png is $(stat -c%s shot-gamefiles.png 2>/dev/null || echo 0) bytes"
 RECT="$(adb logcat -d -s umbra:V 2>/dev/null | grep -o 'hud: gamefiles button 0 at [-0-9]*,[-0-9]* size [0-9]*x[0-9]*' | tail -1)"
@@ -985,26 +990,35 @@ while [ $SECONDS -lt $DEADLINE ]; do
     fi
     sleep 5
 done
-GF_LOG="$(adb logcat -d -s umbra:V 2>/dev/null | sed 's/.*umbra   : //')"
-printf '%s\n' "$GF_LOG" | grep "^gamefiles:" | while IFS= read -r l; do say "  $l"; done
+# The lines are taken with grep -o, not by stripping a fixed prefix: the app's own
+# log lines start with a timestamp ("20:32:39 gamefiles: ..."), so an anchored
+# "^gamefiles:" matched nothing and run 43949156466 reached its verdict with every
+# line of detail -- including the platform's reason for the failure -- dropped.
+GF_RAW="$(adb logcat -d -s umbra:V 2>/dev/null)"
+printf '%s\n' "$GF_RAW" > gamefiles-logcat.txt
+GF_LOG="$(printf '%s\n' "$GF_RAW" | grep -o 'gamefiles: .*')"
+printf '%s\n' "$GF_LOG" | while IFS= read -r l; do [ -n "$l" ] && say "  $l"; done
 if [ "$DONE" != 1 ]; then
     die "gamefiles: the download never finished in 420 s"
 fi
 GF_DL=0
 case "$GF_LOG" in
-    *"gamefiles: the download failed"*)
-        # The runner's network is the emulator's network, and it is not always
-        # there. Say so plainly: the screen is up and driven, the download is
-        # unverified in this run, and nothing claims otherwise.
-        say "gamefiles: the emulator could not reach Mojang; the download is UNVERIFIED in this run"
-        note "gamefiles: the download could not reach Mojang on this runner"
+    *"the download failed"*)
+        # The emulator's network is not always there. Say so plainly, and say
+        # why: the app's own line names the platform's error (a DNS failure and a
+        # refused connection are different problems). The download stays
+        # UNVERIFIED in this run, and nothing claims otherwise.
+        GF_WHY="$(printf '%s\n' "$GF_LOG" | grep -m1 "the download failed")"
+        say "gamefiles: $GF_WHY"
+        say "gamefiles: the download is UNVERIFIED in this run (the screen, the tap and the job all ran)"
+        note "gamefiles: download UNVERIFIED: ${GF_WHY:-no reason logged}"
         ;;
-    *"gamefiles: the file is the pinned jar"*)
+    *"the file is the pinned jar"*)
         GF_DL=1
         say "gamefiles: the downloaded file is the pinned jar (sha1 checked)"
         say "gamefiles: $(printf '%s\n' "$GF_LOG" | grep -m1 'gamefiles: the file is the pinned jar' | sed 's/gamefiles: //')"
         ;;
-    *"gamefiles: the file was refused"*)
+    *"the file was refused"*)
         die "gamefiles: the downloaded file was refused: $(printf '%s\n' "$GF_LOG" | grep -m1 'refused' | sed 's/gamefiles: //')"
         ;;
 esac
