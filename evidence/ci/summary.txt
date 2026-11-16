@@ -93,7 +93,7 @@ mesh: 21:23:42 startup: meshed in 2670.0 ms over 236 calls (worst call 36.9 ms, 
 mesh: longest frame 174.3 ms (under the 1000 ms budget)
 
 == phase: insets ==
-insets: insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
+insets: insets: L,T,R,B = 0,63,126,0 (modern 0,63,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
 insets: the override was applied
 insets: source is the override, as asked
 overlay: button 0 starts at y=999, below the 63 px top inset
@@ -154,7 +154,7 @@ player: a tap asked for a jump
 hands: the app answers at 1239,955, so input is 'identity' of the surface
 hands: the hotbar selected the slab: 21:25:45 player: hotbar slot 4 selected (oak_slab)
 hands: the surface is 1920x1080, the panel 1080x1920
-hands: looking down at pitch -1
+hands: looking down at pitch -0
 hands: tapped break at 1587,601 (frame identity, rect 1447,535 size 280x132)
 hands: 21:25:52 player: break -> 1 (broke grass_block at 25 63 24)
 edit: 21:25:53 edit: re-meshed 1 of 9 columns in 210.0 ms over 23 calls (worst call 23.5 ms, worst slice 23.5 ms), 3 slot(s) changed
@@ -184,7 +184,7 @@ shot3: 46703 bytes (the home screen with last run)
 crash-detect: kill -9 6419
 crash-detect: restarting: Status: ok 
 crash-detect: the killed run was reported on the next start
-shot4: 13386 bytes (the crash screen)
+shot4: 46679 bytes (the crash screen)
 
 == phase: gamefiles ==
 gamefiles: launched with an empty app directory (Status: ok )
@@ -194,6 +194,7 @@ gamefiles: the device's own route to Mojang: PING mr-afd-azuredge.tm-azurefd.net
 gamefiles: shot-gamefiles.png is 24992 bytes
 gamefiles: button 0 at 35,484 size 435x78, centre 252,523
 gamefiles: tapping 252,523
+  gamefiles: platform hooks download, picker import, files dir /data/user/0/org.umbra.client/files
   gamefiles: platform hooks download, picker import, files dir /data/user/0/org.umbra.client/files
   gamefiles: the screen is up; jar path /data/user/0/org.umbra.client/files/client.jar, 41483720 bytes pinned (sha1 e877b6a07acd633fb3bb475002175cec036e7b87), a jar is not here
   gamefiles: download would fetch https://piston-data.mojang.com/v1/objects/e877b6a07acd633fb3bb475002175cec036e7b87/client.jar
