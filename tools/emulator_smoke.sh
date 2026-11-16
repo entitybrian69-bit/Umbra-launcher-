@@ -229,14 +229,36 @@ if [ -n "$AAPT_BIN" ] && [ -f "$APK" ]; then
     BADGING="$("$AAPT_BIN" dump badging "$APK" 2>/dev/null)"
     LAUNCH_PKG="$(printf '%s\n' "$BADGING" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)"
     HINT="$(printf '%s\n' "$BADGING" | sed -n "s/^launchable-activity: name='\([^']*\)'.*/\1/p" | head -1)"
-    if [ -n "$HINT" ] && [ -n "$LAUNCH_PKG" ]; then
-        LAUNCH_CLASS="${HINT#"$LAUNCH_PKG".}"
-    fi
+    # The full class, not the package-relative one: `am start -n pkg/Class` with a
+    # nested class answers "Error type 3 ... does not exist" (run 43925231546) even
+    # though the activity is in the manifest. The fully qualified name is what the
+    # window list shows the activity as, and it starts.
+    LAUNCH_CLASS="$HINT"
 fi
-[ -n "$LAUNCH_CLASS" ] || LAUNCH_CLASS='UmbraNet$UmbraActivity'
+[ -n "$LAUNCH_CLASS" ] || LAUNCH_CLASS='org.umbra.client.UmbraNet$UmbraActivity'
 [ -n "$LAUNCH_PKG" ] || LAUNCH_PKG='org.umbra.client'
 COMPONENT="$LAUNCH_PKG/$LAUNCH_CLASS"
-say "component: $COMPONENT (package and class from the APK's own manifest)"
+say "component: $COMPONENT (the APK's own launchable activity)"
+
+# One way to start the app, used by every phase that restarts it. `am start -W -n`
+# is tried first; if it refuses the component ("Error type 3"), the launcher is asked
+# to open the app by package, which resolves the activity from the manifest and
+# cannot get a name wrong. Run 43925231546 relaunched with the class-only component
+# and the relaunch phase then waited 90 s for a log the failure had already ruled out.
+launch_app() {   # $1 = log file; prints the launch's own verdict
+    adb shell "am start -W -n '$COMPONENT'" > "$1" 2>&1
+    if ! grep -q "Error type 3" "$1"; then
+        echo "$(grep -E '^Status:|^Error:' "$1" | tr '\n' ' ' | tr -s ' ')"
+        return 0
+    fi
+    adb shell monkey -p org.umbra.client -c android.intent.category.LAUNCHER 1 > "$1.nudge" 2>&1
+    if grep -q "Events injected: 1" "$1.nudge"; then
+        echo "am start refused the component, the launcher opened the app instead"
+        return 0
+    fi
+    echo "$(tail -c 200 "$1")"
+    return 1
+}
 
 phase "install"
 ADB_TIMEOUT=300 adb install -r -g "$APK" > install.log 2>&1 || die "adb install failed: $(tail -c 500 install.log)"
@@ -274,9 +296,9 @@ else
 fi
 
 phase "launch"
-adb shell "am start -W -n '$COMPONENT'" > launch.log 2>&1 \
-    || die "am start failed: $(tail -c 500 launch.log)"
-say "launch: $(grep -E 'Status|TotalTime|Error' launch.log | tr '\n' ' ' | tr -s ' ')"
+# Called once: the verdict is kept, because a second call would start the app twice.
+LAUNCH_VERDICT="$(launch_app launch.log)" || die "launch: the app would not start: $LAUNCH_VERDICT"
+say "launch: $LAUNCH_VERDICT"
 # A native activity often reports "Status: timeout" even when it is starting,
 # so give it a moment and, if it still has not spoken, ask the launcher to bring
 # it forward once more.
@@ -840,8 +862,8 @@ done
 adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
 sleep 3
 adb logcat -c > /dev/null 2>&1 || true
-adb shell "am start -W -n '$COMPONENT'" > relaunch.log 2>&1 \
-    || say "relaunch: am start said $(tail -1 relaunch.log)"
+RELAUNCH_VERDICT="$(launch_app relaunch.log)" || say "relaunch: the app would not start"
+say "relaunch: $RELAUNCH_VERDICT"
 REL_LINES=""
 RELAUNCHED=0
 DEADLINE=$((SECONDS + 90))
@@ -874,7 +896,7 @@ if [ -n "$PIDK" ]; then
     adb shell "kill -9 $PIDK" > /dev/null 2>&1 || say "crash-detect: kill failed"
     sleep 3
     adb logcat -c > /dev/null 2>&1 || true
-    adb shell "am start -W -n '$COMPONENT'" > crash-restart.log 2>&1 || true
+    say "crash-detect: restarting: $(launch_app crash-restart.log)"
     FOUND=0
     DEADLINE=$((SECONDS + 90))
     while [ $SECONDS -lt $DEADLINE ]; do
@@ -912,14 +934,11 @@ phase "gamefiles"
 adb shell pm clear org.umbra.client > /dev/null 2>&1 || true
 adb shell rm -f /data/local/tmp/umbra-client.jar > /dev/null 2>&1 || true
 adb logcat -c > /dev/null 2>&1 || true
-adb shell "am start -W -n '$COMPONENT'" > gamefiles-launch.log 2>&1 \
-    || die "gamefiles: am start failed: $(tail -c 300 gamefiles-launch.log)"
 # A launch that "works" but never draws is the failure this phase exists to catch,
 # so the launch's own verdict is checked here rather than after a 150 s wait.
-case "$(grep -m1 -E '^Status:' gamefiles-launch.log | tr -d '\r')" in
-    *"ok"*) say "gamefiles: launched with an empty app directory ($(grep -m1 -E '^Status:|^Error:' gamefiles-launch.log | tr -d '\r'))" ;;
-    *) die "gamefiles: the launch did not report ok: $(tail -c 300 gamefiles-launch.log)" ;;
-esac
+GF_VERDICT="$(launch_app gamefiles-launch.log)" \
+    || die "gamefiles: the app would not start with an empty directory: $GF_VERDICT"
+say "gamefiles: launched with an empty app directory ($GF_VERDICT)"
 FOUND=0
 DEADLINE=$((SECONDS + 150))
 while [ $SECONDS -lt $DEADLINE ]; do
