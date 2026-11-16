@@ -216,14 +216,27 @@ say "focus before launch: $(grep -m1 -E 'mCurrentFocus' focus.log | tr -s ' ' | 
 # android.app.NativeActivity any more -- the file picker needs onActivityResult,
 # which NativeActivity does not implement -- so the name is read out of the APK
 # rather than assumed, and a wrong one fails here instead of at the first tap.
-COMPONENT=""
+# The component that `am start -n` needs is package/class. Until now the script
+# passed the class alone, and am answered "Bad component name" -- that is the missing
+# slash, not the $. The class is UmbraNet$UmbraActivity (the file picker needs
+# onActivityResult, which android.app.NativeActivity does not implement), so the
+# name is picked up from the APK's own manifest and the $ is protected by single
+# quotes inside the adb shell string instead of by a backslash.
+LAUNCH_PKG=""
+LAUNCH_CLASS=""
 AAPT_BIN="$(ls "$SDK"/build-tools/*/aapt2 2>/dev/null | sort -V | tail -1)"
 if [ -n "$AAPT_BIN" ] && [ -f "$APK" ]; then
-    COMPONENT="$("$AAPT_BIN" dump badging "$APK" 2>/dev/null \
-        | sed -n "s/^launchable-activity: name='\([^']*\)'.*/\1/p" | head -1)"
+    BADGING="$("$AAPT_BIN" dump badging "$APK" 2>/dev/null)"
+    LAUNCH_PKG="$(printf '%s\n' "$BADGING" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)"
+    HINT="$(printf '%s\n' "$BADGING" | sed -n "s/^launchable-activity: name='\([^']*\)'.*/\1/p" | head -1)"
+    if [ -n "$HINT" ] && [ -n "$LAUNCH_PKG" ]; then
+        LAUNCH_CLASS="${HINT#"$LAUNCH_PKG".}"
+    fi
 fi
-[ -n "$COMPONENT" ] || COMPONENT='org.umbra.client.UmbraNet$UmbraActivity'
-say "component: $COMPONENT (from the APK's own manifest)"
+[ -n "$LAUNCH_CLASS" ] || LAUNCH_CLASS='UmbraNet$UmbraActivity'
+[ -n "$LAUNCH_PKG" ] || LAUNCH_PKG='org.umbra.client'
+COMPONENT="$LAUNCH_PKG/$LAUNCH_CLASS"
+say "component: $COMPONENT (package and class from the APK's own manifest)"
 
 phase "install"
 ADB_TIMEOUT=300 adb install -r -g "$APK" > install.log 2>&1 || die "adb install failed: $(tail -c 500 install.log)"
@@ -899,8 +912,14 @@ phase "gamefiles"
 adb shell pm clear org.umbra.client > /dev/null 2>&1 || true
 adb shell rm -f /data/local/tmp/umbra-client.jar > /dev/null 2>&1 || true
 adb logcat -c > /dev/null 2>&1 || true
-adb shell "am start -W -n '$COMPONENT'" > gamefiles-launch.log 2>&1 || true
-say "gamefiles: launched with an empty app directory: $(grep -E 'Status|Error' gamefiles-launch.log | tr '\n' ' ')"
+adb shell "am start -W -n '$COMPONENT'" > gamefiles-launch.log 2>&1 \
+    || die "gamefiles: am start failed: $(tail -c 300 gamefiles-launch.log)"
+# A launch that "works" but never draws is the failure this phase exists to catch,
+# so the launch's own verdict is checked here rather than after a 150 s wait.
+case "$(grep -m1 -E '^Status:' gamefiles-launch.log | tr -d '\r')" in
+    *"ok"*) say "gamefiles: launched with an empty app directory ($(grep -m1 -E '^Status:|^Error:' gamefiles-launch.log | tr -d '\r'))" ;;
+    *) die "gamefiles: the launch did not report ok: $(tail -c 300 gamefiles-launch.log)" ;;
+esac
 FOUND=0
 DEADLINE=$((SECONDS + 150))
 while [ $SECONDS -lt $DEADLINE ]; do
