@@ -1370,6 +1370,21 @@ and a partial chunk *outside* the window no longer blocks a read (host-tested: t
 save at radius 1 reports `1 of 1 chunks are not ... (0 of them within 1 of the origin)` and
 does not refuse on that account).
 
+### The fourth run: the loop was still waiting on chunks it could never ask about (43859688264)
+
+The scoping in `worldload` worked — `169 of 794 chunks are not ... (0 of them within 10 of
+the origin)` — but the shell loop around it still refused on the whole-save count, so the
+run failed with the same message plus `0 of them within 10 of the origin`, which said
+plainly that it was waiting for something irrelevant. The loop now waits only when a chunk
+**inside the window** is unfinished, which is the only condition that can produce a denial:
+
+```
+worldload: 1 of 4 chunks are not ... (1 of them within 2 of the origin)   -> wait
+worldload: 169 of 794 chunks are not ... (0 of them within 10 ...)       -> proceed
+```
+
+Both are checked by calling the loop's own test on the exact line each run produced.
+
 **Not yet claimed:** the world workflow has not passed with these changes yet. What is
 host-verified here is the ordering (a stub RCON server shows `forceload` arriving before
 any `save-all`), the settling loop in both directions (a still save settles after three
