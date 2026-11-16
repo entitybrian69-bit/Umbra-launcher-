@@ -127,6 +127,13 @@ def main():
             print(f"{NATIVE}:{line}: {name} is looked up as {sig} "
                   f"but {JAVA} declares {want}", file=sys.stderr)
             bad += 1
+    # One table, not two: JNI_OnLoad ran before the device proved it is never
+    # called, and its copy of the table kept a stale signature after the fix.
+    if native.count("GetStaticMethodID(env, g_umbra_net") > 5:
+        print(f"check_jni_signatures: {NATIVE} looks the UmbraNet methods up in more "
+              "than one place; the table has to be the one net_init uses",
+              file=sys.stderr)
+        return 1
     if checked == 0:
         print("check_jni_signatures: no method lookups found; the C changed shape",
               file=sys.stderr)
