@@ -786,7 +786,23 @@ ERROR: the server wrote no region files
   region error. `tools/rcon.py` itself is checked against a fake RCON server (auth, command,
   `stop` closing without an answer = success), a refused password and no server at all.
 
-What the real server does is still unknown, so no real-world match rate may be claimed.
+The fourth failure, from run `43803520288`: **the world was generated and saved**
+(`PASS: the real server generated a world with 4 region file(s)`, `2.4M world`), and step 10
+failed instead:
+
+```
+worldload: FAIL cannot list build/server/run/world/region
+```
+
+- 26.3 keeps the overworld's regions in
+  `world/dimensions/minecraft/overworld/region/`, not `world/region/`. Both readers now ask
+  for the classic path first and then the 26.3 one, print which one answered
+  (`worldload: region dir ...`, `oracle: region dir ...`), and both are host-checked on the
+  synthetic world in *both* layouts (classic `4 of 4 chunks`, and the same world copied into
+  `dimensions/minecraft/overworld/region` gives the same 24673 blocks and `PASS`). The next
+  run is the first one that will read a real save.
+
+So: a real world has still not been read, and no real-world match rate may be claimed.
 
 ## Step 5 in the working tree: hands (break and place), host-verified
 
