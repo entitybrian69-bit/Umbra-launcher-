@@ -416,7 +416,47 @@ static void net_init(ANativeActivity *activity) {
         }
         attached = 1;
     }
-    jclass local = (*env)->FindClass(env, "org/umbra/client/UmbraNet");
+    // FindClass is not enough: on a thread that was attached from native code it
+    // searches the *system* class loader, which cannot see the app's own classes,
+    // so it answered "not in this APK" on a device whose dex has the class in it
+    // (run 43953686713). The activity's own class loader is the one that knows
+    // this app, and asking it by name is what makes the lookup work on the thread
+    // android_main runs on.
+    jclass local = NULL;
+    if (activity && activity->clazz) {
+        jclass activity_class = (*env)->GetObjectClass(env, activity->clazz);
+        if (activity_class) {
+            jmethodID get_loader = (*env)->GetMethodID(env, activity_class, "getClassLoader",
+                                                       "()Ljava/lang/ClassLoader;");
+            if (get_loader) {
+                jobject loader = (*env)->CallObjectMethod(env, activity->clazz, get_loader);
+                if ((*env)->ExceptionCheck(env)) { (*env)->ExceptionClear(env); loader = NULL; }
+                if (loader) {
+                    jclass loader_class = (*env)->FindClass(env, "java/lang/ClassLoader");
+                    if (loader_class) {
+                        jmethodID load_class = (*env)->GetMethodID(env, loader_class, "loadClass",
+                                                                   "(Ljava/lang/String;)Ljava/lang/Class;");
+                        if (load_class) {
+                            jstring name = (*env)->NewStringUTF(env, "org.umbra.client.UmbraNet");
+                            local = (jclass)(*env)->CallObjectMethod(env, loader, load_class, name);
+                            if ((*env)->ExceptionCheck(env)) {
+                                (*env)->ExceptionClear(env);
+                                local = NULL;
+                            }
+                            (*env)->DeleteLocalRef(env, name);
+                        }
+                    }
+                    (*env)->DeleteLocalRef(env, loader);
+                }
+            }
+            (*env)->DeleteLocalRef(env, activity_class);
+        }
+    }
+    if (!local) {
+        // The activity's loader could not answer; try the plain lookup anyway, so
+        // the log distinguishes "no class loader" from "no class".
+        local = (*env)->FindClass(env, "org/umbra/client/UmbraNet");
+    }
     if (!local) {
         if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
         ALOGE("net: org.umbra.client.UmbraNet is not in this APK: "

@@ -83,8 +83,8 @@ if ! grep -q 'net_init(state->activity);' platform/android/android_main.c; then
     echo "check_c: android_main never looks up the Java bridge (JNI_OnLoad is not called by NativeActivity)" >&2
     exit 1
 fi
-if ! sed -n '/^static void net_init/,/^}/p' platform/android/android_main.c | grep -q 'FindClass'; then
-    echo "check_c: net_init does not FindClass(org/umbra/client/UmbraNet)" >&2
+if ! sed -n '/^static void net_init/,/^}/p' platform/android/android_main.c | grep -q 'loadClass'; then
+    echo "check_c: net_init does not ask the activity's class loader for UmbraNet" >&2
     exit 1
 fi
 echo "check_c: the Java bridge is looked up from android_main, not from JNI_OnLoad"
