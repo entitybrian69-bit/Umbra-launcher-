@@ -605,3 +605,28 @@ standing on a slab at 0.5, stepping up onto one, a long fall and a quarter-secon
 frame not tunnelling, and the eye/forward vectors. Three more check the world
 contract itself: the spawn floor is a full block, the air above is not solid, and
 the slab in the demo world has a 0.5 collision top with a full block under it.
+
+## D-042 - The jar's own blockstates, models and textures are the world's source
+
+Until now the app drew a placeholder atlas of twelve procedural tiles (D-039) and
+one block bound to one parsed model (D-040). Stage 3 replaces both with a pack built
+from the client jar at load time: `core/jarpack.goose` walks every blockstate and
+every model in the jar, resolves parent chains (max 16 links, child textures win,
+elements from the first link that has any), packs every texture a model actually
+names into one atlas (16 px tiles, 2 px replicated gutter, animated PNGs cropped to
+frame 0, missing textures counted and given the loud tile at slot 0), and reads the
+grass/foliage/water tints from the jar's own colormaps.
+
+`core/modelstore.goose` holds the pack and `core/mesh.goose` draws any block from it:
+`mesh_bs_of` caches blockstate lookups per block id, `mesh_set_layout` tells the mesh
+which atlas the tile rects belong to (the placeholder atlas and the jar's pack do not
+have the same cell size, and a rect from the wrong one lands on another block's art),
+and a block whose blockstate exists is drawn from its model even when every face was
+culled - culling is what the model asked for, and turning a culled block back into a
+cube is how the old path used to leak cubes into a modelled world.
+
+The picture that proves it is drawn on the CPU by `goose/jrender.goose` (`core/raster`
+rasterizer, same batches, same order, same camera fit as the app) from the same demo
+world the phone draws. The jar is still downloaded at test time and neither committed
+nor published; only the renderer's numbers and its picture are.
+

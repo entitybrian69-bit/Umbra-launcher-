@@ -49,12 +49,22 @@ jobs:
           GOOSE_STDLIB=build/goose-src/stdlib GOOSE=build/bin/goose bash tools/check_models.sh 2>&1 | tee evidence/jar/models-smoke.txt
           build/umbra_modelcheck build/jar/client.jar 2>&1 | tee evidence/jar/modelcheck.txt
           grep -qF "PASS: every block model in the jar parses" evidence/jar/modelcheck.txt
+      - name: Draw the demo world with the jar's own models and textures
+        run: |
+          set -o pipefail
+          GOOSE=build/bin/goose bash tools/render_world.sh build/jar/client.jar build/world.ppm 960 540 \
+            2>&1 | tee evidence/jar/render-world.txt
+      - name: Compare the picture with its reference
+        run: |
+          set -o pipefail
+          python3 tools/check_world_shot.py evidence/jar/world.png \
+            --reference docs/reference/jar_world.png --record 2>&1 | tee evidence/jar/world-shot.txt
       - name: Report the numbers
         if: always()
         run: |
-          for f in evidence/jar/jarcheck.txt evidence/jar/modelcheck.txt; do
+          for f in evidence/jar/jarcheck.txt evidence/jar/modelcheck.txt evidence/jar/world-shot.txt; do
             [ -f "$f" ] || continue
-            grep -E "^(jar:|model:|PASS|FAILED)" "$f" | tail -24 | while IFS= read -r l; do
+            grep -E "^(jar:|model:|jr:|PASS|FAILED|note:)" "$f" | tail -24 | while IFS= read -r l; do
               echo "::notice title=jar::$l"; done
           done
       - name: Commit the evidence
@@ -62,6 +72,9 @@ jobs:
         run: |
           set -euo pipefail
           git add -f evidence/jar
+          # The first run that draws a world records its picture as the reference the
+          # next runs are held to, so the gate has something real to compare against.
+          if [ -f docs/reference/jar_world.png ]; then git add -f docs/reference/jar_world.png; fi
           bash tools/commit_evidence.sh "ci: jar evidence from run $GITHUB_RUN_ID [skip ci]"
       - uses: actions/upload-artifact@v4
         if: always()
@@ -69,4 +82,5 @@ jobs:
           name: jar-evidence
           path: |
             evidence/jar
+            docs/reference/jar_world.png
             build/fetch-jar.log

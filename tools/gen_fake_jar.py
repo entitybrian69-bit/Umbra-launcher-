@@ -36,7 +36,9 @@ def png_rgba(w: int, h: int, rgba: tuple) -> bytes:
 
 
 def model_text(name: str, texture: str, parent="block/block") -> dict:
-    faces = {f: {"texture": "#all", "uv": [0, 0, 16, 16]} for f in
+    # cullface on all six, like the real block/cube_all.json: two touching blocks must
+    # hide the faces between them, or a world is six faces per block of rock.
+    faces = {f: {"texture": "#all", "uv": [0, 0, 16, 16], "cullface": f} for f in
              ("down", "up", "north", "south", "west", "east")}
     return {
         "parent": parent,
@@ -123,6 +125,35 @@ def build(path: str, broken: bool) -> None:
     z.writestr("assets/minecraft/models/block/fake_root.json",
                json.dumps({"textures": {"all": "block/fake_1"},
                            "elements": model_text("x", "y")["elements"]}))
+
+    # The eight blocks the demo world is built from, under their real names, so the
+    # jar-driven renderer can draw that world from a jar that exists on a machine with
+    # no network. The colours are invented (one flat colour per block) and stand in for
+    # the real art: what this proves is the path - blockstate to model to atlas to
+    # picture - and the real jar is what proves the art.
+    demo_blocks = {
+        "stone": (128, 128, 128, 255),
+        "dirt": (134, 96, 67, 255),
+        "grass_block": (95, 159, 53, 255),
+        "oak_log": (102, 81, 50, 255),
+        "oak_leaves": (52, 122, 40, 255),
+        "water": (63, 118, 228, 170),
+        "short_grass": (110, 168, 60, 255),
+        "oak_slab": (162, 130, 78, 255),
+    }
+    sides = ("down", "up", "north", "south", "west", "east")
+    for name, colour in demo_blocks.items():
+        z.writestr(f"assets/minecraft/textures/block/{name}.png", png_rgba(16, 16, colour))
+        if name == "oak_slab":
+            body = {"parent": "block/block",
+                    "textures": {"all": f"block/{name}", "particle": f"block/{name}"},
+                    "elements": [{"from": [0, 0, 0], "to": [16, 8, 16],
+                                  "faces": {f: {"texture": "#all", "cullface": f} for f in sides}}]}
+        else:
+            body = model_text(name, f"block/{name}")
+        z.writestr(f"assets/minecraft/models/block/{name}.json", json.dumps(body))
+        z.writestr(f"assets/minecraft/blockstates/{name}.json",
+                   json.dumps({"variants": {"": {"model": f"block/{name}"}}}))
 
     for i in range(BLOCKS):
         ref = model_names[i % MODELS]

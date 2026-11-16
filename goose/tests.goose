@@ -9,6 +9,8 @@ import test.json_test;
 import test.mesh_test;
 import test.atlas_test;
 import test.models_test;
+import test.modelstore_test;
+import test.raster_test;
 
 fn main() {
     print("umbra core tests");
@@ -22,6 +24,8 @@ fn main() {
     run_mesh();
     run_atlas();
     run_models();
+    run_modelstore();
+    run_raster();
     print("all modules passed");
 }
 

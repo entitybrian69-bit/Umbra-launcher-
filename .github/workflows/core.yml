@@ -34,6 +34,16 @@ jobs:
           cp /tmp/keep.zlib goose/test/fixtures/inflate/text.zlib
       - name: Jar checker against a synthetic jar (no network, no game data)
         run: GOOSE=build/bin/goose tools/check_jar.sh 2>&1 | tee build/jar-check.log
+      - name: Draw the demo world from a synthetic jar (the same path, no network)
+        # The real jar is drawn in the jar workflow; this is the same binary over a
+        # jar that is generated here, so the whole path - blockstates, models, atlas,
+        # mesh, pixels - runs on every push and on a machine with no network.
+        run: |
+          set -o pipefail
+          python3 tools/gen_fake_jar.py build/fake-client.jar >/dev/null
+          GOOSE=build/bin/goose bash tools/render_world.sh build/fake-client.jar \
+            build/world-fake.ppm 640 360 build/world-fake.png 2>&1 | tee build/render-fake.log
+          python3 tools/check_world_shot.py build/world-fake.png 2>&1 | tee -a build/render-fake.log
       - name: Compile-check the shared C without the NDK (both branches)
         run: GOOSE=build/bin/goose tools/gen_core.sh && bash tools/check_c.sh
       - name: Commit the numbers
@@ -50,6 +60,8 @@ jobs:
             echo "commit: $GITHUB_SHA"
             echo
             tail -20 build/core-tests.log
+            echo
+            grep -E "^(jr:|==|PASS|FAIL)" build/render-fake.log | tail -14
           } > evidence/ci/core-tests-x86_64.txt
           git add -f evidence/ci
           bash tools/commit_evidence.sh "ci: x86_64 core-test evidence from run $GITHUB_RUN_ID [skip ci]"
