@@ -726,6 +726,17 @@ linux: the downloaded binary passed its self-test
 windows: the downloaded .exe ran under wine and passed its self-test
 ```
 
+The five runs on the branch at the *same commit* `68fc892` are green - `core`
+`43809663947`, `pc` `43809663846`, `android` `43809663841`, `world` `43809663826`, `jar`
+`43809664041` - so the commit the tag was cut from is green in full.
+
+The tag push also started a second set of runs (`ref=v0.3.6-pre`), and `core`, `pc`,
+`world` and `android` failed in those. The failing step is "Commit the evidence", not a
+test: a tag-triggered run has `GITHUB_REF_NAME` set to the tag, so `tools/commit_evidence.sh`
+tried to push a commit to `v0.3.6-pre` and a tag cannot receive one. It now says so and
+stops when the run was triggered by a tag (the artifacts still carry the evidence), so a
+green release cannot look red for a reason that has nothing to do with the code.
+
 What changed for the phone since `0.3.5-pre`: it can break and place blocks, with five
 hotbar slots and two action buttons that are drawn from the arithmetic the taps are tested
 against, at a size a finger can hit. The emulator run of that same code did it: `broke

@@ -17,6 +17,18 @@ set -uo pipefail
 msg="${1:-ci: evidence from run ${GITHUB_RUN_ID:-local} [skip ci]}"
 branch="${2:-${GITHUB_REF_NAME:-}}"
 
+# A tag-triggered run has GITHUB_REF_NAME set to the tag, and a commit cannot be pushed to
+# a tag ref: core, pc and world all failed at this step on the v0.3.6-pre tag with their
+# tests already green, which reads as a red release for no reason. The evidence of a tag run
+# is in its artifacts and is the same code as the branch run's; say so and stop.
+case "${GITHUB_REF:-}" in
+    refs/tags/*)
+        echo "commit_evidence: this run was triggered by ${GITHUB_REF}; a tag cannot receive"
+        echo "commit_evidence: a commit, so the evidence stays in the run's artifact"
+        exit 0
+        ;;
+esac
+
 git config user.name "umbra ci"
 git config user.email "ci@umbra.invalid"
 
