@@ -1406,7 +1406,40 @@ distant chunk every second while a radius-0 window stays byte-for-byte the same.
 this change that shape failed; now it settles and every one of the 180 coordinates the
 probe asked about is confirmed.
 
-**Not yet claimed:** the world workflow has not passed with these changes yet. What is
+### The sixth run: the comparison passed, and the gate step above it was wrong (43863228323)
+
+This is the first run in which the server agreed with Umbra about everything it was asked:
+
+```
+compare: attempt 1: 441 chunks, 14143463 non-air blocks, the window is finished
+compare: attempt 6: 441 chunks, 14146918 non-air blocks, the window is finished
+compare: the save is settled - three readings in a row agree: 441 chunks, 14146918 ...
+worldload: PASS - every chunk in the save was read
+compare: at radius 6 worldload: detail lines ... 169 chunks, 5520581 non-air blocks
+probe: the dump has 14146918 blocks over 336 x and 336 z lines; asking about 150 of them
+probe: control: minecraft:stone at -160 -64 -160 scores 0
+probe: 150 confirmed, 0 denied, 0 errors
+compare: the server answered every claim
+```
+
+`150 confirmed, 0 denied` is gate 6b's second half actually met for the first time: the game
+confirms Umbra's block *and its properties* at every coordinate sampled, with the control
+coordinate still scoring 0 so the oracle is known to be able to say no.
+
+The job still failed, at step 12 - my own new step, above the comparison. It downgraded the
+*first chunk of the first region file*, which is the corner of the region and outside the
+detail window, so `worldload` correctly declined to refuse anything. `tools/downgrade_chunk_status.py`
+now takes `cx cz` and the step names chunk 0,0, which a window centred on the origin always
+contains. That tool also grew two real fixes found by testing it: every genuine earlier
+status (`minecraft:carvers` 17, `minecraft:biomes` 16) is *longer* than `minecraft:full`
+(14), so in-place padding could not work, and the record is now rewritten whole with the
+header repointed when it does not fit. Both branches are exercised: `in place` on a normal
+save (all 9 chunks and 55625 blocks still read afterwards) and `moved to sector 11 (1
+sectors freed, 2 used)` on one trimmed to a single sector, again with every chunk intact.
+
+**Not yet claimed:** a full green world run. Two of its four remaining steps - the
+two-readers comparison and the server comparison - are green; the render and the final
+checker have not run yet because the earlier step failed first. What is
 host-verified here is the ordering (a stub RCON server shows `forceload` arriving before
 any `save-all`), the settling loop in both directions (a still save settles after three
 readings and the probe gets 153 of 153 confirmed; a save that grew every second failed with
