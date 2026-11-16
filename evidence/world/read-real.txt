@@ -59,7 +59,7 @@ goose/core/region.goose:66: warning: redundant `as i64`: a u32 converts to i64 i
 goose/core/region.goose:142: warning: redundant `as u32`: a u16 converts to u32 implicitly here
     return s.blocks[i] as u32;
            ^~~~~~~~~~~~~~~~~~
-goose/core/region.goose:468: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+goose/core/region.goose:484: warning: redundant `as u32`: a u8 converts to u32 implicitly here
             put_be_u32(out, (offsets[i] << 8) | (counts[i] as u32));
                                                  ^~~~~~~~~~~~~~~~
 goose/core/inflate.goose:84: warning: redundant `as i64`: a u32 converts to i64 implicitly here
@@ -86,7 +86,7 @@ goose/core/inflate.goose:317: warning: redundant `as u64`: a u32 converts to u64
 == reading build/server/run/world with the loader the renderer uses
 worldload: region dir build/server/run/world/dimensions/minecraft/overworld/region
 
-worldload: chunks 529, non-air blocks 938218, states 31, region files 4, read errors 0
+worldload: chunks 529, non-air blocks 843609, states 45, region files 4, read errors 0
 
 worldload: detail lines for chunks within 1 of the origin
 
@@ -94,14 +94,13 @@ worldload: PASS - every chunk in the save was read
 
 == reading the same world with the independent reader
 oracle: region dir build/server/run/world/dimensions/minecraft/overworld/region
-oracle: chunks 529, non-air blocks 733418, states 30, region files 4
+oracle: chunks 529, non-air blocks 843609, states 45, region files 4
 oracle: wrote build/world-real/oracle.txt
 == comparing
-build/world-real/goose.txt: 1 line(s) this comparison cannot read, first: 'block  204800'
-build/world-real/goose.txt: 529 chunks, 938218 blocks, 30 states
-build/world-real/oracle.txt: 529 chunks, 733418 blocks, 30 states
-chunks that agree: 507 of 529 (95.84%)
-blocks in agreeing chunks: 105825 of 938218 (11.28% of every non-air block in the save)
-block states that agree: 30 of 30
-  first disagreement: chunk (-6, 4) goose (36264, 9307430696254766570) oracle (32168, 15416689784177050090)
-FAIL: the two readings of the world do not agree
+build/world-real/goose.txt: 529 chunks, 843609 blocks, 45 states
+build/world-real/oracle.txt: 529 chunks, 843609 blocks, 45 states
+chunks that agree: 529 of 529 (100.00%)
+blocks in agreeing chunks: 843609 of 843609 (100.00% of every non-air block in the save)
+block states that agree: 45 of 45
+PASS: two independent readers agree on every block of all 529 chunks
+PASS: the world the server generated is read the same way twice
