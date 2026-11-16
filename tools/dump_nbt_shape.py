@@ -248,41 +248,71 @@ def hexdump(data, pos, count=96):
         print(f"    {pos + i:6d}  {' '.join(f'{b:02x}' for b in row):<47}  {text}")
 
 
-def describe_bytes(path):
-    """Walk the first chunk and print the raw bytes of a palette the readers cannot read."""
-    for nbt in world_oracle.file_chunks(path):
-        root, _end, _kids = walk(nbt, 3, 10)      # 1 byte tag, 2 bytes name length, name
-        sections = None
-        for name, tag, at in root:
-            if name == "sections" and tag == 9:
-                sections = at
-                break
-        if sections is None:
-            print("  no sections")
-            return
-        pos = sections + 5
-        sub_tag = nbt[sections]
-        for index in range(struct.unpack(">i", nbt[sections + 1:sections + 5])[0]):
-            sec_start = pos
-            sec, pos, _kids = walk(nbt, pos, sub_tag)
-            if not sec:
+def entry_members(nbt, pos, tag):
+    """(member names, end position) of a compound payload, or ([], end) otherwise."""
+    if tag != 10:
+        value, end, _kids = walk(nbt, pos, tag)
+        return [], end
+    value, end, _kids = walk(nbt, pos, 10)
+    return [name for name, _t, _at in value], end
+
+
+def describe_bytes(files, limit=3):
+    """Print the palettes the readers cannot read, as member names and raw bytes.
+
+    It looks for a palette whose first entry is a compound without a `Name` member - the
+    form that came back as 'compound {: string}' - and prints up to `limit` of them with
+    their bytes, then falls back to the first palettes with compounds in them.
+    """
+    printed = 0
+    fallback = []
+    for path in files:
+        for nbt in world_oracle.file_chunks(path):
+            try:
+                root, _end, _kids = walk(nbt, 3, 10)
+            except (ValueError, struct.error):
                 continue
-            for name, tag, at in sec:
-                if name != "block_states" or tag != 10:
+            sections_at = None
+            for name, tag, at in root:
+                if name == "sections" and tag == 9:
+                    sections_at = at
+                    break
+            if sections_at is None:
+                continue
+            sub_tag = nbt[sections_at]
+            count = struct.unpack(">i", nbt[sections_at + 1:sections_at + 5])[0]
+            pos = sections_at + 5
+            for index in range(count):
+                sec, pos, _k = walk(nbt, pos, sub_tag)
+                if not sec:
                     continue
-                for inner, itag, iat in walk(nbt, at, 10)[0]:
-                    if inner != "palette" or itag != 9:
+                for name, tag, at in sec:
+                    if name != "block_states" or tag != 10:
                         continue
-                    count = struct.unpack(">i", nbt[iat + 1:iat + 5])[0]
-                    if count < 2:
-                        # A one-entry palette is all air; the interesting sections are the
-                        # ones with real terrain in them.
-                        continue
-                    first = iat + 5
-                    print(f"  section[{index}] palette at {first}, first entry bytes:")
-                    hexdump(nbt, first, 80)
-                    return
-        return
+                    for inner, itag, iat in walk(nbt, at, 10)[0]:
+                        if inner != "palette" or itag != 9:
+                            continue
+                        element_tag = nbt[iat]
+                        n = struct.unpack(">i", nbt[iat + 1:iat + 5])[0]
+                        if n < 2 or element_tag != 10:
+                            continue
+                        names, _e = entry_members(nbt, iat + 5, element_tag)
+                        record = (path, index, n, names, iat + 5)
+                        if "Name" not in names:
+                            print(f"  {path}: section[{index}] palette of {n}, "
+                                  f"element tag {element_tag}, first entry members {names}")
+                            hexdump(nbt, iat + 5, 96)
+                            printed += 1
+                            if printed >= limit:
+                                return
+                        elif len(fallback) < limit:
+                            fallback.append(record)
+    if printed == 0:
+        for path, index, n, names, at in fallback:
+            print(f"  fallback: {path}: section[{index}] palette of {n}, first entry members {names}")
+            hexdump(nbt, at, 64)
+    if printed == 0 and not fallback:
+        print("  (no compound palette with two or more entries was found)")
 
 
 def main(argv):
@@ -298,10 +328,10 @@ def main(argv):
         print(f"== {path}")
         if want_hex:
             try:
-                describe_bytes(path)
+                describe_bytes(paths)
             except (ValueError, struct.error) as exc:
                 print(f"  could not walk it: {exc}")
-            continue
+            return 0
         try:
             describe_shapes(path)
         except (ValueError, struct.error) as exc:
