@@ -1,17 +1,17 @@
 == building the loader
-goose/worldload.goose:34: warning: redundant `as u64`: a u8 converts to u64 implicitly here
+goose/worldload.goose:38: warning: redundant `as u64`: a u8 converts to u64 implicitly here
     wl_hash = (wl_hash ^ (b as u64)) * 1099511628211;
                           ^~~~~~~~
-goose/worldload.goose:61: warning: redundant `as i64`: name.len is already i64
+goose/worldload.goose:65: warning: redundant `as i64`: name.len is already i64
         if wl_state_len[i] != name.len as i64 { continue; }
                               ^~~~~~~~~~~~~~~
-goose/worldload.goose:72: warning: redundant `as i64`: name.len is already i64
+goose/worldload.goose:76: warning: redundant `as i64`: name.len is already i64
     wl_state_len.push(name.len as i64);
                       ^~~~~~~~~~~~~~~
-goose/worldload.goose:208: warning: redundant `as i64`: cx is already i64
+goose/worldload.goose:237: warning: redundant `as i64`: cx is already i64
                 let wx = nums[0] * 32 + (cx as i64);
                                          ^~~~~~~~~
-goose/worldload.goose:209: warning: redundant `as i64`: cz is already i64
+goose/worldload.goose:238: warning: redundant `as i64`: cz is already i64
                 let wz = nums[1] * 32 + (cz as i64);
                                          ^~~~~~~~~
 goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
@@ -86,22 +86,24 @@ goose/core/inflate.goose:317: warning: redundant `as u64`: a u32 converts to u64
 == reading build/server/run/world with the loader the renderer uses
 worldload: region dir build/server/run/world/dimensions/minecraft/overworld/region
 
-worldload: chunks 1089, non-air blocks 7351783, states 76, region files 4, read errors 0
+worldload: chunks 2209, non-air blocks 26568648, states 141, region files 4, read errors 0
 
-worldload: detail lines for chunks within 3 of the origin
+worldload: detail lines for chunks within 10 of the origin: 441 chunks, 14144852 non-air blocks
+
+worldload: 1584 of 2209 chunks are not `minecraft:full` yet (0 of them within 10 of the origin)
 
 worldload: PASS - every chunk in the save was read
 
 == reading the same world with the independent reader
 oracle: region dir build/server/run/world/dimensions/minecraft/overworld/region
-oracle: chunks 1089, non-air blocks 7351783, states 76, region files 4
+oracle: chunks 2209, non-air blocks 26568648, states 141, region files 4
 oracle: wrote build/world-real/oracle.txt
 == comparing
-build/world-real/goose.txt: 1089 chunks, 7351783 blocks, 76 states
-build/world-real/oracle.txt: 1089 chunks, 7351783 blocks, 76 states
-chunks that agree: 1089 of 1089 (100.00%)
-blocks in agreeing chunks: 7351783 of 7351783 (100.00% of every non-air block in the save)
-block states that agree: 76 of 76
-detail records that agree: 1146457 of 1146457 (100.00%), block by block
-PASS: two independent readers agree on every block of all 1089 chunks
+build/world-real/goose.txt: 2209 chunks, 26568648 blocks, 141 states
+build/world-real/oracle.txt: 2209 chunks, 26568648 blocks, 141 states
+chunks that agree: 2209 of 2209 (100.00%)
+blocks in agreeing chunks: 26568648 of 26568648 (100.00% of every non-air block in the save)
+block states that agree: 141 of 141
+detail records that agree: 14144852 of 14144852 (100.00%), block by block
+PASS: two independent readers agree on every block of all 2209 chunks
 PASS: the world the server generated is read the same way twice

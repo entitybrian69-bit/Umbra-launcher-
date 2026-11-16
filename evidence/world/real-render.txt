@@ -88,31 +88,31 @@ goose/core/demo.goose:129: warning: redundant `as i32`: cx is already i32
 goose/core/demo.goose:129: warning: redundant `as i32`: cz is already i32
         if demo[i].x == cx as i32 && demo[i].z == cz as i32 { return i; }
                                                   ^~~~~~~~~
-goose/core/demo.goose:180: warning: redundant `as f32`: fx is already f32
+goose/core/demo.goose:184: warning: redundant `as f32`: fx is already f32
     if fx < 0.0 && (fx as f32) != fx { x -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:181: warning: redundant `as f32`: fy is already f32
+goose/core/demo.goose:185: warning: redundant `as f32`: fy is already f32
     if fy < 0.0 && (fy as f32) != fy { y -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:182: warning: redundant `as f32`: fz is already f32
+goose/core/demo.goose:186: warning: redundant `as f32`: fz is already f32
     if fz < 0.0 && (fz as f32) != fz { z -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:187: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:191: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_x = if stepx == 0 { inf } else if stepx > 0 { (1.0 - (fx - (x as f32))) / nx } else { ((x as f32) - fx) / nx };
                                                                          ^~~~~~~~
-goose/core/demo.goose:187: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:191: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_x = if stepx == 0 { inf } else if stepx > 0 { (1.0 - (fx - (x as f32))) / nx } else { ((x as f32) - fx) / nx };
                                                                                                      ^~~~~~~~
-goose/core/demo.goose:188: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:192: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_y = if stepy == 0 { inf } else if stepy > 0 { (1.0 - (fy - (y as f32))) / ny } else { ((y as f32) - fy) / ny };
                                                                          ^~~~~~~~
-goose/core/demo.goose:188: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:192: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_y = if stepy == 0 { inf } else if stepy > 0 { (1.0 - (fy - (y as f32))) / ny } else { ((y as f32) - fy) / ny };
                                                                                                      ^~~~~~~~
-goose/core/demo.goose:189: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:193: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
                                                                          ^~~~~~~~
-goose/core/demo.goose:189: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:193: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
                                                                                                      ^~~~~~~~
 goose/core/atlas.goose:87: warning: redundant `as f32`: an i64 converts to f32 implicitly here
@@ -379,26 +379,26 @@ jr: grass tint 146,189,89 from the jar's colormap
 
 save: region dir build/server/run/world/dimensions/minecraft/overworld/region
 
-jr: save 4 region file(s), 169 chunks, 2634366 non-air blocks, 0 read error(s)
+jr: save 4 region file(s), 169 chunks, 5519837 non-air blocks, 0 read error(s)
 
-jr: blocks drawn from a model 113703769, faces 65940226, blocks whose blockstate had no model 0
+jr: blocks drawn from a model 250959444, faces 151548350, blocks whose blockstate had no model 0
 
-jr: vertices 3334904, triangles 1667452, batches 4671354/331002/0
+jr: vertices 7434344, triangles 3717172, batches 10429248/722268/0
 
-jr: bounds x -96..64 y -64..92 z -16..112, camera 125 blocks out, looking at y 32
+jr: bounds x -96..112 y -64..106 z -96..112, camera 162 blocks out, looking at y 28
 
-jr: drawn triangles 1667452 of 1667452, clipped 0
+jr: drawn triangles 3717172 of 3717172, clipped 0
 
-jr: pixels opaque 5033609, cutout 206249, blended 0, discarded by the alpha test 112870
+jr: pixels opaque 6804836, cutout 200028, blended 0, discarded by the alpha test 140119
 
 jr: wrote build/real.ppm
 
-jr: coverage 739 permille of the frame (383480 of 518400 px), sky 134920
+jr: coverage 761 permille of the frame (394940 of 518400 px), sky 123460
 
-jr: hues green 12121, blue 7350, brown 154400, pale 20757, other 188852, dark 73591, missing-tile magenta 0
+jr: hues green 35963, blue 5858, brown 116316, pale 39058, other 197745, dark 95771, missing-tile magenta 0
 
 jr: atlas texels compared with the jar's PNGs: 6144 sampled, 0 differ
 
 jr: PASS - a world drawn with the jar's own models and textures
 
-== picture: evidence/world/real.png (332269 bytes)
+== picture: evidence/world/real.png (380817 bytes)
