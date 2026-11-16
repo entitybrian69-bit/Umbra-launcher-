@@ -918,6 +918,12 @@ export "umbra_set_block" fn set_block_export(x: i32, y: i32, z: i32, name: const
 // ranges are ordered by pass, which is the order the world has to be drawn in:
 // opaque, cutout, then the translucent water last.
 export fn umbra_range_slots() -> i64 { return sl_col.len }
+// Vertices the ranges actually draw: the arena also holds slack for the next edit.
+export fn umbra_used_vertices() -> i64 {
+    var total: i64 = 0;
+    for i in sl_v_len.len { total += sl_v_len[i]; }
+    return total
+}
 export fn umbra_range_batch(sid: i64) -> i64 {
     if sid < 0 || sid >= sl_batch.len { return 0; }
     return sl_batch[sid]
