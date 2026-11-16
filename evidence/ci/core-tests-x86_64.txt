@@ -1,26 +1,26 @@
 host: x86_64
 compiler: cc (Ubuntu 15.2.0-16ubuntu1) 15.2.0
-run: 43870808062
-commit: 064c6208e5364d1d98a80f4525e3c837456c0f55
+run: 43922373258
+commit: 73970377cad51a037ee87ebd6256bbf5de897e7a
 
-PASS mem (19 checks)
+PASS sha1 (30 checks)
 inflate: 72 streams matched zlib byte for byte, 4 corrupt streams rejected
-PASS inflate (97 checks)
+PASS inflate (108 checks)
 zip: 2 corrupt archives rejected
 zip: 4 archives, 20 entries matched their originals
-PASS zip (137 checks)
+PASS zip (148 checks)
 png: 10 images decoded to their expected RGBA, 4 broken refused
-PASS png (153 checks)
+PASS png (164 checks)
 nbt: parsed and rewrote level.dat byte for byte, 4 broken files refused
-PASS nbt (196 checks)
-PASS region (237 checks)
-PASS json (302 checks)
+PASS nbt (207 checks)
+PASS region (248 checks)
+PASS json (313 checks)
 mesh: real chunk -> 35652 vertices, 53478 indices, fnv1a 4f270675
-PASS mesh (354 checks)
-PASS atlas (403 checks)
-PASS models (425 checks)
-PASS modelstore (475 checks)
-PASS raster (485 checks)
+PASS mesh (365 checks)
+PASS atlas (414 checks)
+PASS models (436 checks)
+PASS modelstore (486 checks)
+PASS raster (496 checks)
 all modules passed
 c-host: goose_exit returned 0
 
@@ -38,3 +38,15 @@ jr: atlas texels compared with the jar's PNGs: 6144 sampled, 0 differ
 jr: PASS - a world drawn with the jar's own models and textures
 == picture: build/world-fake.png (46034 bytes)
 PASS: the picture has structure (no reference to compare with)
+
+== the game-files flow ==
+gamefiles: id 26.3 type release released 2026-09-15T11:23:02+00:00 | latest release 26.3
+gamefiles: version json https://example.invalid/26.3.json
+gamefiles: version json sha1 f788c07844e2819fb6e71a38e229b0ae0845d316
+gamefiles: client jar https://piston-data.mojang.com/v1/objects/e877b6a07acd633fb3bb475002175cec036e7b87/client.jar
+gamefiles: client jar 41483720 bytes, sha1 e877b6a07acd633fb3bb475002175cec036e7b87
+gamefiles: wrong jar refused: the file is 641742 bytes, the pin says 41483720
+gamefiles: import refused: the file is 641742 bytes, the pin says 41483720
+gamefiles: jar path /data/user/0/org.umbra.client/files/client.jar
+gamefiles: downloading says: Downloading the game's files... 50% / 19 of 39 MB from Mojang
+PASS gamefiles (33 checks)
