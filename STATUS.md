@@ -537,9 +537,9 @@ jar's?") is answered twice over: in "Step 6, item 1, the truth" for the case wit
 and in "The evidence a phone's copy of the game files is real" for the case where the
 phone fetches one -- run `43960566328` downloaded 41 483 720 bytes from Mojang through
 the app's own button and drew with them. Item 2 (an edit re-meshes one chunk inside
-50 ms) was already met and is host-checked on every push; the emulator's own numbers put
-the worst edit at 7.1 ms and the worst start-up frame at 165 ms against a 250 ms
-budget.
+50 ms) was already met and is host-checked on every push; on the emulator the worst edit
+slice is 18.5 ms (`43960566328`) and start-up's frames are attributed in the section
+below.
 
 What is left of the brief's item 3 is **threaded meshing for world loading**, and then
 item 4 (the player: full-block steps, swimming, sneak, hotbar and inventory, saving
