@@ -1,0 +1,32 @@
+release verification
+tag: v0.3.5-pre
+base: https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.5-pre
+run: https://github.com/entitybrian69-bit/Umbra-launcher-/actions/runs/43792406619
+commit: f383847db99f1faede9afbcab21a702dfbb48b85
+date: 2026-11-16T02:32:40Z
+
+asset: umbra-0.3.5-pre-arm64.apk
+  url: https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.5-pre/umbra-0.3.5-pre-arm64.apk
+  http: 200
+  size: 362003 bytes
+  sha256: 804297749198001d0d896dacb14d73ebf459431f325024f39a9563141b2a2fa3
+  expected: 804297749198001d0d896dacb14d73ebf459431f325024f39a9563141b2a2fa3
+  result: OK
+asset: umbra-0.3.5-pre-linux-x64
+  url: https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.5-pre/umbra-0.3.5-pre-linux-x64
+  http: 200
+  size: 125560 bytes
+  sha256: 3a584465be7a56ab7516694735e67ec5ccf1475759b344f47ee5fd4816b83554
+  expected: 3a584465be7a56ab7516694735e67ec5ccf1475759b344f47ee5fd4816b83554
+  result: OK
+asset: umbra-0.3.5-pre-windows-x64.exe
+  url: https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.5-pre/umbra-0.3.5-pre-windows-x64.exe
+  http: 200
+  size: 226852 bytes
+  sha256: 71539ac4e76c2ec6736af52d3f7d9b1047129e709ce512df79c3505e44f108cb
+  expected: 71539ac4e76c2ec6736af52d3f7d9b1047129e709ce512df79c3505e44f108cb
+  result: OK
+
+RESULT: PASS - 3 assets re-downloaded from https://github.com/entitybrian69-bit/Umbra-launcher-/releases/download/v0.3.5-pre and every sha256 matched
+linux: the downloaded binary passed its self-test
+windows: the downloaded .exe ran under wine and passed its self-test
