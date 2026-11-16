@@ -847,6 +847,30 @@ The shape dump from that run named the cause:
   passing on the real save. Host: the string-form world gives the same
   `4 chunks, 24673 blocks, 7 states` and `PASS`.
 
+The next run read the real world with both readers and they **disagreed**, which is the
+comparison doing its job:
+
+```
+worldload: chunks 529, non-air blocks 958903, states 30, region files 4, read errors 0
+oracle:    chunks 529, non-air blocks 732557, states 29, region files 4
+```
+
+- that is the bit packing of a paletted container. Since 1.16 values run on across a
+  64-bit word boundary, so a section is `ceil(4096 * bits / 64)` longs; before that every
+  word started a new value, so it was `ceil(4096 / (64 / bits))`. The two are the same
+  bytes at 4 bits and different at 5, 6 and 7 - and the synthetic world had 7 states, so
+  every section was 4 bits and nothing could show it. The Python side assumed the old
+  padding, and the Goose side's test for it could never be true (`count <` a contiguous
+  length is not a property of a padded array), so it read every padded section as
+  contiguous. Both now choose by length, and the generator can write either packing and a
+  palette wide enough to matter. Host, all three flavours, both readers:
+  `string` `24673` blocks `7` states, `compound`/20 states `24777`/`27`, `padded`/20 states
+  `24777`/`27`, every one `100.00%` and `PASS`. The workflow now reads all four synthetic
+  flavours on every push.
+- the comparison script also died with an `IndexError` instead of reporting; it now prints
+  the lines it cannot read (the first real dump had a `block` line with an empty name,
+  which is the next thing to look at).
+
 So: a real world has still not been read, and no real-world match rate may be claimed.
 
 ## Step 5 in the working tree: hands (break and place), host-verified

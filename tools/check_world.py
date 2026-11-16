@@ -21,23 +21,32 @@ def read(path):
     blocks = {}
     total = None
     details = []
+    bad = []
     with open(path) as f:
         for line in f:
             line = line.rstrip("\n")
             if not line:
                 continue
-            if line.startswith("chunk "):
-                parts = line.split()
-                # chunk <cx> <cz> blocks <n> hash <h>
-                chunks[(int(parts[1]), int(parts[2]))] = (int(parts[4]), int(parts[6]))
-            elif line.startswith("block "):
-                parts = line.split()
-                blocks[parts[1]] = int(parts[2])
-            elif line.startswith("total "):
-                parts = line.split()
-                total = (int(parts[1]), int(parts[2]), int(parts[3]))
-            elif line.startswith("detail "):
-                details.append(line)
+            try:
+                if line.startswith("chunk "):
+                    parts = line.split()
+                    # chunk <cx> <cz> blocks <n> hash <h>
+                    chunks[(int(parts[1]), int(parts[2]))] = (int(parts[4]), int(parts[6]))
+                elif line.startswith("block "):
+                    parts = line.split()
+                    blocks[parts[1]] = int(parts[2])
+                elif line.startswith("total "):
+                    parts = line.split()
+                    total = (int(parts[1]), int(parts[2]), int(parts[3]))
+                elif line.startswith("detail "):
+                    details.append(line)
+            except (IndexError, ValueError):
+                # A line this cannot read is information, not a traceback: the first real
+                # save produced `block` with an empty name and the comparison died instead
+                # of saying so.
+                bad.append(line)
+    if bad:
+        print(f"{path}: {len(bad)} line(s) this comparison cannot read, first: {bad[0]!r}")
     return chunks, blocks, total, details
 
 
