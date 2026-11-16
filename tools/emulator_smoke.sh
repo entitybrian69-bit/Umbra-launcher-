@@ -612,61 +612,97 @@ while [ $SECONDS -lt $DEADLINE ]; do
     sleep 2
 done
 [ "$HANDS_READY" = 1 ] || die "hands: the app never drew the hand controls in first person"
-# "hud: hand hotbar 4 at 900,1550 size 49x49 on 1080x1920"
+# "hud: hand hotbar 4 at 1004,1043 size 23x23 on 1920x1080" - the rect is in surface
+# pixels, and the surface is the landscape window while `input tap` speaks in the
+# panel's own portrait pixels. Which rotation maps one to the other is not guessed: the
+# first tap is tried in all four, and the one the app answers is kept.
 hand_rect() {
     adb logcat -d -s umbra:V 2>/dev/null | grep "hud: hand $1 at " | tail -1 \
         | sed 's/.* at //' | sed 's/ on .*//'
 }
-tap_hand() {
-    RECT="$(hand_rect "$1")"
-    POS="${RECT%% size *}"
-    SIZE="${RECT#*size }"
-    HX="${POS%%,*}"
-    HY="${POS#*,}"
-    HW="${SIZE%%x*}"
-    HH="${SIZE#*x}"
-    adb shell input tap $(( HX + HW / 2 )) $(( HY + HH / 2 )) > /dev/null 2>&1 \
-        || say "hands: the tap at $(( HX + HW / 2 )),$(( HY + HH / 2 )) failed"
-    say "hands: tapped $1 at $(( HX + HW / 2 )),$(( HY + HH / 2 )) (rect $RECT)"
+hand_centre() {   # $1 = rect "x,y size WxH" -> "cx cy"
+    POS="${1%% size *}"
+    SIZE="${1#*size }"
+    echo "$(( ${POS%%,*} + ${SIZE%%x*} / 2 )) $(( ${POS#*,} + ${SIZE#*x} / 2 ))"
 }
-say "hands: $(adb logcat -d -s umbra:V 2>/dev/null | grep -c "hud: hand ") hand-control rects logged"
-# A slab is slot 4; selecting it must say so in the log.
-tap_hand "hotbar 4"
-sleep 1
-if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: hotbar slot 4 selected (oak_slab)"; then
-    say "hands: the hotbar selected the slab"
-else
-    die "hands: tapping the slab slot did not select it"
-fi
+DISP_W="${WM_SIZE%x*}"
+DISP_H="${WM_SIZE#*x}"
+case "$DISP_W" in ''|*[!0-9]*) DISP_W=1080 ;; esac
+case "$DISP_H" in ''|*[!0-9]*) DISP_H=1920 ;; esac
+hand_tap_xy() {   # $1 = frame, $2 cx, $3 cy -> display "x y"
+    case "$1" in
+        identity) echo "$2 $3" ;;
+        rot90)    echo "$(( DISP_H - $3 )) $2" ;;
+        rot180)   echo "$(( DISP_W - $2 )) $(( DISP_H - $3 ))" ;;
+        rot270)   echo "$3 $(( DISP_W - $2 ))" ;;
+    esac
+}
+HAND_MODE=""
+tap_hand() {      # $1 = control name, echoed as logged by the app
+    RECT="$(hand_rect "$1")"
+    [ -n "$RECT" ] || { say "hands: no rect for $1"; return 1; }
+    set -- $1 $(hand_centre "$RECT")
+    NAME="$1"
+    set -- $(hand_tap_xy "${HAND_MODE:-identity}" "$2" "$3")
+    adb shell input tap "$1" "$2" > /dev/null 2>&1 || say "hands: the tap at $1,$2 failed"
+    say "hands: tapped $NAME at $1,$2 (frame ${HAND_MODE:-identity}, rect $(hand_rect "$NAME"))"
+}
+SLOT4="$(hand_centre "$(hand_rect "hotbar 4")")"
+set -- $SLOT4
+SLOT4_X="$1"; SLOT4_Y="$2"
+for frame in identity rot90 rot180 rot270; do
+    set -- $(hand_tap_xy "$frame" "$SLOT4_X" "$SLOT4_Y")
+    adb shell input tap "$1" "$2" > /dev/null 2>&1 || true
+    sleep 1
+    if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: hotbar slot 4 selected"; then
+        HAND_MODE="$frame"
+        say "hands: the app answers at $1,$2, so input is '$frame' of the surface"
+        break
+    fi
+done
+[ -n "$HAND_MODE" ] || die "hands: no rotation of the slab slot's centre selected it (the world is $(adb logcat -d -s umbra:V 2>/dev/null | grep -c "player: tap, jumping"), jumps so far)"
+say "hands: the hotbar selected the slab: $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "player: hotbar slot 4 selected" | sed 's/.*umbra   : //')"
 # Look down at the ground before breaking: the crosshair has to be on a block within
 # reach, and a level gaze at the horizon reaches nothing.
-adb shell input swipe $(( P_WIDTH / 3 )) $(( P_HEIGHT / 2 )) \
-    $(( P_WIDTH / 3 )) $(( P_HEIGHT * 3 / 4 )) 500 > /dev/null 2>&1 \
+# The drag is in surface pixels too, and the surface is what the app logged.
+SURF="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "hud: hand hotbar 0 at " | sed 's/.* on //' | tr -d '\r')"
+SURF_W="${SURF%x*}"
+SURF_H="${SURF#*x}"
+case "$SURF_W" in ''|*[!0-9]*) SURF_W="$P_WIDTH" ;; esac
+case "$SURF_H" in ''|*[!0-9]*) SURF_H="$P_HEIGHT" ;; esac
+say "hands: the surface is ${SURF_W}x${SURF_H}, the panel ${DISP_W}x${DISP_H}"
+set -- $(hand_tap_xy "$HAND_MODE" $(( SURF_W / 3 )) $(( SURF_H / 2 )))
+LD_X="$1"; LD_Y="$2"
+set -- $(hand_tap_xy "$HAND_MODE" $(( SURF_W / 3 )) $(( SURF_H * 3 / 4 )))
+adb shell input swipe "$LD_X" "$LD_Y" "$1" "$2" 500 > /dev/null 2>&1 \
     || say "hands: the look-down drag failed"
 sleep 1
 PITCH_NOW="$(adb logcat -d -s umbra:V 2>/dev/null | grep "player: at " | tail -1 \
     | sed 's/.*pitch \([-0-9]*\).*/\1/')"
 say "hands: looking down at pitch $PITCH_NOW"
 tap_hand "break"
-sleep 2
+sleep 3
 if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: break -> 1"; then
     say "hands: $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "player: break -> 1" \
         | sed 's/.*umbra   : //')"
 else
     die "hands: a break on the ground ahead changed nothing: $(adb logcat -d -s umbra:V 2>/dev/null | grep "player: break" | tail -2 | tr '\n' '|')"
 fi
-# The edit re-meshes the world; the app is only ready again when it says so.
+# The edit re-meshes the world; the app is only ready again when it says so - a *new*
+# "meshed in" line, counted, because the start-up one is already there.
+MESH_BEFORE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -c "startup: meshed in")"
 REMESHED=0
-DEADLINE=$((SECONDS + 60))
+DEADLINE=$((SECONDS + 120))
 while [ $SECONDS -lt $DEADLINE ]; do
-    if adb logcat -d -s umbra:V 2>/dev/null | grep -q "startup: meshed in"; then REMESHED=1; break; fi
+    MESH_NOW="$(adb logcat -d -s umbra:V 2>/dev/null | grep -c "startup: meshed in")"
+    if [ "$MESH_NOW" -gt "$MESH_BEFORE" ]; then REMESHED=1; break; fi
     sleep 2
 done
 [ "$REMESHED" = 1 ] && say "hands: the world was re-meshed after the edit" \
     || err "hands: no re-mesh line after the edit"
 sleep 2
 tap_hand "place"
-sleep 2
+sleep 3
 if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: place -> 1"; then
     say "hands: $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "player: place -> 1" \
         | sed 's/.*umbra   : //')"

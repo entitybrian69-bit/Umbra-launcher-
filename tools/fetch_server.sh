@@ -32,6 +32,12 @@ python3 tools/pin_server.py "$WORK/version.json" > "$WORK/server.env"
 . "$WORK/server.env"
 echo "server jar in the version JSON: $MC_SERVER_SIZE bytes, sha1 $MC_SERVER_SHA1"
 echo "server needed Java $MC_SERVER_JAVA"
+# Persisted, because the runner has to install that version and the hard-coded 21 in the
+# workflow was wrong: 26.3's bundler is class file version 69 (Java 25), so the server
+# died on the first line with UnsupportedClassVersionError and the log said only that it
+# had exited. The version JSON knows; this file carries it to the setup step.
+mkdir -p "$(dirname "$DEST")"
+printf '%s\n' "$MC_SERVER_JAVA" > "$(dirname "$DEST")/java_major.txt"
 
 echo "downloading: $MC_SERVER_URL"
 curl -fsSL --retry 3 --retry-delay 2 -o "$DEST" "$MC_SERVER_URL"

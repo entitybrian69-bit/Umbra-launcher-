@@ -157,6 +157,21 @@ static float umbra_hud_scene_shift(float panel_height, int height) {
 // app drew, and the host suite checks a phone, a tablet and a landscape window.
 #define UMBRA_HOTBAR_SLOTS 5
 
+// The hand controls are tapped, so their size comes from a finger and not from the
+// overlay text, which has to shrink to fit its rows: on the CI emulator that shrink left
+// a hotbar slot 23 px across, which is not a target anybody can hit. A slot is 44 dp
+// across (the smallest edge a person can reliably tap) unless that would take most of the
+// screen's short side, in which case the row is shrunk to fit.
+static float umbra_hud_hand_scale(float dpi_scale, int width, int height) {
+    float dp = (dpi_scale > 1.0f) ? dpi_scale : 1.0f;
+    float row = UMBRA_HOTBAR_SLOTS * 14.0f + (UMBRA_HOTBAR_SLOTS - 1) * 3.0f;
+    float s = 44.0f * dp / 14.0f;
+    float limit = (float)(width < height ? width : height) * 0.72f;
+    if (row * s > limit) s = limit / row;
+    if (s < 1.0f) s = 1.0f;
+    return s;
+}
+
 static umbra_rect umbra_hud_hotbar_slot(int i, int width, int height, const int32_t insets[4],
                                         float scale) {
     umbra_rect r = { 0, 0, 0, 0 };
@@ -197,10 +212,14 @@ static umbra_rect umbra_hud_action(int which, int width, int height, const int32
     umbra_rect r = { 0, 0, 0, 0 };
     if (which < 0 || which > 1) return r;
     float w = 34.0f * scale;
+    if (w > (float)width * 0.45f) w = (float)width * 0.45f;
     float h = 16.0f * scale;
     float gap = 3.0f * scale;
     float x1 = (float)width - (float)insets[2] - 8.0f * scale;
-    float y0 = (float)height - (float)insets[3] - 14.0f * scale - 2.0f * (h + gap);
+    // Above the hotbar row, not on it: at 44 dp a slot the two would otherwise overlap on
+    // a 1080-wide screen, and an overlap is a tap that means two things.
+    float row_top = (float)height - (float)insets[3] - 14.0f * scale - 8.0f * scale;
+    float y0 = row_top - 6.0f * scale - 2.0f * (h + gap);
     r.x = x1 - w;
     r.y = y0 + (float)which * (h + gap);
     r.w = w;

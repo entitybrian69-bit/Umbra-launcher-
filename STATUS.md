@@ -730,7 +730,8 @@ runs it with a fixed seed until it says `Done`, stops it cleanly, and the same t
 readers then read *that* save. The server jar and the save are never committed.
 
 **State: implemented and host-verified on the synthetic world; the real half is failing
-in CI at the generation step and the cause was found on 2026-11-16.** Run `43800033517`
+in CI at the generation step, and two causes have been found and fixed on 2026-11-16,
+neither verified yet.** The first cause: run `43800033517`
 (commit `764da22`) failed at step 8 with
 
 ```
@@ -747,8 +748,23 @@ here against a stub `java` on `PATH`: a fake server that prints `Done (1.9s)` an
 `world/region/r.0.0.mca` gives `PASS: the real server generated a world with 1 region
 file(s)` with `-jar /tmp/fakejar.jar` absolute; a missing jar gives `ERROR: no server jar
 at ...`; a java that dies immediately now prints its log (`java.lang.OutOfMemoryError:
-Java heap space`) instead of nothing. What the real server does is still unknown, so no
-real-world match rate may be claimed.
+Java heap space`) instead of nothing.
+
+The second cause, from run `43801790348`: the fixed script printed the server's own log
+and it said
+
+```
+Error: LinkageError occurred while loading main class net.minecraft.bundler.Main
+        java.lang.UnsupportedClassVersionError: net/minecraft/bundler/Main has been
+        compiled by a more recent version of the Java Runtime (class file version 69.0),
+        this version of the Java Runtime only recognizes class file versions up to 65.0
+```
+
+- the workflow installed Java 21, and 26.3's bundler is class file 69 (Java 25). The
+version JSON already says this (`server needed Java 25`, printed by `fetch_server.sh` on
+every run); `fetch_server.sh` now writes that number to `build/server/java_major.txt` and
+the workflow installs *that* major through a step output instead of a hard-coded 21. What
+the real server does is still unknown, so no real-world match rate may be claimed.
 
 ## Step 5 in the working tree: hands (break and place), host-verified
 
@@ -785,7 +801,26 @@ Host evidence (`platform/pc/headless_main.c`, `PASS: 207 checks, 0 failures`, wa
 
 The emulator run has a new `hands` phase that reads the rects the app logs, taps the slab
 slot, drags to look down, taps BREAK (fails the run if the world did not change), waits
-for the re-mesh, then taps PLACE. Its result is not in this file yet.
+for the re-mesh, then taps PLACE.
+
+Its first run (run `43801790421`, commit `325594e`) failed, and both findings are fixed
+and host-tested but not re-run:
+
+1. **The controls were too small to tap.** The hand controls took their size from the
+   overlay text scale, which shrinks to fit its rows: on the CI emulator that scale is
+   1.65, so a hotbar slot was `23x23` px - about 1.4 mm on a 420 dpi panel. They now have
+   their own scale, `umbra_hud_hand_scale`, a 44 dp slot (the smallest target a finger can
+   reliably hit) shrunk only if the row would take more than 72% of the screen's short
+   side, and the action buttons moved above the hotbar row because at 44 dp they overlapped
+   it on a 1080-wide screen. Host-checked at 420 dpi on 1080x1920 and 1920x1080 and at
+   160 dpi on 800x1280.
+2. **`input tap` and the app do not share a pixel frame.** The activity is landscape
+   (surface `1920x1080`) inside a portrait panel (`1080x1920`), so the slot's centre
+   `1015,1054` was sent as display coordinates and arrived at the app as a completely
+   different point: the tap became "player: tap, jumping", not a selection. The phase now
+   tries the four rotations of the same surface point and keeps the one the app answers
+   (logged as `the app answers at x,y, so input is 'rotNNN' of the surface`); every later
+   tap and the look-down drag go through that frame.
 
 ## Parity table (what is and is not the same as the game)
 
@@ -798,7 +833,7 @@ for the re-mesh, then taps PLACE. Its result is not in this file yet.
 | Textures from the jar | yes, host-verified | 469 textures packed into a 512x512 atlas, `6144` texels compared with the jar's PNGs, `0 differ`; the phone still ships the 12 placeholder tiles (D-039) |
 | A world drawn from the jar's models and textures | CI-verified picture | `goose/jrender.goose` -> `evidence/jar/world.png`, compared with its reference by `tools/check_world_shot.py` |
 | A body you can walk with | yes | 24 host checks, and the device run above |
-| Breaking and placing blocks | yes, host-verified | 33 host checks over the ray, the edit and the re-mesh, all three layouts; the emulator `hands` phase is unverified |
+| Breaking and placing blocks | yes, host-verified | 36 host checks over the ray, the edit, the re-mesh, the 44 dp target size and all three layouts; the emulator `hands` phase is unverified |
 | Water, ladders, sneaking, swimming, mobs, survival, multiplayer | **no** | not implemented |
 | Reading a world from a real save | implemented, synthetic-verified | two independent readers, `24673 of 24673` blocks, 100.00%; the real server's save has not been read yet (step 8 of the `world` workflow failed three times; the third cause is fixed and unverified) |
 | Rendered world matches the real client | **not measured** | gate 6b second half: nothing compares two renders yet |

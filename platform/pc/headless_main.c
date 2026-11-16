@@ -802,14 +802,23 @@ int main(int argc, char **argv) {
     {
         const int32_t no_insets[4] = { 0, 0, 0, 0 };
         const int32_t phone_insets[4] = { 0, 63, 0, 126 };
-        struct { int w, h; const int32_t *in; float scale; } cases[3] = {
-            { 1080, 1920, phone_insets, 3.5f },
-            { 1920, 1080, no_insets, 3.5f },
+        // The scale comes from the hand, not the overlay text: 420 dpi is the CI
+        // emulator and the phone the owner reports on, 160 dpi the small tablet.
+        struct { int w, h; const int32_t *in; float dpi; } cases[3] = {
+            { 1080, 1920, phone_insets, 420.0f / 160.0f },
+            { 1920, 1080, no_insets, 420.0f / 160.0f },
             { 800, 1280, no_insets, 1.0f },
         };
         for (int c = 0; c < 3; c++) {
             int w = cases[c].w, h = cases[c].h;
-            float s = cases[c].scale;
+            float s = umbra_hud_hand_scale(cases[c].dpi, w, h);
+            // A target has to be big enough for a finger: 44 dp across, or the whole
+            // row shrunk to fit a narrow screen.
+            float dp = cases[c].dpi > 1.0f ? cases[c].dpi : 1.0f;
+            umbra_rect slot0 = umbra_hud_hotbar_slot(0, w, h, cases[c].in, s);
+            float total = UMBRA_HOTBAR_SLOTS * slot0.w + (UMBRA_HOTBAR_SLOTS - 1) * 3.0f * s;
+            check(slot0.w >= 44.0f * dp - 0.01f || total >= (float)(w < h ? w : h) * 0.72f - 1.0f,
+                  "a hotbar slot is at least 44 dp across, or as wide as the screen allows");
             int inside = 1, overlap = 0;
             for (int i = 0; i < UMBRA_HOTBAR_SLOTS; i++) {
                 umbra_rect r = umbra_hud_hotbar_slot(i, w, h, cases[c].in, s);

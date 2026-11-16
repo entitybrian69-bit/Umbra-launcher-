@@ -47,11 +47,24 @@ jobs:
           cp build/fetch-server.log evidence/world/fetch-server.log
           tail -4 build/fetch-server.log | while IFS= read -r l; do
             echo "::notice title=server::$l"; done
-      - name: Java for the server
-        uses: actions/setup-java@v4
+      - name: Java for the server, as the version JSON asks
+        # Not a hard-coded major: 26.3 needs Java 25 and a hard-coded 21 made the server
+        # exit at load with UnsupportedClassVersionError (class file version 69). The
+        # fetch step writes what the version JSON said.
+        id: java
+        run: |
+          set -euo pipefail
+          major="$(cat build/server/java_major.txt 2>/dev/null || true)"
+          if [ -z "$major" ]; then
+            echo "::error title=java::the version JSON named no Java version"
+            exit 1
+          fi
+          echo "java $major, as the version JSON asks"
+          echo "major=$major" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: ${{ steps.java.outputs.major }}
       - name: Generate a real world with the real server
         run: |
           set -o pipefail

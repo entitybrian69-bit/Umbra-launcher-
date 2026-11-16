@@ -498,6 +498,11 @@ static float hud_scale(const umbra_app *app) {
     return umbra_hud_scale(app->dpi_scale, app->width, app->height, hud_rows(app), app->insets[1]);
 }
 
+// The hand controls' own scale, from a finger's size rather than the text's.
+static float hand_scale(const umbra_app *app) {
+    return umbra_hud_hand_scale(app->dpi_scale, app->width, app->height);
+}
+
 static void hud_button_rect(const umbra_app *app, int i, float *x, float *y, float *w, float *h) {
     umbra_rect r = umbra_hud_button(i, app->width, app->height, app->insets, hud_scale(app));
     *x = r.x;
@@ -1942,7 +1947,10 @@ static int hud_rows(const umbra_app *app) {
 static void draw_hands(umbra_app *app) {
     if (!app->player_on) return;
     if (app->mesh_state == 1) return;
-    float s = hud_scale(app);
+    float s = hand_scale(app);
+    // The labels are text, not targets: they keep the overlay's readable size instead of
+    // growing to the size of a finger.
+    float text_s = hud_scale(app);
     // The automated run taps these by reading their rects back, so a layout change
     // cannot silently make it tap empty space (the home screen's buttons are logged the
     // same way, for the same reason).
@@ -1974,17 +1982,19 @@ static void draw_hands(umbra_app *app) {
             label[n++] = (char)name[k];
         }
         label[n] = 0;
-        float tw = hud_text_width(label, s * 0.7f);
-        hud_text(r.x + (r.w - tw) * 0.5f, r.y - UMBRA_HUD_ROW_HEIGHT * s * 0.9f, s * 0.7f,
+        float ts = text_s * 0.7f;
+        float tw = hud_text_width(label, ts);
+        hud_text(r.x + (r.w - tw) * 0.5f, r.y - UMBRA_HUD_ROW_HEIGHT * ts * 1.4f, ts,
                  sel ? 1.0f : 0.75f, sel ? 0.95f : 0.8f, sel ? 0.6f : 0.85f, 1, label);
     }
     static const char *action_names[2] = { "BREAK", "PLACE" };
     for (int i = 0; i < 2; i++) {
         umbra_rect r = umbra_hud_action(i, app->width, app->height, app->insets, s);
         hud_rect(r.x, r.y, r.w, r.h, i == 0 ? 0.75f : 0.25f, i == 0 ? 0.25f : 0.55f, 0.25f, 0.5f);
-        float tw = hud_text_width(action_names[i], s * 0.8f);
-        hud_text(r.x + (r.w - tw) * 0.5f, r.y + (r.h - UMBRA_HUD_ROW_HEIGHT * s * 0.8f) * 0.5f,
-                 s * 0.8f, 1, 1, 1, 1, action_names[i]);
+        float ts = text_s * 0.8f;
+        float tw = hud_text_width(action_names[i], ts);
+        hud_text(r.x + (r.w - tw) * 0.5f, r.y + (r.h - UMBRA_HUD_ROW_HEIGHT * ts) * 0.5f,
+                 ts, 1, 1, 1, 1, action_names[i]);
     }
 }
 
@@ -2341,7 +2351,7 @@ void umbra_app_touch_id(umbra_app *app, int32_t id, int32_t x, int32_t y, int32_
     // Not a button: this finger is on the world.
     if (app->player_on && app->mesh_state == 2) {
         // The hotbar and the two action buttons take the tap when it lands on them.
-        float hs = hud_scale(app);
+        float hs = hand_scale(app);
         if (phase == 0) {
             int slot = umbra_hud_hotbar_hit(x, y, app->width, app->height, app->insets, hs);
             if (slot >= 0) {
