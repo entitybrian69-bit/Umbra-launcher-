@@ -401,6 +401,17 @@ fn ms_rule_model_path(r: i64) -> const u8[:] {
 }
 
 fn ms_rule_count() -> i64 { return mts_rules.len; }
+
+// Rules still without a model after `ms_link_models`: a blockstate that names a model
+// the jar does not have. Reported rather than hidden, because a rule that resolves
+// nowhere is a block that draws nothing.
+fn ms_rules_unlinked() -> i64 {
+    var n: i64 = 0;
+    for r in mts_rules.len {
+        if mts_rules[r].model < 0 { n += 1; }
+    }
+    return n;
+}
 fn ms_rule_model(r: i64) -> i64 { return mts_rules[r].model; }
 fn ms_rule_xrot(r: i64) -> i64 { return mts_rules[r].xrot; }
 fn ms_rule_yrot(r: i64) -> i64 { return mts_rules[r].yrot; }

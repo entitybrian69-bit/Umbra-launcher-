@@ -1,4 +1,10 @@
-goose/jrender.goose:220: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/jrender.goose:180: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+              " bytes, sampled at ", (cu * (jp_colormap_w() as f32)) as i64, ",",
+                                            ^~~~~~~~~~~~~~~~~~~~~~
+goose/jrender.goose:181: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+              (cv * (jp_colormap_h() as f32)) as i64, "\n");
+                     ^~~~~~~~~~~~~~~~~~~~~~
+goose/jrender.goose:231: warning: redundant `as f32`: an i64 converts to f32 implicitly here
     let aspect = (width as f32) / (height as f32);
                                    ^~~~~~~~~~~~~
 goose/core/raster.goose:64: warning: redundant `as f32`: (((f[0] * f[0]) + (f[1] * f[1])) + (f[2] * f[2])) is already f32
@@ -67,19 +73,19 @@ goose/core/jarpack.goose:70: warning: redundant `as i64`: s.len is already i64
 goose/core/jarpack.goose:299: warning: redundant `as i64`: used.len is already i64
     jp_tex_used = used.len as i64;
                   ^~~~~~~~~~~~~~~
-goose/core/jarpack.goose:379: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/jarpack.goose:383: warning: redundant `as f32`: an i64 converts to f32 implicitly here
     var x = (u * (jp_cmap_w as f32)) as i64;
                   ^~~~~~~~~~~~~~~~
-goose/core/jarpack.goose:380: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/jarpack.goose:384: warning: redundant `as f32`: an i64 converts to f32 implicitly here
     var y = (v * (jp_cmap_h as f32)) as i64;
                   ^~~~~~~~~~~~~~~~
-goose/core/jarpack.goose:387: warning: redundant `as f32`: a u8 converts to f32 implicitly here
+goose/core/jarpack.goose:391: warning: redundant `as f32`: a u8 converts to f32 implicitly here
     out[0] = (jp_cmap_px[i] as f32) / 255.0;
               ^~~~~~~~~~~~~~~~~~~~
-goose/core/jarpack.goose:388: warning: redundant `as f32`: a u8 converts to f32 implicitly here
+goose/core/jarpack.goose:392: warning: redundant `as f32`: a u8 converts to f32 implicitly here
     out[1] = (jp_cmap_px[i + 1] as f32) / 255.0;
               ^~~~~~~~~~~~~~~~~~~~~~~~
-goose/core/jarpack.goose:389: warning: redundant `as f32`: a u8 converts to f32 implicitly here
+goose/core/jarpack.goose:393: warning: redundant `as f32`: a u8 converts to f32 implicitly here
     out[2] = (jp_cmap_px[i + 2] as f32) / 255.0;
               ^~~~~~~~~~~~~~~~~~~~~~~~
 goose/core/json.goose:104: warning: redundant `as i64`: a u8 converts to i64 implicitly here
@@ -193,19 +199,19 @@ goose/core/modelstore.goose:293: warning: redundant `as i64`: side is already i6
 goose/core/modelstore.goose:295: warning: redundant `as i64`: side is already i64
                         msf_face.push(side as i64);
                                       ^~~~~~~~~~~
-goose/core/modelstore.goose:434: warning: redundant `as i64`: key.len is already i64
+goose/core/modelstore.goose:445: warning: redundant `as i64`: key.len is already i64
     mts_cond_key_len.push(key.len as i64);
                           ^~~~~~~~~~~~~~
-goose/core/modelstore.goose:437: warning: redundant `as i64`: values.len is already i64
+goose/core/modelstore.goose:448: warning: redundant `as i64`: values.len is already i64
     mts_cond_val_len.push(values.len as i64);
                           ^~~~~~~~~~~~~~~~~
-goose/core/modelstore.goose:485: warning: redundant `as i64`: want.len is already i64
+goose/core/modelstore.goose:496: warning: redundant `as i64`: want.len is already i64
         model_path_len: want.len as i64,
                         ^~~~~~~~~~~~~~~
-goose/core/modelstore.goose:493: warning: redundant `as i64`: key.len is already i64
+goose/core/modelstore.goose:504: warning: redundant `as i64`: key.len is already i64
         variant_key_len: key.len as i64,
                          ^~~~~~~~~~~~~~
-goose/core/modelstore.goose:504: warning: redundant `as i64`: name.len is already i64
+goose/core/modelstore.goose:515: warning: redundant `as i64`: name.len is already i64
         name_len: name.len as i64,
                   ^~~~~~~~~~~~~~~
 goose/core/mesh.goose:379: warning: redundant `as f32`: an i32 converts to f32 implicitly here
@@ -306,7 +312,7 @@ jr: jar 41483720 bytes
 
 jr: models 4192 built, 4192 in the store, 0 refused
 
-jr: blockstates 1288 built, 1288 in the store, 4 rules linked to a model
+jr: blockstates 1288 built, 1288 in the store, 10290 rules, 4 linked here, 0 with no model at all
 
 jr: 28564 faces in the models, 1214 texture paths
 
@@ -316,7 +322,9 @@ jr: textures used 1214, decoded 1213, missing 1, animated 52
 
 jr: atlas hash 1017517838
 
-jr: grass tint 255,255,255 from the jar's colormap
+jr: grass colormap 256x256, 262144 bytes, sampled at 51,174
+
+jr: grass tint 146,189,89 from the jar's colormap
 
 jr: blocks drawn from a model 1498125, faces 516157, blocks whose blockstate had no model 0
 
@@ -332,10 +340,10 @@ jr: wrote build/world.ppm
 
 jr: coverage 849 permille of the frame (440486 of 518400 px), sky 77914
 
-jr: hues green 30603, blue 7050, brown 142776, pale 20564, other 239493, dark 68573, missing-tile magenta 0
+jr: hues green 170092, blue 101, brown 142776, pale 0, other 127517, dark 129958, missing-tile magenta 0
 
 jr: atlas texels compared with the jar's PNGs: 6144 sampled, 0 differ
 
 jr: PASS - a world drawn with the jar's own models and textures
 
-== picture: build/world.png (361774 bytes)
+== picture: evidence/jar/world.png (351403 bytes)
