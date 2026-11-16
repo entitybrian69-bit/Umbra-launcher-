@@ -1,7 +1,10 @@
-goose/main.goose:537: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/main.goose:532: warning: redundant `as i64`: data.len is already i64
+    jar_bytes = data.len as i64;
+                ^~~~~~~~~~~~~~~
+goose/main.goose:661: warning: redundant `as f32`: an i64 converts to f32 implicitly here
         if t > 0.0 { return (y as f32) + t; }
                              ^~~~~~~~
-goose/main.goose:644: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/main.goose:768: warning: redundant `as i64`: an i32 converts to i64 implicitly here
     return (h.y as i64) * 1000000 + (h.z as i64) * 1000 + (h.x as i64);
                                                            ^~~~~~~~~~
 goose/core/demo.goose:129: warning: redundant `as i32`: cx is already i32
@@ -37,6 +40,48 @@ goose/core/demo.goose:189: warning: redundant `as f32`: an i32 converts to f32 i
 goose/core/demo.goose:189: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
                                                                                                      ^~~~~~~~
+goose/core/jarpack.goose:70: warning: redundant `as i64`: s.len is already i64
+    jp_len.push(s.len as i64);
+                ^~~~~~~~~~~~
+goose/core/jarpack.goose:299: warning: redundant `as i64`: used.len is already i64
+    jp_tex_used = used.len as i64;
+                  ^~~~~~~~~~~~~~~
+goose/core/jarpack.goose:383: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+    var x = (u * (jp_cmap_w as f32)) as i64;
+                  ^~~~~~~~~~~~~~~~
+goose/core/jarpack.goose:384: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+    var y = (v * (jp_cmap_h as f32)) as i64;
+                  ^~~~~~~~~~~~~~~~
+goose/core/jarpack.goose:391: warning: redundant `as f32`: a u8 converts to f32 implicitly here
+    out[0] = (jp_cmap_px[i] as f32) / 255.0;
+              ^~~~~~~~~~~~~~~~~~~~
+goose/core/jarpack.goose:392: warning: redundant `as f32`: a u8 converts to f32 implicitly here
+    out[1] = (jp_cmap_px[i + 1] as f32) / 255.0;
+              ^~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/jarpack.goose:393: warning: redundant `as f32`: a u8 converts to f32 implicitly here
+    out[2] = (jp_cmap_px[i + 2] as f32) / 255.0;
+              ^~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/json.goose:104: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+    if b >= 48 && b <= 57 { return (b - 48) as i64; }
+                                    ^~~~~~~~~~~~~~
+goose/core/json.goose:105: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+    if b >= 97 && b <= 102 { return (b - 97 + 10) as i64; }
+                                     ^~~~~~~~~~~~~~~~~~~
+goose/core/json.goose:106: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+    if b >= 65 && b <= 70 { return (b - 65 + 10) as i64; }
+                                    ^~~~~~~~~~~~~~~~~~~
+goose/core/json.goose:259: warning: redundant `as f64`: a u8 converts to f64 implicitly here
+        v = v * 10.0 + ((s[i] - 48) as f64);
+                         ^~~~~~~~~~~~~~~~~
+goose/core/json.goose:266: warning: redundant `as f64`: a u8 converts to f64 implicitly here
+            v += ((s[i] - 48) as f64) * scale;
+                   ^~~~~~~~~~~~~~~~~
+goose/core/json.goose:280: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+            e = e * 10 + (s[i] - 48) as i64;
+                          ^~~~~~~~~~~~~~~~~
+goose/core/json.goose:296: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+        v = v * 10 + (s[i] - 48) as i64;
+                      ^~~~~~~~~~~~~~~~~
 goose/core/modelstore.goose:52: warning: redundant `as i64`: path.len is already i64
     mts_len.push(path.len as i64);
                  ^~~~~~~~~~~~~~~
@@ -73,27 +118,6 @@ goose/core/modelstore.goose:504: warning: redundant `as i64`: key.len is already
 goose/core/modelstore.goose:515: warning: redundant `as i64`: name.len is already i64
         name_len: name.len as i64,
                   ^~~~~~~~~~~~~~~
-goose/core/json.goose:104: warning: redundant `as i64`: a u8 converts to i64 implicitly here
-    if b >= 48 && b <= 57 { return (b - 48) as i64; }
-                                    ^~~~~~~~~~~~~~
-goose/core/json.goose:105: warning: redundant `as i64`: a u8 converts to i64 implicitly here
-    if b >= 97 && b <= 102 { return (b - 97 + 10) as i64; }
-                                     ^~~~~~~~~~~~~~~~~~~
-goose/core/json.goose:106: warning: redundant `as i64`: a u8 converts to i64 implicitly here
-    if b >= 65 && b <= 70 { return (b - 65 + 10) as i64; }
-                                    ^~~~~~~~~~~~~~~~~~~
-goose/core/json.goose:259: warning: redundant `as f64`: a u8 converts to f64 implicitly here
-        v = v * 10.0 + ((s[i] - 48) as f64);
-                         ^~~~~~~~~~~~~~~~~
-goose/core/json.goose:266: warning: redundant `as f64`: a u8 converts to f64 implicitly here
-            v += ((s[i] - 48) as f64) * scale;
-                   ^~~~~~~~~~~~~~~~~
-goose/core/json.goose:280: warning: redundant `as i64`: a u8 converts to i64 implicitly here
-            e = e * 10 + (s[i] - 48) as i64;
-                          ^~~~~~~~~~~~~~~~~
-goose/core/json.goose:296: warning: redundant `as i64`: a u8 converts to i64 implicitly here
-        v = v * 10 + (s[i] - 48) as i64;
-                      ^~~~~~~~~~~~~~~~~
 goose/core/atlas.goose:87: warning: redundant `as f32`: an i64 converts to f32 implicitly here
         u0: (x as f32) / fw,
              ^~~~~~~~
@@ -279,8 +303,8 @@ umbra headless self-test
 core version: 0.3.5
 mesh: 17793984 vertex bytes, 2224248 index bytes
 mesh checks: 0 bad indices, 0 bad normals, 0 positions out of bounds
-progress: worst 995 permille; units 1947, total 1947
-sliced mesh: 456 calls, worst call 4.22 ms, worst unit 2.56 ms
+progress: worst 998 permille; units 1947, total 1947
+sliced mesh: 655 calls, worst call 6.75 ms, worst unit 6.75 ms
 batches: 543276 + 12786 + 0 = 556062 of 556062 indices
 layout: phone scale 2.64, desktop scale 1.00
 layout: button 0 21,1006 737x53; button 2 1528,1006
