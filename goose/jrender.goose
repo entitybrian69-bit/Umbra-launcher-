@@ -23,6 +23,7 @@ import core.jarpack;
 import core.atlas;
 import core.demo;
 import core.raster;
+import core.savegame;
 
 var jr_verts: Vertex[>..] = [];
 var jr_indices: u32[>..] = [];
@@ -190,7 +191,27 @@ fn main() {
 
     // --- the world, drawn with the jar's models --------------------------
     mesh_use_store();
-    demo_build(20261114);
+    // A save directory as the fifth argument draws *that* world instead of the demo one:
+    // the same mesh, the same models, the same textures, on blocks nobody generated to
+    // suit the renderer.
+    var save_dir: u8[>..] = [];
+    if arg_count() > 5 {
+        arg(5, save_dir);
+    }
+    // Optional chunk radius for a save that is bigger than the picture needs.
+    let radius = jr_int_arg(6, 0);
+    if save_dir.len > 0 {
+        demo = [];
+        bs_reset();
+        let st = sg_load(save_dir[..], true, radius);
+        print("jr: save ", st.files, " region file(s), ", st.chunks, " chunks, ",
+              st.blocks, " non-air blocks, ", st.errors, " read error(s)\n");
+        if st.chunks == 0 { jr_fail("the save held no chunks"); }
+        if st.blocks == 0 { jr_fail("the save held no blocks: the reader does not understand it"); }
+        if st.errors > 0 { jr_fail("some chunks of the save could not be read"); }
+    } else {
+        demo_build(20261114);
+    }
     jr_mesh_world();
     print("jr: blocks drawn from a model ", jr_blocks,
           ", faces ", jr_faces,

@@ -175,7 +175,20 @@ jobs:
 
       # The smoke test annotates every phase as it goes, so its result can be
       # read from the check-run API even when the job log cannot be downloaded.
+      - name: The client jar, for the on-device atlas check (never committed)
+        # The same jar the other gates use, downloaded here so the app on the emulator
+        # can be run with the game's own textures and models. It is pushed to the
+        # device and deleted; it never enters the repository.
+        run: |
+          if ! tools/fetch_jar.sh build/jar/client.jar; then
+            rm -f build/jar/client.jar
+            echo "::warning title=jar::download failed; the on-device atlas check is skipped"
+          fi
+          ls -l build/jar/client.jar || true
+
       - name: Install, launch, self test, soak
+        env:
+          UMBRA_JAR_FILE: ${{ github.workspace }}/build/jar/client.jar
         run: |
           chmod +x tools/emulator_smoke.sh
           tools/emulator_smoke.sh

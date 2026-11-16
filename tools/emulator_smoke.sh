@@ -216,6 +216,20 @@ phase "install"
 ADB_TIMEOUT=300 adb install -r -g "$APK" > install.log 2>&1 || die "adb install failed: $(tail -c 500 install.log)"
 say "install: $(tail -1 install.log)"
 
+# A client jar, when the harness has one, goes where the app looks for it: the app
+# loads it at start-up and the atlas on the device is then the jar's own textures.
+# The jar is never committed; the run that uses it pushes it here and says so.
+if [ -n "${UMBRA_JAR_FILE:-}" ] && [ -f "${UMBRA_JAR_FILE}" ]; then
+    phase "jar-push"
+    adb push "$UMBRA_JAR_FILE" /data/local/tmp/umbra-client.jar > jar-push.log 2>&1 \
+        || die "jar: adb push failed: $(tail -c 400 jar-push.log)"
+    adb shell chmod 644 /data/local/tmp/umbra-client.jar > /dev/null 2>&1 || true
+    PUSHED="$(adb shell stat -c %s /data/local/tmp/umbra-client.jar 2>/dev/null | tr -d '\r\n')"
+    LOCALSIZE="$(stat -c%s "$UMBRA_JAR_FILE")"
+    say "jar: pushed $LOCALSIZE bytes, device says ${PUSHED:-?}"
+    [ "$PUSHED" = "$LOCALSIZE" ] || die "jar: the pushed file is not the same size as the local one"
+fi
+
 # The emulator reports a top inset of 0 and no display cutout, which is why CI
 # could not catch the owner's overlay being drawn under the clock. The app reads
 # `debug.umbra.insets` (property, for exactly this) and uses it in place of what
@@ -428,6 +442,36 @@ case "$VERDICT" in
         err "self-test: the device reported '$VERDICT'"
         ;;
 esac
+# ---- 6c-2. the atlas on the device is the jar's, texel for texel ----------------
+# The self-test samples one tile of the production atlas through GL and compares it
+# with the same tile's decoded pixels. With a jar loaded those pixels are the jar's,
+# so this is the on-device answer to "are the blocks drawn with the jar's textures".
+if [ -n "${UMBRA_JAR_FILE:-}" ] && [ -f "${UMBRA_JAR_FILE}" ]; then
+    phase "jar-atlas"
+    JARLINE="$(grep -m1 'jar: .*models' logcat-umbra-mesh.txt | sed 's/.*umbra   : //')"
+    [ -n "$JARLINE" ] || die "jar: pushed, but the app never reported loading it"
+    say "jar: $JARLINE"
+    if grep -q "jar: none found" logcat-umbra-mesh.txt; then
+        die "jar: the app ignored the jar that was pushed"
+    fi
+    grep -q "atlas: source is the client jar" logcat-umbra-mesh.txt \
+        || die "jar: the atlas on the device is not the jar's"
+    say "jar: atlas source is the client jar"
+    case "$VERDICT" in
+        *"atlas from the jar"*) say "jar: the self-test compared the jar's texels" ;;
+        *) die "jar: the self-test did not compare the jar's texels ('$VERDICT')" ;;
+    esac
+    TEXELS="$(grep -o 'self-test: atlas [0-9]* of [0-9]* texels differ' logcat-umbra2.txt | tail -1)"
+    [ -n "$TEXELS" ] || die "jar: the atlas texel comparison did not report a count"
+    say "jar: $TEXELS"
+    case "$TEXELS" in
+        "self-test: atlas 0 of "*) ;;
+        *) die "jar: the device's atlas texels are not the jar's ('$TEXELS')" ;;
+    esac
+    JARTEXELS="$(printf '%s' "$TEXELS" | sed -n 's/.* of \([0-9]*\) texels.*/\1/p')"
+    [ "${JARTEXELS:-0}" -ge 256 ] || die "jar: only ${JARTEXELS:-0} atlas texels were compared"
+fi
+
 # "0 px" checked is the signature of a comparison that never read the target.
 CHECKED="$(printf '%s' "$VERDICT" | sed -n 's/.* of \([0-9]*\) px.*/\1/p')"
 if [ -n "$CHECKED" ] && [ "$CHECKED" -lt 100000 ]; then

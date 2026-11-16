@@ -119,6 +119,15 @@ struct umbra_app {
     unsigned atlas_hash;       // what the packer produced, for the log
     int atlas_missing;         // blocks that asked for a tile the build has not
     int atlas_uploads;         // times the atlas reached the GPU
+    // Where the pixels and the models came from. A client jar, when one was found,
+    // replaces the placeholder set: the atlas is the jar's own textures and the mesher
+    // asks the jar's own models. `jar_code` is the loader's answer (1 loaded, negative
+    // why not), so the log can say which of the two the picture on screen uses.
+    char jar_path[512];
+    int jar_code;
+    bool jar_loaded;
+    int jar_models, jar_blockstates, jar_textures, jar_textures_missing;
+    long long jar_bytes;
     bool render_fallback;      // drawing without the full pipeline
     char fallback_reason[160];
     bool gpu_timer_supported;  // GL_EXT_disjoint_timer_query, i.e. real GPU time

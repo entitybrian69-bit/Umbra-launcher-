@@ -109,6 +109,28 @@ jobs:
           GOOSE=build/bin/goose bash tools/check_real_world.sh build/server/run/world \
             build/world-real 2>&1 | tee evidence/world/read-real.txt
           grep -qF "PASS: two independent readers agree on every block" evidence/world/read-real.txt
+      - name: Draw the real world with the game's own models and textures
+        # The question this answers: is a world the real server generated drawn with the
+        # jar's real textures and every block's own model? The jar is downloaded for it
+        # and never committed, like the server jar. The picture is compared with a
+        # reference at a fixed pose, and the counts are checked: a block whose blockstate
+        # has no model would be drawn as nothing, which is exactly the failure that looks
+        # like a picture.
+        run: |
+          set -o pipefail
+          if ! tools/fetch_jar.sh build/jar/client.jar 2>&1 | tee build/fetch-jar.log; then
+            cp build/fetch-jar.log evidence/world/fetch-jar.log
+            echo "::error title=jar download::$(tail -3 build/fetch-jar.log | tr '\n' ' ')"
+            exit 1
+          fi
+          cp build/fetch-jar.log evidence/world/fetch-jar.log
+          GOOSE_STDLIB=build/goose-src/stdlib GOOSE=build/bin/goose \
+            bash tools/render_world.sh build/jar/client.jar build/real.ppm 960 540 \
+              evidence/world/real.png build/server/run/world 6 \
+            2>&1 | tee evidence/world/real-render.txt
+          python3 tools/check_render_counts.py evidence/world/real-render.txt
+          python3 tools/check_world_shot.py evidence/world/real.png \
+            --reference docs/reference/real_world.png --record 2>&1 | tee evidence/world/real-shot.txt
       - name: Report the numbers
         if: always()
         run: |
@@ -123,6 +145,7 @@ jobs:
         run: |
           set -euo pipefail
           git add -f evidence/world
+          if [ -f docs/reference/real_world.png ]; then git add -f docs/reference/real_world.png; fi
           bash tools/commit_evidence.sh "ci: world evidence from run $GITHUB_RUN_ID [skip ci]"
       - uses: actions/upload-artifact@v4
         if: always()
@@ -130,4 +153,6 @@ jobs:
           name: world-evidence
           path: |
             evidence/world
+            docs/reference/real_world.png
             build/fetch-server.log
+            build/fetch-jar.log

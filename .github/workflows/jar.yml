@@ -55,6 +55,29 @@ jobs:
           GOOSE=build/bin/goose bash tools/render_world.sh build/jar/client.jar \
             build/world.ppm 960 540 evidence/jar/world.png \
             2>&1 | tee evidence/jar/render-world.txt
+      - name: Draw a world loaded from a save with the jar's own models and textures
+        # The demo world was generated to suit the renderer. This one is a save on disk, read
+        # the way the game's own chunks are, and every block of it drawn from the jar: the
+        # answer to "is a loaded world drawn with the jar's textures and every block's own
+        # model" with a picture and a count instead of a yes.
+        run: |
+          set -o pipefail
+          rm -rf build/save-world
+          python3 tools/make_test_world.py build/save-world 2 2>&1 | tee evidence/jar/save-world.txt
+          GOOSE=build/bin/goose bash tools/render_world.sh build/jar/client.jar \
+            build/save.ppm 960 540 evidence/jar/save.png build/save-world 0 \
+            2>&1 | tee -a evidence/jar/save-world.txt
+          grep -qF "jr: PASS - a world drawn with the jar's own models and textures" \
+            evidence/jar/save-world.txt
+          # Every block of the save has to come from its own model: a block whose
+          # blockstate had no model is drawn as nothing, which is what this counts.
+          grep -E "jr: blocks drawn from a model" evidence/jar/save-world.txt
+          python3 tools/check_render_counts.py evidence/jar/save-world.txt
+      - name: Compare the save picture with its reference
+        run: |
+          set -o pipefail
+          python3 tools/check_world_shot.py evidence/jar/save.png \
+            --reference docs/reference/jar_save.png --record 2>&1 | tee evidence/jar/save-shot.txt
       - name: Compare the picture with its reference
         run: |
           set -o pipefail
@@ -76,6 +99,7 @@ jobs:
           # The first run that draws a world records its picture as the reference the
           # next runs are held to, so the gate has something real to compare against.
           if [ -f docs/reference/jar_world.png ]; then git add -f docs/reference/jar_world.png; fi
+          if [ -f docs/reference/jar_save.png ]; then git add -f docs/reference/jar_save.png; fi
           bash tools/commit_evidence.sh "ci: jar evidence from run $GITHUB_RUN_ID [skip ci]"
       - uses: actions/upload-artifact@v4
         if: always()
@@ -84,4 +108,5 @@ jobs:
           path: |
             evidence/jar
             docs/reference/jar_world.png
+            docs/reference/jar_save.png
             build/fetch-jar.log

@@ -694,6 +694,60 @@ static void create_mesh_buffers(umbra_app *app) {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)ilen, indices, GL_STATIC_DRAW);
 }
 
+// Finds a client jar and makes it the source of the atlas and the block models.
+//
+// Three places, in order, and no user interface: the environment (host runs and
+// anything that wants to point the app at a specific jar), the app's own files
+// directory as `client.jar`, and /data/local/tmp/umbra-client.jar, which is where a
+// test harness can push one. Anything else and the atlas stays the built-in
+// placeholder set -- the app still runs, and the log says which of the two it got.
+static int jar_try(umbra_app *app, const char *dir_hint) {
+    char path[512];
+    const char *env = getenv("UMBRA_JAR");
+    if (env && env[0]) {
+        snprintf(path, sizeof path, "%s", env);
+    } else if (dir_hint && dir_hint[0]) {
+        snprintf(path, sizeof path, "%s/client.jar", dir_hint);
+    } else {
+        path[0] = 0;
+    }
+    const char *candidates[3];
+    int n = 0;
+    if (path[0]) candidates[n++] = path;
+    if (n == 0 || strcmp(path, "/data/local/tmp/umbra-client.jar") != 0) {
+        candidates[n++] = "/data/local/tmp/umbra-client.jar";
+    }
+    for (int i = 0; i < n; i++) {
+        FILE *f = fopen(candidates[i], "rb");
+        if (!f) continue;
+        fclose(f);
+        snprintf(app->jar_path, sizeof app->jar_path, "%s", candidates[i]);
+        int64_t code = umbra_jar_load((sl_u8){(uint8_t *)app->jar_path,
+                                             (int64_t)strlen(app->jar_path)});
+        app->jar_code = (int)code;
+        if (code == 1) {
+            app->jar_loaded = true;
+            app->jar_models = (int)umbra_jar_models();
+            app->jar_blockstates = (int)umbra_jar_blockstates();
+            app->jar_textures = (int)umbra_jar_textures();
+            app->jar_textures_missing = (int)umbra_jar_textures_missing();
+            app->jar_bytes = (long long)umbra_jar_bytes();
+            umbra_log(app, "jar: %s, %lld bytes: %d models, %d blockstates, %d textures "
+                           "(%d missing) -- the atlas and the models are the jar's",
+                      app->jar_path, app->jar_bytes, app->jar_models,
+                      app->jar_blockstates, app->jar_textures, app->jar_textures_missing);
+            return 1;
+        }
+        umbra_log(app, "jar: %s could not be used (code %lld); trying the next place",
+                  app->jar_path, (long long)code);
+    }
+    app->jar_loaded = false;
+    app->jar_code = 0;
+    umbra_log(app, "jar: none found; the atlas is the built-in placeholder set "
+                   "(set UMBRA_JAR or put client.jar in the app's files directory)");
+    return 0;
+}
+
 // Uploads the block atlas Goose built, once. The pixels are the packer's own:
 // gutters, the loud missing tile and frame 0 of every animation are already in
 // them (core/atlas.goose), so this is a straight RGBA8 upload with mipmaps.
@@ -727,6 +781,7 @@ static void upload_atlas(umbra_app *app) {
     umbra_log(app, "atlas: %dx%d, %lld bytes, %lld tiles, hash %08x, %d missing", sz, sh,
               (long long)len, (long long)umbra_atlas_tiles(), app->atlas_hash,
               app->atlas_missing);
+    umbra_log(app, "atlas: source is %s", app->jar_loaded ? "the client jar" : "the placeholder set");
     if (app->atlas_missing > 0) {
         // Not fatal, and never silent: the loud tile is on screen and the count
         // says how many blocks asked for a texture this build does not have.
@@ -943,6 +998,22 @@ int umbra_app_init(umbra_app *app) {
     create_font_texture(app);
     create_fullscreen_quad(app);
     create_cube_geometry(app);
+    // The models and the atlas come from the jar when there is one, and only then is
+    // there anything worth uploading: this has to run before the atlas and before the
+    // mesher is handed its first section, or the first frames are the placeholder world
+    // and never get replaced.
+    {
+        char files[512] = {0};
+        const char *slash = strrchr(app->log_path, '/');
+        if (slash) {
+            size_t d = (size_t)(slash - app->log_path);
+            if (d < sizeof files) {
+                memcpy(files, app->log_path, d);
+                files[d] = 0;
+            }
+        }
+        jar_try(app, files);
+    }
     // The atlas goes up before the world: the mesher's UVs already point into it.
     upload_atlas(app);
     create_hud_buffers(app);
@@ -1275,9 +1346,10 @@ static void selftest_end(umbra_app *app, bool ok, const char *why) {
     app->selftest_us = umbra_now_us() - app->st_start_us;
     if (ok) {
         snprintf(app->selftest_text, sizeof app->selftest_text,
-                 "SELFTEST PASS (0 bad of %lld px + %d atlas texels, %.0f ms, %s)",
+                 "SELFTEST PASS (0 bad of %lld px + %d atlas texels, %.0f ms, %s, atlas %s)",
                  (long long)checked, app->st_atlas_checked, app->selftest_us / 1000.0,
-                 app->st_offscreen ? "offscreen" : "window");
+                 app->st_offscreen ? "offscreen" : "window",
+                 app->jar_loaded ? "from the jar" : "placeholder");
     } else if (why && why[0]) {
         snprintf(app->selftest_text, sizeof app->selftest_text, "SELFTEST SKIPPED - %s", why);
     } else {
@@ -1367,6 +1439,11 @@ static void selftest_begin(umbra_app *app) {
     // A tile with transparent texels, so the sample proves the alpha channel made
     // it through the upload and not only the colour channels.
     app->st_atlas_slot = (int)umbra_atlas_named((sl_u8){(uint8_t *)"oak_leaves", 10});
+    if (app->st_atlas_slot < 0) {
+        // A jar that does not spell the texture that way is not a reason to skip the
+        // check: stone is in every pack, and any opaque tile still proves the upload.
+        app->st_atlas_slot = (int)umbra_atlas_named((sl_u8){(uint8_t *)"stone", 5});
+    }
     app->st_tile_rows = umbra_selftest_tile_rows(app->st_w, app->st_h);
     app->st_offscreen = 0;
     app->st_fbo_status = 0;

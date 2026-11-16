@@ -11,6 +11,7 @@
 // thread-safe: call them from the thread that called goose_init().
 
 import std;
+import os;
 import core.mem;
 import core.inflate;
 import core.zip;
@@ -21,6 +22,8 @@ import core.mesh;
 import core.textures;
 import core.atlas;
 import core.models;
+import core.modelstore;
+import core.jarpack;
 import core.demo;
 
 let UMBRA_VERSION = "0.3.5";
@@ -469,28 +472,149 @@ export "umbra_verts_ptr" fn world_verts_ptr() -> const u8[:] { return vert_bytes
 export "umbra_indices_ptr" fn world_indices_ptr() -> const u8[:] { return index_bytes }
 export "umbra_vert_count" fn world_vert_count() -> i64 { return world_verts.len }
 export "umbra_index_count" fn world_index_count() -> i64 { return world_indices.len }
+// --- where the pixels and the models come from --------------------------
+//
+// Two sources, and which one is in use is a number the HUD and the log report:
+//
+//   * the placeholder set built here in Goose (core/textures.goose, D-039) -- twelve
+//     tiles, so the renderer has *a* texture and the phone runs with no game data;
+//   * the client jar's own textures and block models, when a jar is loaded. That is
+//     what "drawn with the jar's textures" has to mean on the device: the same atlas
+//     the CPU renderer in CI draws with, decoded from the jar's PNGs by core/jarpack,
+//     and the mesher asking core/modelstore for each block's own model.
+//
+// A jar load either becomes the source for everything -- atlas, tile UVs, tints, the
+// models the mesher uses -- or it fails and changes nothing. A half loaded jar is how
+// a phone ends up drawing some blocks from the jar and some from nowhere.
+var jar_ok: i64 = 0;
+var jar_bytes: i64 = 0;
+var jar_models: i64 = 0;
+var jar_blockstates: i64 = 0;
+var jar_textures: i64 = 0;
+
+export "umbra_jar_load" fn jar_load_export(path: const u8[:]) -> i64 {
+    jar_ok = 0;
+    // The zip layer checks every extracted entry's CRC, and its table is built here:
+    // without this the jar opens and every entry fails to extract, which reads as a
+    // pack with no models in it.
+    crc32_init();
+    var data: u8[>..] = [];
+    if !read_file(path, data) || data.len < 22 { return -1; }
+    if !jp_open(data[..]) { return -2; }
+    let models = jp_build_models();
+    let states = jp_build_blockstates();
+    let linked = ms_link_models();
+    if models < 16 || states < 16 { return -3; }
+    if linked <= 0 { return -3; }
+    if !jp_build_atlas(16, 2) { return -4; }
+    let layout = jp_atlas_layout();
+    if layout.width <= 0 || layout.cells <= 0 { return -4; }
+    mesh_set_layout(layout);
+    for i in ms_path_count() {
+        mesh_set_tile(i, jp_slot_of(i));
+    }
+    // Tints from the jar's own colormaps, the way the CPU renderer does it: plains is
+    // temperature 0.8, humidity 0.4, and a colormap is indexed x = 1 - temperature,
+    // y = 1 - humidity * temperature.
+    var grass: f32[3] = [1.0, 1.0, 1.0];
+    var foliage: f32[3] = [1.0, 1.0, 1.0];
+    var water: f32[3] = [1.0, 1.0, 1.0];
+    let cu = 1.0 - 0.8;
+    let cv = 1.0 - 0.4 * 0.8;
+    if jp_read_colormap("grass") {
+        jp_colormap_color(cu, cv, grass);
+        if jp_read_colormap("foliage") { jp_colormap_color(cu, cv, foliage); }
+        if jp_read_colormap("water") { jp_colormap_color(cu, cv, water); }
+    }
+    mesh_set_tints(grass, foliage, water);
+    mesh_use_store();
+    jar_ok = 1;
+    jar_bytes = data.len as i64;
+    jar_models = models;
+    jar_blockstates = states;
+    jar_textures = jp_tex_used;
+    return 1;
+}
+
+export "umbra_jar_active" fn jar_active() -> i64 { return jar_ok }
+export "umbra_jar_bytes" fn jar_size() -> i64 { return jar_bytes }
+export "umbra_jar_models" fn jar_model_count() -> i64 { return jar_models }
+export "umbra_jar_blockstates" fn jar_state_count() -> i64 { return jar_blockstates }
+export "umbra_jar_textures" fn jar_texture_count() -> i64 { return jar_textures }
+export "umbra_jar_textures_missing" fn jar_texture_missing_count() -> i64 {
+    if jar_ok == 0 { return 0; }
+    return jp_texture_missing()
+}
+
 // --- the atlas, for the renderer ---------------------------------------
 //
 // The pixel buffer belongs to Goose; C uploads it to one GL texture and the
-// vertices carry UVs inside it. Nothing here is Mojang art: see
-// core/textures.goose and DECISIONS.md D-039.
+// vertices carry UVs inside it. Whichever source is loaded, the C side asks these
+// functions and gets a consistent set of answers: size, layout, hash, and the texel
+// the device self-test compares its GPU readback against.
 
-export "umbra_atlas_build" fn atlas_build_export() { tex_build() }
-export "umbra_atlas_pixels" fn atlas_pixels() -> const u8[:] { tex_build(); return tex_atlas }
-export "umbra_atlas_size" fn atlas_size() -> i64 { return tex_atlas_size() }
-export "umbra_atlas_height" fn atlas_height() -> i64 { return tex_atlas_height() }
-export "umbra_atlas_hash" fn atlas_hash_export() -> u32 { return tex_atlas_hash() }
-export "umbra_atlas_missing" fn atlas_missing() -> i64 { return tex_missing_count() }
-export "umbra_atlas_tiles" fn atlas_tiles() -> i64 { return TEX_COUNT }
-export "umbra_atlas_tile_u0" fn atlas_u0(slot: i64) -> f32 { return tex_uv(slot)[0] }
-export "umbra_atlas_tile_v0" fn atlas_v0(slot: i64) -> f32 { return tex_uv(slot)[1] }
-export "umbra_atlas_tile_u1" fn atlas_u1(slot: i64) -> f32 { return tex_uv(slot)[2] }
-export "umbra_atlas_tile_v1" fn atlas_v1(slot: i64) -> f32 { return tex_uv(slot)[3] }
+fn atlas_live_pixels() -> const u8[:] {
+    if jar_ok != 0 { return jp_atlas_pixels() }
+    tex_build();
+    return tex_atlas
+}
+
+fn atlas_live_layout() -> AtlasLayout {
+    if jar_ok != 0 { return jp_atlas_layout() }
+    return tex_layout_of()
+}
+
+export "umbra_atlas_build" fn atlas_build_export() { if jar_ok == 0 { tex_build() } }
+export "umbra_atlas_pixels" fn atlas_pixels() -> const u8[:] { return atlas_live_pixels() }
+export "umbra_atlas_size" fn atlas_size() -> i64 { return atlas_live_layout().width }
+export "umbra_atlas_height" fn atlas_height() -> i64 { return atlas_live_layout().height }
+export "umbra_atlas_hash" fn atlas_hash_export() -> u32 {
+    if jar_ok != 0 { return jp_atlas_of_hash() }
+    return tex_atlas_hash()
+}
+export "umbra_atlas_missing" fn atlas_missing() -> i64 {
+    if jar_ok != 0 { return jp_texture_missing() }
+    return tex_missing_count()
+}
+export "umbra_atlas_tiles" fn atlas_tiles() -> i64 {
+    if jar_ok != 0 { return atlas_live_layout().cells }
+    return TEX_COUNT
+}
+export "umbra_atlas_tile_u0" fn atlas_u0(slot: i64) -> f32 {
+    return atlas_tile(atlas_live_layout(), slot).u0
+}
+export "umbra_atlas_tile_v0" fn atlas_v0(slot: i64) -> f32 {
+    return atlas_tile(atlas_live_layout(), slot).v0
+}
+export "umbra_atlas_tile_u1" fn atlas_u1(slot: i64) -> f32 {
+    return atlas_tile(atlas_live_layout(), slot).u1
+}
+export "umbra_atlas_tile_v1" fn atlas_v1(slot: i64) -> f32 {
+    return atlas_tile(atlas_live_layout(), slot).v1
+}
 export "umbra_atlas_texel" fn atlas_texel(slot: i64, x: i64, y: i64) -> i64 {
+    if jar_ok != 0 {
+        return atlas_tile_texel(jp_atlas_pixels(), jp_atlas_layout(), slot, x, y)
+    }
     return tex_texel(slot, x, y)
 }
+// A texture by its bare name ("oak_leaves", "stone"), as the self-test asks for it.
+// In the jar the name is the last path component, so a suffix on "/<name>.png" finds
+// it without the caller having to know whether the pack spells it minecraft:block/...
 export "umbra_atlas_named" fn atlas_named(name: const u8[:]) -> i64 {
-    return tex_slot_for(name)
+    if jar_ok == 0 { return tex_slot_for(name) }
+    // The store's paths have no extension: "minecraft:block/oak_leaves". The name is
+    // the last segment, compared whole, so "stone" does not match "smooth_stone".
+    for i in ms_path_count() {
+        let path = ms_path(i);
+        var slash: i64 = -1;
+        for k in path.len {
+            if path[k] == 47 { slash = k; }
+        }
+        let tail = path[slash + 1 ..];
+        if eq_bytes(tail, name) { return jp_slot_of(i) }
+    }
+    return -1
 }
 
 // --- the world, as a grid the player can walk on -----------------------
