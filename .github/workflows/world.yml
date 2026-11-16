@@ -135,22 +135,35 @@ jobs:
           # the ones behind it, this would read fewer than the original.
           before="$(build/umbra_worldload build/server/run/world build/partial/before.txt 1 \
                     | grep -oE 'chunks [0-9]+, non-air blocks [0-9]+' | head -1)"
+          # The downgraded save must be refused by default, and the refusal must name the
+          # cause; with --incomplete-ok it must still read exactly the same chunks and
+          # blocks, which is what proves the rewrite moved nothing.
+          set +e
+          build/umbra_worldload build/partial/world build/partial/after.txt 1 \
+            > build/partial/log.txt 2>&1
+          refused=$?
+          set -e
           after="$(build/umbra_worldload build/partial/world build/partial/after.txt 1 \
-                   2>&1 | tee build/partial/log.txt \
+                   --incomplete-ok 2>/dev/null \
                    | grep -oE 'chunks [0-9]+, non-air blocks [0-9]+' | head -1)"
           echo "partial: original $before"
           echo "partial: downgraded $after"
+          echo "partial: reading it without --incomplete-ok exited $refused"
+          if [ "$refused" = 0 ]; then
+            echo "::error title=partial save::a save that is still being generated was read"
+            exit 1
+          fi
+          if ! grep -q "chunks are not .minecraft:full. yet" build/partial/log.txt; then
+            echo "::error title=partial save::the refusal did not name the cause"
+            cat build/partial/log.txt
+            exit 1
+          fi
           if [ "$before" != "$after" ]; then
             echo "::error title=partial save::downgrading one status changed the chunk count"
             exit 1
           fi
-          if grep -q "chunks are not .minecraft:full. yet" build/partial/log.txt; then
-            grep "not .minecraft:full" build/partial/log.txt | sed 's/^/world: /'
-            echo "PASS: a partly generated save is named as such"
-          else
-            echo "::error title=partial save::a partly generated save was not detected"
-            exit 1
-          fi
+          grep "not .minecraft:full" build/partial/log.txt | sed 's/^/world: /'
+          echo "PASS: a partly generated save is refused, by name, and moved nothing"
 
       - name: Read the real world twice and compare it block by block
         run: |

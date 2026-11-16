@@ -1,7 +1,11 @@
 // Umbra world load: read a real Anvil world with the same code the mesher uses, and
 // say what is in it in a form two independent readers can compare.
 //
-//   umbra_worldload <world dir> <dump.txt> [detail radius] [jobs]
+//   umbra_worldload <world dir> <dump.txt> [detail radius] [jobs] [--incomplete-ok]
+//
+// A save whose chunks are not all `minecraft:full` is still being generated, and is
+// refused unless `--incomplete-ok` is given: its carvers have not run, so it holds stone
+// where the finished world holds a cave.
 //
 // The world directory is a save's folder: `region/*.mca` is read, each chunk's NBT is
 // parsed, and the blocks go through `column_from_nbt` - the path the game's own chunks
@@ -127,6 +131,14 @@ fn main() {
     var out_path: u8[>..] = [];
     arg(2, out_path);
     let radius = wl_int_arg(3, 1);
+    // `--incomplete-ok` anywhere on the command line, because it reads as an option and
+    // the positional arguments stay in the order the comment at the top documents.
+    var incomplete_ok = false;
+    for k in arg_count() {
+        var a: u8[>..] = [];
+        arg(k, a);
+        if eq_bytes(a[..], "--incomplete-ok") { incomplete_ok = true; }
+    }
 
     // Where the regions are depends on the version: the classic layout keeps the
     // overworld in `<world>/region`, and 26.3 keeps it in
@@ -343,10 +355,24 @@ fn main() {
           ", region files ", files, ", read errors ", read_errors, "\n");
     print("worldload: detail lines for chunks within ", radius, " of the origin: ",
           window_chunks, " chunks, ", window_blocks, " non-air blocks\n");
+    // A save with chunks that are not `full` is a save whose generation has not finished:
+    // more blocks are still to come, and the carvers that turn stone into caves have not
+    // run. Reading it is legitimate - `--incomplete-ok` says so, for a probe that wants to
+    // see the file as it is - but the default is a refusal, because every number out of
+    // such a save is a number about a world that will not exist a second later. Run
+    // 43855851186 is why: the comparison settled on a save that had stopped *changing*
+    // (three identical readings) while 528 of its 529 chunks were still not full, and the
+    // next read, after the server finished generating, held 1089 chunks instead.
     if partial_chunks > 0 {
         print("worldload: ", partial_chunks, " of ", chunks, " chunks are not ",
-              "`minecraft:full` yet: this save was read while it was still being ",
-              "generated, so more blocks are still to come\n");
+              "`minecraft:full` yet: this save is still being generated, so ",
+              partial_chunks, " chunks hold terrain that the game has not finished\n");
+        if !incomplete_ok {
+            print("worldload: FAIL ", chunks - partial_chunks, " of ", chunks,
+                  " chunks are finished; pass --incomplete-ok to read a save that is ",
+                  "still being written\n");
+            exit(1);
+        }
     }
     if read_errors > 0 {
         print("worldload: FAIL ", read_errors, " chunks could not be read\n");
