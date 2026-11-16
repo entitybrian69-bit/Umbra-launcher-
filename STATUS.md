@@ -1385,6 +1385,27 @@ worldload: 169 of 794 chunks are not ... (0 of them within 10 ...)       -> proc
 
 Both are checked by calling the loop's own test on the exact line each run produced.
 
+### The fifth run: the fingerprint measured the wrong thing (43861773812)
+
+Every attempt now reported `the window is finished`, and the loop still failed, because the
+fingerprint was the whole save's block total, which climbed on every attempt
+(`19948219`, `19950832`, `19951643`, `19951951`, `19952144`) as chunks outside the window
+finished generating. Only the window is compared with the game, so only the window has to
+hold still:
+
+```
+compare: attempt 1: 1 chunks, 6273 non-air blocks, the window is finished
+compare: attempt 2: 1 chunks, 6273 non-air blocks, the window is finished
+compare: attempt 3: 1 chunks, 6273 non-air blocks, the window is finished
+compare: the save is settled - three readings in a row agree
+probe: 180 confirmed, 0 denied, 0 errors
+```
+
+That output is from the exact shape of the failing run, built here: a save that gains a
+distant chunk every second while a radius-0 window stays byte-for-byte the same. Before
+this change that shape failed; now it settles and every one of the 180 coordinates the
+probe asked about is confirmed.
+
 **Not yet claimed:** the world workflow has not passed with these changes yet. What is
 host-verified here is the ordering (a stub RCON server shows `forceload` arriving before
 any `save-all`), the settling loop in both directions (a still save settles after three
