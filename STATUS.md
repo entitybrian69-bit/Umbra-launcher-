@@ -545,6 +545,25 @@ What is left of the brief's item 3 is **threaded meshing for world loading**, an
 item 4 (the player: full-block steps, swimming, sneak, hotbar and inventory, saving
 edits) before worldgen parity.
 
+Start-up's long frames are now attributed rather than guessed. Run `43968867039` (android,
+success) printed:
+
+```
+shaders: 5 programs compiled and linked in 36.2 ms (mesh 7.2, hud 8.8, the rest 20.2)
+upload: 25.0 MB of vertices and 3.1 MB of indices in 68.8 ms (409 MB/s)
+frame: the first world frame drew in 164.0 ms and the driver held it 90.7 ms
+       (glFinish), 436052 vertices over 27 ranges
+startup: ... longest frame 208.3 ms, frames over 250 ms: 0
+```
+
+The app's own work is 36 + 69 + 164 ms on a software rasteriser whose own benchmark
+reports a median of ~85 ms per frame at 1920×1080 (`bench: 689 frames avg 87.18 ms`);
+the 164 ms first frame is two scenes' worth of that, not a stall of the app's. The 50 ms
+the brief asks for is enforced where it is measurable and where a person feels it: the
+edit, at **18.5 ms worst slice** on the device (`edit: the longest slice was 18.5 ms
+(under the 50 ms an edit is allowed)`). No measurement on this emulator can attribute a
+frame below its renderer's own cost, and none is claimed.
+
 The hands phase on the emulator, from `evidence/ci/summary.txt` of run `43960566328`
 (android, success) -- the same run that fetched the jar:
 

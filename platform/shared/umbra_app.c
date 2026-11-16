@@ -2880,9 +2880,9 @@ void umbra_app_frame(umbra_app *app) {
             int64_t blocked = umbra_now_us() - t_after;
             app->first_draw_timed = true;
             umbra_log(app, "frame: the first world frame drew in %.1f ms and the driver "
-                           "held it %.1f ms (glFinish), %.0f of %lld vertices",
+                           "held it %.1f ms (glFinish), %d vertices over %d ranges",
                       app->last_draw_us / 1000.0, blocked / 1000.0,
-                      (double)app->vert_count, (long long)app->draw_calls);
+                      app->vert_count, app->draw_calls);
         }
     }
     draw_hud(app);
