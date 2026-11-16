@@ -34,6 +34,15 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # The signatures the native code looks UmbraNet's methods up by have to name
+      # them exactly. A wrong descriptor is not a compile error in C: on run
+      # 43956343069 one (String[] written as String) cost the whole Java bridge --
+      # GetStaticMethodID returned NULL and the app said "no Java network class in
+      # this APK" on an APK that has the class. This runs before the build so it
+      # costs a minute rather than twenty.
+      - name: The Java bridge's signatures, checked against the Java source
+        run: python3 tools/check_jni_signatures.py | tee evidence-jni.txt
+
       - name: Build the pinned Goose compiler
         run: tools/pin_goose.sh
 

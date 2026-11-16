@@ -55,6 +55,9 @@ typedef struct JNINativeInterface {
     void (*DeleteLocalRef)(JNIEnv *, jobject);
     jboolean (*IsSameObject)(JNIEnv *, jobject, jobject);
     void *reserved_pad2[3];
+    jobject (*NewObjectArray)(JNIEnv *, jsize, jclass, jobject);
+    jobject (*GetObjectArrayElement)(JNIEnv *, jobject, jsize);
+    void (*SetObjectArrayElement)(JNIEnv *, jobject, jsize, jobject);
     jobject (*AllocObject)(JNIEnv *, jclass);
     jobject (*NewObject)(JNIEnv *, jclass, jmethodID, ...);
     jobject (*NewObjectV)(JNIEnv *, jclass, jmethodID, void *);

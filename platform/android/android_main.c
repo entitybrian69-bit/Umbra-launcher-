@@ -468,13 +468,19 @@ static void net_init(ANativeActivity *activity) {
     g_m_download = (*env)->GetStaticMethodID(env, g_umbra_net, "download",
                                              "(Ljava/lang/String;Ljava/lang/String;)J");
     g_m_pick = (*env)->GetStaticMethodID(env, g_umbra_net, "pickAndCopy",
-                                         "(Landroid/app/Activity;Ljava/lang/String;Ljava/lang/String;)J");
+                                         "(Landroid/app/Activity;Ljava/lang/String;[Ljava/lang/String;)J");
     g_m_got = (*env)->GetStaticMethodID(env, g_umbra_net, "progressGot", "()J");
     g_m_total = (*env)->GetStaticMethodID(env, g_umbra_net, "progressTotal", "()J");
     g_m_error = (*env)->GetStaticMethodID(env, g_umbra_net, "lastError", "()Ljava/lang/String;");
     if (!g_m_download || !g_m_pick || !g_m_got || !g_m_total || !g_m_error) {
         if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
-        ALOGE("net: UmbraNet is missing a method the app calls");
+        // Named one by one: "missing a method" sent this run looking at the dex
+        // when the fault was a single wrong signature in the table below.
+        ALOGE("net: UmbraNet is missing a method: download %s, pickAndCopy %s, "
+              "progressGot %s, progressTotal %s, lastError %s",
+              g_m_download ? "ok" : "MISSING", g_m_pick ? "ok" : "MISSING",
+              g_m_got ? "ok" : "MISSING", g_m_total ? "ok" : "MISSING",
+              g_m_error ? "ok" : "MISSING");
         g_umbra_net = NULL;
         if (attached) (*g_vm)->DetachCurrentThread(g_vm);
         return;
@@ -500,7 +506,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     g_m_download = (*env)->GetStaticMethodID(env, g_umbra_net, "download",
                                              "(Ljava/lang/String;Ljava/lang/String;)J");
     g_m_pick = (*env)->GetStaticMethodID(env, g_umbra_net, "pickAndCopy",
-                                         "(Landroid/app/Activity;Ljava/lang/String;Ljava/lang/String;)J");
+                                         "(Landroid/app/Activity;Ljava/lang/String;[Ljava/lang/String;)J");
     g_m_got = (*env)->GetStaticMethodID(env, g_umbra_net, "progressGot", "()J");
     g_m_total = (*env)->GetStaticMethodID(env, g_umbra_net, "progressTotal", "()J");
     g_m_error = (*env)->GetStaticMethodID(env, g_umbra_net, "lastError", "()Ljava/lang/String;");
@@ -588,11 +594,20 @@ static int android_pick_file(void *ctx, const char *dest, const char *mime, long
     jobject activity = st->state->activity->clazz;
     jstring jdest = net_string(env, dest);
     jstring jmime = net_string(env, mime ? mime : "*/*");
-    jlong n = (*env)->CallStaticLongMethod(env, g_umbra_net, g_m_pick, activity, jdest, jmime);
+    // pickAndCopy takes String[] for the MIME types (one file picker, several kinds
+    // of file), and the signature above said String: GetStaticMethodID found
+    // nothing, which cost the whole bridge on run 43956343069 -- "UmbraNet is
+    // missing a method the app calls" -- and read like a missing class instead.
+    jclass string_class = (*env)->FindClass(env, "java/lang/String");
+    jobject jmimes = string_class
+        ? (*env)->NewObjectArray(env, 1, string_class, jmime) : NULL;
+    jlong n = (*env)->CallStaticLongMethod(env, g_umbra_net, g_m_pick, activity, jdest,
+                                           jmimes ? jmimes : jmime);
     int failed = 0;
     if ((*env)->ExceptionCheck(env)) { net_throw_away(env); failed = 1; }
     (*env)->DeleteLocalRef(env, jdest);
     (*env)->DeleteLocalRef(env, jmime);
+    if (jmimes) (*env)->DeleteLocalRef(env, jmimes);
     if (got) *got = (long long)n;
     ALOGI("pick: -> %s: %lld bytes%s", dest, (long long)n, failed ? " (threw)" : "");
     if (n <= 0 && app) net_record_error(app);
