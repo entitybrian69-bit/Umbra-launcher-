@@ -439,28 +439,50 @@ goose/core/png.goose:235: warning: redundant `as i64`: a u8 converts to i64 impl
 goose/core/png.goose:235: warning: redundant `as i64`: a u8 converts to i64 implicitly here
                     if r as i64 == tr && g as i64 == tg && b as i64 == tb { a = 0; }
                                                            ^~~~~~~~
+goose/test/sha1_test.goose:59: warning: redundant `as i64`: whole.len is already i64
+    while k < whole.len as i64 {
+              ^~~~~~~~~~~~~~~~
+goose/test/sha1_test.goose:60: warning: redundant `as i64`: whole.len is already i64
+        let n = if whole.len as i64 - k < 7 { whole.len as i64 - k } else { 7 };
+                   ^~~~~~~~~~~~~~~~
+goose/test/sha1_test.goose:60: warning: redundant `as i64`: whole.len is already i64
+        let n = if whole.len as i64 - k < 7 { whole.len as i64 - k } else { 7 };
+                                              ^~~~~~~~~~~~~~~~
+goose/core/sha1.goose:89: warning: redundant `as i64`: data.len is already i64
+    while i < data.len as i64 {
+              ^~~~~~~~~~~~~~~
+goose/core/sha1.goose:146: warning: redundant `as u8`: digits[(sha1_out[i] >> 4)] is already u8
+        out.push(digits[sha1_out[i] >> 4] as u8);
+                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/sha1.goose:147: warning: redundant `as u8`: digits[(sha1_out[i] & 0xF)] is already u8
+        out.push(digits[sha1_out[i] & 0xF] as u8);
+                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/sha1.goose:155: warning: redundant `as i64`: want.len is already i64
+    if want.len as i64 != 40 { return false; }
+       ^~~~~~~~~~~~~~~
 goose/test/mem_test.goose:37: warning: redundant `as i64`: a u32 converts to i64 implicitly here
         check_i64(r.v as i64, want[i], "leb round trip");
                   ^~~~~~~~~~
 built build/umbra_tests
 umbra core tests
 PASS mem (19 checks)
+PASS sha1 (30 checks)
 inflate: 72 streams matched zlib byte for byte, 4 corrupt streams rejected
-PASS inflate (97 checks)
+PASS inflate (108 checks)
 zip: 2 corrupt archives rejected
 zip: 4 archives, 20 entries matched their originals
-PASS zip (137 checks)
+PASS zip (148 checks)
 png: 10 images decoded to their expected RGBA, 4 broken refused
-PASS png (153 checks)
+PASS png (164 checks)
 nbt: parsed and rewrote level.dat byte for byte, 4 broken files refused
-PASS nbt (196 checks)
-PASS region (237 checks)
-PASS json (302 checks)
+PASS nbt (207 checks)
+PASS region (248 checks)
+PASS json (313 checks)
 mesh: real chunk -> 35652 vertices, 53478 indices, fnv1a 4f270675
-PASS mesh (354 checks)
-PASS atlas (403 checks)
-PASS models (425 checks)
-PASS modelstore (475 checks)
-PASS raster (485 checks)
+PASS mesh (365 checks)
+PASS atlas (414 checks)
+PASS models (436 checks)
+PASS modelstore (486 checks)
+PASS raster (496 checks)
 all modules passed
 c-host: goose_exit returned 0
