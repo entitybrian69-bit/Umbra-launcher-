@@ -22,19 +22,19 @@ goose/core/modelstore.goose:293: warning: redundant `as i64`: side is already i6
 goose/core/modelstore.goose:295: warning: redundant `as i64`: side is already i64
                         msf_face.push(side as i64);
                                       ^~~~~~~~~~~
-goose/core/modelstore.goose:434: warning: redundant `as i64`: key.len is already i64
+goose/core/modelstore.goose:445: warning: redundant `as i64`: key.len is already i64
     mts_cond_key_len.push(key.len as i64);
                           ^~~~~~~~~~~~~~
-goose/core/modelstore.goose:437: warning: redundant `as i64`: values.len is already i64
+goose/core/modelstore.goose:448: warning: redundant `as i64`: values.len is already i64
     mts_cond_val_len.push(values.len as i64);
                           ^~~~~~~~~~~~~~~~~
-goose/core/modelstore.goose:485: warning: redundant `as i64`: want.len is already i64
+goose/core/modelstore.goose:496: warning: redundant `as i64`: want.len is already i64
         model_path_len: want.len as i64,
                         ^~~~~~~~~~~~~~~
-goose/core/modelstore.goose:493: warning: redundant `as i64`: key.len is already i64
+goose/core/modelstore.goose:504: warning: redundant `as i64`: key.len is already i64
         variant_key_len: key.len as i64,
                          ^~~~~~~~~~~~~~
-goose/core/modelstore.goose:504: warning: redundant `as i64`: name.len is already i64
+goose/core/modelstore.goose:515: warning: redundant `as i64`: name.len is already i64
         name_len: name.len as i64,
                   ^~~~~~~~~~~~~~~
 goose/core/json.goose:104: warning: redundant `as i64`: a u8 converts to i64 implicitly here
@@ -244,7 +244,7 @@ core version: 0.3.4
 mesh: 17793984 vertex bytes, 2224248 index bytes
 mesh checks: 0 bad indices, 0 bad normals, 0 positions out of bounds
 progress: worst 995 permille; units 1947, total 1947
-sliced mesh: 456 calls, worst call 4.23 ms, worst unit 2.55 ms
+sliced mesh: 455 calls, worst call 4.21 ms, worst unit 2.53 ms
 batches: 543276 + 12786 + 0 = 556062 of 556062 indices
 layout: phone scale 2.64, desktop scale 1.00
 layout: button 0 21,1006 737x53; button 2 1528,1006
