@@ -86,21 +86,21 @@ goose/core/inflate.goose:317: warning: redundant `as u64`: a u32 converts to u64
 == reading build/server/run/world with the loader the renderer uses
 worldload: region dir build/server/run/world/dimensions/minecraft/overworld/region
 
-worldload: chunks 529, non-air blocks 843272, states 44, region files 4, read errors 0
+worldload: chunks 529, non-air blocks 844904, states 44, region files 4, read errors 0
 
-worldload: detail lines for chunks within 1 of the origin
+worldload: detail lines for chunks within 3 of the origin
 
 worldload: PASS - every chunk in the save was read
 
 == reading the same world with the independent reader
 oracle: region dir build/server/run/world/dimensions/minecraft/overworld/region
-oracle: chunks 529, non-air blocks 843272, states 44, region files 4
+oracle: chunks 529, non-air blocks 844904, states 44, region files 4
 oracle: wrote build/world-real/oracle.txt
 == comparing
-build/world-real/goose.txt: 529 chunks, 843272 blocks, 44 states
-build/world-real/oracle.txt: 529 chunks, 843272 blocks, 44 states
+build/world-real/goose.txt: 529 chunks, 844904 blocks, 44 states
+build/world-real/oracle.txt: 529 chunks, 844904 blocks, 44 states
 chunks that agree: 529 of 529 (100.00%)
-blocks in agreeing chunks: 843272 of 843272 (100.00% of every non-air block in the save)
+blocks in agreeing chunks: 844904 of 844904 (100.00% of every non-air block in the save)
 block states that agree: 44 of 44
 PASS: two independent readers agree on every block of all 529 chunks
 PASS: the world the server generated is read the same way twice
