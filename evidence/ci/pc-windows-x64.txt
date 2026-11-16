@@ -19,31 +19,31 @@ goose/core/demo.goose:129: warning: redundant `as i32`: cx is already i32
 goose/core/demo.goose:129: warning: redundant `as i32`: cz is already i32
         if demo[i].x == cx as i32 && demo[i].z == cz as i32 { return i; }
                                                   ^~~~~~~~~
-goose/core/demo.goose:180: warning: redundant `as f32`: fx is already f32
+goose/core/demo.goose:184: warning: redundant `as f32`: fx is already f32
     if fx < 0.0 && (fx as f32) != fx { x -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:181: warning: redundant `as f32`: fy is already f32
+goose/core/demo.goose:185: warning: redundant `as f32`: fy is already f32
     if fy < 0.0 && (fy as f32) != fy { y -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:182: warning: redundant `as f32`: fz is already f32
+goose/core/demo.goose:186: warning: redundant `as f32`: fz is already f32
     if fz < 0.0 && (fz as f32) != fz { z -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:187: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:191: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_x = if stepx == 0 { inf } else if stepx > 0 { (1.0 - (fx - (x as f32))) / nx } else { ((x as f32) - fx) / nx };
                                                                          ^~~~~~~~
-goose/core/demo.goose:187: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:191: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_x = if stepx == 0 { inf } else if stepx > 0 { (1.0 - (fx - (x as f32))) / nx } else { ((x as f32) - fx) / nx };
                                                                                                      ^~~~~~~~
-goose/core/demo.goose:188: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:192: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_y = if stepy == 0 { inf } else if stepy > 0 { (1.0 - (fy - (y as f32))) / ny } else { ((y as f32) - fy) / ny };
                                                                          ^~~~~~~~
-goose/core/demo.goose:188: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:192: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_y = if stepy == 0 { inf } else if stepy > 0 { (1.0 - (fy - (y as f32))) / ny } else { ((y as f32) - fy) / ny };
                                                                                                      ^~~~~~~~
-goose/core/demo.goose:189: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:193: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
                                                                          ^~~~~~~~
-goose/core/demo.goose:189: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:193: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
                                                                                                      ^~~~~~~~
 goose/core/jarpack.goose:70: warning: redundant `as i64`: s.len is already i64
@@ -309,14 +309,14 @@ umbra headless self-test
 core version: 0.3.5
 mesh: 22325424 vertex bytes, 2794116 index bytes
 mesh checks: 0 bad indices, 0 bad normals, 0 positions out of bounds
-progress: worst 998 permille; units 649, total 649
-sliced mesh: 281 calls, worst call 119.05 ms, worst unit 119.05 ms
+progress: worst 993 permille; units 649, total 649
+sliced mesh: 220 calls, worst call 110.74 ms, worst unit 110.74 ms
 ranges: 27 slots for 9 columns
 ranges: 543276 + 12786 + 0 = 556062 indices used of 698529 in the arena
 edit 0: 1 columns, 73 units of work, is_edit 1
-edit 0: 17 calls, worst call 6.69 ms, worst slice 6.69 ms
+edit 0: 11 calls, worst call 10.77 ms, worst slice 5.60 ms
 edit 1: 2 columns, 145 units of work, is_edit 1
-edit 1: 33 calls, worst call 9.57 ms, worst slice 7.19 ms
+edit 1: 22 calls, worst call 10.98 ms, worst slice 6.18 ms
 edit: patched geometry 5753a44b6995c9bd (556062 indices), rebuilt 5753a44b6995c9bd (556062)
 layout: phone scale 2.64, desktop scale 1.00
 layout: button 0 21,1006 737x53; button 2 1528,1006
