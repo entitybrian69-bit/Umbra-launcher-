@@ -17,6 +17,12 @@ jobs:
           cc --version | head -1
           python3 --version
           nproc
+      - name: The workflow files themselves
+        # Run 43855510033 failed in 0 seconds with zero jobs: a heredoc at column 0 inside
+        # a `run: |` block ended the block scalar and the file stopped being YAML, so the
+        # world job never started and nothing in the repository noticed. This checks it
+        # before anything else can run.
+        run: python3 tools/check_workflows.py
       - name: Build the pinned Goose compiler
         run: tools/pin_goose.sh
       - name: Core tests (Goose -> C -> native)
