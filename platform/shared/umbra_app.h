@@ -26,7 +26,7 @@ typedef enum {
 
 // The app's own version, next to the git commit the build records. Bumped with
 // the tag that publishes it (see .github/workflows/release.yml).
-#define UMBRA_APP_VERSION "0.3.2"
+#define UMBRA_APP_VERSION "0.3.6"
 
 // How much meshing a frame may do before it must draw and poll input again.
 // Android starts warning about an unresponsive app after about five seconds; six

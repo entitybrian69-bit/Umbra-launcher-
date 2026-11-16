@@ -529,11 +529,22 @@ number quoted above from CI came through one of those channels.
 
 The owner set the order; it survives interruptions.
 
-**Continuing: (a) read the `world` run that this push starts and copy the real numbers
-from `evidence/world/read-real.txt` into "Stage 3, step 4"; (b) read the `hands` phase in
-the `android` run - if the phone contradicts anything above, the phone wins; (c) publish
-`v0.3.6-pre` from a green run; (d) then gate 6b's second half (client-vs-client rendered
-parity) and threaded meshing.**
+**Continuing: (a) `v0.3.6-pre` is tagged from the green run, so read
+`RELEASE_VERIFY.txt` when it lands and record the asset sizes and hashes here; (b) then
+gate 6b's second half (client-vs-client rendered parity) and threaded meshing.**
+
+The hands phase on the emulator, from `evidence/ci/summary.txt` of run `43808551815`
+(android, success):
+
+```
+hands: the app answers at 1239,955, so input is 'identity' of the surface
+hands: the hotbar selected the slab: player: hotbar slot 4 selected (oak_slab)
+hands: looking down at pitch -1
+hands: player: break -> 1 (broke grass_block at 25 65 23)
+hands: the world was re-meshed after the edit
+hands: player: place -> 1 (placed oak_slab at 25 65 23)
+hands: shot-hands.png is 306466 bytes
+```
 
 1. **Done:** `v0.3.0-pre` and `v0.3.1-pre` are published, each verified by
    re-download (`RELEASE_VERIFY.txt`), and `0.3.1` ran on the owner's phone.
