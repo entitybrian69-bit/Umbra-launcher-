@@ -92,48 +92,62 @@ def read_chunk(path, offset):
     return zlib.decompress(raw)
 
 
+TAG_NAMES = {
+    1: "byte", 2: "short", 3: "int", 4: "long", 5: "float", 6: "double",
+    7: "byte[]", 8: "string", 9: "list", 10: "compound", 11: "int[]", 12: "long[]",
+}
+
+
+def entry_shape(entry):
+    """What a palette entry looks like: its tag type, or a compound's key names."""
+    if isinstance(entry, str):
+        return f"string len {len(entry)}"
+    if isinstance(entry, list) and entry and isinstance(entry[0], tuple):
+        return "compound keys " + ",".join(k for k, _ in entry)
+    if isinstance(entry, list):
+        return f"list of {len(entry)}"
+    if isinstance(entry, int):
+        return "int"
+    return type(entry).__name__
+
+
+def describe_shapes(path):
+    """One line per section of the first chunk: what it holds and how it is written."""
+    for nbt in world_oracle.file_chunks(path):
+        root = world_oracle.parse(nbt)
+        body = world_oracle.get(root, "Level") or root
+        sections = world_oracle.get(body, "sections") or []
+        print(f"  chunk root keys: {','.join(k for k, _ in root)}")
+        print(f"  sections: {len(sections)}")
+        for index, sec in enumerate(sections):
+            keys = ",".join(k for k, _ in sec) if isinstance(sec, list) else type(sec).__name__
+            bs = world_oracle.get(sec, "block_states")
+            if bs is None:
+                print(f"  section[{index}] Y={world_oracle.get(sec, 'Y')} keys {keys}: no block_states")
+                continue
+            palette = world_oracle.get(bs, "palette")
+            data = world_oracle.get(bs, "data")
+            n_pal = len(palette) if palette is not None else "none"
+            n_data = len(data) if data is not None else "none"
+            first = entry_shape(palette[0]) if palette else "empty"
+            print(f"  section[{index}] Y={world_oracle.get(sec, 'Y')} keys {keys}: "
+                  f"palette {n_pal} data {n_data} first entry {first}")
+        return
+
+
 def main(argv):
     if len(argv) < 2:
         print(__doc__.strip(), file=sys.stderr)
         return 1
     path = argv[1]
-    want = int(argv[2]) if len(argv) > 2 else None
-    index = 0
-    for slot, offset in chunks_of(path):
-        if want is not None and slot != want:
-            continue
-        print(f"chunk slot {slot} (x {slot % 32}, z {slot // 32}), offset {offset}")
-        try:
-            nbt = read_chunk(path, offset)
-        except OSError as exc:
-            print(f"  cannot read the chunk: {exc}")
-            continue
-        print(f"  nbt bytes {len(nbt)}")
-        try:
-            root = world_oracle.parse(nbt)
-        except (ValueError, struct.error) as exc:
-            print(f"  the parser refused it: {exc}")
-            return 0
-        print("  top level:")
-        describe(root, 1, 3)
-        body = world_oracle.get(root, "Level") or root
-        sections = world_oracle.get(body, "sections")
-        if isinstance(sections, list):
-            print(f"  sections: {len(sections)}")
-            for sec in sections[:1]:
-                print("  section[0]:")
-                describe(sec, 2, 2)
-                bs = world_oracle.get(sec, "block_states")
-                if bs is not None:
-                    print("  block_states:")
-                    describe(bs, 2, 2)
-                    palette = world_oracle.get(bs, "palette") or []
-                    for entry in palette[:2]:
-                        print("  palette entry:")
-                        describe(entry, 2, 2)
-        index += 1
-        if index >= 1 and want is None:
-            break
+    slots = list(chunks_of(path))
+    print(f"{len(slots)} chunks in {path}")
+    if not slots:
+        return 1
+    try:
+        describe_shapes(path)
+    except (ValueError, struct.error) as exc:
+        print(f"  the parser refused the first chunk: {exc}")
     return 0
 
 

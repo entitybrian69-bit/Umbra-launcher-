@@ -96,12 +96,15 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p evidence/world
+          found=""
           for f in build/server/run/world/dimensions/minecraft/overworld/region/*.mca \
                    build/server/run/world/region/*.mca; do
             [ -f "$f" ] || continue
-            python3 tools/dump_nbt_shape.py "$f" 2>&1 | tee evidence/world/chunk-shape.txt
+            found="$f"
             break
           done
+          [ -n "$found" ] || { echo "::error title=chunk shape::the server wrote no region file"; exit 1; }
+          python3 tools/dump_nbt_shape.py "$found" 2>&1 | tee evidence/world/chunk-shape.txt
       - name: Read the real world twice and compare it block by block
         run: |
           set -o pipefail
