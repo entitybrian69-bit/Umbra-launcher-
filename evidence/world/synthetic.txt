@@ -60,7 +60,7 @@ goose/core/region.goose:66: warning: redundant `as i64`: a u32 converts to i64 i
 goose/core/region.goose:142: warning: redundant `as u32`: a u16 converts to u32 implicitly here
     return s.blocks[i] as u32;
            ^~~~~~~~~~~~~~~~~~
-goose/core/region.goose:452: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+goose/core/region.goose:461: warning: redundant `as u32`: a u8 converts to u32 implicitly here
             put_be_u32(out, (offsets[i] << 8) | (counts[i] as u32));
                                                  ^~~~~~~~~~~~~~~~
 goose/core/inflate.goose:84: warning: redundant `as i64`: a u32 converts to i64 implicitly here
@@ -100,6 +100,114 @@ oracle: wrote build/world-test-out/oracle.txt
 == comparing
 build/world-test-out/goose.txt: 4 chunks, 24673 blocks, 7 states
 build/world-test-out/oracle.txt: 4 chunks, 24673 blocks, 7 states
+chunks that agree: 4 of 4 (100.00%)
+blocks in agreeing chunks: 24673 of 24673 (100.00% of every non-air block in the save)
+block states that agree: 7 of 7
+detail records that agree: 24673 of 24673 (100.00%), block by block
+PASS: two independent readers agree on every block of all 4 chunks
+PASS: the world the server generated is read the same way twice
+wrote build/world-test-str: 4 chunks in r.0.0.mca
+== building the loader
+goose/worldload.goose:34: warning: redundant `as u64`: a u8 converts to u64 implicitly here
+    wl_hash = (wl_hash ^ (b as u64)) * 1099511628211;
+                          ^~~~~~~~
+goose/worldload.goose:61: warning: redundant `as i64`: name.len is already i64
+        if wl_state_len[i] != name.len as i64 { continue; }
+                              ^~~~~~~~~~~~~~~
+goose/worldload.goose:72: warning: redundant `as i64`: name.len is already i64
+    wl_state_len.push(name.len as i64);
+                      ^~~~~~~~~~~~~~~
+goose/worldload.goose:202: warning: redundant `as i64`: cx is already i64
+                let wx = nums[0] * 32 + (cx as i64);
+                                         ^~~~~~~~~
+goose/worldload.goose:203: warning: redundant `as i64`: cz is already i64
+                let wz = nums[1] * 32 + (cz as i64);
+                                         ^~~~~~~~~
+goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
+        nbt_nodes[slot].ival = r.src[r.pos] as i8 as i64;
+                               ^~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/nbt.goose:108: warning: redundant `as i64`: an i16 converts to i64 implicitly here
+        nbt_nodes[slot].ival = be_i16(r.src, r.pos) as i64;
+                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/nbt.goose:112: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+        nbt_nodes[slot].ival = be_i32(r.src, r.pos) as i64;
+                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/nbt.goose:120: warning: redundant `as f64`: an f32 converts to f64 implicitly here
+        nbt_nodes[slot].fval = be_f32(r.src, r.pos) as f64;
+                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/nbt.goose:256: warning: redundant `as f64`: an i64 converts to f64 implicitly here
+    return nbt_nodes[c].ival as f64;
+           ^~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/mem.goose:26: warning: redundant `as u16`: a u8 converts to u16 implicitly here
+    return (b[off] as u16 << 8) | (b[off + 1] as u16);
+                                   ^~~~~~~~~~~~~~~~~
+goose/core/mem.goose:29: warning: redundant `as u32`: a u16 converts to u32 implicitly here
+    return (be_u16(b, off) as u32 << 16) | (be_u16(b, off + 2) as u32);
+                                            ^~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/mem.goose:32: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+    return (be_u32(b, off) as u64 << 32) | (be_u32(b, off + 4) as u64);
+                                            ^~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/mem.goose:47: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+    return (b[off] as u32) | (b[off + 1] as u32 << 8) | (b[off + 2] as u32 << 16) |
+            ^~~~~~~~~~~~~
+goose/core/mem.goose:52: warning: redundant `as u16`: a u8 converts to u16 implicitly here
+    return (b[off] as u16) | (b[off + 1] as u16 << 8);
+            ^~~~~~~~~~~~~
+goose/core/mem.goose:115: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+        c = crc_table[(c ^ (b as u32)) & 0xFF] ^ (c >> 8);
+                            ^~~~~~~~
+goose/core/mem.goose:125: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+        a = (a + (x as u32)) % 65521;
+                  ^~~~~~~~
+goose/core/region.goose:60: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+    if id as i64 >= bs_defs.len { return bs_names[0..0]; }
+       ^~~~~~~~~
+goose/core/region.goose:66: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+    if id as i64 >= bs_defs.len { return bs_props[0..0]; }
+       ^~~~~~~~~
+goose/core/region.goose:142: warning: redundant `as u32`: a u16 converts to u32 implicitly here
+    return s.blocks[i] as u32;
+           ^~~~~~~~~~~~~~~~~~
+goose/core/region.goose:461: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+            put_be_u32(out, (offsets[i] << 8) | (counts[i] as u32));
+                                                 ^~~~~~~~~~~~~~~~
+goose/core/inflate.goose:84: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+        code |= (bits(r, 1) as i64);
+                 ^~~~~~~~~~~~~~~~~
+goose/core/inflate.goose:150: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+                let len = length_base[li] + (bits(r, length_extra[li]) as i64);
+                                             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/inflate.goose:157: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+                let d = dist_base[dsym] + (bits(r, dist_extra[dsym]) as i64);
+                                           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/inflate.goose:301: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+    let hdr = (cmf as u32) * 256 + (flg as u32);
+                                    ^~~~~~~~~~
+goose/core/inflate.goose:303: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+        format(err, "zlib: bad header check 0x", u64_to_hex(hdr as u64, 4));
+                                                            ^~~~~~~~~~
+goose/core/inflate.goose:316: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+        format(err, "zlib: adler32 mismatch: stream says 0x", u64_to_hex(want as u64, 8),
+                                                                         ^~~~~~~~~~~
+goose/core/inflate.goose:317: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+               ", data is 0x", u64_to_hex(got as u64, 8));
+                                          ^~~~~~~~~~
+== reading build/world-test-str with the loader the renderer uses
+worldload: region dir build/world-test-str/region
+
+worldload: chunks 4, non-air blocks 24673, states 7, region files 1, read errors 0
+
+worldload: detail lines for chunks within 1 of the origin
+
+worldload: PASS - every chunk in the save was read
+
+== reading the same world with the independent reader
+oracle: region dir build/world-test-str/region
+oracle: chunks 4, non-air blocks 24673, states 7, region files 1
+oracle: wrote build/world-test-str-out/oracle.txt
+== comparing
+build/world-test-str-out/goose.txt: 4 chunks, 24673 blocks, 7 states
+build/world-test-str-out/oracle.txt: 4 chunks, 24673 blocks, 7 states
 chunks that agree: 4 of 4 (100.00%)
 blocks in agreeing chunks: 24673 of 24673 (100.00% of every non-air block in the save)
 block states that agree: 7 of 7
