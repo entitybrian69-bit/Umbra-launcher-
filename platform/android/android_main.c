@@ -492,31 +492,12 @@ static void net_init(ANativeActivity *activity) {
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *reserved) {
     (void)reserved;
-    g_vm = vm;
-    JNIEnv *env = NULL;
-    if ((*vm)->GetEnv(vm, (void **)&env, JNI_VERSION_1_6) != JNI_OK) return JNI_ERR;
-    jclass local = (*env)->FindClass(env, "org/umbra/client/UmbraNet");
-    if (!local) {
-        if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
-        ALOGE("JNI_OnLoad: org.umbra.client.UmbraNet is not in this APK: "
-              "the game-files screen cannot download or import");
-        return JNI_VERSION_1_6;
-    }
-    g_umbra_net = (jclass)(*env)->NewGlobalRef(env, local);
-    g_m_download = (*env)->GetStaticMethodID(env, g_umbra_net, "download",
-                                             "(Ljava/lang/String;Ljava/lang/String;)J");
-    g_m_pick = (*env)->GetStaticMethodID(env, g_umbra_net, "pickAndCopy",
-                                         "(Landroid/app/Activity;Ljava/lang/String;[Ljava/lang/String;)J");
-    g_m_got = (*env)->GetStaticMethodID(env, g_umbra_net, "progressGot", "()J");
-    g_m_total = (*env)->GetStaticMethodID(env, g_umbra_net, "progressTotal", "()J");
-    g_m_error = (*env)->GetStaticMethodID(env, g_umbra_net, "lastError", "()Ljava/lang/String;");
-    if (!g_m_download || !g_m_pick || !g_m_got || !g_m_total || !g_m_error) {
-        if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
-        ALOGE("JNI_OnLoad: UmbraNet is missing a method the app calls");
-        g_umbra_net = NULL;
-    } else {
-        ALOGI("JNI_OnLoad: UmbraNet loaded: download and the file picker are available");
-    }
+    // Only the JavaVM is remembered here. The class and its methods are looked up
+    // in net_init(), from android_main: android.app.NativeActivity dlopens this
+    // library, so JNI_OnLoad is not called on the device at all, and a lookup table
+    // that exists in two places can disagree with itself (it did: this copy kept
+    // the old pickAndCopy signature for a run).
+    if (vm) g_vm = vm;
     return JNI_VERSION_1_6;
 }
 
