@@ -101,8 +101,7 @@ jobs:
           [ -n "$files" ] || { echo "::error title=chunk shape::the server wrote no region file"; exit 1; }
           python3 tools/dump_nbt_shape.py $files 2>&1 | tee evidence/world/chunk-shape.txt
           echo "== the raw bytes of one palette the readers cannot read"
-          python3 tools/dump_nbt_shape.py --hex $(echo $files | tr ' ' '\n' | tail -1) \
-            2>&1 | tee -a evidence/world/chunk-shape.txt
+          python3 tools/dump_nbt_shape.py --hex $files 2>&1 | tee -a evidence/world/chunk-shape.txt
       - name: Read the real world twice and compare it block by block
         run: |
           set -o pipefail
