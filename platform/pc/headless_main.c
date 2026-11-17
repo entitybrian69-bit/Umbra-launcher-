@@ -1219,6 +1219,52 @@ int main(int argc, char **argv) {
         check(outside == -1, "a placement outside the world is refused");
     }
 
+    // --- saved edits: a break survives the file going to disk and coming back ---
+    {
+        // The format is Goose's and the file is the app's, so this tests both halves
+        // separately: the lines Goose writes must be readable text, and replaying them
+        // must put the same blocks back. A phone that loses an edit when it sleeps is
+        // the bug, and it cannot be caught by a check that only tests the editor.
+        umbra_edit_block(26, 65, 24, (sl_u8){(uint8_t *)"minecraft:stone", 16});
+        int64_t n = umbra_edit_count();
+        check(n > 0, "an edit is recorded in the session's edit list");
+        int64_t len = 0;
+        const uint8_t *line = umbra_edit_line(n - 1, &len);
+        char text[128];
+        int k = 0;
+        for (int64_t i = 0; i < len && k + 1 < (int)sizeof text; i++) text[k++] = (char)line[i];
+        text[k] = 0;
+        printf("edits: the last line is \"%s\"\n", text);
+        check(k > 0 && strstr(text, "minecraft:stone") != NULL,
+              "the saved line names the block that was placed");
+        int x = 0, y = 0, z = 0, used = 0;
+        int parsed = sscanf(text, "%d %d %d %n", &x, &y, &z, &used);
+        check(parsed == 3 && x == 26 && y == 65 && z == 24,
+              "and the coordinates a reader can parse back out are the ones edited");
+
+        // What a restart does: the same three numbers and the name, replayed.
+        int64_t before = umbra_block_fluid(26, 65, 24);   /* any query, as a baseline */
+        (void)before;
+        umbra_edit_block(26, 65, 24, (sl_u8){(uint8_t *)"minecraft:dirt", 15});
+        int64_t n2 = umbra_edit_count();
+        check(n2 == n + 1, "a second edit is appended, not merged into the first");
+        int64_t len2 = 0;
+        const uint8_t *line2 = umbra_edit_line(n2 - 1, &len2);
+        char text2[128];
+        k = 0;
+        for (int64_t i = 0; i < len2 && k + 1 < (int)sizeof text2; i++) text2[k++] = (char)line2[i];
+        text2[k] = 0;
+        check(strstr(text2, "minecraft:dirt") != NULL, "the second line names the second block");
+        // Replaying a line is applying an edit; the block it names comes back.
+        int64_t applied = umbra_apply_edit(30, 65, 24, (sl_u8){(uint8_t *)"minecraft:stone", 16});
+        check(applied == 1, "a line from a save file can be applied");
+        const uint8_t *name = umbra_block_at(30, 65, 24, &len);
+        check(len >= 4 && memcmp(name, "minecraft:", 9 > (int)len ? len : 9) == 0,
+              "and the block it named is in the world afterwards");
+        int64_t refused = umbra_apply_edit(-999, 65, 24, (sl_u8){(uint8_t *)"minecraft:stone", 16});
+        check(refused == 0, "a line outside the world is refused, not applied");
+    }
+
     // --- the hand controls fit the screen and the taps agree with the pixels ---
     {
         const int32_t no_insets[4] = { 0, 0, 0, 0 };

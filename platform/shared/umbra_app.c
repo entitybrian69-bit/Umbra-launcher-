@@ -749,6 +749,87 @@ static void create_mesh_buffers(umbra_app *app) {
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)ilen, indices, GL_STATIC_DRAW);
 }
 
+// --- saved edits ---------------------------------------------------------
+//
+// A break or a place has to still be there when the app is opened again, or a phone
+// that sleeps loses the player's work. Goose owns the format (umbra_edit_line /
+// umbra_apply_edit, "x y z block_name" per line); this owns the file, because the path
+// is a platform fact.
+//
+// The file is written by appending one line per edit rather than by rewriting it: an
+// append cannot corrupt the edits already saved if the process dies halfway through a
+// write, and the reader ignores a line it cannot parse, so a truncated last line costs
+// that one edit and nothing else.
+static void edits_path(const char *dir_hint, char *out, size_t cap) {
+    out[0] = 0;
+    const char *env = getenv("UMBRA_EDITS");
+    if (env && env[0]) { snprintf(out, cap, "%s", env); return; }
+    if (dir_hint && dir_hint[0]) { snprintf(out, cap, "%s/edits.txt", dir_hint); }
+}
+
+// "x y z name" -> one edit. Returns 1 if the world changed.
+static int edit_apply_line(umbra_app *app, const char *line) {
+    long x = 0, y = 0, z = 0;
+    int used = 0;
+    if (sscanf(line, "%ld %ld %ld %n", &x, &y, &z, &used) != 3 || used <= 0) return 0;
+    const char *name = line + used;
+    size_t n = strlen(name);
+    while (n > 0 && (name[n - 1] == '\n' || name[n - 1] == '\r' || name[n - 1] == ' ')) n--;
+    if (n == 0) return 0;
+    return (int)umbra_apply_edit((int64_t)x, (int64_t)y, (int64_t)z,
+                                 (sl_u8){(uint8_t *)name, (int64_t)n});
+}
+
+static int edits_append(umbra_app *app, const char *line, int64_t len) {
+    if (!app->edits_path[0]) return 0;
+    FILE *f = fopen(app->edits_path, "ab");
+    if (!f) {
+        umbra_log(app, "edits: cannot open %s to save an edit", app->edits_path);
+        return 0;
+    }
+    fwrite(line, 1, (size_t)len, f);
+    fputc('\n', f);
+    int ok = ferror(f) ? 0 : 1;
+    fclose(f);
+    return ok;
+}
+
+// Replay the saved edits into the world. Called after the world is built and before
+// the mesh begins, so the first mesh already has them and nothing is re-meshed twice.
+static void edits_replay(umbra_app *app) {
+    if (!app->edits_path[0]) return;
+    FILE *f = fopen(app->edits_path, "rb");
+    if (!f) {
+        umbra_log(app, "edits: no saved edits at %s (this world has none yet)",
+                  app->edits_path);
+        return;
+    }
+    char line[256];
+    int applied = 0, refused = 0, lines = 0;
+    while (fgets(line, (int)sizeof line, f)) {
+        lines++;
+        if (line[0] == '#') continue;
+        if (edit_apply_line(app, line)) { applied++; }
+        else if (line[0] != '\n' && line[0] != '\r' && line[0] != 0) {
+            refused++;
+            // One line, named, so a bad save file is a log line and not a mystery.
+            if (refused <= 3) {
+                char shown[80];
+                size_t n = strlen(line);
+                if (n > 0 && line[n - 1] == '\n') n--;
+                if (n >= sizeof shown) n = sizeof shown - 1;
+                memcpy(shown, line, n);
+                shown[n] = 0;
+                umbra_log(app, "edits: refused \"%s\" (line %d)", shown, lines);
+            }
+        }
+    }
+    fclose(f);
+    app->edits_replayed = applied;
+    umbra_log(app, "edits: %d saved edit(s) replayed from %s, %d line(s) in the file, %d refused",
+              applied, app->edits_path, lines, refused);
+}
+
 // Finds a client jar and makes it the source of the atlas and the block models.
 //
 // Three places, in order, and no user interface: the environment (host runs and
@@ -1061,6 +1142,9 @@ void close_gamefiles_screen(umbra_app *app) {
 static void begin_scene(umbra_app *app) {
     int64_t t0 = umbra_now_us();
     umbra_demo_build(20261114);
+    // Saved edits go in before the first mesh: replaying them afterwards would re-mesh
+    // columns that are already in the mesh, and the load is the slow part.
+    edits_replay(app);
     int64_t t1 = umbra_now_us();
     umbra_demo_mesh_begin();
     app->mesh_state = 1;
@@ -1243,6 +1327,11 @@ int umbra_app_init(umbra_app *app) {
             }
         }
         jar_try(app, files);
+        // The same directory holds the saved edits, and it is only known here (it is
+        // where the log file lives). Set before begin_scene runs, which is what reads it.
+        edits_path(files, app->edits_path, sizeof app->edits_path);
+        umbra_log(app, "edits: the file for saved edits is %s",
+                  app->edits_path[0] ? app->edits_path : "(none: this build has no files directory)");
     }
     // No jar, no jar's textures: on a phone there is no way to put one at
     // /data/local/tmp, so the world would be drawn with the twelve-tile placeholder
@@ -2141,6 +2230,20 @@ static void player_act(umbra_app *app) {
         // through the same sliced stepper as the first mesh, so nothing is uploaded
         // until the new mesh is complete.
         app->act_edits++;
+        // Saved now, not at exit: an app that is killed by the system (which is how a
+        // phone ends most apps) never gets an exit.
+        {
+            int64_t n = umbra_edit_count();
+            if (n > 0) {
+                int64_t len = 0;
+                const uint8_t *line = umbra_edit_line(n - 1, &len);
+                if (line && len > 0) {
+                    if (edits_append(app, (const char *)line, len)) {
+                        app->edits_saved++;
+                    }
+                }
+            }
+        }
         app->mesh_state = 1;
         app->mesh_progress = 0;
         app->mesh_calls = 0;

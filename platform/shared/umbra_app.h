@@ -106,6 +106,12 @@ struct umbra_app {
     int act_wanted;
     char act_text[96];
     int act_edits;              // how many blocks were changed this session
+    // Saved edits: the file, how many were replayed at start-up, how many were written.
+    // A break or a place that vanished when the app was closed is the bug these exist
+    // for, so both numbers are logged and both are in the self-test's reach.
+    char edits_path[512];
+    int edits_replayed;
+    int edits_saved;
     int tap_used;               // this finger was answered by a control, not the world
     int hands_logged_width;     // the width the hand controls' rects were logged at
     float look[3];      // the point the home view is aimed at

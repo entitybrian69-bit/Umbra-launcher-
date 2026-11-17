@@ -71,6 +71,20 @@ var dm_moved: bool = false;
 
 // The columns the last edit touched, for the log and for the stepper.
 var edit_cols: i64[>..] = [];
+// Every edit this session made, in order: what a saved world is. Three flat arrays
+// rather than a struct array, because Goose allows one growable field per struct and
+// an array of growable arrays is not a thing here.
+var edit_x: i64[>..] = [];
+var edit_y: i64[>..] = [];
+var edit_z: i64[>..] = [];
+var edit_id: u32[>..] = [];
+
+fn edit_record(x: i32, y: i32, z: i32, id: u32) {
+    edit_x.push(x as i64);
+    edit_y.push(y as i64);
+    edit_z.push(z as i64);
+    edit_id.push(id);
+}
 
 // --- meshing, in slices ------------------------------------------------
 //
@@ -996,6 +1010,47 @@ export "umbra_hotbar_select" fn hotbar_select(i: i64) -> i64 {
 
 export "umbra_act_text" fn act_text_export() -> const u8[:] { return act_text }
 
+// --- edits, saved -------------------------------------------------------
+//
+// A break or a place has to survive the app being closed, or the world forgets
+// everything the player did the moment the phone sleeps. The file itself is C's job
+// (the path is the app's own files directory, and Goose has no idea where that is);
+// what Goose owns is the *format*, and it is deliberately the same text the log
+// prints: "x y z block_name" per line, one line per edit, in the order they were made.
+//
+// Replaying is the whole point of the format being simple: the C side reads the lines
+// back and calls umbra_apply_edit for each, so a save file can be read by eye and a
+// corrupt one loses one edit instead of the world.
+var ed_lines: u8[>..] = [];
+
+
+export "umbra_edit_count" fn edit_count() -> i64 { return edit_x.len }
+
+// The i-th edit of this session, as text: "x y z name". Empty when there is none.
+export "umbra_edit_line" fn edit_line(i: i64) -> const u8[:] {
+    if i < 0 || i >= edit_x.len { return ""; }
+    ed_lines = [];
+    format(ed_lines, edit_x[i], " ", edit_y[i], " ", edit_z[i], " ");
+    ed_lines.append(bs_name(edit_id[i]));
+    return ed_lines
+}
+
+// Apply one edit from a file, with the same rules a live edit has: the cell has to be
+// in the world and the block has to be one the registry knows. Returns 1 if the world
+// changed, 0 if the line was refused, and the reason is left in act_text.
+export "umbra_apply_edit" fn apply_edit(x: i64, y: i64, z: i64, name: const u8[:]) -> i64 {
+    let id = bs_intern(name, "");
+    if !demo_set_block(x as i32, y as i32, z as i32, id) {
+        act_text = []; act_text.append("outside the world");
+        return 0;
+    }
+    edit_record(x as i32, y as i32, z as i32, id);
+    edit_cols = edit_columns_for(x as i32, z as i32);
+    demo_mesh_begin_edit(edit_cols[..]);
+    return 1;
+}
+
+
 fn act_say(what: const u8[:], name: const u8[:], x: i32, y: i32, z: i32) {
     act_text = [];
     act_text.append(what);
@@ -1020,6 +1075,7 @@ export "umbra_player_act" fn player_act(kind: i64, ex: f32, ey: f32, ez: f32,
             return -1;
         }
         act_say("broke", bs_path(name), h.x, h.y, h.z);
+        edit_record(h.x, h.y, h.z, 0);
         edit_cols = edit_columns_for(h.x, h.z);
         demo_mesh_begin_edit(edit_cols[..]);
         return 1;
@@ -1041,6 +1097,7 @@ export "umbra_player_act" fn player_act(kind: i64, ex: f32, ey: f32, ez: f32,
         return -1;
     }
     act_say("placed", bs_path(bs_name(id)), cell[0], cell[1], cell[2]);
+    edit_record(cell[0], cell[1], cell[2], id);
     edit_cols = edit_columns_for(cell[0], cell[2]);
     demo_mesh_begin_edit(edit_cols[..]);
     return 1;
@@ -1134,6 +1191,7 @@ export fn umbra_world_columns() -> i64 { return demo.len }
 export "umbra_edit_block" fn edit_block_export(x: i32, y: i32, z: i32, name: const u8[:]) -> i64 {
     let id = bs_intern(name, "");
     if !demo_set_block(x, y, z, id) { return 0; }
+    edit_record(x, y, z, id);
     edit_cols = edit_columns_for(x, z);
     demo_mesh_begin_edit(edit_cols[..]);
     return 1;

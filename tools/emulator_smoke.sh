@@ -916,6 +916,47 @@ if [ -n "$SNEAK_RECT" ]; then
 else
     die "hands: the app never logged a rect for the sneak button"
 fi
+# The edit has to survive the app being closed: a break that is only in memory is lost
+# the moment a phone sleeps, and nothing on screen shows the difference until the app is
+# opened again. So: read the cell that was broken, check the file, kill the app, start
+# it, and watch the fresh log replay it.
+BROKEN_CELL="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "player: break -> 1" \
+    | sed 's/.*at \([-0-9]* [-0-9]* [-0-9]*\).*/\1/')"
+if [ -n "$BROKEN_CELL" ]; then
+    set -- $BROKEN_CELL
+    CELL_X="$1"; CELL_Y="$2"; CELL_Z="$3"
+    FILES_DIR0="$(adb shell "ls -d /data/user/0/org.umbra.client/files 2>/dev/null || echo /data/data/org.umbra.client/files" | tr -d '\r\n')"
+    SAVED="$(adb shell "cat \"$FILES_DIR0/edits.txt\" 2>/dev/null" | tr -d '\r' | tr '\n' '|')"
+    say "edits: the file after the break: ${SAVED:-missing}"
+    case "$SAVED" in
+        *"$CELL_X $CELL_Y $CELL_Z"*) say "edits: the break was written to $FILES_DIR0/edits.txt" ;;
+        *) die "edits: the break at $CELL_X $CELL_Y $CELL_Z was never saved (the file holds '${SAVED}')" ;;
+    esac
+    adb shell am force-stop org.umbra.client > /dev/null 2>&1
+    sleep 2
+    adb logcat -c > /dev/null 2>&1 || true
+    adb shell am start -n org.umbra.client/.MainActivity > /dev/null 2>&1 \
+        || die "edits: the app would not start again after the restart"
+    REOPENED=0
+    DEADLINE=$((SECONDS + 120))
+    while [ $SECONDS -lt $DEADLINE ]; do
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "saved edit(s) replayed"; then
+            REOPENED=1; break
+        fi
+        sleep 2
+    done
+    [ "$REOPENED" = 1 ] || die "edits: the app never reported replaying the saved edits after the restart"
+    REPLAY_LINE="$(adb logcat -d -s umbra:V 2>/dev/null | grep "saved edit(s) replayed" | tail -1 \
+        | sed 's/.*umbra   : //')"
+    say "edits: $REPLAY_LINE"
+    REPLAYED="$(printf '%s' "$REPLAY_LINE" | sed -n 's/edits: \([0-9]*\) saved edit(s).*/\1/p')"
+    [ "${REPLAYED:-0}" -ge 1 ] || die "edits: the restart replayed no edits, so the break did not survive it"
+    say "edits: the break survived a restart"
+    adb logcat -d -s umbra:V > logcat-umbra-edits.txt 2>&1
+else
+    die "edits: there was no break to save"
+fi
+
 adb exec-out screencap -p > "shot-hands.png" 2>/dev/null || true
 say "hands: shot-hands.png is $(stat -c%s shot-hands.png 2>/dev/null || echo 0) bytes"
 adb logcat -d -s umbra:V > logcat-umbra-hands.txt 2>&1
