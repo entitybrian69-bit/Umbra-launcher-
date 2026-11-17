@@ -541,9 +541,15 @@ the app's own button and drew with them. Item 2 (an edit re-meshes one chunk ins
 slice is 18.5 ms (`43960566328`) and start-up's frames are attributed in the section
 below.
 
-What is left of the brief's item 3 is **threaded meshing for world loading**, and then
-item 4 (the player: full-block steps, swimming, sneak, hotbar and inventory, saving
-edits) before worldgen parity.
+Item 3 ("loading must not hold the frame loop for 50 ms") is met by measurement on both
+host and device, and its last candidate fix was not threading: **Goose is single-threaded
+by contract** — an export has to be called from the thread that ran `goose_init()`, so
+there is no worker thread to mesh on without changing that contract, which is the
+language's, not the app's. What made the budget reachable was smaller units and arenas
+sized once (the section above, D-046).
+
+What is left is the brief's item 4: the player. Full-block steps, swimming, sneak, a
+hotbar and inventory, and saving edits, before worldgen parity.
 
 Start-up's long frames are now attributed rather than guessed. Run `43968867039` (android,
 success) printed:
@@ -588,9 +594,11 @@ cost. Splitting the measurement said so in one run:
 44014123269: edit: the longest slice was 20.5 ms (under the 50 ms an edit is allowed)
 ```
 
-Two units out of ten thousand went over 10 ms: that is the emulator's scheduler taking a
-core back, not the app, and it is the floor of this rig rather than something the code can
-fix. The whole table, same emulator and same world:
+The next run on the same code read 31.6 ms worst call and 16.1 ms worst unit with 8 units
+over 10 ms of the same 10369 (`44015394717`) — two consecutive runs inside the budget after
+six oscillating ones. A handful of units out of ten thousand going over 10 ms is the
+emulator's scheduler taking a core back, not the app, and it is the floor of this rig
+rather than something the code can fix. The whole table, same emulator and same world:
 
 | | 43968867039 (before) | 44002574807 | 44012879563 | **44014123269 (now)** |
 |---|---|---|---|---|
