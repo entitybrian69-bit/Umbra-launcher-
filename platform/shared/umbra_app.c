@@ -944,6 +944,17 @@ static void finish_scene(umbra_app *app) {
               app->mesh_total_us / 1000.0, (long long)app->mesh_calls,
               app->mesh_worst_call_us / 1000.0, umbra_demo_mesh_worst_unit_us() / 1000.0,
               app->max_frame_us / 1000.0, (long long)app->long_frames);
+    // Why the unit number is what it is: the unit is a layer of a section (a meshing
+    // walk) or a column copy, and the two have nothing in common. A unit over 10 ms on
+    // a shared, GPU-less emulator is usually the scheduler taking the core back, so the
+    // count of them says whether the ceiling is being approached by the code or by the
+    // machine.
+    umbra_log(app, "units: worst meshing walk %.1f ms, worst column copy %.1f ms, "
+                   "%lld units over 10 ms of %lld",
+              umbra_demo_mesh_worst_mesh_us() / 1000.0,
+              umbra_demo_mesh_worst_copy_us() / 1000.0,
+              (long long)umbra_demo_mesh_units_over_10ms(),
+              (long long)umbra_demo_mesh_units());
 }
 
 // The mesh after an edit: the view stays where the player put it, the geometry that

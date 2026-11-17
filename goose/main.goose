@@ -107,6 +107,13 @@ const DM_LAYER_STEP: i64 = 1;
 const DM_LAYER_RANGES: i64 = 16;
 var dm_units: i64 = 0;   // sections (and copies) completed
 var dm_worst_unit_us: i64 = 0;
+// The unit is made of two different things -- walking a layer of a section, and
+// copying a finished column into its slot -- and only one of them is a candidate for
+// being the stall. The worst unit is also counted above a threshold, because a rare
+// multi-millisecond unit on a shared emulator is the scheduler, not the code.
+var dm_worst_mesh_us: i64 = 0;
+var dm_worst_copy_us: i64 = 0;
+var dm_units_over_10ms: i64 = 0;
 var dm_edit: bool = false;   // this pass is a re-mesh after an edit
 var dm_remap: u32[>..] = [];
 
@@ -144,6 +151,9 @@ fn dm_reset_pass(cols: i64[:], edit: bool) {
     dm_ly = 0;
     dm_units = 0;
     dm_worst_unit_us = 0;
+    dm_worst_mesh_us = 0;
+    dm_worst_copy_us = 0;
+    dm_units_over_10ms = 0;
     dm_dirty = [];
 }
 
@@ -352,7 +362,10 @@ fn demo_mesh_unit() {
     if dm_sy == -4 && dm_ly == 0 { batch_starts[dm_pass] = mesh_indices.len; }
     let want = if dm_pass == 0 { RC_OPAQUE } else if dm_pass == 1 { RC_CUTOUT } else { RC_TRANSLUCENT };
     let ly_end = if dm_ly + DM_LAYER_STEP > DM_LAYERS { DM_LAYERS } else { dm_ly + DM_LAYER_STEP };
+    let t0 = umbra_c_now_us();
     mesh_section_class_layers(demo[c], dm_sy as i32, want, dm_ly as i32, ly_end as i32);
+    let took_mesh = umbra_c_now_us() - t0;
+    if took_mesh > dm_worst_mesh_us { dm_worst_mesh_us = took_mesh; }
     if ly_end < DM_LAYERS {
         dm_ly = ly_end;
         return;
@@ -366,7 +379,10 @@ fn demo_mesh_unit() {
     dm_pass += 1;
     if dm_pass < 3 { return; }
     dm_pass = 0;
+    let t1 = umbra_c_now_us();
     for b in 3 { demo_place_column(b, c); }
+    let took_copy = umbra_c_now_us() - t1;
+    if took_copy > dm_worst_copy_us { dm_worst_copy_us = took_copy; }
     dm_ci += 1;
 }
 
@@ -379,6 +395,7 @@ fn demo_mesh_step(budget_us: i64) -> bool {
         demo_mesh_unit();
         let unit_us = umbra_c_now_us() - unit_start;
         if unit_us > dm_worst_unit_us { dm_worst_unit_us = unit_us; }
+        if unit_us > 10000 { dm_units_over_10ms += 1; }
         dm_units += 1;
         if umbra_c_now_us() - start >= budget_us { break; }
     }
@@ -675,6 +692,9 @@ export "umbra_demo_mesh_progress" fn demo_mesh_progress() -> i64 {
 }
 export fn umbra_demo_mesh_units() -> i64 { return dm_units }
 export fn umbra_demo_mesh_worst_unit_us() -> i64 { return dm_worst_unit_us }
+export fn umbra_demo_mesh_worst_mesh_us() -> i64 { return dm_worst_mesh_us }
+export fn umbra_demo_mesh_worst_copy_us() -> i64 { return dm_worst_copy_us }
+export fn umbra_demo_mesh_units_over_10ms() -> i64 { return dm_units_over_10ms }
 
 // Serialised copies of the mesh, in the exact byte layout the GPU wants:
 // 12 little-endian f32 per vertex, 4 little-endian u32 per index. Goose has no
