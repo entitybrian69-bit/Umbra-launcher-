@@ -562,21 +562,32 @@ the first world frame is one to two scenes' worth of that, not a stall of the ap
 
 **Loading got faster while this was being measured, because the measurement said where
 the time was.** The worst meshing call was 45.4 ms under a six-millisecond slice — the
-slice was a promise the code could not keep, because a unit is not interruptible. Two
-changes, in run `43997491638` (android, success):
+slice was a promise the code could not keep, because a unit is not interruptible. The
+changes that followed, measured on run `44002574807` (android, success) and the Windows
+host on the same commit:
 
 * The loading slice is 20 ms and the ceiling is the brief's 50 (the host suite measured a
-  50 ms slice at 52.33 ms, i.e. over the number the brief names). `demo_place_column`
-  filled the vertex and index arenas one `push` at a time; it now appends a 64-element
-  run, so the fill is memcpys instead of hundreds of thousands of calls.
-* The numbers, on the same emulator, same world:
+  50 ms slice at 52.33 ms, i.e. over the number the brief names).
+* `demo_place_column` filled the vertex and index arenas one `push` at a time, and grew
+  them per column — a slice append reallocates and copies, so it copied the world dozens
+  of times. The arenas are now sized once (480k vertices / 580k indices, the geometry the
+  host suite measures plus each slot's slack, 733k indices for 556k in use) and placed
+  through a cursor, so placing a column grows nothing.
+* The numbers, same emulator, same world, same jar:
 
-| | before (43968867039) | after (43997491638) |
-|---|---|---|
-| start-up mesh | 3805.5 ms over 296 calls | **1391.5 ms over 60 calls** |
-| worst meshing call | 45.4 ms | **29.2 ms** |
-| worst unit | 45.4 ms | **19.1 ms** |
-| worst edit slice | 18.5 ms | **25.3–30.6 ms** |
+| | 43968867039 (before) | 43997491638 | **44002574807 (now)** |
+|---|---|---|---|
+| start-up mesh | 3805.5 ms / 296 calls | 1391.5 ms / 60 calls | **1518.9 ms / 64 calls** |
+| worst meshing call | 45.4 ms | 29.2 ms | **36.7 ms** |
+| worst unit | 45.4 ms | 19.1 ms | **23.3 ms** |
+| mesh upload | 25.0 MB + 3.1 MB | 25.0 MB + 3.1 MB | **30.2 MB + 3.2 MB** |
+| worst edit slice | 18.5 ms | 25.3 ms | **25.4 ms** |
+| Windows host worst unit | — | 103.3 ms | **3.4 ms** |
+| Windows host worst call | — | 113.0 ms | **22.9 ms** |
+
+Two of those steps were wrong before they were right, and both are in the log: a 50 ms
+slice *overran* to 52.33 ms on the host, and reserving 480k/780k without a cursor grew
+the arena to 47 MB for 26 MB of geometry and doubled the upload (run `44001141590`).
 
 The 50 ms the brief asks for is now checked, not asserted: the emulator phase fails the
 run if the worst loading call exceeds it, and the host suite fails if the worst loading
