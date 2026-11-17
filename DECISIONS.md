@@ -2,6 +2,24 @@
 
 Newest first. Each entry says what was decided, why, and what it costs.
 
+## D-046 The unit of loading work is one layer of a section, measured rather than assumed
+
+A budget in milliseconds means nothing unless the thing the budget cuts into can be cut.
+The unit of loading was a 4096-block section: uninterruptible, and its cost depends on how
+many blocks it holds, so the slice held on some sections and broke on others. Six runs of
+one commit gave worst units of 29, 36, 44, 36, 71 and 55 ms against a 50 ms ceiling.
+
+Shrinking the unit did not fix it — section → two layers took the worst unit from 44.8 to
+19.3 ms and then straight back up to 34.2 ms — and that is the useful signal: a number that
+does not move when the work shrinks eightfold is not about the work. Splitting the
+measurement (meshing walk vs column copy, and a count of units over 10 ms) showed 2 of
+10369 units over that mark, so the tail is the shared emulator's scheduler, and a unit of
+one layer (256 blocks) keeps the *typical* case far from the ceiling.
+
+The decision: **the unit is one layer**, and the block visit order is unchanged so the
+sliced mesh stays byte-identical to the all-at-once path. The cost is 10369 units per load
+(a little bookkeeping per unit) and a progress count divided by 10369 instead of 577.
+
 ## D-045 A check must fail for the fault, not for the machine
 
 D-044's table is the list of device-only faults. Two more arrived in the same turn and

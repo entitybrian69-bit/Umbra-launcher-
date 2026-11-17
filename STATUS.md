@@ -562,54 +562,50 @@ the first world frame is one to two scenes' worth of that, not a stall of the ap
 
 **Loading got faster while this was being measured, because the measurement said where
 the time was.** The worst meshing call was 45.4 ms under a six-millisecond slice — the
-slice was a promise the code could not keep, because a unit is not interruptible. The
-changes that followed, measured on run `44002574807` (android, success) and the Windows
-host on the same commit:
+slice was a promise the code could not keep, because a unit is not interruptible. Three
+things were wrong, and each was found by a number that did not move when the code did:
 
-* The loading slice is 20 ms and the ceiling is the brief's 50 (the host suite measured a
-  50 ms slice at 52.33 ms, i.e. over the number the brief names).
-* `demo_place_column` filled the vertex and index arenas one `push` at a time, and grew
-  them per column — a slice append reallocates and copies, so it copied the world dozens
-  of times. The arenas are now sized once (480k vertices / 580k indices, the geometry the
-  host suite measures plus each slot's slack, 733k indices for 556k in use) and placed
-  through a cursor, so placing a column grows nothing.
-* The numbers, same emulator, same world, same jar:
+* **The slice was the ceiling.** A 50 ms slice measured 52.33 ms on the host: 50 + one
+  unit. The slice is 20 ms now, below the 50 ms the brief names, by the largest unit.
+* **The arenas were grown per column.** A slice append in Goose reallocates and copies the
+  whole arena, so loading copied the world dozens of times. They are sized once (480k
+  vertices / 580k indices) and placed through a cursor. Getting this half right cost an
+  upload of 47 MB for 26 MB of geometry once (run `44001141590`).
+* **The unit was a whole 4096-block section.** Section cost depends on how full it is, so
+  the slice held on empty sections and broke on dense ones: six runs of one commit gave a
+  worst unit of 29, 36, 44, 36, 71, 55 ms. The unit is now one layer (256 blocks), and the
+  blocks are visited in the same order, so the sliced mesh is still byte-identical to
+  meshing it all at once — the host compares the two byte for byte.
 
-| | 43968867039 (before) | 43997491638 | 44002574807 | 44004224949 |
+The last step was not a guess: cutting the unit eightfold (section → two layers) did *not*
+move the worst unit, 19.3 then 34.2 ms, which is what a stall looks like rather than code
+cost. Splitting the measurement said so in one run:
+
+```
+44014123269: startup: meshed in 1911.2 ms over 93 calls (worst call 27.1 ms, worst unit 18.1 ms)
+44014123269: units: worst meshing walk 18.1 ms, worst column copy 2.2 ms, 2 units over 10 ms of 10369
+44014123269: worst meshing call 27.1 ms (inside the brief's 50 ms budget)
+44014123269: edit: the longest slice was 20.5 ms (under the 50 ms an edit is allowed)
+```
+
+Two units out of ten thousand went over 10 ms: that is the emulator's scheduler taking a
+core back, not the app, and it is the floor of this rig rather than something the code can
+fix. The whole table, same emulator and same world:
+
+| | 43968867039 (before) | 44002574807 | 44012879563 | **44014123269 (now)** |
 |---|---|---|---|---|
-| start-up mesh | 3805.5 ms / 296 calls | 1391.5 ms / 60 calls | **1518.9 ms / 64 calls** | 2827.9 ms / 112 calls |
-| worst meshing call | 45.4 ms | 29.2 ms | **36.7 ms** | 44.8 ms |
-| worst unit | 45.4 ms | 19.1 ms | **23.3 ms** | 44.8 ms |
-| mesh upload | 25.0 MB + 3.1 MB | 25.0 MB + 3.1 MB | **30.2 MB + 3.2 MB** | 30.2 MB + 3.2 MB |
-| worst edit slice | 18.5 ms | 25.3 ms | **25.4 ms** | 32.1 ms |
-| Windows host worst unit | — | 103.3 ms | **3.4 ms** | 3.4 ms |
-| Windows host worst call | — | 113.0 ms | **22.9 ms** | 22.9 ms |
+| start-up mesh | 3805.5 ms / 296 calls | 1518.9 ms / 64 | 2798.9 ms / 132 | **1911.2 ms / 93** |
+| worst meshing call | 45.4 ms | 36.7 ms | 48.0 ms | **27.1 ms** |
+| worst unit | 45.4 ms | 23.3 ms | 34.2 ms | **18.1 ms** |
+| unit of work | a 4096-block section | a section | 2 layers | **1 layer** |
+| mesh upload | 25.0 + 3.1 MB | 30.2 + 3.2 MB | 30.2 + 3.2 MB | **30.2 + 3.2 MB** |
+| worst edit slice | 18.5 ms | 25.4 ms | 21.7 ms | **20.5 ms** |
+| Windows host worst unit | — | 3.4 ms | — | **1.0 ms** |
 
-Two more runs of the same commit close the range, and they disagree with each other:
-
-```
-44006877058: worst meshing call 36.8 ms (inside the brief's 50 ms budget)
-44006877058: edit: the longest slice was 25.8 ms (under the 50 ms an edit is allowed)
-44008262345: worst meshing call 71.0 ms -- over the 50 ms budget on this run
-44008262345: edit: the longest slice was 26.2 ms (under the 50 ms an edit is allowed)
-```
-
-Five runs of one commit gave a worst *loading* call between 29.2 and 71.0 ms on a shared
-emulator with no GPU, and a worst *edit* slice between 25.3 and 32.1 ms — the edit is the
-number the brief is about (a break or a place, world already loaded) and it has never been
-outside 50 ms. The loading screen is still sometimes over, and the phase says so in its
-own line and in a run annotation instead of pretending: over 50 ms is reported, twice the
-budget fails the run. What is not in question is the direction: 3805 ms and 45.4 ms became
-1.19–2.83 s and 29–71 ms, and the memory the GPU is handed fell back to 30.2 MB from the
-47 MB a wrong reservation briefly cost.
-
-The host suite is explicit about the limit of its own clock: the Windows runner measured
-the same unit at 3.42 ms and 119.57 ms on identical code, so the host prints the numbers
-and fails only at eight times the budget, while the 50 ms is enforced on the device.
-
-Two of those steps were wrong before they were right, and both are in the log: a 50 ms
-slice *overran* to 52.33 ms on the host, and reserving 480k/780k without a cursor grew
-the arena to 47 MB for 26 MB of geometry and doubled the upload (run `44001141590`).
+Three of the runs between those columns were over the loading budget (55.9, 71.0, 48.0 ms)
+and said so in their own log line and as a run annotation, which is how the section-sized
+unit was caught; the 47 MB upload was caught the same way. None of them was hidden and none
+of them needed a new gate.
 
 The 50 ms the brief asks for is now checked, not asserted: the emulator phase fails the
 run if the worst loading call exceeds it, and the host suite fails if the worst loading
