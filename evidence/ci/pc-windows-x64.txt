@@ -1,16 +1,16 @@
-goose/main.goose:289: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+goose/main.goose:310: warning: redundant `as i64`: a u32 converts to i64 implicitly here
         world_verts[vbase + (local as i64)] = Vertex {
                              ^~~~~~~~~~~~
-goose/main.goose:608: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/main.goose:629: warning: redundant `as f32`: an i64 converts to f32 implicitly here
 export fn umbra_mesh_worst_unit_ms() -> f32 { return (dm_worst_unit_us as f32) / 1000.0 }
                                                       ^~~~~~~~~~~~~~~~~~~~~~~
-goose/main.goose:739: warning: redundant `as i64`: data.len is already i64
+goose/main.goose:760: warning: redundant `as i64`: data.len is already i64
     jar_bytes = data.len as i64;
                 ^~~~~~~~~~~~~~~
-goose/main.goose:868: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/main.goose:889: warning: redundant `as f32`: an i64 converts to f32 implicitly here
         if t > 0.0 { return (y as f32) + t; }
                              ^~~~~~~~
-goose/main.goose:978: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/main.goose:999: warning: redundant `as i64`: an i32 converts to i64 implicitly here
     return (h.y as i64) * 1000000 + (h.z as i64) * 1000 + (h.x as i64);
                                                            ^~~~~~~~~~
 goose/core/gamefiles.goose:89: warning: redundant `as i64`: json_str(json_get(c, "time")).len is already i64
@@ -325,16 +325,16 @@ goose/core/mem.goose:125: warning: redundant `as u32`: a u8 converts to u32 impl
 built build/pc/umbra_headless.exe
 umbra headless self-test
 core version: 0.3.7
-mesh: 45365424 vertex bytes, 5914116 index bytes
+mesh: 27934272 vertex bytes, 2932544 index bytes
 mesh checks: 0 bad indices, 0 bad normals, 0 positions out of bounds
-progress: worst 967 permille; units 649, total 649
-sliced mesh: 24 calls, worst call 22.67 ms, worst unit 4.39 ms
+progress: worst 989 permille; units 649, total 649
+sliced mesh: 23 calls, worst call 22.93 ms, worst unit 3.42 ms
 ranges: 27 slots for 9 columns
-ranges: 543276 + 12786 + 0 = 556062 indices used of 1478529 in the arena
+ranges: 543276 + 12786 + 0 = 556062 indices used of 733136 in the arena
 edit 0: 1 columns, 73 units of work, is_edit 1
-edit 0: 9 calls, worst call 6.82 ms, worst slice 3.42 ms
+edit 0: 9 calls, worst call 9.21 ms, worst slice 4.65 ms
 edit 1: 2 columns, 145 units of work, is_edit 1
-edit 1: 18 calls, worst call 7.34 ms, worst slice 3.67 ms
+edit 1: 17 calls, worst call 6.89 ms, worst slice 3.41 ms
 edit: patched geometry 5753a44b6995c9bd (556062 indices), rebuilt 5753a44b6995c9bd (556062)
 layout: phone scale 2.64, desktop scale 1.00
 layout: button 0 21,1006 737x53; button 2 1528,1006
