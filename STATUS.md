@@ -558,11 +558,29 @@ startup: ... longest frame 208.3 ms, frames over 250 ms: 0
 
 The app's own work is 36 + 69 + 164 ms on a software rasteriser whose own benchmark
 reports a median of ~85 ms per frame at 1920×1080 (`bench: 689 frames avg 87.18 ms`);
-the 164 ms first frame is two scenes' worth of that, not a stall of the app's. The 50 ms
-the brief asks for is enforced where it is measurable and where a person feels it: the
-edit, at **18.5 ms worst slice** on the device (`edit: the longest slice was 18.5 ms
-(under the 50 ms an edit is allowed)`). No measurement on this emulator can attribute a
-frame below its renderer's own cost, and none is claimed.
+the first world frame is one to two scenes' worth of that, not a stall of the app's.
+
+**Loading got faster while this was being measured, because the measurement said where
+the time was.** The worst meshing call was 45.4 ms under a six-millisecond slice — the
+slice was a promise the code could not keep, because a unit is not interruptible. Two
+changes, in run `43997491638` (android, success):
+
+* The loading slice is 20 ms and the ceiling is the brief's 50 (the host suite measured a
+  50 ms slice at 52.33 ms, i.e. over the number the brief names). `demo_place_column`
+  filled the vertex and index arenas one `push` at a time; it now appends a 64-element
+  run, so the fill is memcpys instead of hundreds of thousands of calls.
+* The numbers, on the same emulator, same world:
+
+| | before (43968867039) | after (43997491638) |
+|---|---|---|
+| start-up mesh | 3805.5 ms over 296 calls | **1391.5 ms over 60 calls** |
+| worst meshing call | 45.4 ms | **29.2 ms** |
+| worst unit | 45.4 ms | **19.1 ms** |
+| worst edit slice | 18.5 ms | **25.3–30.6 ms** |
+
+The 50 ms the brief asks for is now checked, not asserted: the emulator phase fails the
+run if the worst loading call exceeds it, and the host suite fails if the worst loading
+call exceeds it either (the host runs the app's own 20 ms slice, not a test-sized one).
 
 The hands phase on the emulator, from `evidence/ci/summary.txt` of run `43960566328`
 (android, success) -- the same run that fetched the jar:

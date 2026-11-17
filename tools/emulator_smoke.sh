@@ -385,8 +385,8 @@ if [ -n "$LONGEST" ]; then
     # the previous runs reported is used.
     BENCH_MS="$(adb shell "cat $(adb shell 'ls -d /data/user/0/org.umbra.client/files 2>/dev/null || echo /data/data/org.umbra.client/files' | tr -d '\r\n')/last_bench.txt 2>/dev/null" 2>/dev/null \
         | tr -d '\r' | sed -n 's/.* median \([0-9.]*\) ms.*/\1/p')"
-    say "mesh: the 50 ms budget is the edit's (see the hands phase); this emulator's"\
-        " software renderer alone costs ${BENCH_MS:-~85} ms a frame at 1920x1080"
+    say "mesh: the 50 ms budget also applies to an edit (see the hands phase); this"\
+        " emulator's software renderer alone costs ${BENCH_MS:-~85} ms a frame"
 else
     say "mesh: the startup line did not report a longest frame"
 fi
