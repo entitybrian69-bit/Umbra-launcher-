@@ -563,11 +563,25 @@ fn mesh_column(c: ChunkColumn&) {
 // The same as mesh_section but only for one render class, so the three batches
 // can be emitted back to back.
 fn mesh_section_class(c: ChunkColumn&, sy: i32, want: i64) {
+    mesh_section_class_layers(c, sy, want, 0, 16);
+}
+
+// A section is 4096 blocks and one dense section measured 30-70 ms on the phone --
+// far over the 50 ms the brief allows for an edit, because a unit cannot be
+// interrupted. So the unit is a layer range inside the section: 16 layers of 256
+// blocks, and the caller walks them. The blocks are still visited in the same
+// order (x, then z, then y), so the mesh is byte-identical to meshing the whole
+// section at once, which tools/run_tests.sh checks.
+fn mesh_section_class_layers(c: ChunkColumn&, sy: i32, want: i64, ly_from: i32, ly_to: i32) {
     let idx = sy + 4;
     if idx < 0 || idx >= 24 { return; }
     if !c.sections[idx].present { return; }
     let base_y = sy * 16;
-    for i in 4096 {
+    let i_from = (ly_from as i64) * 256;
+    let i_to = (ly_to as i64) * 256;
+    if i_to <= i_from { return; }
+    for k in (i_to - i_from) {
+        let i = i_from + k;
         let x = (i % 16) as i32;
         let z = ((i / 16) % 16) as i32;
         let ly = (i / 256) as i32;

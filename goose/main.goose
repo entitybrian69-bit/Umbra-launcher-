@@ -95,6 +95,14 @@ var dm_cols: i64[>..] = [];  // the columns this pass meshes
 var dm_ci: i64 = 0;      // index into dm_cols
 var dm_pass: i64 = 0;    // one of the column's three passes
 var dm_sy: i64 = -4;     // section y within the column
+var dm_ly: i64 = 0;      // layer inside the section: the unit is a range of layers
+// The unit of work: 16 layers in a section, walked DM_LAYER_STEP at a time. A whole
+// section is the wrong unit -- one dense section measured 30-70 ms on the phone, and
+// a unit cannot be interrupted, so the slice could not keep the 50 ms the brief asks
+// for. 24 sections x 8 ranges x 3 passes + the 1 copy is 577 units per column.
+const DM_LAYERS: i64 = 16;
+const DM_LAYER_STEP: i64 = 2;
+const DM_LAYER_RANGES: i64 = 8;
 var dm_units: i64 = 0;   // sections (and copies) completed
 var dm_worst_unit_us: i64 = 0;
 var dm_edit: bool = false;   // this pass is a re-mesh after an edit
@@ -131,6 +139,7 @@ fn dm_reset_pass(cols: i64[:], edit: bool) {
     dm_ci = 0;
     dm_pass = 0;
     dm_sy = -4;
+    dm_ly = 0;
     dm_units = 0;
     dm_worst_unit_us = 0;
     dm_dirty = [];
@@ -337,10 +346,16 @@ fn demo_mesh_unit() {
     }
     let c = dm_cols[dm_ci];
     // A fresh column starts with an empty mesh arena.
-    if dm_pass == 0 && dm_sy == -4 { mesh_reset(); }
-    if dm_sy == -4 { batch_starts[dm_pass] = mesh_indices.len; }
+    if dm_pass == 0 && dm_sy == -4 && dm_ly == 0 { mesh_reset(); }
+    if dm_sy == -4 && dm_ly == 0 { batch_starts[dm_pass] = mesh_indices.len; }
     let want = if dm_pass == 0 { RC_OPAQUE } else if dm_pass == 1 { RC_CUTOUT } else { RC_TRANSLUCENT };
-    mesh_section_class(demo[c], dm_sy as i32, want);
+    let ly_end = if dm_ly + DM_LAYER_STEP > DM_LAYERS { DM_LAYERS } else { dm_ly + DM_LAYER_STEP };
+    mesh_section_class_layers(demo[c], dm_sy as i32, want, dm_ly as i32, ly_end as i32);
+    if ly_end < DM_LAYERS {
+        dm_ly = ly_end;
+        return;
+    }
+    dm_ly = 0;
     dm_sy += 1;
     if dm_sy <= 19 { return; }
     // That pass is finished.
@@ -637,7 +652,11 @@ export fn umbra_mesh_worst_unit_ms() -> f32 { return (dm_worst_unit_us as f32) /
 // Every section is a unit (3 passes of 24), and the last section of a column also
 // does that column's three copies; one more unit ends the pass.
 export fn umbra_demo_mesh_total_units() -> i64 {
-    return dm_cols.len * (3 * 24) + 1;
+    // A column is 24 sections, the layer ranges in each, and three passes; the
+    // column's copy is folded into the unit that ends its last pass. The +1 is the
+    // unit that finds dm_ci past the end and finishes the pass, which the stepper
+    // counts like any other.
+    return dm_cols.len * (3 * 24 * DM_LAYER_RANGES) + 1;
 }
 
 export "umbra_demo_mesh_progress" fn demo_mesh_progress() -> i64 {

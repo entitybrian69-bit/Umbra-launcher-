@@ -322,7 +322,10 @@ int main(int argc, char **argv) {
                    (long long)umbra_mesh_is_edit());
             check(umbra_mesh_is_edit() == 1, "the edit pass knows it is an edit");
             check(columns >= 1 && columns <= 4, "an edit re-meshes a few columns, not the world");
-            check(total_units == columns * 72 + 1, "the work is that column's sections only");
+            // A column is 24 sections x 3 passes x 8 layer ranges (its copy is folded into
+        // the unit that ends the last pass), plus the unit that finds the list empty.
+        check(total_units == columns * (3 * 24 * 8) + 1,
+              "the work is that column's sections only");
             int64_t calls = 0, worst_us = 0;
             int done = 0;
             while (!done && calls < 100000) {
