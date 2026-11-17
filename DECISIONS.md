@@ -2,6 +2,28 @@
 
 Newest first. Each entry says what was decided, why, and what it costs.
 
+## D-045 A check must fail for the fault, not for the machine
+
+D-044's table is the list of device-only faults. Two more arrived in the same turn and
+both are the same shape: a host check that could not see the app because it was measuring
+its own machine.
+
+* **A 50 ms slice overran its own budget.** The brief's number was used as the slice, so
+  a call could be 50 + one unit; the host measured 52.33 ms. A ceiling is not a budget:
+  the budget is set below the ceiling by the largest uninterruptible unit (20 ms slice,
+  30 ms allowance, 50 ms ceiling).
+* **The host's own clock was gating the claim.** The same commit measured the worst
+  loading unit at 3.42 ms and 119.57 ms on the same Windows runner. A wall-clock gate
+  there fails on the runner's load, and it failed on a commit that was fine. The host now
+  prints and bounds by 8x (a regression guard), and the 50 ms is enforced on the device,
+  where the number is about a person's phone -- with over-budget reported and twice the
+  budget failing, because one device run in three is contended.
+
+The general rule, which is the one worth keeping: **a check should fail for the reason the
+fault happened, not for a reason the machine invented.** Host checks read source or compare
+against published values; device checks measure time on the device; neither pretends to be
+the other.
+
 ## D-044 Six device-only faults, and the host checks that stop them recurring
 
 Getting the game-files screen from "written" to "proved" took seven emulator runs, and
