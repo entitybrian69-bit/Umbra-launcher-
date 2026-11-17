@@ -585,11 +585,23 @@ host on the same commit:
 | Windows host worst unit | — | 103.3 ms | **3.4 ms** | 3.4 ms |
 | Windows host worst call | — | 113.0 ms | **22.9 ms** | 22.9 ms |
 
-The last two columns are the same commit's code on two runs, and that is the honest
-picture: this shared runner varies by up to 2× between runs (64 calls, then 112), so the
-milliseconds above are a range, not a constant. The budget check says so — over 50 ms is
-reported as over budget, twice 50 ms fails the run — and the eight-fold improvement from
-the first column to the rest is far outside that noise.
+A third run of the same commit, `44006877058`, closed the range: **1192.6 ms over 54
+calls, worst call 36.8 ms, worst unit 29.9 ms**, and the phase's verdict was the one this
+work was for:
+
+```
+mesh: worst meshing call 36.8 ms (inside the brief's 50 ms budget)
+edit: the longest slice was 25.8 ms (under the 50 ms an edit is allowed)
+```
+
+The last three columns are the same code on three runs, and that is the honest picture:
+this shared runner varies by up to 2× between runs, so the milliseconds are a range, not a
+constant. What is not in question is the direction: 3805 ms and 45.4 ms became 1.19–2.83 s
+and 36.8–44.8 ms, and the worst edit slice stayed inside 50 ms throughout.
+
+The host suite is explicit about the limit of its own clock: the Windows runner measured
+the same unit at 3.42 ms and 119.57 ms on identical code, so the host prints the numbers
+and fails only at eight times the budget, while the 50 ms is enforced on the device.
 
 Two of those steps were wrong before they were right, and both are in the log: a 50 ms
 slice *overran* to 52.33 ms on the host, and reserving 480k/780k without a cursor grew
