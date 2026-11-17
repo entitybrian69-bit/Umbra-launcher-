@@ -950,9 +950,14 @@ if [ -n "$BROKEN_CELL" ]; then
     done
     [ "$REOPENED" = 1 ] || die "edits: the app never reported replaying the saved edits after the restart"
     REPLAY_LINE="$(adb logcat -d -s umbra:V 2>/dev/null | grep "saved edit(s) replayed" | tail -1 \
-        | sed 's/.*umbra   : //')"
+        | sed 's/.*umbra *: //')"
     say "edits: $REPLAY_LINE"
-    REPLAYED="$(printf '%s' "$REPLAY_LINE" | sed -n 's/edits: \([0-9]*\) saved edit(s).*/\1/p')"
+    # The count, taken as the token that precedes the phrase rather than by matching the
+    # whole line: the logcat prefix (date, pid, tag) is not this script's business and a
+    # `sed` over the whole line failed on it once already, in the run where the replay
+    # itself worked and only the reading of it did not.
+    REPLAYED="$(printf '%s' "$REPLAY_LINE" | grep -o '[0-9][0-9]* saved edit(s) replayed' \
+        | grep -o '^[0-9][0-9]*' | head -1)"
     [ "${REPLAYED:-0}" -ge 1 ] || die "edits: the restart replayed no edits, so the break did not survive it"
     say "edits: the break survived a restart"
     adb logcat -d -s umbra:V > logcat-umbra-edits.txt 2>&1
