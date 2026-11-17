@@ -52,6 +52,44 @@ static float player_top(void *ctx, int x, int y, int z) {
     return -1.0f;
 }
 
+// A second grid for the things the first one cannot express: a full-block step, a
+// three-block wall with no headroom above it, a pond, and a ledge to sneak along.
+//
+//   y < 0, z < 18   floor (the surface is y = 0's top, at 1.0)
+//   z >= 18         no floor at all: the drop the sneak has to refuse
+//   z in [6,10)     a second block on top of the floor, so walking +Z meets a 1.0 step
+//   x == 4          a three-block wall, so a 1.01 step has nowhere to put the head
+//   z in [10,14)    water at y 1..2, over the same floor: a two-block pond
+//
+// The first version of this made the step block span all z, which buried the pond:
+// the swim stroke could not rise because the body was standing inside a solid block.
+// A test world has to be checked against the thing being tested, not only for itself.
+typedef struct { int water_z0, water_z1, step_z0, step_z1, ledge_z; } pool_grid;
+
+static void pool_grid_init(pool_grid *g) {
+    g->water_z0 = 10;
+    g->water_z1 = 14;
+    g->step_z0 = 6;
+    g->step_z1 = 10;
+    g->ledge_z = 18;
+}
+
+static float pool_top(void *ctx, int x, int y, int z) {
+    pool_grid *g = (pool_grid *)ctx;
+    if (x == 4 && y >= 0 && y < 3) return 1.0f;          /* three blocks, no headroom */
+    if (z >= g->ledge_z) return -1.0f;                     /* the ledge: nothing at all */
+    if (y < 0) return 1.0f;
+    if (y == 0) return 1.0f;
+    if (y == 1 && z >= g->step_z0 && z < g->step_z1) return 1.0f;
+    return -1.0f;
+}
+
+static int pool_fluid(void *ctx, int x, int y, int z) {
+    pool_grid *g = (pool_grid *)ctx;
+    if (z >= g->water_z0 && z < g->water_z1 && y >= 1 && y <= 2) return 1;
+    return 0;
+}
+
 static int failures = 0;
 static int checks = 0;
 
@@ -871,6 +909,36 @@ int main(int argc, char **argv) {
         }
     }
 
+    // --- what the world says about water -----------------------------------
+    {
+        // The body asks the same block data the mesher drew, so "a pond you can see is
+        // a pond you can swim in" is a check and not a hope. In the demo world the ponds
+        // are water up to y = 61 where the terrain dips below 62.
+        int fluid_cells = 0, solid_cells = 0, air_cells = 0;
+        for (int y = 54; y < 64; y++) {   /* the ponds sit at y 60..61 in this seed */
+            for (int z = 0; z < 48; z += 1) {
+                for (int x = 0; x < 48; x += 1) {
+                    int64_t f = umbra_block_fluid(x, y, z);
+                    float t = umbra_block_top(x, y, z);
+                    if (f) fluid_cells++;
+                    if (t > 0.0f) solid_cells++;
+                    if (!f && t <= 0.0f) air_cells++;
+                }
+            }
+        }
+        printf("water: %d fluid cells, %d solid, %d air-or-other near the surface\n",
+               fluid_cells, solid_cells, air_cells);
+        check(fluid_cells > 0, "the demo world has water the body can swim in");
+        check(air_cells > 0, "and air it does not call water");
+        // Nothing is both: a cell with a collision top is not a fluid.
+        int both = 0;
+        for (int y = 54; y < 64; y++)
+            for (int z = 0; z < 48; z += 2)
+                for (int x = 0; x < 48; x += 2)
+                    if (umbra_block_fluid(x, y, z) && umbra_block_top(x, y, z) > 0.0f) both++;
+        check(both == 0, "no cell is both swimmable and solid");
+    }
+
     // --- the player -------------------------------------------------------
     {
         // A test grid: flat stone from y=-1 down, a wall at x == 10, and a half
@@ -940,6 +1008,116 @@ int main(int argc, char **argv) {
         umbra_player_reset(&p, 2.5f, 40.0f, 2.5f);
         for (int i = 0; i < 10; i++) umbra_player_step(player_top, &g, &p, 0.25f, 0, 0, 0);
         check(fabsf(p.y - 1.0f) < 0.001f, "a quarter-second frame does not push the body through the floor");
+
+        // --- a full-block step, water, and a sneak -----------------------
+        // The first grid cannot say any of this: it has a wall with headroom above the
+        // step and no fluid at all. This one is shaped for the three questions.
+        {
+            pool_grid pg;
+            pool_grid_init(&pg);
+            umbra_player_world w;
+            w.top = pool_top;
+            w.fluid = pool_fluid;
+            w.ctx = &pg;
+            umbra_player_input in = { 0, 0, 0, 0 };
+
+            // Walking into a full block climbs it: the game's auto-jump, and the
+            // reason UMBRA_PLAYER_STEP stopped being 0.51.
+            umbra_player_reset(&p, 2.5f, 1.0f, 4.5f);
+            p.on_ground = 1;
+            p.yaw = 3.14159265f;                 /* looking down +Z */
+            in.forward = 1.0f;
+            for (int i = 0; i < 60; i++) umbra_player_update(&w, &p, 1.0f / 60.0f, in);
+            check(p.z > 6.0f && p.y > 1.9f,
+                  "a body walking at a full block climbs onto it instead of stopping");
+            check(p.stepped >= 1, "and counts the step it took");
+
+            // The same step where there is no headroom is a wall, not a ladder.
+            umbra_player_reset(&p, 2.5f, 1.0f, 1.5f);
+            p.on_ground = 1;
+            p.yaw = -1.5707963f;                 /* looking down +X, at the wall */
+            float before_x = p.x;
+            for (int i = 0; i < 120; i++) umbra_player_update(&w, &p, 1.0f / 60.0f, in);
+            check(p.x < 4.0f - 0.2f && p.y < 1.5f,
+                  "a three-block wall with no headroom is not climbed by walking");
+            check(p.x > before_x - 0.01f, "and the body does not go backwards doing it");
+
+            // Water: the body that walked along the bottom of a pond now floats in it
+            // and says so, and a jump press is a stroke.
+            umbra_player_reset(&p, 2.5f, 1.0f, 11.5f);
+            p.on_ground = 1;
+            in.forward = 0.0f;
+            in.jump = 0;
+            for (int i = 0; i < 30; i++) umbra_player_update(&w, &p, 1.0f / 60.0f, in);
+            check(p.in_water == 1, "a body whose box overlaps water knows it is swimming");
+            float wet_y = p.y;
+            int strokes_before = p.stroke;
+            in.jump = 1;
+            for (int i = 0; i < 20; i++) {
+                umbra_player_update(&w, &p, 1.0f / 60.0f, in);
+                in.jump = 0;                     /* one press, not a held button */
+            }
+            check(p.y > wet_y + 0.3f, "a swim stroke lifts the body in water");
+            check(p.stroke == strokes_before + 1, "and counts as one stroke");
+            // In water the body moves at the swim speed, not the walk speed.
+            in.forward = 1.0f;
+            in.jump = 0;
+            p.yaw = 0.0f;                        /* looking down -Z, inside the pond */
+            float z0 = p.z;
+            for (int i = 0; i < 40; i++) umbra_player_update(&w, &p, 1.0f / 60.0f, in);
+            float swam = fabsf(p.z - z0);
+            check(swam > 0.5f && swam < 2.2f, "swimming is slower than walking");
+
+            // Out of the water the body falls and lands again, so water is a body of
+            // water and not a new way to fly.
+            umbra_player_reset(&p, 2.5f, 1.5f, 2.5f);
+            p.on_ground = 0;
+            for (int i = 0; i < 120; i++) umbra_player_update(&w, &p, 1.0f / 60.0f, in);
+            check(p.in_water == 0 && fabsf(p.y - 1.0f) < 0.001f,
+                  "a body that falls on dry land still lands on it");
+
+            // Sneaking: slower, lower, and it will not walk off the ledge.
+            umbra_player_input sneak = { 0.0f, 0.0f, 0, 1 };
+            umbra_player_reset(&p, 2.5f, 1.0f, 15.5f);
+            p.on_ground = 1;
+            p.yaw = 3.14159265f;                 /* walking +Z toward the ledge at 18 */
+            sneak.forward = 1.0f;
+            for (int i = 0; i < 180; i++) umbra_player_update(&w, &p, 1.0f / 60.0f, sneak);
+            check(p.sneaking == 1, "a held sneak says the body is sneaking");
+            // The body stops when its own box would leave the ledge, not when its
+            // centre does: 0.3 of half-width is what it keeps over the floor. Anything
+            // past that and the next step would be a fall.
+            check(p.z > 16.5f && p.z < 18.0f + UMBRA_PLAYER_HW + 0.05f,
+                  "a sneaking body stops at the edge instead of walking off it");
+            check(p.y > 0.9f, "and is still standing on the ledge");
+
+            // The control: the same walk without the sneak does go over.
+            umbra_player_input walk = { 1.0f, 0.0f, 0, 0 };
+            umbra_player_reset(&p, 2.5f, 1.0f, 15.5f);
+            p.on_ground = 1;
+            p.yaw = 3.14159265f;
+            for (int i = 0; i < 180; i++) umbra_player_update(&w, &p, 1.0f / 60.0f, walk);
+            check(p.y < 0.5f, "walking the same line without sneaking falls off the ledge");
+
+            // The eye height comes from the flag, so it is checked on a body that is
+            // sneaking; the walk above left this one standing on the floor.
+            float eye_now[3];
+            umbra_player_reset(&p, 2.5f, 1.0f, 2.5f);
+            p.sneaking = 1;
+            umbra_player_eye(&p, eye_now);
+            check(fabsf(eye_now[1] - (1.0f + 1.27f)) < 0.001f, "the sneaking eye is lower");
+            p.sneaking = 0;
+            umbra_player_eye(&p, eye_now);
+            check(fabsf(eye_now[1] - (1.0f + 1.62f)) < 0.001f,
+                  "and comes back up when it stands");
+
+            // One second of sneaking covers about 30% of a walk.
+            umbra_player_reset(&p, 2.5f, 1.0f, 2.5f);
+            p.on_ground = 1;
+            p.yaw = 3.14159265f;
+            for (int i = 0; i < 60; i++) umbra_player_update(&w, &p, 1.0f / 60.0f, sneak);
+            check(p.z > 2.5f + 1.0f && p.z < 2.5f + 1.6f, "sneaking covers about 30% of a walk");
+        }
 
         // Looking: pitch stops short of straight up and yaw stays in one turn.
         umbra_player_look(&p, 0.0f, 10.0f);
@@ -1087,6 +1265,26 @@ int main(int argc, char **argv) {
                                          w, h, cases[c].in, s) != a) actions = 0;
             }
             check(actions, "a tap in the middle of a button presses that button");
+            // The sneak control is held, so it is its own target: on the screen, off
+            // the hotbar and the two actions, and big enough to hold with a thumb.
+            umbra_rect sn = umbra_hud_sneak(w, h, cases[c].in, s);
+            check(sn.x >= 0 && sn.y >= 0 && sn.x + sn.w <= (float)w && sn.y + sn.h <= (float)h,
+                  "the sneak button is on the screen");
+            check(sn.w >= 44.0f * dp - 0.01f || sn.w >= (float)w * 0.29f,
+                  "the sneak button is a thumb wide, or as wide as the screen allows");
+            int sneako = 0;
+            for (int i = 0; i < UMBRA_HOTBAR_SLOTS; i++) {
+                umbra_rect r = umbra_hud_hotbar_slot(i, w, h, cases[c].in, s);
+                if (r.x < sn.x + sn.w && sn.x < r.x + r.w && r.y < sn.y + sn.h && sn.y < r.y + r.h) sneako = 1;
+            }
+            for (int a = 0; a < 2; a++) {
+                umbra_rect b = umbra_hud_action(a, w, h, cases[c].in, s);
+                if (b.x < sn.x + sn.w && sn.x < b.x + b.w && b.y < sn.y + sn.h && sn.y < b.y + b.h) sneako = 1;
+            }
+            check(!sneako, "the sneak button does not sit on the hotbar or the action buttons");
+            check(umbra_hud_sneak_hit((int)(sn.x + sn.w * 0.5f), (int)(sn.y + sn.h * 0.5f),
+                                      w, h, cases[c].in, s) == 1,
+                  "a tap in the middle of the sneak button holds it");
         }
     }
 

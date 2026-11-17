@@ -2028,6 +2028,14 @@ static float app_block_top(void *ctx, int x, int y, int z) {
     return umbra_block_top((int64_t)x, (int64_t)y, (int64_t)z);
 }
 
+// And the grid's other question: is this cell water? Asked three times per physics
+// step (feet, waist, head) by the same Goose data the mesher drew, so a pond the
+// player can see is a pond the body can swim in.
+static int app_block_fluid(void *ctx, int x, int y, int z) {
+    (void)ctx;
+    return (int)umbra_block_fluid((int64_t)x, (int64_t)y, (int64_t)z);
+}
+
 // Spawn on top of the middle column, at the floor the world reports. Logged,
 // because "the player fell through the world" has to be distinguishable from "the
 // player was never spawned".
@@ -2039,6 +2047,8 @@ static void player_spawn(umbra_app *app) {
     app->player_on = 1;
     app->touch_look_id = -1;
     app->touch_walk_id = -1;
+    app->sneak_touch_id = -1;
+    app->sneak_held = 0;
     app->player_logged_us = 0;
     umbra_log(app, "player: spawned at %.2f %.2f %.2f (floor %.2f), eye %.2f",
               app->player.x, app->player.y, app->player.z, y,
@@ -2062,19 +2072,37 @@ static void player_update(umbra_app *app) {
         app->touch_walk_id = app->touch_look_id;
         umbra_log(app, "player: holding, walking forward");
     }
-    float fwd = (float)(app->move_fwd - app->move_back);
-    float strafe = (float)(app->move_right - app->move_left);
-    umbra_player_step(app_block_top, app, &app->player, dt, fwd, strafe, app->jump_wanted);
+    umbra_player_world world;
+    world.top = app_block_top;
+    world.fluid = app_block_fluid;
+    world.ctx = app;
+    umbra_player_input in;
+    in.forward = (float)(app->move_fwd - app->move_back);
+    in.strafe = (float)(app->move_right - app->move_left);
+    in.jump = app->jump_wanted;
+    in.sneak = app->sneak_held;
+    int was_water = app->player.in_water;
+    umbra_player_update(&world, &app->player, dt, in);
     app->jump_wanted = 0;
+    // Entering or leaving water is logged once, because "why is the body slow" and
+    // "why did it stop walking on the pond floor" are the two questions a phone log
+    // has to be able to answer.
+    if (app->player.in_water != was_water) {
+        umbra_log(app, app->player.in_water ? "player: entered water, swimming"
+                                            : "player: out of the water");
+    }
     // Once every two seconds, so a phone log says where the body is and whether it
     // is standing, without the log costing anything.
     int64_t now = umbra_now_us();
     if (app->player_logged_us == 0 || now - app->player_logged_us > 2000000) {
         app->player_logged_us = now;
-        umbra_log(app, "player: at %.2f %.2f %.2f, yaw %.2f pitch %.2f, %s, %lld steps up",
+        umbra_log(app, "player: at %.2f %.2f %.2f, yaw %.2f pitch %.2f, %s, %lld steps up%s",
                   app->player.x, app->player.y, app->player.z, app->player.yaw,
-                  app->player.pitch, app->player.on_ground ? "on ground" : "in the air",
-                  (long long)app->player.stepped);
+                  app->player.pitch,
+                  app->player.in_water ? "swimming"
+                                       : (app->player.on_ground ? "on ground" : "in the air"),
+                  (long long)app->player.stepped,
+                  app->player.sneaking ? ", sneaking" : "");
     }
 }
 
@@ -2296,6 +2324,9 @@ static void draw_hands(umbra_app *app) {
                       i == 0 ? "break" : "place", (int)r.x, (int)r.y, (int)r.w, (int)r.h,
                       app->width, app->height);
         }
+        umbra_rect sr = umbra_hud_sneak(app->width, app->height, app->insets, s);
+        umbra_log(app, "hud: hand sneak at %d,%d size %dx%d on %dx%d (held)",
+                  (int)sr.x, (int)sr.y, (int)sr.w, (int)sr.h, app->width, app->height);
     }
     for (int i = 0; i < UMBRA_HOTBAR_SLOTS; i++) {
         umbra_rect r = umbra_hud_hotbar_slot(i, app->width, app->height, app->insets, s);
@@ -2315,6 +2346,16 @@ static void draw_hands(umbra_app *app) {
         float tw = hud_text_width(label, ts);
         hud_text(r.x + (r.w - tw) * 0.5f, r.y - UMBRA_HUD_ROW_HEIGHT * ts * 1.4f, ts,
                  sel ? 1.0f : 0.75f, sel ? 0.95f : 0.8f, sel ? 0.6f : 0.85f, 1, label);
+    }
+    {
+        umbra_rect r = umbra_hud_sneak(app->width, app->height, app->insets, s);
+        int on = app->sneak_held;
+        hud_rect(r.x, r.y, r.w, r.h, on ? 0.15f : 0.2f, on ? 0.55f : 0.2f, on ? 0.85f : 0.25f, 0.5f);
+        const char *label = on ? "SNEAKING" : "SNEAK";
+        float ts = text_s * 0.8f;
+        float tw = hud_text_width(label, ts);
+        hud_text(r.x + (r.w - tw) * 0.5f, r.y + (r.h - UMBRA_HUD_ROW_HEIGHT * ts) * 0.5f,
+                 ts, 1, 1, 1, 1, label);
     }
     static const char *action_names[2] = { "BREAK", "PLACE" };
     for (int i = 0; i < 2; i++) {
@@ -2967,6 +3008,14 @@ void umbra_app_touch_id(umbra_app *app, int32_t id, int32_t x, int32_t y, int32_
             app->touch_walk_id = -1;
             app->move_fwd = 0;
         }
+        if (app->sneak_touch_id == id) {
+            // The crouch ends when the finger that started it lifts, whatever else
+            // happens in between.
+            app->sneak_touch_id = -1;
+            app->sneak_held = 0;
+            app->tap_used = 0;
+            umbra_log(app, "player: sneak released");
+        }
         return;
     }
     if (phase == 0) {
@@ -3071,6 +3120,15 @@ void umbra_app_touch_id(umbra_app *app, int32_t id, int32_t x, int32_t y, int32_
                 }
                 name[k] = 0;
                 umbra_log(app, "player: hotbar slot %d selected (%s)", app->hotbar_sel, name);
+                return;
+            }
+            if (umbra_hud_sneak_hit(x, y, app->width, app->height, app->insets, hs)) {
+                // Held, not toggled: the finger owns the crouch, so lifting it stands
+                // the body up. Tracked by id so a second finger elsewhere cannot end it.
+                app->sneak_held = 1;
+                app->sneak_touch_id = id;
+                app->tap_used = 1;
+                umbra_log(app, "player: sneak held");
                 return;
             }
             int action = umbra_hud_action_hit(x, y, app->width, app->height, app->insets, hs);

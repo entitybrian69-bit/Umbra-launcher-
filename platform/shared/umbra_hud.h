@@ -228,6 +228,37 @@ static umbra_rect umbra_hud_action(int which, int width, int height, const int32
     return r;
 }
 
+// The third hand control: sneak is *held*, so it is a wide button under the thumb rather
+// than one of the two 34-unit actions -- press and hold to crouch, lift the finger to
+// stand. It sits on the left, opposite break/place, because the right thumb is already
+// on the hotbar and the look. Same rules as the rest of this file: the drawn rect and
+// the tapped rect are the same function.
+static umbra_rect umbra_hud_sneak(int width, int height, const int32_t insets[4], float scale) {
+    umbra_rect r = { 0, 0, 0, 0 };
+    if (width < 16 || height < 16) return r;
+    float w = 34.0f * scale;
+    if (w > (float)width * 0.30f) w = (float)width * 0.30f;
+    float h = 16.0f * scale;
+    float row_top = (float)height - (float)insets[3] - 14.0f * scale - 8.0f * scale;
+    r.x = 8.0f * scale + (float)insets[0];
+    r.y = row_top - 6.0f * scale - h;
+    r.w = w;
+    r.h = h;
+    if (r.y < (float)insets[1]) r.y = (float)insets[1];
+    return r;
+}
+
+static int umbra_hud_sneak_hit(int x, int y, int width, int height, const int32_t insets[4],
+                               float scale) {
+    umbra_rect r = umbra_hud_sneak(width, height, insets, scale);
+    if (r.w <= 0.0f) return 0;
+    // A held control gets a finger's worth of slack on every side: the press is the
+    // whole gesture, so a near miss is a crouch that did not happen.
+    float pad = 3.0f * scale;
+    return (float)x >= r.x - pad && (float)x <= r.x + r.w + pad &&
+           (float)y >= r.y - pad && (float)y <= r.y + r.h + pad;
+}
+
 static int umbra_hud_action_hit(int x, int y, int width, int height, const int32_t insets[4],
                                 float scale) {
     for (int i = 0; i < 2; i++) {

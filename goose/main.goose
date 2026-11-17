@@ -921,6 +921,20 @@ export "umbra_block_top" fn block_top_export(wx: i64, wy: i64, wz: i64) -> f32 {
     return 1.0;
 }
 
+// Is this cell a fluid? A separate question from "how tall is its box", because a
+// fluid has no box: the body passes through water and swims in it, and answering -1
+// to both questions would have made a pond indistinguishable from air, which is why
+// the body walked along the bottom of one (D-041's cost list).
+export "umbra_block_fluid" fn block_fluid_export(wx: i64, wy: i64, wz: i64) -> i64 {
+    let id = demo_block_at(wx, wy, wz);
+    if id == 0 { return 0; }
+    if render_class(id) != RC_TRANSLUCENT { return 0; }
+    // Glass and ice are translucent and are not swimmable; only water and lava are.
+    let path = bs_path(bs_name(id));
+    if eq_bytes(path, "water") || eq_bytes(path, "lava") { return 1; }
+    return 0;
+}
+
 // The floor height at a column of the world: the first y, from the top down, whose
 // block can be stood on. The C spawn code asks for this instead of guessing.
 export "umbra_world_spawn" fn world_spawn_export(wx: i64, wz: i64) -> f32 {

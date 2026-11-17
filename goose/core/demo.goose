@@ -101,6 +101,18 @@ fn demo_build(seed: i64) {
                     } else if (wx * 31 + wz * 17) % 23 == 0 && h >= 62 {
                         chunk_set_block(c, x as i32, h as i32, z as i32, plant);
                     }
+                    // A pond the body can swim in, where the terrain is already low
+                    // enough that no digging is needed. The natural ponds only appear
+                    // when the height function dips -- and with the seed the app ships
+                    // (20261114) it does not dip anywhere, so the world had no water at
+                    // all and "swimming" would have been untestable on the device. A
+                    // basin carved into the lowest ground guarantees one: three blocks
+                    // deep, at the size a body has room to swim in.
+                    if h >= 61 && wx >= 30 && wx <= 45 && wz >= 6 && wz <= 17 {
+                        for dy in -4..1 {
+                            chunk_set_block(c, x as i32, (h + dy) as i32, z as i32, water);
+                        }
+                    }
                     // A short plank path along z where the ground is high enough to
                     // stand on: half-height blocks, drawn from the model.
                     if slab_elements > 0 && h >= 62 && (wx == 12 || wx == 13) &&

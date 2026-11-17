@@ -87,6 +87,11 @@ struct umbra_app {
     umbra_player player;
     int player_on;
     int move_fwd, move_back, move_left, move_right, jump_wanted;
+    // Sneak is held, not toggled, and it is a third action button so a phone can reach
+    // it: slower than a walk, lower to the ground, and it holds the body at the edge of
+    // a drop instead of letting it step off.
+    int sneak_held;
+    int32_t sneak_touch_id;   // the finger holding it, or -1
     int touch_look_id;      // the pointer dragging the view, or -1
     int touch_walk_id;      // the pointer holding "walk forward", or -1
     float touch_last_x, touch_last_y;
