@@ -96,13 +96,15 @@ var dm_ci: i64 = 0;      // index into dm_cols
 var dm_pass: i64 = 0;    // one of the column's three passes
 var dm_sy: i64 = -4;     // section y within the column
 var dm_ly: i64 = 0;      // layer inside the section: the unit is a range of layers
-// The unit of work: 16 layers in a section, walked DM_LAYER_STEP at a time. A whole
-// section is the wrong unit -- one dense section measured 30-70 ms on the phone, and
-// a unit cannot be interrupted, so the slice could not keep the 50 ms the brief asks
-// for. 24 sections x 8 ranges x 3 passes + the 1 copy is 577 units per column.
+// The unit of work: one layer of a section, 256 blocks. A whole section is the wrong
+// unit -- it measured 29-71 ms on the phone across six runs, and a unit cannot be
+// interrupted, so the slice could not keep the 50 ms the brief asks for. Two layers
+// still read 19.3 ms (run 44011507221), which left only 10 ms of headroom under a
+// budget the brief wants met with room to spare. 24 sections x 16 layers x 3 passes
+// plus the finishing unit is 1153 units per column.
 const DM_LAYERS: i64 = 16;
-const DM_LAYER_STEP: i64 = 2;
-const DM_LAYER_RANGES: i64 = 8;
+const DM_LAYER_STEP: i64 = 1;
+const DM_LAYER_RANGES: i64 = 16;
 var dm_units: i64 = 0;   // sections (and copies) completed
 var dm_worst_unit_us: i64 = 0;
 var dm_edit: bool = false;   // this pass is a re-mesh after an edit

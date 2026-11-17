@@ -43,12 +43,16 @@ typedef enum {
 // a promise the code could not keep.
 //
 // The budget is now set so the *hard* ceiling, UMBRA_EDIT_BUDGET_MS, is one the code
-// can actually meet: a call may overrun its slice by one unit, and a unit on the
-// device is up to ~6 ms, so 20 + 6 is still inside 50. A 50 ms slice would not be:
-// the host suite measured 52.33 ms for it, which is over the number the brief names.
+// can actually meet: a call may overrun its slice by one unit, and the unit is now one
+// layer of a section (goose/main.goose, DM_LAYER_STEP), measured at 1.7 ms on the host.
+// The section used to be the unit, and it measured 29-71 ms on the device across six
+// runs of one commit -- bigger than the slice, so the slice was decoration. A 50 ms
+// slice would not work either: the host suites measured 52.33 ms for it, over the
+// number the brief names.
 #define UMBRA_MESH_BUDGET_MS 20
-// A call may overrun the slice by one unit; the device's worst unit is ~6 ms and the
-// host's 7.45 ms, both inside the headroom this leaves (20 + 30 = 50).
+// A call may overrun the slice by one unit; the unit is a layer (1.7 ms host), and on
+// the device the worst loading call measured 33.0 ms with a two-layer unit, so the
+// headroom this leaves (20 + 30 = 50) is what the slice is spent out of.
 #define UMBRA_MESH_UNIT_ALLOWANCE_MS (UMBRA_EDIT_BUDGET_MS - UMBRA_MESH_BUDGET_MS)
 
 typedef struct umbra_app umbra_app;
