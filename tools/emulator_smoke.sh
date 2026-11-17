@@ -934,9 +934,12 @@ if [ -n "$BROKEN_CELL" ]; then
     esac
     adb shell am force-stop org.umbra.client > /dev/null 2>&1
     sleep 2
-    adb logcat -c > /dev/null 2>&1 || true
-    adb shell am start -n org.umbra.client/.MainActivity > /dev/null 2>&1 \
-        || die "edits: the app would not start again after the restart"
+    # The same launcher every other restart in this script uses. The first version of
+    # this phase invented `am start -n org.umbra.client/.MainActivity`; the component is
+    # `org.umbra.client/org.umbra.client.UmbraNet$UmbraActivity`, so the app never
+    # started and the phase failed on a name rather than on the save.
+    EDIT_LAUNCH="$(launch_app edit-relaunch.log)" || die "edits: the app would not start again: $EDIT_LAUNCH"
+    say "edits: $EDIT_LAUNCH"
     REOPENED=0
     DEADLINE=$((SECONDS + 120))
     while [ $SECONDS -lt $DEADLINE ]; do
