@@ -140,6 +140,7 @@ fn dm_reset_pass(cols: i64[:], edit: bool) {
 fn demo_mesh_begin() {
     world_verts = [];
     world_indices = [];
+    dm_arena_reserve();
     dm_slot_table();
     var all: i64[>..] = [];
     for c in demo.len { all.push(c); }
@@ -158,7 +159,10 @@ fn demo_mesh_begin_edit(cols: i64[:]) {
 // call and a capacity check per element, inside one uninterruptible unit: the device
 // measured 40.1 ms for the unit that closes a column (run 43995987328), which is a
 // stall a person sees on the loading screen. One slice append moves the elements in
-// a single memcpy instead and lets the arena keep its own growth policy.
+// a single memcpy instead and lets the arena keep its own growth policy -- and the
+// arena is sized once by dm_arena_reserve(), so placing a column does not grow it at
+// all. (A slice append reallocates and copies everything, so growing per column cost
+// the Windows runner 103 ms on the unit that closes a column.)
 //
 // The run to repeat lives in a module-level array: a literal built inside the function
 // is a temporary, and Goose will not let a temporary be appended (§9.2) -- correctly,
@@ -214,6 +218,26 @@ fn dm_grow_u32_zeros(xs: u32[>..]&, n: i64) {
         xs.push(0);
         tail -= 1;
     }
+}
+
+// Reserves the whole arena once, before the first column is placed, so that placing a
+// column never grows it. The size is the geometry measured for the demo world with the
+// slack each slot asks for (a quarter more vertices, a quarter more indices, plus a
+// small fixed pad): 480k vertices, 780k indices. Growth is what costs: the slice append
+// copies the arena every time it grows, so a build that grows it per column copies the
+// whole world dozens of times -- which is exactly what the Windows runner measured at
+// 103 ms for the unit that closes a column.
+fn dm_arena_reserve() {
+    const want_v: i64 = 480000;
+    const want_i: i64 = 780000;
+    if world_verts.len >= want_v && world_indices.len >= want_i { return; }
+    dm_grow_init();
+    let vunit: Vertex[:] = dm_zero_vertices[0..64];
+    while world_verts.len + 64 <= want_v { world_verts.append(vunit); }
+    while world_verts.len < want_v { world_verts.push(dm_zero_vertices[0]); }
+    let iunit: u32[:] = dm_zero_indices[0..64];
+    while world_indices.len + 64 <= want_i { world_indices.append(iunit); }
+    while world_indices.len < want_i { world_indices.push(0); }
 }
 
 // Copies one batch of the column just meshed into its slot. Vertices land in the
