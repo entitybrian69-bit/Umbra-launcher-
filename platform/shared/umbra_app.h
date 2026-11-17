@@ -32,16 +32,24 @@ typedef enum {
 // the tag that publishes it (see .github/workflows/release.yml).
 #define UMBRA_APP_VERSION "0.3.7"
 
-// How much meshing a frame may do before it must draw and poll input again.
-// Android starts warning about an unresponsive app after about five seconds; six
-// milliseconds leaves the loop responsive by three orders of magnitude.
-#define UMBRA_MESH_BUDGET_MS 6
-
-// The brief for an edit: re-meshing one column after a break or a place must not hold
-// a frame for more than about 50 ms. The slice budget for an edit is the same six
-// milliseconds; this is the number the finish line is held to, and the one the CI
-// smoke test reads out of the log.
+// The brief's number: re-meshing after a break or a place must not hold a frame for
+// more than about 50 ms, and the CI smoke test reads the same figure out of the log.
 #define UMBRA_EDIT_BUDGET_MS 50
+
+// How much meshing a frame may do before it must draw and poll input again -- for an
+// edit *and* for the initial mesh. It used to be six milliseconds for loading; the
+// device showed what that bought, and it was not a guarantee: the worst loading call
+// was 45.4 ms (run 43968867039) because a unit is not interruptible, so the slice was
+// a promise the code could not keep.
+//
+// The budget is now set so the *hard* ceiling, UMBRA_EDIT_BUDGET_MS, is one the code
+// can actually meet: a call may overrun its slice by one unit, and a unit on the
+// device is up to ~6 ms, so 20 + 6 is still inside 50. A 50 ms slice would not be:
+// the host suite measured 52.33 ms for it, which is over the number the brief names.
+#define UMBRA_MESH_BUDGET_MS 20
+// A call may overrun the slice by one unit; the device's worst unit is ~6 ms and the
+// host's 7.45 ms, both inside the headroom this leaves (20 + 30 = 50).
+#define UMBRA_MESH_UNIT_ALLOWANCE_MS (UMBRA_EDIT_BUDGET_MS - UMBRA_MESH_BUDGET_MS)
 
 typedef struct umbra_app umbra_app;
 

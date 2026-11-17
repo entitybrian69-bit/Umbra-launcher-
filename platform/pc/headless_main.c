@@ -190,7 +190,10 @@ int main(int argc, char **argv) {
         int64_t worst_progress = 0, last_progress = 0, backwards = 0;
         while (!done && calls < 100000) {
             int64_t t = umbra_now_us_headless();
-            done = umbra_demo_mesh_step(2000) != 0;   // a 2 ms budget per call
+            // The app's own start-up budget, not a test-sized one: the device run
+            // that read the worst loading call at 45.4 ms under a six-millisecond
+            // slice is why the budget is now the brief's 50 (header comment).
+            done = umbra_demo_mesh_step(20 * 1000) != 0;   // the app's 20 ms slice
             int64_t took = umbra_now_us_headless() - t;
             if (took > worst_call_us) worst_call_us = took;
             calls++;
@@ -204,7 +207,14 @@ int main(int argc, char **argv) {
         }
         umbra_demo_mesh_finish();
         check(done, "the sliced mesher finished");
-        check(calls > 50, "the sliced mesher took many calls, not one");
+        // Sliced, not one call: with the app's 20 ms slice a whole demo world is
+        // about two dozen calls, and the check is that it is many *and* that the
+        // call count is far below the unit count (649 units), which is what slicing
+        // buys. The old `calls > 50` was written for a 2 ms budget in this test and
+        // said more about the test than about the app.
+        check(calls > 5, "the sliced mesher took more than a handful of calls");
+        check(calls * 4 < umbra_demo_mesh_units(),
+              "the mesh was sliced: far fewer calls than units of work");
         check(umbra_demo_mesh_progress() == 1000, "progress reaches 1000 when done");
         check(worst_progress < 1000, "progress is under 100% until the mesh is done");
         check(backwards == 0, "progress never goes backwards");
@@ -216,9 +226,14 @@ int main(int argc, char **argv) {
         printf("sliced mesh: %lld calls, worst call %.2f ms, worst unit %.2f ms\n",
                (long long)calls, worst_call_us / 1000.0,
                umbra_demo_mesh_worst_unit_us() / 1000.0);
-        // A budget of 2 ms cannot promise a hard ceiling once single units are
-        // themselves long, but every call must still be far under a second.
-        check(worst_call_us < 900000, "no sliced mesher call blocked for a second");
+        // The budget is the brief's 50 ms now, so the check is the brief's number:
+        // a loading call that holds the loop longer than that fails the host suite
+        // as it fails the device phase.
+        // The slice plus one uninterruptible unit: the brief's 50 ms is the ceiling,
+        // and this is the check that it holds on a machine that is slower than the
+        // one it was written on.
+        check(worst_call_us <= (int64_t)UMBRA_EDIT_BUDGET_MS * 1000,
+              "no loading call held the frame loop for 50 ms");
         check(umbra_demo_mesh_units() > 100, "the sliced mesher made real units of work");
 
         int64_t svlen = 0, silen = 0;
