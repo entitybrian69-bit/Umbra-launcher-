@@ -154,6 +154,68 @@ fn demo_mesh_begin_edit(cols: i64[:]) {
     dm_reset_pass(cols, true);
 }
 
+// Grows an arena by n elements in one go. The obvious `while n { push(...) }` pays a
+// call and a capacity check per element, inside one uninterruptible unit: the device
+// measured 40.1 ms for the unit that closes a column (run 43995987328), which is a
+// stall a person sees on the loading screen. One slice append moves the elements in
+// a single memcpy instead and lets the arena keep its own growth policy.
+//
+// The run to repeat lives in a module-level array: a literal built inside the function
+// is a temporary, and Goose will not let a temporary be appended (§9.2) -- correctly,
+// since the arena outlives the call.
+var dm_zero_vertices: Vertex[>..] = [];
+var dm_zero_indices: u32[>..] = [];
+
+fn dm_grow_init() {
+    if dm_zero_vertices.len == 0 {
+        let zero = Vertex {
+            x: 0.0, y: 0.0, z: 0.0, nx: 0.0, ny: 1.0, nz: 0.0,
+            u: 0.0, v: 0.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0,
+        };
+        for i in 64 { dm_zero_vertices.push(zero); }
+    }
+    if dm_zero_indices.len == 0 {
+        for i in 64 { dm_zero_indices.push(0); }
+    }
+}
+
+fn dm_grow_vertex_zeros(xs: Vertex[>..]&, n: i64) {
+    if n <= 0 { return; }
+    dm_grow_init();
+    let zero = Vertex {
+        x: 0.0, y: 0.0, z: 0.0, nx: 0.0, ny: 1.0, nz: 0.0,
+        u: 0.0, v: 0.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0,
+    };
+    let unit: Vertex[:] = dm_zero_vertices[0..64];
+    // The tail is a run of one element and is grown once.
+    var left = n / 64;
+    while left > 0 {
+        xs.append(unit);
+        left -= 1;
+    }
+    var tail = n % 64;
+    while tail > 0 {
+        xs.push(zero);
+        tail -= 1;
+    }
+}
+
+fn dm_grow_u32_zeros(xs: u32[>..]&, n: i64) {
+    if n <= 0 { return; }
+    dm_grow_init();
+    let unit: u32[:] = dm_zero_indices[0..64];
+    var left = n / 64;
+    while left > 0 {
+        xs.append(unit);
+        left -= 1;
+    }
+    var tail = n % 64;
+    while tail > 0 {
+        xs.push(0);
+        tail -= 1;
+    }
+}
+
 // Copies one batch of the column just meshed into its slot. Vertices land in the
 // slot's reserved range, indices are made absolute, and the slot is marked dirty
 // for the next upload.
@@ -183,21 +245,10 @@ fn demo_place_column(b: i64, c: i64) {
         // next edit of this column can rewrite it in place.
         let vbase = world_verts.len;
         let vpad = need_v / 4 + 64;
-        var n: i64 = 0;
-        while n < need_v + vpad {
-            world_verts.push(Vertex {
-                x: 0.0, y: 0.0, z: 0.0, nx: 0.0, ny: 1.0, nz: 0.0,
-                u: 0.0, v: 0.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0,
-            });
-            n += 1;
-        }
+        dm_grow_vertex_zeros(world_verts, need_v + vpad);
         let ipad = count / 4 + 128;
         let ibase = world_indices.len;
-        var m: i64 = 0;
-        while m < count + ipad {
-            world_indices.push(0);
-            m += 1;
-        }
+        dm_grow_u32_zeros(world_indices, count + ipad);
         sl_v_off[sid] = vbase;
         sl_v_cap[sid] = need_v + vpad;
         sl_i_off[sid] = ibase;
