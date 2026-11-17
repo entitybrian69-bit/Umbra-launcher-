@@ -585,19 +585,23 @@ host on the same commit:
 | Windows host worst unit | — | 103.3 ms | **3.4 ms** | 3.4 ms |
 | Windows host worst call | — | 113.0 ms | **22.9 ms** | 22.9 ms |
 
-A third run of the same commit, `44006877058`, closed the range: **1192.6 ms over 54
-calls, worst call 36.8 ms, worst unit 29.9 ms**, and the phase's verdict was the one this
-work was for:
+Two more runs of the same commit close the range, and they disagree with each other:
 
 ```
-mesh: worst meshing call 36.8 ms (inside the brief's 50 ms budget)
-edit: the longest slice was 25.8 ms (under the 50 ms an edit is allowed)
+44006877058: worst meshing call 36.8 ms (inside the brief's 50 ms budget)
+44006877058: edit: the longest slice was 25.8 ms (under the 50 ms an edit is allowed)
+44008262345: worst meshing call 71.0 ms -- over the 50 ms budget on this run
+44008262345: edit: the longest slice was 26.2 ms (under the 50 ms an edit is allowed)
 ```
 
-The last three columns are the same code on three runs, and that is the honest picture:
-this shared runner varies by up to 2× between runs, so the milliseconds are a range, not a
-constant. What is not in question is the direction: 3805 ms and 45.4 ms became 1.19–2.83 s
-and 36.8–44.8 ms, and the worst edit slice stayed inside 50 ms throughout.
+Five runs of one commit gave a worst *loading* call between 29.2 and 71.0 ms on a shared
+emulator with no GPU, and a worst *edit* slice between 25.3 and 32.1 ms — the edit is the
+number the brief is about (a break or a place, world already loaded) and it has never been
+outside 50 ms. The loading screen is still sometimes over, and the phase says so in its
+own line and in a run annotation instead of pretending: over 50 ms is reported, twice the
+budget fails the run. What is not in question is the direction: 3805 ms and 45.4 ms became
+1.19–2.83 s and 29–71 ms, and the memory the GPU is handed fell back to 30.2 MB from the
+47 MB a wrong reservation briefly cost.
 
 The host suite is explicit about the limit of its own clock: the Windows runner measured
 the same unit at 3.42 ms and 119.57 ms on identical code, so the host prints the numbers
