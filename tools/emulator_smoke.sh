@@ -887,6 +887,35 @@ if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: place -> 1"; then
 else
     err "hands: the placement changed nothing: $(adb logcat -d -s umbra:V 2>/dev/null | grep "player: place" | tail -2 | tr '\n' '|')"
 fi
+# The sneak is held, not tapped: a long press on its button must make the body crouch
+# and lifting the finger must stand it up. That is a different gesture from every other
+# control here, so it is checked on the device and not only in the host suite.
+SNEAK_RECT="$(hand_rect "sneak")"
+if [ -n "$SNEAK_RECT" ]; then
+    set -- $(hand_centre "$SNEAK_RECT")
+    set -- $(hand_tap_xy "${HAND_MODE:-identity}" "$1" "$2")
+    ( adb shell input swipe "$1" "$2" "$1" "$2" 1200 > /dev/null 2>&1 ) &
+    SWIPE_PID=$!
+    DOWN=0
+    DEADLINE=$((SECONDS + 8))
+    while [ $SECONDS -lt $DEADLINE ]; do
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: sneak held"; then DOWN=1; break; fi
+        sleep 1
+    done
+    wait "$SWIPE_PID" 2>/dev/null || true
+    [ "$DOWN" = 1 ] || die "hands: holding the sneak button never reached the app (rect $SNEAK_RECT)"
+    say "hands: holding the sneak button reached the app"
+    UP=0
+    DEADLINE=$((SECONDS + 8))
+    while [ $SECONDS -lt $DEADLINE ]; do
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "player: sneak released"; then UP=1; break; fi
+        sleep 1
+    done
+    [ "$UP" = 1 ] || die "hands: the body stayed crouched after the finger lifted: $(adb logcat -d -s umbra:V 2>/dev/null | grep -E 'sneak|player: at ' | tail -2 | tr '\n' '|')"
+    say "hands: lifting it stood the body up again"
+else
+    die "hands: the app never logged a rect for the sneak button"
+fi
 adb exec-out screencap -p > "shot-hands.png" 2>/dev/null || true
 say "hands: shot-hands.png is $(stat -c%s shot-hands.png 2>/dev/null || echo 0) bytes"
 adb logcat -d -s umbra:V > logcat-umbra-hands.txt 2>&1
