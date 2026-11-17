@@ -140,6 +140,8 @@ fn dm_reset_pass(cols: i64[:], edit: bool) {
 fn demo_mesh_begin() {
     world_verts = [];
     world_indices = [];
+    dm_v_cursor = 0;
+    dm_i_cursor = 0;
     dm_arena_reserve();
     dm_slot_table();
     var all: i64[>..] = [];
@@ -167,6 +169,10 @@ fn demo_mesh_begin_edit(cols: i64[:]) {
 // The run to repeat lives in a module-level array: a literal built inside the function
 // is a temporary, and Goose will not let a temporary be appended (§9.2) -- correctly,
 // since the arena outlives the call.
+// Where the free space in the pre-reserved arena starts; reset with the arenas.
+var dm_v_cursor: i64 = 0;
+var dm_i_cursor: i64 = 0;
+
 var dm_zero_vertices: Vertex[>..] = [];
 var dm_zero_indices: u32[>..] = [];
 
@@ -228,8 +234,14 @@ fn dm_grow_u32_zeros(xs: u32[>..]&, n: i64) {
 // whole world dozens of times -- which is exactly what the Windows runner measured at
 // 103 ms for the unit that closes a column.
 fn dm_arena_reserve() {
+    // Sized to the geometry the host suite measures for this world (444 917 vertices,
+    // 575 448 indices) plus the slack each slot asks for. The first attempt reserved
+    // 480k/780k up front, which fixed Windows (103 ms unit -> 4.39) and cost the phone
+    // twice over: the reservation itself became the longest unit, and the whole arena
+    // -- slack included -- is what GL is asked to hold, so the upload doubled to 47 MB
+    // for 26 MB of geometry (run 44001141590).
     const want_v: i64 = 480000;
-    const want_i: i64 = 780000;
+    const want_i: i64 = 580000;
     if world_verts.len >= want_v && world_indices.len >= want_i { return; }
     dm_grow_init();
     let vunit: Vertex[:] = dm_zero_vertices[0..64];
@@ -265,14 +277,23 @@ fn demo_place_column(b: i64, c: i64) {
         reuse = true;
     }
     if !reuse {
-        // A new or grown slot: reserve at the end of both arenas, with slack so the
-        // next edit of this column can rewrite it in place.
-        let vbase = world_verts.len;
+        // A new or grown slot. The arena was sized by dm_arena_reserve(), and the
+        // cursor says where the free space starts: reserving without using the space
+        // would waste it *and* grow the arena again, which is what run 44001141590
+        // showed on the device (a 47 MB reserve with 1.3 M indices in the arena for
+        // 556 k in use). If the reservation runs out, the arena grows as before.
         let vpad = need_v / 4 + 64;
-        dm_grow_vertex_zeros(world_verts, need_v + vpad);
         let ipad = count / 4 + 128;
-        let ibase = world_indices.len;
-        dm_grow_u32_zeros(world_indices, count + ipad);
+        var vbase = dm_v_cursor;
+        var ibase = dm_i_cursor;
+        if vbase + need_v + vpad > world_verts.len || ibase + count + ipad > world_indices.len {
+            vbase = world_verts.len;
+            ibase = world_indices.len;
+            dm_grow_vertex_zeros(world_verts, need_v + vpad);
+            dm_grow_u32_zeros(world_indices, count + ipad);
+        }
+        dm_v_cursor = vbase + need_v + vpad;
+        dm_i_cursor = ibase + count + ipad;
         sl_v_off[sid] = vbase;
         sl_v_cap[sid] = need_v + vpad;
         sl_i_off[sid] = ibase;
