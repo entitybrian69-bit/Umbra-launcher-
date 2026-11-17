@@ -548,8 +548,44 @@ there is no worker thread to mesh on without changing that contract, which is th
 language's, not the app's. What made the budget reachable was smaller units and arenas
 sized once (the section above, D-046).
 
-What is left is the brief's item 4: the player. Full-block steps, swimming, sneak, a
-hotbar and inventory, and saving edits, before worldgen parity.
+Item 4, the player, is done except for the inventory:
+
+* **Full-block steps.** `UMBRA_PLAYER_STEP` was 0.51 — a slab, not a block — so a full
+  block was a wall to jump over. It is 1.01 now, and the lift is kept only when the body
+  fits *and* there is floor under it, so a three-block wall with no headroom is still a
+  wall (both the climb and the non-climb are host tests).
+* **Swimming.** Water used to be "not solid", which was true and also useless: the body
+  walked along the bottom of a pond. The world now answers a second question
+  (`umbra_block_fluid`, from the same block data the mesher drew), and a body in water
+  swims: slower than a walk, sinking at a fixed speed, and a jump press is a stroke.
+* **Sneak.** Held, not toggled: 30% speed, a 0.35-lower eye, no step-up, and it refuses
+  the move that would leave the body with no floor — so it stops at a ledge where the
+  same walk falls off it. It is a third hand control, drawn and tapped from one rect
+  function, released when its finger lifts. Device-verified: run `44052247148` logged
+  `hands: holding the sneak button reached the app` and `lifting it stood the body up
+  again`.
+* **Saving edits.** A break or a place is appended to `<files>/edits.txt` as
+  `x y z block_name` the moment it succeeds, and replayed after the world is built and
+  before the first mesh. Appending means a process killed mid-write loses one line, not
+  the file, and a line that cannot be parsed is skipped and named in the log. Device:
+  the same run wrote `25 63 24 minecraft:air` and `25 63 24 minecraft:oak_slab`, killed
+  the app, started it again, and the fresh log read
+  `edits: 2 saved edit(s) replayed from /data/user/0/org.umbra.client/files/edits.txt,
+  2 line(s) in the file, 0 refused`.
+
+Two of those three device phases failed the first time for reasons that were mine, not the
+feature's: the restart used an activity name I invented instead of the component the APK
+actually declares, and the replay check parsed the count through the logcat prefix. Both
+are fixed and both are in the commits, because a phase that fails for the wrong reason
+teaches the next person nothing.
+
+What is left of item 4 is the **inventory** (the hotbar is a fixed list of five blocks;
+there is no picking up and no chest), and then worldgen parity.
+
+**A pond had to be added to the demo world.** With the seed the app ships (`20261114`) the
+height function never dips below 62, so the world had no water at all — "the body can
+swim" would have been untestable on the device, and the host check `the demo world has
+water the body can swim in` is what found it (0 fluid cells, then 386).
 
 Start-up's long frames are now attributed rather than guessed. Run `43968867039` (android,
 success) printed:
@@ -1104,7 +1140,9 @@ and host-tested but not re-run:
 | A world drawn from the jar's models and textures | yes, with numbers | demo picture: `evidence/jar/world.png`, `0.00` from its reference. **A save read from disk:** `evidence/jar/save.png` + `docs/reference/jar_save.png`. **The world the real server generated:** `evidence/world/real.png` + `docs/reference/real_world.png` -- 156 chunks, 503215 non-air blocks, **26240715 blocks drawn from a model, 0 with no model**, 328628 triangles drawn of 328628, `missing-tile magenta 0`, coverage 680 permille (run 43831301517) |
 | A body you can walk with | yes | 24 host checks, and the device run above |
 | Breaking and placing blocks | yes, host-verified **and device-verified** | 36 host checks over the ray, the edit, the re-mesh, the 44 dp target size and all three layouts; the emulator `hands` phase breaks and places on the device (run `43960566328`) |
-| Water, ladders, sneaking, swimming, mobs, survival, multiplayer | **no** | not implemented |
+| Swimming, full-block steps, sneaking | yes, device-verified | 16 host checks over the swim body, the stroke, the step and the ledge; run `44052247148` held the sneak button on the device and lifted it |
+| Saved edits | yes, device-verified | `edits.txt`, appended per edit, replayed before the first mesh; run `44052247148` replayed 2 of 2 after a kill and a restart |
+| Ladders, mobs, survival, multiplayer, inventory | **no** | not implemented |
 | Reading a world from a real save | **CI-verified on a real 26.3 save** | `529 of 529` chunks, `843609 of 843609` blocks, `45 of 45` states, two independent readers, run `43808551824`; plus five synthetic flavours on every push |
 | Rendered world matches the real client | **not measured** | gate 6b second half: nothing compares two renders yet |
 | An edit re-meshes only its own chunk | yes, host-verified | per (pass, column) ranges: an edit re-meshes `1 of 9` columns (`2 of 9` on a chunk border), `73` or `145` units instead of the world's `649`, and the patched geometry hash equals a mesh built from scratch (`5753a44b6995c9bd`, 556062 indices) |
