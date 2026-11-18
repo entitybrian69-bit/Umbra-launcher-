@@ -1,25 +1,25 @@
-goose/main.goose:83: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/main.goose:84: warning: redundant `as i64`: an i32 converts to i64 implicitly here
     edit_x.push(x as i64);
                 ^~~~~~~~
-goose/main.goose:84: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/main.goose:85: warning: redundant `as i64`: an i32 converts to i64 implicitly here
     edit_y.push(y as i64);
                 ^~~~~~~~
-goose/main.goose:85: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/main.goose:86: warning: redundant `as i64`: an i32 converts to i64 implicitly here
     edit_z.push(z as i64);
                 ^~~~~~~~
-goose/main.goose:345: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+goose/main.goose:346: warning: redundant `as i64`: a u32 converts to i64 implicitly here
         world_verts[vbase + (local as i64)] = Vertex {
                              ^~~~~~~~~~~~
-goose/main.goose:677: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/main.goose:678: warning: redundant `as f32`: an i64 converts to f32 implicitly here
 export fn umbra_mesh_worst_unit_ms() -> f32 { return (dm_worst_unit_us as f32) / 1000.0 }
                                                       ^~~~~~~~~~~~~~~~~~~~~~~
-goose/main.goose:815: warning: redundant `as i64`: data.len is already i64
+goose/main.goose:816: warning: redundant `as i64`: data.len is already i64
     jar_bytes = data.len as i64;
                 ^~~~~~~~~~~~~~~
-goose/main.goose:958: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/main.goose:959: warning: redundant `as f32`: an i64 converts to f32 implicitly here
         if t > 0.0 { return (y as f32) + t; }
                              ^~~~~~~~
-goose/main.goose:1111: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/main.goose:1112: warning: redundant `as i64`: an i32 converts to i64 implicitly here
     return (h.y as i64) * 1000000 + (h.z as i64) * 1000 + (h.x as i64);
                                                            ^~~~~~~~~~
 goose/core/gamefiles.goose:89: warning: redundant `as i64`: json_str(json_get(c, "time")).len is already i64
@@ -61,37 +61,52 @@ goose/core/sha1.goose:147: warning: redundant `as u8`: digits[(sha1_out[i] & 0xF
 goose/core/sha1.goose:155: warning: redundant `as i64`: want.len is already i64
     if want.len as i64 != 40 { return false; }
        ^~~~~~~~~~~~~~~
-goose/core/demo.goose:141: warning: redundant `as i32`: cx is already i32
-        if demo[i].x == cx as i32 && demo[i].z == cz as i32 { return i; }
-                        ^~~~~~~~~
-goose/core/demo.goose:141: warning: redundant `as i32`: cz is already i32
-        if demo[i].x == cx as i32 && demo[i].z == cz as i32 { return i; }
-                                                  ^~~~~~~~~
-goose/core/demo.goose:196: warning: redundant `as f32`: fx is already f32
+goose/core/worldload_in.goose:283: warning: redundant `as i64`: cx is already i64
+            let wx = rx * 32 + (cx as i64);
+                                ^~~~~~~~~
+goose/core/worldload_in.goose:284: warning: redundant `as i64`: cz is already i64
+            let wz = rz * 32 + (cz as i64);
+                                ^~~~~~~~~
+goose/core/worldload_in.goose:329: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+            if n > 0 { wl_res.states += n as i64; }
+                                        ^~~~~~~~
+goose/core/worldload_in.goose:417: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+fn wl_min_block_x() -> f32 { return (wl_min_x as f32) * 16.0; }
+                                     ^~~~~~~~~~~~~~~
+goose/core/worldload_in.goose:418: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+fn wl_max_block_x() -> f32 { return ((wl_max_x as f32) + 1.0) * 16.0; }
+                                      ^~~~~~~~~~~~~~~
+goose/core/worldload_in.goose:419: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+fn wl_min_block_z() -> f32 { return (wl_min_z as f32) * 16.0; }
+                                     ^~~~~~~~~~~~~~~
+goose/core/worldload_in.goose:420: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+fn wl_max_block_z() -> f32 { return ((wl_max_z as f32) + 1.0) * 16.0; }
+                                      ^~~~~~~~~~~~~~~
+goose/core/demo.goose:213: warning: redundant `as f32`: fx is already f32
     if fx < 0.0 && (fx as f32) != fx { x -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:197: warning: redundant `as f32`: fy is already f32
+goose/core/demo.goose:214: warning: redundant `as f32`: fy is already f32
     if fy < 0.0 && (fy as f32) != fy { y -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:198: warning: redundant `as f32`: fz is already f32
+goose/core/demo.goose:215: warning: redundant `as f32`: fz is already f32
     if fz < 0.0 && (fz as f32) != fz { z -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:203: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:220: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_x = if stepx == 0 { inf } else if stepx > 0 { (1.0 - (fx - (x as f32))) / nx } else { ((x as f32) - fx) / nx };
                                                                          ^~~~~~~~
-goose/core/demo.goose:203: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:220: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_x = if stepx == 0 { inf } else if stepx > 0 { (1.0 - (fx - (x as f32))) / nx } else { ((x as f32) - fx) / nx };
                                                                                                      ^~~~~~~~
-goose/core/demo.goose:204: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:221: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_y = if stepy == 0 { inf } else if stepy > 0 { (1.0 - (fy - (y as f32))) / ny } else { ((y as f32) - fy) / ny };
                                                                          ^~~~~~~~
-goose/core/demo.goose:204: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:221: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_y = if stepy == 0 { inf } else if stepy > 0 { (1.0 - (fy - (y as f32))) / ny } else { ((y as f32) - fy) / ny };
                                                                                                      ^~~~~~~~
-goose/core/demo.goose:205: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:222: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
                                                                          ^~~~~~~~
-goose/core/demo.goose:205: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:222: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
                                                                                                      ^~~~~~~~
 goose/core/jarpack.goose:70: warning: redundant `as i64`: s.len is already i64
@@ -336,24 +351,24 @@ umbra headless self-test
 core version: 0.3.7
 mesh: 27934272 vertex bytes, 2932544 index bytes
 mesh checks: 0 bad indices, 0 bad normals, 0 positions out of bounds
-progress: worst 970 permille; units 10369, total 10369
-sliced mesh: 39 calls, worst call 25.25 ms, worst unit 6.34 ms
+progress: worst 964 permille; units 10369, total 10369
+sliced mesh: 22 calls, worst call 20.20 ms, worst unit 1.04 ms
 ranges: 27 slots for 9 columns
 ranges: 542592 + 12750 + 7704 = 563046 indices used of 733136 in the arena
 edit 0: 1 columns, 1153 units of work, is_edit 1
-edit 0: 13 calls, worst call 6.50 ms, worst slice 0.72 ms
+edit 0: 8 calls, worst call 6.13 ms, worst slice 0.43 ms
 edit 1: 2 columns, 2305 units of work, is_edit 1
-edit 1: 26 calls, worst call 6.42 ms, worst slice 0.75 ms
+edit 1: 15 calls, worst call 6.15 ms, worst slice 0.43 ms
 edit: patched geometry 138cd43fa416339b (563046 indices), rebuilt 138cd43fa416339b (563046)
 layout: phone scale 2.64, desktop scale 1.00
 layout: button 0 21,1006 737x53; button 2 1528,1006
 layout: panel 391 px, free band 401..995 (55% of 1080)
 camera: 37.6 blocks out, world 25.6 deg tall by 32.6 deg wide, screen 27.5 x 49.3, band 16.0
 camera: emulator 37.6 blocks out in a band starting at 304
-hud: 20 rows for a bench block, a last run and a crash tail
+hud: 21 rows for a bench block, a last run and a crash tail
 gamefiles: the owner's phone 2412x1080: scale 7.49, button 0 509x165
-gamefiles: a portrait phone 1080x1920: scale 6.34, button 0 953x139
-gamefiles: the CI emulator 1920x1080: scale 3.57, button 0 435x78
+gamefiles: a portrait phone 1080x1920: scale 5.02, button 0 980x110
+gamefiles: the CI emulator 1920x1080: scale 2.82, button 0 445x62
 self-test: compared 1302338 px, skipped 1302622 px under the overlay
 self-test: overlay leaks into the compared area: 0 px
 self-test: 62 rows per step at 2412x1080, 18 steps
@@ -379,4 +394,9 @@ world: floor at 24,24 is 66.00
 world: slab at 12,64,21 with a half-block collision top
 water: 386 fluid cells, 22287 solid, 367 air-or-other near the surface
 edits: the last line is "26 65 24 minecraft:stone"
-PASS: 294 checks, 0 failures
+world: opened 4 chunk(s) from 1 region file(s): 24673 non-air blocks, 53 states, 0 errors, 0 not full, 0 left out, in 5.1 ms
+world: bounds x 0.0..32.0 z 0.0..32.0
+world: the topmost block at 1,1 is y 61
+world: the block at 1,61,1 is minecraft:grass_block
+world: meshed 52644 vertices in 2 calls, x 0.0..32.0, 0 outside the save's bounds
+PASS: 311 checks, 0 failures
