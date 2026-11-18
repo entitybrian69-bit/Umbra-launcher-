@@ -1157,9 +1157,19 @@ else
     [ "$OPENED" = 1 ] || die "world: the phone never opened the save: $(adb logcat -d -s umbra:V 2>/dev/null | grep -E 'world: ' | tail -4 | tr '\n' '|')"
     OPEN_LINE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'world: opened:' | sed 's/.*umbra *: //')"
     say "world: $OPEN_LINE"
-    W_CHUNKS="$(printf '%s' "$OPEN_LINE" | sed -n 's/.*chunks \([0-9][0-9]*\).*/\1/p')"
-    W_BLOCKS="$(printf '%s' "$OPEN_LINE" | sed -n 's/.*non-air blocks \([0-9][0-9]*\).*/\1/p')"
-    W_ERRORS="$(printf '%s' "$OPEN_LINE" | sed -n 's/.*read errors \([0-9][0-9]*\).*/\1/p')"
+    # Parse from the text *after* "opened: ", and take the first match of each field. The
+    # greedy `s/.*chunks \([0-9]*\).*/` this used to do took the LAST "chunks" on the line,
+    # which is "not-full chunks 0" -- so a phone that had just opened 25 chunks with 792923
+    # blocks was reported as "0 chunk(s), 792923 block(s)" and failed the phase (run
+    # 44295360944). The world was fine; the reading of one line was not.
+    OPEN_TAIL="${OPEN_LINE#*opened: }"
+    W_CHUNKS="${OPEN_TAIL%% *}"
+    W_BLOCKS="$(printf '%s\n' "$OPEN_TAIL" | awk '{for(i=2;i<=NF;i++) if($i=="blocks" && $(i-1)=="non-air"){print $(i+1); exit}}')"
+    W_ERRORS="$(printf '%s\n' "$OPEN_TAIL" | awk '{for(i=2;i<=NF;i++) if($i=="errors" && $(i-1)=="read"){print $(i+1); exit}}')"
+    W_BLOCKS="${W_BLOCKS%,}"; W_ERRORS="${W_ERRORS%,}"
+    case "$W_CHUNKS" in
+        ''|*[!0-9]*) die "world: the open line has no leading chunk count, so this script cannot read its own log: $OPEN_LINE" ;;
+    esac
     say "world: the phone read $W_CHUNKS chunk(s), $W_BLOCKS non-air block(s), $W_ERRORS read error(s)"
     [ "${W_CHUNKS:-0}" -gt 0 ] || die "world: the import reports no chunks, so no world was opened"
     # Blocks, not only chunks. Run 44251941145 opened 25 chunks with 0 non-air blocks -- it
