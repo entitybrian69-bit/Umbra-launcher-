@@ -234,6 +234,12 @@ jobs:
 
       - name: A real world for the on-device world import (never committed)
         if: steps.serverfetch.outputs.major != ''
+        env:
+          # Force the window the phone will open to finish generating before the server
+          # saves and stops. Without this the save holds proto-chunks: valid region files,
+          # every palette air, Status not minecraft:full. Run 44253779192 opened 25 of
+          # those and got no blocks -- which the import then refused, correctly.
+          WORLD_HOOK: ${{ github.workspace }}/tools/gen_window_hook.sh
         run: |
           set -o pipefail
           mkdir -p build/world
