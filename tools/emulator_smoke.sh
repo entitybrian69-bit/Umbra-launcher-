@@ -1112,6 +1112,19 @@ phase "world"
 WORLD_DIR="$(pwd)/build/world"
 mkdir -p "$WORLD_DIR"
 WORLD_ZIP="${UMBRA_WORLD_ZIP:-}"
+# A skip has to mean "this run was not given a save", and it has to be impossible for a
+# skip to mean "the save was built and then hidden from this script". Run 44246764403 did
+# exactly that: the workflow generated a real server world and wrote UMBRA_WORLD_ZIP to
+# $GITHUB_ENV, then mapped that variable to `${{ env.UMBRA_WORLD_ZIP }}` -- an expression
+# evaluated before any step ran, so empty -- and the empty mapping replaced the inherited
+# value. The phase then said "no save in this run" and passed. So: if the workflow says it
+# built a world, a missing path is a failure, not a skip.
+if [ -z "$WORLD_ZIP" ] && [ -n "${UMBRA_WORLD_EXPECTED:-}" ]; then
+    die "world: this run was supposed to be given a save (UMBRA_WORLD_EXPECTED=$UMBRA_WORLD_EXPECTED) but UMBRA_WORLD_ZIP is empty; a skip here would hide a defect in the workflow"
+fi
+if [ -n "$WORLD_ZIP" ] && [ ! -f "$WORLD_ZIP" ] && [ -n "${UMBRA_WORLD_EXPECTED:-}" ]; then
+    die "world: UMBRA_WORLD_ZIP points at $WORLD_ZIP, which does not exist; the step that builds it did not finish"
+fi
 if [ -z "$WORLD_ZIP" ] || [ ! -f "$WORLD_ZIP" ]; then
     say "world: no save was handed to this run (UMBRA_WORLD_ZIP is empty), so the phone's"
     say "world:   own world import cannot be proved here. The host suite opens the same"

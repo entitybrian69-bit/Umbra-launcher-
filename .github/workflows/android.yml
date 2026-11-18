@@ -233,11 +233,21 @@ jobs:
           python3 tools/zip_world.py build/world/world.zip $REGIONS
           ls -l build/world/world.zip
           echo "UMBRA_WORLD_ZIP=$GITHUB_WORKSPACE/build/world/world.zip" >> "$GITHUB_ENV"
+          # So the smoke script can tell "this run was given no save" (a skip) from "this
+          # run built a save but did not receive it" (a defect). See its world phase.
+          echo "UMBRA_WORLD_EXPECTED=1" >> "$GITHUB_ENV"
 
       - name: Install, launch, self test, soak
         env:
           UMBRA_JAR_FILE: ${{ github.workspace }}/build/jar/client.jar
-          UMBRA_WORLD_ZIP: ${{ env.UMBRA_WORLD_ZIP }}
+          # UMBRA_WORLD_ZIP comes from $GITHUB_ENV, which the step above writes. Do *not*
+          # map it here as `${{ env.UMBRA_WORLD_ZIP }}`: that expression is evaluated
+          # before any step runs, so it is empty, and a mapping with an empty value
+          # *overrides* the inherited variable with "". That is why run 44246764403
+          # printed "UMBRA_WORLD_ZIP is empty" and skipped the phase while the step that
+          # builds the world had succeeded: the world was built and then hidden from the
+          # script that needed it. A step's `env:` inherits $GITHUB_ENV anyway, so the
+          # variable arrives on its own.
           WORLD_HOOK: ""
           WORLD_WAIT: "300"
         run: |
