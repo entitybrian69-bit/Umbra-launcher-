@@ -270,6 +270,35 @@ jobs:
           # A save's regions around the origin: the app opens a window of 25 chunks around
           # the world's spawn, and the spawn is in the region holding chunk 0,0. Four of
           # them, preferring r.0.0 and its neighbours.
+          # Read the save with the project's own world reader *before* the phone gets it.
+          # That reader has been compared block for block against the real server on every
+          # push for weeks, so if it says the window has no blocks, the save has no blocks
+          # and the phone was never the problem. Two runs in a row went red at the phone
+          # and left this question open because nothing asked it here.
+          echo "== what the reader that the world gate trusts says about this save"
+          mkdir -p build/diag
+          if [ ! -x build/umbra_worldload ] && [ -x build/bin/goose ]; then
+            # The same two commands tools/check_real_world.sh runs, so the reader is the
+            # one the world gate uses and not a second copy of the logic.
+            GOOSE_STDLIB="${GOOSE_STDLIB:-$GITHUB_WORKSPACE/build/goose-src/stdlib}" \
+              build/bin/goose --standalone -o build/worldload.c goose/worldload.goose > /dev/null 2>&1 \
+              && cc -O2 -o build/umbra_worldload build/worldload.c platform/shared/umbra_glue.c \
+                   -lm -lpthread > /dev/null 2>&1 || true
+          fi
+          if [ -x build/umbra_worldload ]; then
+            build/umbra_worldload build/server/run/world build/diag/dump.txt 2 \
+              --incomplete-ok > build/diag/read.log 2>&1 || true
+            grep -E "^total|^chunk (-?[0-9]+\.?)+ -?[0-9]" build/diag/dump.txt 2>/dev/null | head -4
+            grep -E "^total" build/diag/dump.txt || echo "(no total line: the reader could not read it)"
+          else
+            echo "(build/umbra_worldload is not built in this job; skipping the host read)"
+          fi
+          # The server's own account of the chunks it wrote, which is what the hook asks
+          # for and what the import disagrees with.
+          cp build/server/run/server.log evidence/ci/server.log 2>/dev/null || true
+          grep -cE "Chunk (loaded|saved)" evidence/ci/server.log 2>/dev/null || true
+          tail -6 evidence/ci/server.log 2>/dev/null || true
+
           REGIONS=()
           for f in "${ALL[@]}"; do
             case "$(basename "$f")" in
