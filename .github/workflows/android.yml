@@ -180,6 +180,14 @@ jobs:
         with:
           name: umbra-apk
 
+      # This job is a separate runner from the APK job: it has the checkout and the APK
+      # and nothing else. The world-settling hook reads the save with the project's own
+      # reader, which is Goose compiled to C, so the compiler has to be built *here*.
+      # Run 44272138514 failed with "build/bin/goose: No such file or directory" -- an
+      # annotation that took three attempts to obtain, because the step log was empty.
+      - name: Build the pinned Goose compiler (for the reader)
+        run: tools/pin_goose.sh
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
