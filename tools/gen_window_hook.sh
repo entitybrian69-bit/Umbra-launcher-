@@ -50,6 +50,20 @@ trap 'rc=$?; [ "$rc" -ne 0 ] && say "FAIL the hook exited $rc"; cp "$WLOG" ./wor
 
 say "hook: $ROOT/tools/gen_window_hook.sh, save directory $RUN, radius $RADIUS"
 
+# rcon.py answers a malformed call by printing its usage and exiting non-zero. That is a bug
+# in *this* file, not a fact about the server, and the first version of this file reported
+# it as "the server did not accept save-all flush" -- a sentence about the wrong thing.
+# Every reply is checked for the usage text before it is believed.
+rcon_sane() {
+    case "$1" in
+        *"usage: tools/rcon.py"*)
+            say "FAIL rcon.py was called wrongly, so this hook is broken: $(printf '%s' "$1" | head -1)"
+            return 1
+            ;;
+    esac
+    return 0
+}
+
 # The reader, built the same way tools/check_real_world.sh builds it.
 if [ ! -x build/umbra_worldload ]; then
     say "building the world reader the gate uses"
@@ -86,7 +100,18 @@ if [ ! -x build/umbra_worldload ]; then
 fi
 
 flush() {
-    python3 "$TOOLS/rcon.py" "$HOST" "$PORT" "$PW" "save-all flush" || return 1
+    # host, port, password, command -- the password is not optional, and the command is
+    # unquoted because rcon.py joins its trailing arguments. The first version of this file
+    # omitted the password, so rcon.py printed its usage and every flush "failed", which
+    # read as a server that would not save.
+    local reply
+    # shellcheck disable=SC2086
+    reply="$(python3 "$TOOLS/rcon.py" "$HOST" "$PORT" "$PW" save-all flush 2>&1)"
+    rcon_sane "$reply" || return 1
+    # A `rcon:` line is an error: unreachable, refused password, or a malformed call. Any of
+    # those means the save was not flushed, and a hook that shrugged at "cannot reach" would
+    # loop twelve times and then blame the world.
+    case "$reply" in *"rcon: "*|*FAIL*|"") say "flush failed: $(printf '%s' "$reply" | head -1)"; return 1 ;; esac
     sleep 3
 }
 
@@ -100,6 +125,45 @@ window() {
 unfinished() {
     grep -oE '\([0-9]+ of them within [0-9]+ of the origin\)' "$RUN/settle.log" 2>/dev/null | head -1
 }
+
+# Generate the window first. This is the step the first version of this file left out,
+# and leaving it out is why the block count was frozen at 101 105 for twelve attempts:
+# flushing a save whose chunks have never been generated writes the same proto-chunks
+# every time. A server that has just said "Preparing spawn area: 100%" has finished its
+# *spawn* area and nothing else; chunks the phone will open but which nobody has walked
+# into stay at the proto stage until something asks for them.
+#
+# `forceload add` is that ask, and it is exactly what tools/compare_with_server.sh does
+# before its own settle loop. The server caps one call at 256 chunks, so the box goes in
+# strips and every reply is read.
+BOX0=$(( -RADIUS * 16 ))
+BOX1=$(( RADIUS * 16 + 15 ))
+ACROSS=$(( (BOX1 - BOX0 + 1) / 16 ))
+STRIP=$(( 256 / ACROSS ))
+[ "$STRIP" -lt 1 ] && STRIP=1
+say "force-loading chunk -${RADIUS}..${RADIUS} (${ACROSS}x${ACROSS} chunks) so it is generated"
+fl_load_ok=1
+row=0
+while [ "$row" -lt "$ACROSS" ]; do
+    rows=$(( ACROSS - row ))
+    [ "$rows" -gt "$STRIP" ] && rows="$STRIP"
+    z0=$(( BOX0 + row * 16 ))
+    z1=$(( z0 + rows * 16 - 1 ))
+    # host, port, password, command -- the password is not optional, and the command is
+    # unquoted because rcon.py joins its trailing arguments.
+    # shellcheck disable=SC2086
+    reply="$(python3 "$TOOLS/rcon.py" "$HOST" "$PORT" "$PW" forceload add $BOX0 $z0 $BOX1 $z1 2>&1)"
+    rcon_sane "$reply" || { say "FAIL the forceload call is malformed; this is a bug in the hook"; exit 1; }
+    case "$reply" in
+        *"Too many chunks"*|*FAIL*|"")
+            say "FAIL forceload $BOX0 $z0 $BOX1 $z1 was refused: $reply"
+            fl_load_ok=0
+            ;;
+        *) say "forceload $BOX0 $z0 $BOX1 $z1 -> $reply" ;;
+    esac
+    row=$(( row + rows ))
+done
+[ "$fl_load_ok" = 1 ] || exit 1
 
 say "settling the save at radius $RADIUS before it is handed to the phone"
 say "reader: $ROOT/build/umbra_worldload, save: $RUN/world"
