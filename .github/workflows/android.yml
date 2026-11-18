@@ -299,8 +299,11 @@ jobs:
           echo "== region files written: ${#ALL[@]}"
           # Which directories hold them, and which of those the reader chose. A 26.3 save
           # can hold both layouts at once and only one of them is the terrain.
-          find build/server/run/world -name '*.mca' -type f 2>/dev/null | sed 's#/r\.-#/r.-#' | xargs -r -n1 dirname | sort | uniq -c
-          printf '%s\n' "${ALL[@]:-}" | head -8
+          { find build/server/run/world -name '*.mca' -type f 2>/dev/null || true; } | xargs -r -n1 dirname | sort | uniq -c || true
+          # Eight of them is plenty; head closing this pipe must not become the step's exit
+          # code (see the diag block below -- SIGPIPE under pipefail is what killed run
+          # 44292155799, and it took the reason with it).
+          printf '%s\n' "${ALL[@]:-}" 2>/dev/null | head -8 || true
           if [ "${#ALL[@]}" -eq 0 ]; then
             echo "::error title=world::the server wrote no region files, so there is no world to hand the phone"
             tail -30 build/world/gen-world.log || true
@@ -329,9 +332,12 @@ jobs:
           if [ -x build/umbra_worldload ]; then
             build/umbra_worldload build/server/run/world build/diag/dump.txt 2 \
               --incomplete-ok > build/diag/read.log 2>&1 || true
-            grep -E "^total|^chunk (-?[0-9]+\.?)+ -?[0-9]" build/diag/dump.txt 2>/dev/null | head -4
-            grep -E "^total" build/diag/dump.txt || echo "(no total line: the reader could not read it)"
-            tail -5 build/diag/read.log 2>/dev/null || true
+            # `grep ... | head -4` is an exit-2 failure under `set -o pipefail`: head closes the
+            # pipe, grep dies of SIGPIPE, and the step dies with it. Run 44292155799 did exactly
+            # that and could only say "Process completed with exit code 2". Print all of it.
+            { grep -E "^total|^chunk (-?[0-9]+\.?)+ -?[0-9]" build/diag/dump.txt 2>/dev/null || true; }
+            { grep -E "^total" build/diag/dump.txt 2>/dev/null || echo "(no total line: the reader could not read it)"; }
+            { tail -5 build/diag/read.log 2>/dev/null || true; }
           else
             echo "(build/umbra_worldload is not built in this job; skipping the host read)"
           fi
@@ -381,7 +387,10 @@ jobs:
           printf '%s\n' "${REGIONS[@]}"
           # The hook read the save before this step did; if it named a directory, the zip
           # must use that same directory or the two are talking about different saves.
-          HOOKDIR="$(sed -n 's/.*worldload: region dir \(.*\)$/\1/p' evidence/ci/world-window.log 2>/dev/null | head -1)"
+          # No `| head -1`: under pipefail, head closing the pipe makes sed die of SIGPIPE and
+          # the step inherits it. Strip the extra lines instead, which cannot fail.
+          HOOKDIR="$(sed -n 's/.*worldload: region dir \(.*\)$/\1/p' evidence/ci/world-window.log 2>/dev/null || true)"
+          HOOKDIR="${HOOKDIR%%$'\n'*}"
           if [ -n "$HOOKDIR" ]; then
             echo "== the settled hook read: $HOOKDIR"
             case "${REGIONS[0]}" in
