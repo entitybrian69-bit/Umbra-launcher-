@@ -250,7 +250,14 @@ jobs:
           WORLD_HOOK: ${{ github.workspace }}/tools/gen_window_hook.sh
         run: |
           set -o pipefail
-          mkdir -p build/world
+          # Run 44285758258 failed with "Process completed with exit code 2" and nothing else,
+          # while the settling hook in the same step had just printed PASS. A step that dies
+          # without naming a command is a step nobody can fix, so this reports the command
+          # and the line, and the logs it might have written are copied to evidence first.
+          trap 'rc=$?; echo "::error title=world::the step stopped at line $LINENO: $BASH_COMMAND (exit $rc)";                 cp build/world/gen-world.log evidence/ci/world-gen.log 2>/dev/null || true;                 cp build/server/run/server.log evidence/ci/server.log 2>/dev/null || true;                 tail -25 build/world/gen-world.log 2>/dev/null || true; exit $rc' ERR
+          # `set -E` so the trap also fires inside functions and command substitutions.
+          set -E
+          mkdir -p build/world evidence/ci
           java -version 2>&1 | head -2
           mkdir -p evidence/ci
           if ! tools/gen_server_world.sh build/server/server.jar build/server/run > build/world/gen-world.log 2>&1; then
@@ -263,6 +270,7 @@ jobs:
             mkdir -p evidence/ci
             cp build/world/gen-world.log evidence/ci/world-gen.log 2>/dev/null || true
             cp build/server/run/server.log evidence/ci/server.log 2>/dev/null || true
+            echo "::error title=world::gen_server_world.sh exited non-zero (see the annotation above for its last words)"
             exit 1
           fi
           # What the settling hook said, where it survives: the step log was unreadable
@@ -317,7 +325,7 @@ jobs:
               && cc -O2 -o build/umbra_worldload build/worldload.c platform/shared/umbra_glue.c \
                    -lm -lpthread > /dev/null 2>&1 || true
           fi
-          ls -l build/umbra_worldload 2>/dev/null || echo "(the reader was not built)"
+          ls -l build/umbra_worldload 2>/dev/null || echo "(the reader was not built in this job; the hook built and used its own)"
           if [ -x build/umbra_worldload ]; then
             build/umbra_worldload build/server/run/world build/diag/dump.txt 2 \
               --incomplete-ok > build/diag/read.log 2>&1 || true
@@ -333,19 +341,60 @@ jobs:
           grep -cE "Chunk (loaded|saved)" evidence/ci/server.log 2>/dev/null || true
           tail -6 evidence/ci/server.log 2>/dev/null || true
 
-          REGIONS=()
+          cp build/world/gen-world.log evidence/ci/world-gen.log 2>/dev/null || true
+          cp build/server/run/server.log evidence/ci/server.log 2>/dev/null || true
+
+          # Two overworld layouts, and only one of them is the terrain. A 26.3 server
+          # writing `level.dat` for `dimensions/minecraft/overworld/region` still leaves the
+          # `world/region/` files that spawn preparation wrote, with the same names. They
+          # sort first, so the old loop picked them -- and run 44285758258 gave the phone a
+          # save whose window was 25 chunks with 600 states and 0 blocks. Under a
+          # `dimensions/` directory, a region file is the real overworld; outside one, it is
+          # whatever the server said last, and the settling hook reads the dimensions
+          # layout too (see its "region dir" line). So: prefer dimensions, and say which.
+          DIMREGIONS=()
+          LEGACYREGIONS=()
           for f in "${ALL[@]}"; do
+            case "$f" in
+              */dimensions/minecraft/overworld/region/*) DIMREGIONS+=("$f") ;;
+              *) LEGACYREGIONS+=("$f") ;;
+            esac
+          done
+          echo "== candidate layouts: dimensions/overworld ${#DIMREGIONS[@]} file(s), elsewhere ${#LEGACYREGIONS[@]} file(s)"
+          if [ "${#DIMREGIONS[@]}" -gt 0 ]; then
+            POOL=("${DIMREGIONS[@]}")
+            echo "== using dimensions/minecraft/overworld/region (the settled layout)"
+          else
+            POOL=("${LEGACYREGIONS[@]}")
+            echo "== using the legacy world/region layout (this version wrote no dimensions/)"
+          fi
+          REGIONS=()
+          for f in "${POOL[@]}"; do
             case "$(basename "$f")" in
               r.0.0.mca|r.-1.0.mca|r.0.-1.mca|r.-1.-1.mca) REGIONS+=("$f") ;;
             esac
           done
           if [ "${#REGIONS[@]}" -eq 0 ]; then
-            REGIONS=("${ALL[@]:0:4}")
+            REGIONS=("${POOL[@]:0:4}")
           fi
           echo "== the regions this run hands the phone: ${#REGIONS[@]}"
           printf '%s\n' "${REGIONS[@]}"
-          python3 tools/zip_world.py build/world/world.zip "${REGIONS[@]}"
-          ls -l build/world/world.zip
+          # The hook read the save before this step did; if it named a directory, the zip
+          # must use that same directory or the two are talking about different saves.
+          HOOKDIR="$(sed -n 's/.*worldload: region dir \(.*\)$/\1/p' evidence/ci/world-window.log 2>/dev/null | head -1)"
+          if [ -n "$HOOKDIR" ]; then
+            echo "== the settled hook read: $HOOKDIR"
+            case "${REGIONS[0]}" in
+              "$HOOKDIR"/*) echo "   and the zip uses the same directory" ;;
+              *) echo "::warning title=world::the zip uses ${REGIONS[0]%%/*} but the hook settled $HOOKDIR" ;;
+            esac
+          fi
+          if ! python3 tools/zip_world.py build/world/world.zip "${REGIONS[@]}"; then
+            echo "::error title=world::zip_world.py refused these region files"
+            printf '  %s\n' "${REGIONS[@]}"
+            exit 1
+          fi
+          ls -l build/world/world.zip || { echo "::error title=world::the phone's zip was not written"; exit 1; }
           echo "UMBRA_WORLD_ZIP=$GITHUB_WORKSPACE/build/world/world.zip" >> "$GITHUB_ENV"
           # So the smoke script can tell "this run was given no save" (a skip) from "this
           # run built a save but did not receive it" (a defect). See its world phase.
