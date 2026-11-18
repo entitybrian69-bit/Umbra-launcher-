@@ -242,6 +242,15 @@ struct umbra_app {
     int64_t mesh_calls, mesh_worst_call_us, mesh_total_us;
     int64_t upload_us;         // the one whole-arena upload, timed on its own
     int64_t last_draw_us;      // the scene draw, timed every frame
+    // The brief's question (d), as one number: from the edit being applied to the first
+    // swap that presents the changed geometry. The four parts are kept apart because they
+    // are four different faults -- the wait for a slice, the re-mesh itself, the
+    // sub-upload, the present -- and "an edit takes 200 ms" names none of them.
+    int64_t edit_applied_us;   // when the edit was applied, 0 when none is in flight
+    int64_t edit_mesh_done_us; // when its re-mesh finished and the upload had run
+    int edit_pending_present;  // the world has changed and no frame has presented it
+    int64_t edit_wait_us;      // edit applied -> the first re-mesh call
+    int64_t edit_upload_us;    // the sub-upload's own cost, timed on its own
     int first_draw_timed;      // the first world frame has been timed and logged
     bool mesh_uploaded;
 

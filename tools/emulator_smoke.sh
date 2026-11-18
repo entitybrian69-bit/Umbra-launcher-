@@ -969,6 +969,26 @@ adb exec-out screencap -p > "shot-hands.png" 2>/dev/null || true
 say "hands: shot-hands.png is $(stat -c%s shot-hands.png 2>/dev/null || echo 0) bytes"
 adb logcat -d -s umbra:V > logcat-umbra-hands.txt 2>&1
 
+# ---- 6b. the brief's question (d): how long an edit takes to reach the screen -----
+#
+# The re-mesh was measured before this ("re-meshed 1 of 9 columns in 130.4 ms"); what was
+# never measured once is the whole path: finger up -> applied -> re-mesh -> sub-upload ->
+# the frame that drew it -> swap. The app prints that one number, and its parts, on the
+# first frame after an edit's geometry is on the GPU.
+phase "edit-latency"
+LAT="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'edit: on screen in' | sed 's/.*umbra *: //')"
+if [ -n "$LAT" ]; then
+    say "edit-latency: $LAT"
+    LAT_MS="$(printf '%s' "$LAT" | sed -n 's/.*edit: on screen in \([0-9][0-9]*\(\.[0-9]*\)*\) ms.*/\1/p')"
+    if [ -n "$LAT_MS" ]; then
+        say "edit-latency: an edit was visible ${LAT_MS} ms after it was applied"
+        [ "${LAT_MS%%.*}" -lt 500 ] || die "edit-latency: an edit took ${LAT_MS} ms to reach the screen"
+        note "edit-latency: an edit was on screen ${LAT_MS} ms after it was applied"
+    fi
+else
+    die "edit-latency: the app never reported when an edit reached the screen: $(adb logcat -d -s umbra:V 2>/dev/null | grep -E 'edit: ' | tail -3 | tr '\n' '|')"
+fi
+
 # ---- 7. soak --------------------------------------------------------------------
 phase "soak"
 say "soak: holding for ${SOAK_SECONDS}s"

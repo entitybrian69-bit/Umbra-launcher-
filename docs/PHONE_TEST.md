@@ -5,16 +5,27 @@ Umbra is **not** an official Minecraft product.
 ## What you are installing
 
 ```
-https://github.com/entitybrian69-bit/Umbra-launcher-/releases/tag/v0.3.4-pre
+https://github.com/entitybrian69-bit/Umbra-launcher-/releases/tag/v0.3.7-pre
 umbra-0.3.4-pre-arm64.apk
 ```
 
-This is a **pre-release**. It draws a demo world with the real renderer, the real
-mesher and a texture atlas, and you can walk around in it. It is not Minecraft: the
-textures are placeholder art drawn by this project (no Mojang assets), the world is a
-demo island rather than a world from your game files, only one block shape yet comes
-from a block *model* (a plank slab), and there are no mobs, no survival mode and no
-multiplayer.
+This is a **pre-release**. It draws a world with the real renderer and the real
+mesher, and you can walk around in it, break blocks and place them. The textures and
+block models are read from your own copy of the game files: the screen called **GET
+THE GAME'S FILES** downloads the pinned client jar from Mojang (41 483 720 bytes,
+checked against a pinned SHA-1) or takes a jar you already have.
+
+**A world you generated can be opened.** Zip a world's `region` folder (the folder that
+holds `r.<x>.<z>.mca` files) and put the zip at `.../files/world.zip` in the app's own
+directory, or use the screen's **OPEN A WORLD THE GAME MADE** button and pick the zip.
+Umbra opens a 25-chunk window around that world's origin and draws the save's own
+blocks, with the game's own models and textures. A bigger world is cut down to that
+window and the log says how much was left out.
+
+It is still not Minecraft: there is one dimension, no mobs, no survival mode, no
+crafting, no redstone, and no multiplayer. Worldgen parity -- biomes, caves, ores,
+structures -- is not done; a world Umbra generates itself is a demo scene, and only a
+save you open is the real thing.
 
 Umbra is **not** an official Minecraft product. It ships no Mojang code or
 assets; it reads your own game files from the app's private storage.

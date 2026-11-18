@@ -1051,7 +1051,13 @@ static void finish_edit(umbra_app *app) {
     count_ranges(app);
     // The count has to be read before the upload clears the list.
     int64_t changed = umbra_dirty_count();
+    int64_t up_t0 = umbra_now_us();
     upload_mesh_changes(app);
+    app->edit_upload_us = umbra_now_us() - up_t0;
+    // The geometry is on the GPU; nothing has drawn it yet. That is what makes the next
+    // swap the frame the edit becomes visible in, and it is marked here.
+    app->edit_mesh_done_us = umbra_now_us();
+    app->edit_pending_present = 1;
     app->mesh_state = 2;
     app->mesh_progress = 1000;
     umbra_log(app, "edit: re-meshed %lld of %lld columns in %.1f ms over %lld calls "
@@ -1177,6 +1183,15 @@ static void begin_scene(umbra_app *app) {
 static void pump_mesh(umbra_app *app) {
     if (app->mesh_state != 1) return;
     int64_t t = umbra_now_us();
+    // How long the edit waited for the frame loop to get to it: measured once per edit,
+    // on the first call that steps it. `umbra_mesh_is_edit()` is read *before* the step
+    // because the step clears the flag on the last slice -- reading it afterwards lost
+    // the measurement for any edit that finished in one call, which on a single changed
+    // column is most of them.
+    int was_edit = (int)umbra_mesh_is_edit();
+    if (app->edit_applied_us > 0 && app->edit_wait_us == 0 && was_edit) {
+        app->edit_wait_us = t - app->edit_applied_us;
+    }
     // An edit gets the same small slices as the first mesh: the point of the edit path
     // is that it is *short*, not that it may block. Neither may hold a frame for more
     // than one section, and no section here takes anywhere near UMBRA_EDIT_BUDGET_MS.
@@ -1197,7 +1212,7 @@ static void pump_mesh(umbra_app *app) {
     app->mesh_progress = (int)progress;
     if (done) {
         umbra_demo_mesh_finish();
-        if (umbra_mesh_is_edit() != 0) {
+        if (was_edit) {
             finish_edit(app);
         } else {
             finish_scene(app);
@@ -2287,6 +2302,13 @@ static void player_act(umbra_app *app) {
         app->mesh_calls = 0;
         app->mesh_total_us = 0;
         app->mesh_worst_call_us = 0;
+        // Question (d) starts here: the finger has lifted, the world has changed, and the
+        // clock starts on "when does a person see it".
+        app->edit_applied_us = umbra_now_us();
+        app->edit_mesh_done_us = 0;
+        app->edit_wait_us = 0;
+        app->edit_upload_us = 0;
+        app->edit_pending_present = 0;
         // The old mesh stays on screen and stays uploaded while the new one is built:
         // blanking the world for a moment is worse than a block that disappears a few
         // frames late.
@@ -3266,6 +3288,22 @@ void umbra_app_frame(umbra_app *app) {
     draw_hud(app);
     app->frames_drawn++;
     gpu_timer_collect(app);
+
+    // The edit's end, measured where it is true: this frame has drawn the new geometry
+    // and is about to be swapped in. `edit_wait_us` is the part a person experiences as
+    // lag before anything happens, `edit_upload_us` is the GPU call, and the rest is the
+    // frame that drew it.
+    if (app->edit_pending_present && app->edit_mesh_done_us > 0) {
+        int64_t now = umbra_now_us();
+        int64_t total = now - app->edit_applied_us;
+        int64_t mesh = app->edit_mesh_done_us - app->edit_applied_us;
+        umbra_log(app, "edit: on screen in %.1f ms (re-mesh %.1f ms from %.1f ms after the "
+                       "edit, of which the sub-upload %.2f ms; the frame that drew it %.1f ms)",
+                  total / 1000.0, mesh / 1000.0, app->edit_wait_us / 1000.0,
+                  app->edit_upload_us / 1000.0, (now - app->edit_mesh_done_us) / 1000.0);
+        app->edit_pending_present = 0;
+        app->edit_applied_us = 0;
+    }
 
     if (app->benching) {
         umbra_bench_add(app->frame_us);

@@ -8,6 +8,118 @@ with nothing lost.
 Everything below was produced by a command whose output is quoted or linked.
 Nothing unverified is listed as done.
 
+## The brief's four questions, answered plainly (item 1)
+
+The owner's first priority is not a feature; it is four answers, with evidence, and then
+whatever is missing built in that order. This section is that answer, and it is kept
+above every other section because it is what a reader needs before anything else. Where
+an answer is "no" for the phone (and a host or CI proof is not a phone proof) it says so.
+
+**(a) Is the phone's world drawn with the jar's real textures and each block's own
+models? — Yes, when a jar is loaded, and the app now loads one by itself.**
+
+Device evidence, run `44054199029` (android, `completed success`):
+
+```
+app: jar: /data/user/0/org.umbra.client/files/client.jar, 41483720 bytes:
+     4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the
+     models are the jar's
+app: atlas: source is the client jar
+gamefiles: atlas: source is the client jar -- the downloaded jar draws the world
+```
+
+Those 4 192 models are the jar's own `assets/minecraft/models/block/*.json`, the 1 288
+blockstates its `blockstates/` and the atlas is packed from the jar's own PNGs, so a
+block is drawn from its own model and not from a box with a guessed tile. The same jar
+data is what the CI renderer draws a world with (`jr: models 4192 built, 4192 in the
+store, 0 refused`, `jr: atlas texels compared with the jar's PNGs: 6144 sampled, 0
+differ`).
+
+The honest limit: until the screen is used the phone is on the twelve-tile placeholder
+atlas (D-039), and it says so — `world: Umbra's demo scene`, and the surface line on the
+app's own screen. One texture of the 1 214 the models reference is missing from the jar
+by design (it is the block a debug model points at); magenta in the atlas is how that is
+made visible.
+
+**(b) Does the app have an in-app "get game files" flow, and a world import? — The
+game files: yes, device-verified. The world import: built, host-verified, device run in
+flight (see below).**
+
+Game files, from the device, through the app's own button and the device's own network:
+`gamefiles: download would fetch https://piston-data.mojang.com/v1/objects/e877b6a0…/
+client.jar` → `gamefiles: the download finished: 41483720 bytes` → `gamefiles: the file
+is the pinned jar: 41483720 bytes, sha1 e877b6a07acd633f…` → `ready: 4192 models, 1214
+textures, 1 missing`. A jar the owner already has can be imported through the picker, and
+a jar pushed to `/data/local/tmp/umbra-client.jar` is found at start-up.
+
+World import, new in `d01817e`: the screen's fifth button is **OPEN A WORLD THE GAME
+MADE**, and the app also opens `world.zip` from its own files directory at start-up
+(which is how a phone that was handed a file, and the automated run, get a world in
+without a picker — an emulator cannot answer a picker). What it opens is a zip of a
+save's `region/` folder, in either the classic `region/r.<x>.<z>.mca` layout or 26.3's
+`dimensions/minecraft/overworld/region/`. Host proof, `PASS: 311 checks, 0 failures`:
+
+```
+world: opened 4 chunk(s) from 1 region file(s): 24673 non-air blocks, 53 states,
+       0 errors, 0 not full, 0 left out, in 6.7 ms
+world: bounds x 0.0..32.0 z 0.0..32.0
+world: the topmost block at 1,1 is y 61
+world: the block at 1,61,1 is minecraft:grass_block
+world: meshed 52644 vertices in 3 calls, x 0.0..32.0, 0 outside the save's bounds
+```
+
+The blocks match a *second* read of the same region file block for block
+(`the importer's columns are the save's blocks, block for block`, 0 differences over
+65 536 positions), and an archive with no region file is refused with a sentence instead
+of opening an empty world. Before this change the demo world's vertices were 310 998
+outside those bounds, which is exactly the difference between "a world" and "the world".
+
+**What is still not device-verified**: the phone opening a *server-generated* save. The
+android workflow now generates one with the real server (`gen_server_world.sh`, the same
+world the `world` gate reads), zips it and pushes it, and the `world` phase opens it and
+screenshots it — see "0.3.7-pre" below for the run that has to pass for this sentence to
+become a device claim.
+
+**(c) Does the phone open a real server-generated world, or still its own demo terrain? —
+Until `d01817e` it was the demo terrain; now it can open a real save, and the demo scene
+remains the default when no save is given.**
+
+The code evidence for the old state was exact: `goose/main.goose`'s import list had no
+savegame module at all, and `core.savegame` — the reader that has compared real 26.3
+saves with a real server since stage 3 — was imported only by `goose/jrender.goose` (the
+CI rasteriser) and used by `goose/worldload.goose` (a standalone CLI). Neither is in the
+APK. The phone's world was `core.demo`: 48×48 blocks, `umbra_world_columns() = demo.len`
+= 9 columns.
+
+Now: `core/worldload_in.goose` is in the app, `umbra_world_import_*` are exports in
+`umbra_core.h`, the C app calls them, and the answer to "which world is on screen" is on
+the HUD in words (`world: the game's own, N chunk(s), M blocks` or `world: Umbra's demo
+scene, not a save`) as well as in the log.
+
+Two limits, stated because they are real: the window is **25 chunks** around the world's
+origin (an 80×80-block piece of the world, chosen because 25 chunks of server terrain is
+about 1.1 M vertices and 55 MB of buffer on a Mali-class phone), and it is the overworld
+only. The number left out is in the log, per import.
+
+**(d) How long does a block edit take to appear on screen? — The re-mesh is measured; the
+frame-to-screen number is not measured yet, and is the next thing in this item.**
+
+Measured on the device, run `44054199029`: `edit: re-meshed 1 of 9 columns in 130.4 ms
+over 7 calls (worst call 20.3 ms, worst slice 10.6 ms), 3 slot(s) changed` and `edit: the
+longest slice was 20.3 ms (under the 50 ms an edit is allowed)`. The sub-upload after it
+is one `glBufferSubData` per changed slot: `upload_mesh_changes` sends the slot's
+vertices and indices, not the world.
+
+What that does **not** say is the number the owner asked for: the time from the finger
+lifting to the changed pixel being presented. The re-mesh is sliced, so the honest number
+is *first frame with the new geometry* − *edit applied*, and three of the four terms in
+that sum (the slice the edit waits for, the sub-upload's cost, the present) have each
+been measured separately and never once together. The next commit in this item adds that
+one number to the device log (`edit: on screen in X ms, of which Y in the re-mesh, Z in
+the upload`) using `umbra_now_us` at the edit, at `upload_mesh_changes`, and at the next
+present. Until that line exists in a run, this answer is "130.4 ms of re-mesh plus an
+unmeasured upload and frame", not a latency.
+
 ## Where the project is
 
 Stage 0 (setup) is done. Stage 1 (the file formats the game is made of: zip,
@@ -523,7 +635,10 @@ number quoted above from CI came through one of those channels.
 * Nothing has run on a phone GPU: the only device is an x86_64 emulator with
   SwiftShader, a software rasteriser.
 * Nothing has run on ARM.
-* No world generated by the real game has been opened. No parity numbers exist.
+* No world generated by the real game had been opened *by the phone* until this item;
+  the app's import is host-verified, and the device phase written for it has not run yet:
+  the run that would carry it failed on an unrelated step (item 1 above, and "0.3.7-pre").
+  No worldgen parity numbers exist.
 * The `zlib_store` writer is valid zlib but does not compress.
 * The release key is public; builds are consistent, not authenticated.
 
@@ -1784,3 +1899,29 @@ readings and the probe gets 153 of 153 confirmed; a save that grew every second 
 "never stopped changing"), and the partial-status warning (`1 of 4 chunks are not
 ... minecraft:full ... yet`) on a copy of a save with one chunk's status downgraded, with
 all four chunks still read).
+
+## 0.3.7-pre: the phone opens a save the game wrote
+
+Tag `v0.3.7-pre` at `d01817e`. Release run `44234179264`: the image built for Linux, for
+Windows and for the phone, and the step that re-downloaded all three assets from their
+public URLs passed with every sha256 matching. The step after it, "run the binaries that
+were just downloaded", failed with exit 1 and produced no log this sandbox can read.
+
+**It failed for the right reason, and that is the finding.** The step installs wine to run
+the Windows `.exe`. `apt-get install -y -qq wine64` fails on `ubuntu-latest` (there is no
+package list in that image), the script printed "wine is unavailable, so the .exe is
+unproven", and then set `FAILED=1` -- so the job was red while every check it exists to
+make had passed. The binary that could not be executed was not proven, and the workflow
+said so instead of claiming otherwise. `v0.3.6-pre` passing the same step means only that
+wine was installable on that runner image that week, which is exactly the kind of
+difference a release must not silently absorb.
+
+`release.yml` now makes each "no binary to run" and "wine unavailable" branch fail with
+the words **this release is UNPROVEN**, and adds a closing `RESULT: FAIL` that names the
+reason. The assets' sha256 matching is not a substitute for running them on the platform
+they were built for, and the release text no longer lets one stand in for the other.
+
+The rest of the run is evidence that the import changed nothing that was working: the
+android job, at the same commit, fetched the pinned jar through the app's own button
+(`the file is the pinned jar: 41483720 bytes, sha1 e877b6a0…`), built 4 192 models and 1 214
+textures from it, replayed two saved edits, and passed a 60-second soak with no crash.

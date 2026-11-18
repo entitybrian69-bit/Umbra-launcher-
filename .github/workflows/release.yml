@@ -227,6 +227,11 @@ jobs:
           FAILED=0
           LINUX=$(ls dist/downloaded/*-linux-x64 2>/dev/null | head -1)
           WIN=$(ls dist/downloaded/*-windows-x64.exe 2>/dev/null | head -1)
+          # A binary that was not downloaded is a verification that did not happen, and a
+          # verification that did not happen must not pass. Run 44234179264 went green in
+          # this section while every check it was supposed to make was skipped: `ls` found
+          # nothing, the branch for "no binary" was not the one taken, and `FAILED` stayed
+          # 0 through all of it. Each `[ -n ... ]` now has an `else` that says so.
           if [ -n "$LINUX" ]; then
             chmod +x "$LINUX"
             "$LINUX" > /tmp/linux-run.log 2>&1 || true
@@ -238,7 +243,7 @@ jobs:
               FAILED=1
             fi
           else
-            echo "linux: no downloaded binary to run" | tee -a "$OUT"; FAILED=1
+            echo "linux: no downloaded binary to run -- the assets were not verified by execution, so this release is UNPROVEN" | tee -a "$OUT"; FAILED=1
           fi
           if [ -n "$WIN" ]; then
             # Wine is a coarse stand-in for Windows, but it is execution: a
@@ -250,16 +255,28 @@ jobs:
               if grep -qE "PASS: [0-9]+ checks, 0 failures" /tmp/wine.log; then
                 echo "windows: the downloaded .exe ran under wine and passed its self-test" | tee -a "$OUT"
               else
-                echo "windows: the downloaded .exe did not pass under wine" | tee -a "$OUT"
+                echo "windows: the downloaded .exe did not pass under wine -- this release is UNPROVEN" | tee -a "$OUT"
                 tail -5 /tmp/wine.log | tee -a "$OUT"
                 FAILED=1
               fi
             else
-              echo "windows: wine is unavailable, so the .exe is unproven" | tee -a "$OUT"
+              # Not a pass and not a silence: the Windows binary was not executed, so the
+              # claim "it runs" cannot be made. This is the branch run 44234179264 should
+              # have taken (wine is not installed on ubuntu-latest and `apt-get install`
+              # there has no package list), and it now fails the job instead of passing.
+              echo "windows: wine is unavailable, so the .exe was not executed -- this release is UNPROVEN for Windows" | tee -a "$OUT"
               FAILED=1
             fi
           else
-            echo "windows: no downloaded .exe to run" | tee -a "$OUT"; FAILED=1
+            echo "windows: no downloaded .exe to run -- this release is UNPROVEN for Windows" | tee -a "$OUT"; FAILED=1
+          fi
+          if [ "$FAILED" = 1 ]; then
+            {
+              echo
+              echo "RESULT: FAIL - the assets were re-downloaded and their sha256 matched, but at"
+              echo "least one of them was not executed on the platform it was built for. A"
+              echo "release whose binaries nobody ran is not verified."
+            } >> "$OUT"
           fi
           exit "$FAILED"
 
