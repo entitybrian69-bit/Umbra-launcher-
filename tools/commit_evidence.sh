@@ -49,31 +49,48 @@ if [ -z "$branch" ]; then
     branch=$(git rev-parse --abbrev-ref HEAD)
 fi
 
+# Four attempts five seconds apart is not enough when two jobs push evidence to the
+# same branch at once, which is the normal case here: `world` and `android` are both
+# triggered by the same push, and the android job now commits ~2 MB (a 1.6 MB screenshot
+# among the logs). Run 44320870756 failed exactly this step -- "Commit the numbers" --
+# after every one of its twelve test steps had passed, so a green gate read as a red one.
+# The wait grows and the last attempt is still a real attempt.
 attempt=1
-while [ "$attempt" -le 4 ]; do
-    if git fetch -q origin "$branch" 2>/dev/null; then
+max=10
+while [ "$attempt" -le "$max" ]; do
+    case "$attempt" in
+        1|2) wait=5 ;; 3) wait=10 ;; 4) wait=15 ;; 5) wait=25 ;; 6) wait=40 ;;
+        7) wait=60 ;; 8) wait=90 ;; 9) wait=120 ;; *) wait=180 ;;
+    esac
+    if ! git fetch -q origin "$branch" 2>/dev/null; then
+        echo "commit_evidence: attempt $attempt/$max: could not fetch origin/$branch"
+    else
         if ! git merge --no-edit -q "origin/$branch" 2>/dev/null; then
             git merge --abort 2>/dev/null || true
             # Evidence files never conflict meaningfully: this run's numbers are
             # the ones worth keeping, so resolve conflicts with our side.
-            git merge --no-edit -q -X ours "origin/$branch" 2>/dev/null || {
+            if ! git merge --no-edit -q -X ours "origin/$branch" 2>/dev/null; then
                 git merge --abort 2>/dev/null || true
-                echo "commit_evidence: attempt $attempt: cannot merge origin/$branch"
+                echo "commit_evidence: attempt $attempt/$max: cannot merge origin/$branch"
                 attempt=$((attempt + 1))
-                sleep 5
+                sleep "$wait"
                 continue
-            }
+            fi
         fi
     fi
-    if git push -q origin "HEAD:$branch"; then
-        echo "commit_evidence: pushed to $branch on attempt $attempt"
+    if push_out="$(git push origin "HEAD:$branch" 2>&1)"; then
+        echo "commit_evidence: pushed to $branch on attempt $attempt/$max"
         git --no-pager log --oneline -1
         exit 0
     fi
-    echo "commit_evidence: attempt $attempt: push to $branch rejected, retrying"
+    # Say why. A step whose only output is "exit code 1" costs a whole run to diagnose.
+    echo "commit_evidence: attempt $attempt/$max: push to $branch was rejected:"
+    echo "$push_out" | sed 's/^/commit_evidence:   /' | head -6
     attempt=$((attempt + 1))
-    sleep 5
+    sleep "$wait"
 done
 
-echo "commit_evidence: could not push the evidence to $branch after 4 attempts"
+echo "commit_evidence: could not push the evidence to $branch after $max attempts"
+echo "commit_evidence: the branch moved faster than this job could follow; the evidence"
+echo "commit_evidence:   is still in this run's artifact, so nothing is lost"
 exit 1
