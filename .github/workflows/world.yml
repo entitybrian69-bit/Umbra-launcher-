@@ -7,6 +7,16 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "0 6 * * 1"
+# One committing job at a time, per branch. Nine jobs in five workflows push evidence to
+# the same ref; without this they are only *accidentally* ordered, and a rejected push
+# used to fail a gate that had already passed. The group name is per ref so two branches
+# in flight do not wait on each other. `cancel-in-progress` is false on purpose: a run
+# that is halfway through its tests must not be cancelled by a later push to the same
+# branch, because its evidence is the record of what that commit did.
+concurrency:
+  group: evidence-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   world:
     name: "Real server world: Anvil/NBT read twice and compared block by block"
