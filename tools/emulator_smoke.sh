@@ -1162,6 +1162,11 @@ else
     W_ERRORS="$(printf '%s' "$OPEN_LINE" | sed -n 's/.*read errors \([0-9][0-9]*\).*/\1/p')"
     say "world: the phone read $W_CHUNKS chunk(s), $W_BLOCKS non-air block(s), $W_ERRORS read error(s)"
     [ "${W_CHUNKS:-0}" -gt 0 ] || die "world: the import reports no chunks, so no world was opened"
+    # Blocks, not only chunks. Run 44251941145 opened 25 chunks with 0 non-air blocks -- it
+    # had been handed the save's *entities* region files -- and this phase passed, because
+    # it only asked whether chunks had been read. A world with no blocks in it is not a
+    # world, whatever the chunk count says.
+    [ "${W_BLOCKS:-0}" -gt 0 ] || die "world: the import opened ${W_CHUNKS:-0} chunk(s) with no blocks in them, so nothing can be drawn: $(adb logcat -d -s umbra:V 2>/dev/null | grep -E 'world: ' | tail -3 | tr '\n' '|')"
     [ "${W_ERRORS:-1}" = 0 ] || die "world: the reader reported read errors on the save"
     # The save's blocks are the save's, not the demo scene's: the demo world's terrain is
     # grass over dirt over stone from y -64, and a real save's is not.
@@ -1176,7 +1181,12 @@ else
         sleep 3
     done
     [ "$DREW" = 1 ] || die "world: the opened world never finished meshing"
-    say "world: $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'mesh: .* vertices drawn' | sed 's/.*umbra *: //')"
+    MESH_LINE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'mesh: .* vertices drawn' | sed 's/.*umbra *: //')"
+    say "world: $MESH_LINE"
+    # And it drew something. "0 vertices drawn" is not a drawing, and the screenshot gate
+    # would still find a background to compare against.
+    DRAWN="$(printf '%s' "$MESH_LINE" | sed -n 's/.*mesh: \([0-9][0-9]*\) vertices drawn.*/\1/p')"
+    [ "${DRAWN:-0}" -gt 1000 ] || die "world: the save meshed to ${DRAWN:-0} vertices, which is not a world on screen"
     sleep 3
     adb exec-out screencap -p > "shot-world.png" 2>/dev/null || true
     say "world: shot-world.png is $(stat -c%s shot-world.png 2>/dev/null || echo 0) bytes"

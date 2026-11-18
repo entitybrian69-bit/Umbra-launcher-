@@ -352,6 +352,21 @@ fn wl_import_end() -> i64 {
         wl_archive_reset();
         return 0;
     }
+    // Chunks with no blocks in them are not a world, and opening one is worse than
+    // refusing it: the screen says a save is open, the log says how many chunks, and the
+    // mesh is empty. This is exactly what run 44251941145 did -- the archive held the
+    // save's *entities* region files, which share the chunk format's envelope and hold
+    // entity NBT, so every chunk parsed, every palette was read (600 states), and not one
+    // block was a block. A world with terrain has blocks; a real save of a spawn area has
+    // hundreds of thousands. The threshold is low on purpose -- a deliberately empty
+    // superflat world would still have a bedrock layer in every chunk.
+    if wl_res.blocks <= 0 {
+        wl_say3("the archive opened ", "no blocks", ": these are chunks, but nothing in them is a block");
+        wl_accepted = 0;
+        wl_cols = [];
+        wl_archive_reset();
+        return 0;
+    }
     wl_archive_reset();
     // The demo world -- or the save that was open before -- is replaced, not added to. The
     // whole array is rebuilt so a second import cannot leave the first world's columns

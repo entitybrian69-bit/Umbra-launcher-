@@ -22,6 +22,15 @@ def main() -> int:
     files = sys.argv[2:]
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
     total = 0
+    # An entities file is not a region file. They share a name and a location pattern
+    # (`entities/r.0.0.mca` beside `region/r.0.0.mca`) and contain entity NBT, so a zip
+    # built from them opens as a world with chunks and no blocks. Run 44251941145 did
+    # exactly that. Refusing here means the mistake cannot reach a phone.
+    wrong = [f for f in files if os.path.basename(os.path.dirname(f)) != "region"]
+    if wrong:
+        for f in wrong:
+            print(f"not a region file (its directory is not 'region/'): {f}", file=sys.stderr)
+        return 1
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         for path in files:
             name = "region/" + os.path.basename(path)

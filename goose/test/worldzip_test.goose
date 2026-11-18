@@ -25,6 +25,7 @@ fn run_worldzip() {
     wl_layout_test("world-classic.zip", "region/");
     wl_layout_test("world-modern.zip", "dimensions/minecraft/overworld/region/");
     wl_refusal_test();
+    wl_no_blocks_test();
     wl_cap_test();
     test_summary("worldzip");
 }
@@ -181,6 +182,37 @@ fn wl_refusal_test() {
     let regions2 = wl_import_begin("goose/test/fixtures/region/r.0.0.mca");
     check_i64(regions2, 0, "a raw region file is not an archive");
     check(wl_message().len > 0, "and says so");
+    demo = [];
+    wl_reset_for_test();
+}
+
+// A world with chunks and no blocks. This is not hypothetical: a save stores its entities
+// in region files with the same names in a directory beside the real ones, and an import
+// that opens those reports "25 chunks, 600 states, 0 non-air blocks" -- which is what run
+// 44251941145 said on the phone, with an empty mesh behind it. The envelope is valid, so
+// only the block count can tell them apart, and the import now refuses on that count.
+fn wl_no_blocks_test() {
+    demo = [];
+    let regions = wl_import_begin("goose/test/fixtures/worldzip/world-no-blocks.zip");
+    check(regions >= 1, "an entities-style archive does hold region files");
+    let entries = wl_count_entries();
+    for i in entries { wl_import_file(i); }
+    let ended = wl_import_end();
+    check_i64(ended, 0, "but a world with no blocks in it is refused");
+    check_i64(wl_verdict(), 0, "and is not called a world");
+    check_i64(wl_count_blocks(), 0, "because there are no blocks to draw");
+    check(wl_message().len > 0, "with a reason a person can read");
+    check_i64(demo.len, 0, "and the demo world is not replaced by nothing");
+    // The sentence has to say what is wrong, not just that something is.
+    let msg = wl_message();
+    var has_no = false;
+    var i = 0;
+    while i + 6 <= msg.len {
+        if msg[i] == 'n' && msg[i + 1] == 'o' && msg[i + 2] == ' ' &&
+           msg[i + 3] == 'b' && msg[i + 4] == 'l' && msg[i + 5] == 'o' { has_no = true; }
+        i += 1;
+    }
+    check(has_no, "and the reason names the blocks");
     demo = [];
     wl_reset_for_test();
 }

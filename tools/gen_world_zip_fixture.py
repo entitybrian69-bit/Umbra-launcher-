@@ -19,6 +19,9 @@ Two archives are written:
                       silently refuse the other.
   world-not-a-world.zip  a zip with a level.dat and no region file, which the importer
                       must refuse with a sentence instead of an empty world.
+  world-no-blocks.zip    region files of the kind a save keeps in `entities/`: chunks that
+                      parse, with no blocks in them. The importer must refuse this too --
+                      it was reported as an opened world once.
 
 usage: tools/gen_world_zip_fixture.py [out dir] [chunks]
 """
@@ -74,6 +77,22 @@ def main() -> None:
         z.writestr("level.dat", level)
         z.writestr("data/chunks.dat", b"\x0a\x00\x00")
     print(f"wrote {notworld} ({os.path.getsize(notworld)} bytes)")
+
+    # A save's other region directory: `entities/r.0.0.mca`, beside `region/r.0.0.mca` and
+    # with the same file name. Its chunks hold entity NBT, not block states -- so a chunk
+    # reader accepts the envelope, finds a palette, and counts no blocks at all. On
+    # 2026-11-18 run 44251941145 zipped exactly these files and the phone reported "25
+    # chunks, 600 states, non-air blocks 0" and drew nothing, which is why the importer now
+    # refuses a world with no blocks in it. This archive is that mistake, kept.
+    entities = os.path.join(work, "dimensions", "minecraft", "overworld", "entities")
+    os.makedirs(entities, exist_ok=True)
+    empty_chunk = make_test_world.chunk(0, 0, 3837, [])
+    ent_region = make_test_world.region({(0, 0): empty_chunk, (1, 0): empty_chunk})
+    noblocks = os.path.join(out, "world-no-blocks.zip")
+    with zipfile.ZipFile(noblocks, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("dimensions/minecraft/overworld/entities/r.0.0.mca", ent_region)
+        z.writestr("level.dat", level)
+    print(f"wrote {noblocks} ({os.path.getsize(noblocks)} bytes)")
 
 
 if __name__ == "__main__":

@@ -248,7 +248,12 @@ jobs:
           # at the assignment -- one of the two layouts always matches nothing, so the
           # step could only ever fail, which is why run 44250373572 went red here with no
           # message. `find` has no such opinion.
-          mapfile -t ALL < <(find build/server/run/world -name '*.mca' -type f 2>/dev/null | sort)
+          # `*/region/*.mca` and nothing else. A save also has `entities/r.x.z.mca` files
+          # with the same names -- and run 44251941145 zipped those instead: the phone
+          # opened "25 chunks, 600 states, 0 non-air blocks, all not full", which is exactly
+          # what entity NBT looks like to a chunk reader. Same names, different format, and
+          # the import could not tell them apart because it never had to.
+          mapfile -t ALL < <(find build/server/run/world -path '*/region/*.mca' -type f 2>/dev/null | sort)
           echo "== region files written: ${#ALL[@]}"
           printf '%s\n' "${ALL[@]:-}" | head -8
           if [ "${#ALL[@]}" -eq 0 ]; then
