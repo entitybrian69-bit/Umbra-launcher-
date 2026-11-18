@@ -202,31 +202,31 @@ goose/core/mesh.goose:448: warning: redundant `as f32`: an i32 converts to f32 i
 goose/core/mesh.goose:449: warning: redundant `as f32`: an i32 converts to f32 implicitly here
         let pz = (bz as f32) + (if uz > 0.5 { hi[2] } else { lo[2] });
                   ^~~~~~~~~
-goose/core/mesh.goose:609: warning: redundant `as i32`: x is already i32
+goose/core/mesh.goose:621: warning: redundant `as i32`: x is already i32
                 mesh_emit_model(c, x as i32, y as i32, z as i32, id);
                                    ^~~~~~~~
-goose/core/mesh.goose:609: warning: redundant `as i32`: y is already i32
+goose/core/mesh.goose:621: warning: redundant `as i32`: y is already i32
                 mesh_emit_model(c, x as i32, y as i32, z as i32, id);
                                              ^~~~~~~~
-goose/core/mesh.goose:609: warning: redundant `as i32`: z is already i32
+goose/core/mesh.goose:621: warning: redundant `as i32`: z is already i32
                 mesh_emit_model(c, x as i32, y as i32, z as i32, id);
                                                        ^~~~~~~~
-goose/core/mesh.goose:621: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:633: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
                        ^~~~~~~~
-goose/core/mesh.goose:621: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:633: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
                                  ^~~~~~~~
-goose/core/mesh.goose:621: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:633: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
                                            ^~~~~~~~
-goose/core/mesh.goose:665: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:677: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
                       ^~~~~~~~
-goose/core/mesh.goose:665: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:677: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
                                 ^~~~~~~~
-goose/core/mesh.goose:665: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:677: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
                                           ^~~~~~~~
 goose/core/region.goose:60: warning: redundant `as i64`: a u32 converts to i64 implicitly here
@@ -238,7 +238,7 @@ goose/core/region.goose:66: warning: redundant `as i64`: a u32 converts to i64 i
 goose/core/region.goose:142: warning: redundant `as u32`: a u16 converts to u32 implicitly here
     return s.blocks[i] as u32;
            ^~~~~~~~~~~~~~~~~~
-goose/core/region.goose:484: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+goose/core/region.goose:500: warning: redundant `as u32`: a u8 converts to u32 implicitly here
             put_be_u32(out, (offsets[i] << 8) | (counts[i] as u32));
                                                  ^~~~~~~~~~~~~~~~
 goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
@@ -356,15 +356,17 @@ demo: the middle of the world is 24,24 and its floor is 66.00
 demo: a body at the corner 24.0,24.0 would overlap 1 solid cell(s) at foot height
 demo: this is the spawn that failed on the device (44241902430)
 demo: spawning at 24.5,24.5 in cell 24,24 (floor 66.00)
-progress: worst 993 permille; units 10369, total 10369
-sliced mesh: 16 calls, worst call 20.11 ms, worst unit 0.46 ms
+progress: worst 891 permille; units 10369, total 10369
+sliced mesh: 10 calls, worst call 20.09 ms, worst unit 0.46 ms
 ranges: 27 slots for 9 columns
 ranges: 542592 + 12750 + 7704 = 563046 indices used of 733136 in the arena
 edit 0: 1 columns, 1153 units of work, is_edit 1
-edit 0: 6 calls, worst call 6.13 ms, worst slice 0.32 ms
-edit 1: 2 columns, 2305 units of work, is_edit 1
-edit 1: 11 calls, worst call 6.12 ms, worst slice 0.33 ms
-edit: patched geometry 138cd43fa416339b (563046 indices), rebuilt 138cd43fa416339b (563046)
+edit 0: 4 calls, worst call 6.06 ms, worst slice 0.46 ms
+edit 1: 1 columns, 1153 units of work, is_edit 1
+edit 1: 4 calls, worst call 6.04 ms, worst slice 0.32 ms
+edit 2: 2 columns, 2305 units of work, is_edit 1
+edit 2: 8 calls, worst call 6.08 ms, worst slice 0.33 ms
+edit: patched geometry 6d0d5571049dc1e9 (563046 indices), rebuilt 6d0d5571049dc1e9 (563046)
 layout: phone scale 2.64, desktop scale 1.00
 layout: button 0 21,1006 737x53; button 2 1528,1006
 layout: panel 391 px, free band 401..995 (55% of 1080)
@@ -399,9 +401,9 @@ world: floor at 24,24 is 66.00
 world: slab at 12,64,21 with a half-block collision top
 water: 386 fluid cells, 22287 solid, 367 air-or-other near the surface
 edits: the last line is "26 65 24 minecraft:stone"
-world: opened 4 chunk(s) from 1 region file(s): 24673 non-air blocks, 53 states, 0 errors, 0 not full, 0 left out, in 4.0 ms
+world: opened 4 chunk(s) from 1 region file(s): 24673 non-air blocks, 53 states, 0 errors, 0 not full, 0 left out, in 4.2 ms
 world: bounds x 0.0..32.0 z 0.0..32.0
 world: the topmost block at 1,1 is y 61
 world: the block at 1,61,1 is minecraft:grass_block
 world: meshed 52644 vertices in 2 calls, x 0.0..32.0, 0 outside the save's bounds
-PASS: 316 checks, 0 failures
+PASS: 324 checks, 0 failures

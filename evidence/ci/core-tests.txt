@@ -175,31 +175,31 @@ goose/core/mesh.goose:448: warning: redundant `as f32`: an i32 converts to f32 i
 goose/core/mesh.goose:449: warning: redundant `as f32`: an i32 converts to f32 implicitly here
         let pz = (bz as f32) + (if uz > 0.5 { hi[2] } else { lo[2] });
                   ^~~~~~~~~
-goose/core/mesh.goose:609: warning: redundant `as i32`: x is already i32
+goose/core/mesh.goose:621: warning: redundant `as i32`: x is already i32
                 mesh_emit_model(c, x as i32, y as i32, z as i32, id);
                                    ^~~~~~~~
-goose/core/mesh.goose:609: warning: redundant `as i32`: y is already i32
+goose/core/mesh.goose:621: warning: redundant `as i32`: y is already i32
                 mesh_emit_model(c, x as i32, y as i32, z as i32, id);
                                              ^~~~~~~~
-goose/core/mesh.goose:609: warning: redundant `as i32`: z is already i32
+goose/core/mesh.goose:621: warning: redundant `as i32`: z is already i32
                 mesh_emit_model(c, x as i32, y as i32, z as i32, id);
                                                        ^~~~~~~~
-goose/core/mesh.goose:621: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:633: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
                        ^~~~~~~~
-goose/core/mesh.goose:621: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:633: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
                                  ^~~~~~~~
-goose/core/mesh.goose:621: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:633: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
                                            ^~~~~~~~
-goose/core/mesh.goose:665: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:677: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
                       ^~~~~~~~
-goose/core/mesh.goose:665: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:677: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
                                 ^~~~~~~~
-goose/core/mesh.goose:665: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:677: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
                                           ^~~~~~~~
 goose/core/atlas.goose:87: warning: redundant `as f32`: an i64 converts to f32 implicitly here
@@ -244,7 +244,7 @@ goose/core/region.goose:66: warning: redundant `as i64`: a u32 converts to i64 i
 goose/core/region.goose:142: warning: redundant `as u32`: a u16 converts to u32 implicitly here
     return s.blocks[i] as u32;
            ^~~~~~~~~~~~~~~~~~
-goose/core/region.goose:484: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+goose/core/region.goose:500: warning: redundant `as u32`: a u8 converts to u32 implicitly here
             put_be_u32(out, (offsets[i] << 8) | (counts[i] as u32));
                                                  ^~~~~~~~~~~~~~~~
 goose/core/mem.goose:26: warning: redundant `as u16`: a u8 converts to u16 implicitly here
