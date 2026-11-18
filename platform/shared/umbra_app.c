@@ -2180,10 +2180,47 @@ static void player_spawn(umbra_app *app) {
     // position is asked for.
     float cx = (umbra_world_loaded_min_x() + umbra_world_loaded_max_x()) * 0.5f;
     float cz = (umbra_world_loaded_min_z() + umbra_world_loaded_max_z()) * 0.5f;
-    int32_t bx = (int32_t)cx;
-    int32_t bz = (int32_t)cz;
-    float y = umbra_world_spawn((int64_t)bx, (int64_t)bz);
-    umbra_player_reset(&app->player, cx, y + 0.01f, cz);
+    // A body is 0.6 wide and 1.8 tall, so the cell it stands in is not enough: a body
+    // placed on a cell's *corner* overlaps four cells, and the three it is not standing
+    // on can be a hillside. That is exactly what happened once the demo scene's extent
+    // was fixed and the spawn moved to the true middle: at 24.0,24.0 the floor is 66 and
+    // the column at 24,23 is solid to 69, so the body spawned walled in on three sides
+    // and no heading moved it (run 44241902430, four holds of 0.00 blocks). Two rules
+    // come out of that: spawn at the *centre* of a cell, never its corner, and only in a
+    // cell with two blocks of air above the floor.
+    int32_t bx = (int32_t)floorf(cx);
+    int32_t bz = (int32_t)floorf(cz);
+    float y = 0.0f;
+    int found = 0;
+    for (int ring = 0; ring <= 6 && !found; ring++) {
+        for (int dz = -ring; dz <= ring && !found; dz++) {
+            for (int dx = -ring; dx <= ring && !found; dx++) {
+                if (ring > 0 && dx != -ring && dx != ring && dz != -ring && dz != ring) continue;
+                float fy = umbra_world_spawn((int64_t)(bx + dx), (int64_t)(bz + dz));
+                if (fy <= 0.0f) continue;
+                int64_t cell = (int64_t)ceilf(fy);
+                // Two blocks of air above the floor: the body's own height, rounded up.
+                if (umbra_block_top((int64_t)(bx + dx), cell, (int64_t)(bz + dz)) > 0.0f) continue;
+                if (umbra_block_top((int64_t)(bx + dx), cell + 1, (int64_t)(bz + dz)) > 0.0f) continue;
+                bx += dx;
+                bz += dz;
+                y = fy;
+                found = 1;
+            }
+        }
+    }
+    if (!found) {
+        // Nothing within six blocks is open. Stand on the middle anyway and say so: a
+        // body that cannot move is a fact the log has to carry, not a silent failure.
+        y = umbra_world_spawn((int64_t)bx, (int64_t)bz);
+        umbra_log(app, "player: no open cell within 6 blocks of %d,%d; standing on the "
+                       "middle at floor %.2f, which may be walled in", bx, bz, y);
+    } else if (bx != (int32_t)floorf(cx) || bz != (int32_t)floorf(cz)) {
+        umbra_log(app, "player: the middle of the world is walled in; spawning at %d,%d "
+                       "(floor %.2f), the nearest open cell", bx, bz, y);
+    }
+    // The centre of the cell, not its corner: a body at the corner is inside four cells.
+    umbra_player_reset(&app->player, (float)bx + 0.5f, y + 0.01f, (float)bz + 0.5f);
     app->player.yaw = 0.0f;
     app->player.pitch = -0.25f;
     app->player_on = 1;

@@ -238,6 +238,46 @@ int main(int argc, char **argv) {
         int64_t under = (int64_t)ceilf(floor_y) - 1;
         check(umbra_block_top(cx, under, cz) > 0.0f,
               "and that floor is a block the body can stand on");
+
+        // And the body has to be able to *stand* there. The app spawns at a cell centre in
+        // a cell with two blocks of air above the floor; a body at a cell corner overlaps
+        // the three neighbouring cells, and at 24,24 the one at 24,23 is solid to 69 --
+        // which is how the emulator got four holds of 0.00 blocks out of a working input
+        // path (run 44241902430). Both rules are checked here, on the middle cell.
+        int64_t cell = (int64_t)ceilf(floor_y);
+        check(umbra_block_top(cx, cell, cz) <= 0.0f && umbra_block_top(cx, cell + 1, cz) <= 0.0f,
+              "the cell the body spawns in has the body's own height of air");
+        // A cell centre plus a body half-width stays inside that one cell.
+        const float half = 0.3f;
+        int overlaps = 0;
+        for (int ox = -1; ox <= 1; ox += 2) {
+            for (int oz = -1; oz <= 1; oz += 2) {
+                float px = (float)cx + 0.5f + half * (float)ox;
+                float pz = (float)cz + 0.5f + half * (float)oz;
+                if ((int)floorf(px) != cx || (int)floorf(pz) != cz) overlaps++;
+            }
+        }
+        check(overlaps == 0, "and a body at the centre of it stays in that one cell");
+        // Why the centre and not the corner, stated as a number. A body at 24.0,24.0
+        // overlaps the four cells around that corner, and the one at 24,23 is solid to
+        // 69 -- so the body would start *inside a block*, and every move is rejected
+        // because the box it tests after the move also overlaps. That is four holds of
+        // 0.00 blocks on a working input path (run 44241902430).
+        int solids = 0;
+        for (int ox = -1; ox <= 1; ox += 2) {
+            for (int oz = -1; oz <= 1; oz += 2) {
+                int64_t qx = (int64_t)floorf((float)cx + half * (float)ox);
+                int64_t qz = (int64_t)floorf((float)cz + half * (float)oz);
+                if (umbra_block_top(qx, cell, qz) > 0.0f) solids++;
+            }
+        }
+        printf("demo: a body at the corner %.1f,%.1f would overlap %d solid cell(s) at foot "
+               "height\n", (float)cx, (float)cz, solids);
+        // The demo scene is a hillside there, so the corner really is blocked; if a future
+        // world is flat, this is a note, not a failure.
+        if (solids > 0) printf("demo: this is the spawn that failed on the device (44241902430)\n");
+        printf("demo: spawning at %.1f,%.1f in cell %d,%d (floor %.2f)\n",
+               (float)cx + 0.5f, (float)cz + 0.5f, cx, cz, floor_y);
     }
 
     // 2b. The sliced mesher (what the phone runs) must produce exactly the same
