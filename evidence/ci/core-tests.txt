@@ -1,34 +1,34 @@
-goose/test/worldzip_test.goose:56: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+goose/test/worldzip_test.goose:57: warning: redundant `as i64`: a u32 converts to i64 implicitly here
     check_i64(demo_block_at(-1, 0, -1) as i64, stone as i64, "the block at -1,-1 is its 15,15");
               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/test/worldzip_test.goose:56: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+goose/test/worldzip_test.goose:57: warning: redundant `as i64`: a u32 converts to i64 implicitly here
     check_i64(demo_block_at(-1, 0, -1) as i64, stone as i64, "the block at -1,-1 is its 15,15");
                                                ^~~~~~~~~~~~
-goose/test/worldzip_test.goose:57: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+goose/test/worldzip_test.goose:58: warning: redundant `as i64`: a u32 converts to i64 implicitly here
     check_i64(demo_block_at(-16, 0, -16) as i64, stone as i64, "and its 0,0 is at -16,-16");
               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/test/worldzip_test.goose:57: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+goose/test/worldzip_test.goose:58: warning: redundant `as i64`: a u32 converts to i64 implicitly here
     check_i64(demo_block_at(-16, 0, -16) as i64, stone as i64, "and its 0,0 is at -16,-16");
                                                  ^~~~~~~~~~~~
-goose/test/worldzip_test.goose:59: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+goose/test/worldzip_test.goose:60: warning: redundant `as i64`: a u32 converts to i64 implicitly here
     check_i64(demo_block_at(-2, 0, -3) as i64, stone as i64, "and read back");
               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/test/worldzip_test.goose:59: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+goose/test/worldzip_test.goose:60: warning: redundant `as i64`: a u32 converts to i64 implicitly here
     check_i64(demo_block_at(-2, 0, -3) as i64, stone as i64, "and read back");
                                                ^~~~~~~~~~~~
-goose/test/worldzip_test.goose:84: warning: redundant `as i64`: wl_count_files() is already i64
+goose/test/worldzip_test.goose:85: warning: redundant `as i64`: wl_count_files() is already i64
     check_i64(wl_count_files() as i64, regions, "every region file was read");
               ^~~~~~~~~~~~~~~~~~~~~~~
-goose/test/worldzip_test.goose:85: warning: redundant `as i64`: wl_count_chunks() is already i64
+goose/test/worldzip_test.goose:86: warning: redundant `as i64`: wl_count_chunks() is already i64
     check_i64(wl_count_chunks() as i64, 4, "four chunks, as the fixture's save has");
               ^~~~~~~~~~~~~~~~~~~~~~~~
-goose/test/worldzip_test.goose:89: warning: redundant `as i64`: demo.len is already i64
+goose/test/worldzip_test.goose:90: warning: redundant `as i64`: demo.len is already i64
     check(demo.len as i64 == wl_count_chunks(), "one column per chunk");
           ^~~~~~~~~~~~~~~
-goose/test/worldzip_test.goose:177: warning: redundant `as i64`: wl_verdict() is already i64
+goose/test/worldzip_test.goose:178: warning: redundant `as i64`: wl_verdict() is already i64
     check_i64(wl_verdict() as i64, 0, "and it is not a world");
               ^~~~~~~~~~~~~~~~~~~
-goose/test/worldzip_test.goose:179: warning: redundant `as i64`: demo.len is already i64
+goose/test/worldzip_test.goose:180: warning: redundant `as i64`: demo.len is already i64
     check_i64(demo.len as i64, 0, "and no columns");
               ^~~~~~~~~~~~~~~
 goose/core/worldload_in.goose:283: warning: redundant `as i64`: cx is already i64
@@ -40,16 +40,16 @@ goose/core/worldload_in.goose:284: warning: redundant `as i64`: cz is already i6
 goose/core/worldload_in.goose:329: warning: redundant `as i64`: an i32 converts to i64 implicitly here
             if n > 0 { wl_res.states += n as i64; }
                                         ^~~~~~~~
-goose/core/worldload_in.goose:417: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/worldload_in.goose:432: warning: redundant `as f32`: an i32 converts to f32 implicitly here
 fn wl_min_block_x() -> f32 { return (wl_min_x as f32) * 16.0; }
                                      ^~~~~~~~~~~~~~~
-goose/core/worldload_in.goose:418: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/worldload_in.goose:433: warning: redundant `as f32`: an i32 converts to f32 implicitly here
 fn wl_max_block_x() -> f32 { return ((wl_max_x as f32) + 1.0) * 16.0; }
                                       ^~~~~~~~~~~~~~~
-goose/core/worldload_in.goose:419: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/worldload_in.goose:434: warning: redundant `as f32`: an i32 converts to f32 implicitly here
 fn wl_min_block_z() -> f32 { return (wl_min_z as f32) * 16.0; }
                                      ^~~~~~~~~~~~~~~
-goose/core/worldload_in.goose:420: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/worldload_in.goose:435: warning: redundant `as f32`: an i32 converts to f32 implicitly here
 fn wl_max_block_z() -> f32 { return ((wl_max_z as f32) + 1.0) * 16.0; }
                                       ^~~~~~~~~~~~~~~
 goose/core/inflate.goose:84: warning: redundant `as i64`: a u32 converts to i64 implicitly here
@@ -565,6 +565,6 @@ PASS atlas (414 checks)
 PASS models (436 checks)
 PASS modelstore (486 checks)
 PASS raster (496 checks)
-PASS worldzip (565 checks)
+PASS worldzip (572 checks)
 all modules passed
 c-host: goose_exit returned 0
