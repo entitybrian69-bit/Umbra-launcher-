@@ -101,24 +101,41 @@ origin (an 80×80-block piece of the world, chosen because 25 chunks of server t
 about 1.1 M vertices and 55 MB of buffer on a Mali-class phone), and it is the overworld
 only. The number left out is in the log, per import.
 
-**(d) How long does a block edit take to appear on screen? — The re-mesh is measured; the
-frame-to-screen number is not measured yet, and is the next thing in this item.**
+**(d) How long does a block edit take to appear on screen? — Measured on the device, as
+one number: **571.7 ms**, of which the app's own work is 187.5 ms and the rest is the
+emulator's frame time. The app now prints it.**
 
-Measured on the device, run `44054199029`: `edit: re-meshed 1 of 9 columns in 130.4 ms
-over 7 calls (worst call 20.3 ms, worst slice 10.6 ms), 3 slot(s) changed` and `edit: the
-longest slice was 20.3 ms (under the 50 ms an edit is allowed)`. The sub-upload after it
-is one `glBufferSubData` per changed slot: `upload_mesh_changes` sends the slot's
-vertices and indices, not the world.
+This was the one answer that had three of its four parts measured separately and never
+together. The app now stamps the edit, the first slice, the end of the sub-upload and the
+frame that drew it, and logs one line. Device, run `44244072804`:
 
-What that does **not** say is the number the owner asked for: the time from the finger
-lifting to the changed pixel being presented. The re-mesh is sliced, so the honest number
-is *first frame with the new geometry* − *edit applied*, and three of the four terms in
-that sum (the slice the edit waits for, the sub-upload's cost, the present) have each
-been measured separately and never once together. The next commit in this item adds that
-one number to the device log (`edit: on screen in X ms, of which Y in the re-mesh, Z in
-the upload`) using `umbra_now_us` at the edit, at `upload_mesh_changes`, and at the next
-present. Until that line exists in a run, this answer is "130.4 ms of re-mesh plus an
-unmeasured upload and frame", not a latency.
+```
+edit: on screen in 571.7 ms (re-mesh 559.1 ms from 45.3 ms after the edit,
+      of which the sub-upload 1.76 ms; the frame that drew it 12.6 ms)
+edit: re-meshed 1 of 9 columns in 187.5 ms over 10 calls
+      (worst call 20.7 ms, worst slice 4.5 ms), 3 slot(s) changed
+```
+
+Read honestly, that line says four different things:
+
+* **The upload is not the problem.** 1.76 ms to send three slots. It never was.
+* **The re-mesh is 187.5 ms of work.** That is 1 column × 24 sections × 3 passes, and an
+  edit changed one block: 23 of those 24 sections were meshed to produce geometry identical
+  to what was already on the GPU. This is the real target, and it is the section list in
+  `demo_mesh_unit` -- a column's slot is placed whole, so the fix is per section, not per
+  column, and it is not in this commit.
+* **The 559.1 ms the re-mesh took is not 187.5 ms of work.** It is 10 slices, one per
+  frame, on an emulator that draws 1920×1080 with a software rasteriser at ~9 fps: 100 ms
+  per frame is the floor for *any* change to appear here, and the slices sit one per frame.
+  So 571.7 ms is an emulator number and must not be quoted as a phone latency.
+* **No frame held for 50 ms.** Worst slice 4.5 ms, worst call 20.7 ms -- the brief's bound
+  is about the frame, and the frame is fine. What is not fine is how many frames the work
+  is spread over.
+
+So: **the honest answer is "187.5 ms of app work, spread one slice per frame; on this
+emulator that is 571.7 ms to the pixel, and on a GPU-driven phone the frame term drops and
+the 187.5 ms is what remains."** The next change in this item is the per-section section
+list, which takes the work from 24 sections to 2.
 
 ## Where the project is
 
