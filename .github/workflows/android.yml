@@ -244,6 +244,7 @@ jobs:
           set -o pipefail
           mkdir -p build/world
           java -version 2>&1 | head -2
+          mkdir -p evidence/ci
           if ! tools/gen_server_world.sh build/server/server.jar build/server/run > build/world/gen-world.log 2>&1; then
             # The step's own log is not always readable afterwards through the API, so the
             # reason is put in an annotation too: an annotation is the one thing the run
@@ -257,11 +258,15 @@ jobs:
             exit 1
           fi
           # What the settling hook said, where it survives: the step log was unreadable
-          # after run 44262980478 and these lines are the whole question.
+          # after run 44266341903 and these lines are the whole question. The hook writes
+          # evidence/ci/world-window.log; the evidence step copies the run's own logs, so
+          # take the copy the hook left in the workspace too.
           echo "== the settling hook's verdict"
+          cp -f world-window.log evidence/ci/world-window.log 2>/dev/null || true
           cat evidence/ci/world-window.log 2>/dev/null || echo "(the hook wrote no verdict)"
           if ! grep -q "^window: PASS" evidence/ci/world-window.log 2>/dev/null; then
-            echo "::error title=world::the save was not settled before the phone got it; see evidence/ci/world-window.log"
+            WHY="$(tail -3 evidence/ci/world-window.log 2>/dev/null | tr '\n' ' ' | cut -c1-700)"
+            echo "::error title=world::the save was not settled before the phone got it: ${WHY:-the hook wrote no verdict}"
             exit 1
           fi
           # The region files, wherever the version put them. `ls` with two globs fails if

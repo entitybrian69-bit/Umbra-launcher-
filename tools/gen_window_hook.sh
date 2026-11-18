@@ -37,18 +37,51 @@ RADIUS="${UMBRA_PROBE_RADIUS:-4}"
 
 cd "$ROOT" || exit 1
 
+# Every reading is also written where it survives: evidence/ci/, which the job commits.
+# The step's own stdout is not always readable afterwards through the API (run
+# 44266341903 returned an empty body), and a hook that fails before its first reading
+# leaves nothing to explain the failure -- which is exactly what happened when this file
+# set up its log *after* building the reader, so a failed build exited silently.
+mkdir -p "$ROOT/evidence/ci"
+WLOG="$ROOT/evidence/ci/world-window.log"
+: > "$WLOG"
+say() { echo "window: $*" | tee -a "$WLOG"; }
+trap 'rc=$?; [ "$rc" -ne 0 ] && say "FAIL the hook exited $rc"; cp "$WLOG" ./world-window.log 2>/dev/null || true' EXIT
+
+say "hook: $ROOT/tools/gen_window_hook.sh, save directory $RUN, radius $RADIUS"
+
 # The reader, built the same way tools/check_real_world.sh builds it.
 if [ ! -x build/umbra_worldload ]; then
-    echo "window: building the world reader the gate uses"
+    say "building the world reader the gate uses"
     GOOSE_BIN="${GOOSE:-$ROOT/build/bin/goose}"
-    GOOSE_STDLIB="${GOOSE_STDLIB:-$ROOT/build/goose-src/stdlib}" \
-        "$GOOSE_BIN" --standalone -o build/worldload.c goose/worldload.goose > build/worldload-build.log 2>&1 \
-        && ${CC:-cc} -O2 -o build/umbra_worldload build/worldload.c platform/shared/umbra_glue.c \
-             -lm -lpthread >> build/worldload-build.log 2>&1
+    # The android job builds the compiler with tools/pin_goose.sh, which leaves the stdlib
+    # in build/goose-src/stdlib; a checkout that has it somewhere else can say so.
+    STDLIB="${GOOSE_STDLIB:-}"
+    if [ -z "$STDLIB" ]; then
+        for d in "$ROOT/build/goose-src/stdlib" "$ROOT/stdlib"; do
+            [ -d "$d" ] && STDLIB="$d" && break
+        done
+    fi
+    say "reader build: goose ${GOOSE_BIN}, stdlib ${STDLIB:-<not found>}"
+    GOOSE_STDLIB="$STDLIB" \
+        "$GOOSE_BIN" --standalone -o build/worldload.c goose/worldload.goose > build/worldload-build.log 2>&1
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
+        say "FAIL goose could not compile goose/worldload.goose (exit $rc)"
+        tail -20 build/worldload-build.log 2>/dev/null | tee -a "$WLOG"
+        exit 1
+    fi
+    ${CC:-cc} -O2 -o build/umbra_worldload build/worldload.c platform/shared/umbra_glue.c \
+        -lm -lpthread >> build/worldload-build.log 2>&1
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
+        say "FAIL the reader did not link (exit $rc)"
+        tail -20 build/worldload-build.log 2>/dev/null | tee -a "$WLOG"
+        exit 1
+    fi
 fi
 if [ ! -x build/umbra_worldload ]; then
-    echo "window: FAIL the reader could not be built, so the save cannot be checked:"
-    tail -20 build/worldload-build.log 2>/dev/null
+    say "FAIL there is no reader at build/umbra_worldload, so the save cannot be checked"
     exit 1
 fi
 
@@ -67,14 +100,6 @@ window() {
 unfinished() {
     grep -oE '\([0-9]+ of them within [0-9]+ of the origin\)' "$RUN/settle.log" 2>/dev/null | head -1
 }
-
-# The hook's own stdout goes to the step log, and the step log is not always readable
-# afterwards (run 44262980478: the API returned an empty body for it). So every reading is
-# also written where it survives: evidence/ci/, which the job commits.
-mkdir -p "$ROOT/evidence/ci"
-WLOG="$ROOT/evidence/ci/world-window.log"
-: > "$WLOG"
-say() { echo "window: $*" | tee -a "$WLOG"; }
 
 say "settling the save at radius $RADIUS before it is handed to the phone"
 say "reader: $ROOT/build/umbra_worldload, save: $RUN/world"
