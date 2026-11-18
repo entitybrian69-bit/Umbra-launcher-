@@ -67,19 +67,19 @@ goose/core/worldload_in.goose:283: warning: redundant `as i64`: cx is already i6
 goose/core/worldload_in.goose:284: warning: redundant `as i64`: cz is already i64
             let wz = rz * 32 + (cz as i64);
                                 ^~~~~~~~~
-goose/core/worldload_in.goose:329: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/core/worldload_in.goose:326: warning: redundant `as i64`: an i32 converts to i64 implicitly here
             if n > 0 { wl_res.states += n as i64; }
                                         ^~~~~~~~
-goose/core/worldload_in.goose:432: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/worldload_in.goose:429: warning: redundant `as f32`: an i32 converts to f32 implicitly here
 fn wl_min_block_x() -> f32 { return (wl_min_x as f32) * 16.0; }
                                      ^~~~~~~~~~~~~~~
-goose/core/worldload_in.goose:433: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/worldload_in.goose:430: warning: redundant `as f32`: an i32 converts to f32 implicitly here
 fn wl_max_block_x() -> f32 { return ((wl_max_x as f32) + 1.0) * 16.0; }
                                       ^~~~~~~~~~~~~~~
-goose/core/worldload_in.goose:434: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/worldload_in.goose:431: warning: redundant `as f32`: an i32 converts to f32 implicitly here
 fn wl_min_block_z() -> f32 { return (wl_min_z as f32) * 16.0; }
                                      ^~~~~~~~~~~~~~~
-goose/core/worldload_in.goose:435: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/worldload_in.goose:432: warning: redundant `as f32`: an i32 converts to f32 implicitly here
 fn wl_max_block_z() -> f32 { return ((wl_max_z as f32) + 1.0) * 16.0; }
                                       ^~~~~~~~~~~~~~~
 goose/core/demo.goose:213: warning: redundant `as f32`: fx is already f32
@@ -238,7 +238,7 @@ goose/core/region.goose:66: warning: redundant `as i64`: a u32 converts to i64 i
 goose/core/region.goose:142: warning: redundant `as u32`: a u16 converts to u32 implicitly here
     return s.blocks[i] as u32;
            ^~~~~~~~~~~~~~~~~~
-goose/core/region.goose:500: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+goose/core/region.goose:515: warning: redundant `as u32`: a u8 converts to u32 implicitly here
             put_be_u32(out, (offsets[i] << 8) | (counts[i] as u32));
                                                  ^~~~~~~~~~~~~~~~
 goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
@@ -356,16 +356,16 @@ demo: the middle of the world is 24,24 and its floor is 66.00
 demo: a body at the corner 24.0,24.0 would overlap 1 solid cell(s) at foot height
 demo: this is the spawn that failed on the device (44241902430)
 demo: spawning at 24.5,24.5 in cell 24,24 (floor 66.00)
-progress: worst 892 permille; units 10369, total 10369
-sliced mesh: 10 calls, worst call 20.73 ms, worst unit 0.74 ms
+progress: worst 901 permille; units 10369, total 10369
+sliced mesh: 17 calls, worst call 20.25 ms, worst unit 0.98 ms
 ranges: 27 slots for 9 columns
 ranges: 542592 + 12750 + 7704 = 563046 indices used of 733136 in the arena
 edit 0: 1 columns, 1153 units of work, is_edit 1
-edit 0: 4 calls, worst call 6.06 ms, worst slice 0.45 ms
+edit 0: 7 calls, worst call 6.16 ms, worst slice 0.98 ms
 edit 1: 1 columns, 1153 units of work, is_edit 1
-edit 1: 4 calls, worst call 6.07 ms, worst slice 0.33 ms
+edit 1: 7 calls, worst call 6.28 ms, worst slice 0.49 ms
 edit 2: 2 columns, 2305 units of work, is_edit 1
-edit 2: 8 calls, worst call 6.08 ms, worst slice 0.33 ms
+edit 2: 12 calls, worst call 6.28 ms, worst slice 0.49 ms
 edit: patched geometry 6d0d5571049dc1e9 (563046 indices), rebuilt 6d0d5571049dc1e9 (563046)
 layout: phone scale 2.64, desktop scale 1.00
 layout: button 0 21,1006 737x53; button 2 1528,1006
@@ -401,7 +401,7 @@ world: floor at 24,24 is 66.00
 world: slab at 12,64,21 with a half-block collision top
 water: 386 fluid cells, 22287 solid, 367 air-or-other near the surface
 edits: the last line is "26 65 24 minecraft:stone"
-world: opened 4 chunk(s) from 1 region file(s): 24673 non-air blocks, 53 states, 0 errors, 0 not full, 0 left out, in 4.3 ms
+world: opened 4 chunk(s) from 1 region file(s): 24673 non-air blocks, 53 states, 0 errors, 0 not full, 0 left out, in 5.8 ms
 world: bounds x 0.0..32.0 z 0.0..32.0
 world: the topmost block at 1,1 is y 61
 world: the block at 1,61,1 is minecraft:grass_block
