@@ -239,18 +239,38 @@ jobs:
           mkdir -p build/world
           java -version 2>&1 | head -2
           if ! tools/gen_server_world.sh build/server/server.jar build/server/run > build/world/gen-world.log 2>&1; then
-            echo "::warning title=world::the server wrote no world; the world phase will skip"
-            tail -20 build/world/gen-world.log || true
-            exit 0
+            echo "::error title=world::the server wrote no world, so the phone's import cannot be proved"
+            tail -30 build/world/gen-world.log || true
+            exit 1
           fi
-          REGIONS="$(ls build/server/run/world/region/*.mca \
-                        build/server/run/world/dimensions/minecraft/overworld/region/*.mca 2>/dev/null | head -4)"
-          [ -n "$REGIONS" ] || { echo "::warning title=world::no region files"; exit 0; }
-          # A save's four regions around the origin: the app opens a window of 25 chunks
-          # around the world's spawn, and the spawn is in the region holding chunk 0,0.
-          echo "== region files"
-          printf '%s\n' "$REGIONS"
-          python3 tools/zip_world.py build/world/world.zip $REGIONS
+          # The region files, wherever the version put them. `ls` with two globs fails if
+          # either matches nothing, and under `set -e` with pipefail that killed this step
+          # at the assignment -- one of the two layouts always matches nothing, so the
+          # step could only ever fail, which is why run 44250373572 went red here with no
+          # message. `find` has no such opinion.
+          mapfile -t ALL < <(find build/server/run/world -name '*.mca' -type f 2>/dev/null | sort)
+          echo "== region files written: ${#ALL[@]}"
+          printf '%s\n' "${ALL[@]:-}" | head -8
+          if [ "${#ALL[@]}" -eq 0 ]; then
+            echo "::error title=world::the server wrote no region files, so there is no world to hand the phone"
+            tail -30 build/world/gen-world.log || true
+            exit 1
+          fi
+          # A save's regions around the origin: the app opens a window of 25 chunks around
+          # the world's spawn, and the spawn is in the region holding chunk 0,0. Four of
+          # them, preferring r.0.0 and its neighbours.
+          REGIONS=()
+          for f in "${ALL[@]}"; do
+            case "$(basename "$f")" in
+              r.0.0.mca|r.-1.0.mca|r.0.-1.mca|r.-1.-1.mca) REGIONS+=("$f") ;;
+            esac
+          done
+          if [ "${#REGIONS[@]}" -eq 0 ]; then
+            REGIONS=("${ALL[@]:0:4}")
+          fi
+          echo "== the regions this run hands the phone: ${#REGIONS[@]}"
+          printf '%s\n' "${REGIONS[@]}"
+          python3 tools/zip_world.py build/world/world.zip "${REGIONS[@]}"
           ls -l build/world/world.zip
           echo "UMBRA_WORLD_ZIP=$GITHUB_WORKSPACE/build/world/world.zip" >> "$GITHUB_ENV"
           # So the smoke script can tell "this run was given no save" (a skip) from "this
