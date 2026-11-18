@@ -74,15 +74,40 @@ The blocks match a *second* read of the same region file block for block
 of opening an empty world. Before this change the demo world's vertices were 310 998
 outside those bounds, which is exactly the difference between "a world" and "the world".
 
-**What is still not device-verified**: the phone opening a *server-generated* save. The
-android workflow now generates one with the real server (`gen_server_world.sh`, the same
-world the `world` gate reads), zips it and pushes it, and the `world` phase opens it and
-screenshots it — see "0.3.7-pre" below for the run that has to pass for this sentence to
-become a device claim.
+**The phone opening a server-generated save is now device-verified** (run `44301504577`,
+head `4cbe983`, both android jobs green). The android workflow generates a world with the
+real server, settles it, zips the region files and pushes them to the phone, and the phone
+opens that save and draws it:
+
+```
+world: opened: 25 chunk(s) from 4 region file(s) -- files 4, entries 4, chunks 25,
+       non-air blocks 792922, states 2537, read errors 0, not-full chunks 0,
+       left out 1200 (a window of 2 chunks around the origin), 813.1 ms
+world: the phone read 25 chunk(s), 792922 non-air block(s), 0 read error(s)
+world: the block at 8,62,8 is minecraft:water
+world: mesh: 860904 vertices drawn, passes 1267224/24132/0 over 75 ranges
+world: shot-world.png is 1655840 bytes
+```
+
+Getting there took three separate defects, each of which had been reporting as a fact
+about the world:
+
+* the settling script never force-loaded the window, so the save the phone received had
+  never been generated (844 904 blocks in the file, 101 105 in the window, frozen for
+  twelve attempts);
+* the save holds two overworld layouts with the same file names —
+  `world/region/r.0.0.mca`, left by spawn preparation, and
+  `world/dimensions/minecraft/overworld/region/r.0.0.mca`, the terrain — and the zip
+  took both, so the stale one won and the phone reported proto-chunks with no blocks;
+* the gate's own parser read the line above as "0 chunks", because a greedy `sed` took
+  the last "chunks" on it, which is "not-full chunks 0". The world was right and the
+  reading of one line was wrong.
 
 **(c) Does the phone open a real server-generated world, or still its own demo terrain? —
-Until `d01817e` it was the demo terrain; now it can open a real save, and the demo scene
-remains the default when no save is given.**
+It opens a real world the server generated: on the device, `world: opened: 25 chunk(s) …
+792922 non-air blocks … not-full chunks 0` and then `860904 vertices drawn`, from a save
+the real 26.3 server wrote and the run zipped and pushed. With no save present it falls
+back to the demo terrain, which is what the screenshots of the fallback show.**
 
 The code evidence for the old state was exact: `goose/main.goose`'s import list had no
 savegame module at all, and `core.savegame` — the reader that has compared real 26.3
