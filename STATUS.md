@@ -41,9 +41,9 @@ app's own screen. One texture of the 1 214 the models reference is missing from 
 by design (it is the block a debug model points at); magenta in the atlas is how that is
 made visible.
 
-**(b) Does the app have an in-app "get game files" flow, and a world import? — The
-game files: yes, device-verified. The world import: built, host-verified, device run in
-flight (see below).**
+**(b) Does the app have an in-app "get game files" flow, and a world import? — Yes to
+both, and both are device-verified. Game files: downloaded through the app's own button.
+World import: a save the real 26.3 server generated is opened on the phone and drawn.**
 
 Game files, from the device, through the app's own button and the device's own network:
 `gamefiles: download would fetch https://piston-data.mojang.com/v1/objects/e877b6a0…/
