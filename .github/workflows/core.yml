@@ -27,6 +27,13 @@ jobs:
           cc --version | head -1
           python3 --version
           nproc
+      - name: The repository guards
+        # These used to live only in build/gate.sh, which is git-ignored because build/
+        # holds generated output. Two of them have each caught a real defect -- the zip
+        # layout rule and the window block parser -- and until now nothing but one
+        # machine ever ran them. tools/check_guards.sh is the tracked copy, so CI runs
+        # what a local gate runs.
+        run: bash tools/check_guards.sh
       - name: The workflow files themselves
         # Run 43855510033 failed in 0 seconds with zero jobs: a heredoc at column 0 inside
         # a `run: |` block ended the block scalar and the file stopped being YAML, so the
