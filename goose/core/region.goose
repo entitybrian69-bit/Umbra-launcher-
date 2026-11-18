@@ -142,6 +142,22 @@ fn chunk_block(c: ChunkColumn&, x: i32, y: i32, z: i32) -> u32 {
     return s.blocks[i] as u32;
 }
 
+// Whether every block of one horizontal layer of a section is air. The mesher's unit is a
+// layer of a section, and a layer of air emits nothing in any of the three passes -- but
+// the mesher still visited all 256 blocks of it, three times, in every column. In a demo
+// world whose terrain tops out around y 70 and whose columns are declared present from
+// y -64 to 319, that was most of the edit's re-mesh. Reading 256 u16s to answer it is
+// eight times cheaper than meshing them, and the answer cannot be wrong: a layer with no
+// block in it cannot emit a face, whatever its neighbours are.
+fn section_layer_empty(s: Section&, ly: i32) -> bool {
+    if ly < 0 || ly > 15 { return true; }
+    let base = (ly * 256) as i64;
+    for i in 256 {
+        if s.blocks[base + i] != 0 { return false; }
+    }
+    return true;
+}
+
 fn chunk_set_block(c: ChunkColumn&, x: i32, y: i32, z: i32, id: u32) {
     if y < -64 || y > 319 { return; }
     let idx = (y + 64) / 16;

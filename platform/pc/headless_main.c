@@ -422,8 +422,11 @@ int main(int argc, char **argv) {
 
         // Edit a block in the middle of a column, then a block on a chunk border, which
         // is the case that also re-meshes the neighbour.
-        int edits[2][3] = {{8, 66, 40}, {16, 64, 40}};
-        for (int e = 0; e < 2; e++) {
+        // The first edit is the emulator's own case -- one block in the middle of a
+        // column, at grass height -- so this test measures the edit the device measured
+        // 187.5 ms for (run 44244072804), not a different one.
+        int edits[3][3] = {{25, 63, 24}, {8, 66, 40}, {16, 64, 40}};
+        for (int e = 0; e < 3; e++) {
             const char *block = "minecraft:stone";
             int did = (int)umbra_edit_block(edits[e][0], edits[e][1], edits[e][2],
                                             (sl_u8){(uint8_t *)block,
