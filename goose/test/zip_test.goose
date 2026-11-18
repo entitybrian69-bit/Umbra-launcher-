@@ -7,6 +7,7 @@ import test.harness;
 // Differential test: the archives were written by Python's zipfile, and each
 // extracted entry is compared byte for byte with the file that went in.
 fn run_zip() {
+    crc32_init();
     zip_reset();
     let dir = "goose/test/fixtures/zip";
     let names = "assets/minecraft/textures/block/stone.png\nassets/minecraft/blockstates/stone.json\ndata/minecraft/recipe/stick.json\nempty.txt\nbig.bin";

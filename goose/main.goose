@@ -25,6 +25,7 @@ import core.models;
 import core.modelstore;
 import core.jarpack;
 import core.demo;
+import core.worldload_in;
 import core.sha1;
 import core.gamefiles;
 
@@ -1309,3 +1310,60 @@ export fn umbra_gf_state_verifying() -> i64 { return UM_ST_VERIFYING }
 export fn umbra_gf_state_ready() -> i64 { return UM_ST_READY }
 export fn umbra_gf_state_failed() -> i64 { return UM_ST_FAILED }
 export fn umbra_gf_state_imported() -> i64 { return UM_ST_IMPORTED }
+
+// --- opening a world the game generated -----------------------------------
+//
+// Question (c) of the brief, in one place: the phone has drawn a demo scene of its own
+// making since stage 1, and `core.savegame` -- the reader that has been comparing real
+// saves with a real server since stage 2 -- was only ever linked into the CI renderer and
+// the `worldload` tool. These four calls are the app's path to it: C reads the archive a
+// person picked, hands the region entries over one at a time, and the columns land in
+// `demo`, which is the array the mesher and the player already walk.
+//
+// The two calls in the middle are the frame loop's: `umbra_world_import_begin` returns at
+// once with the number of region entries, `umbra_world_import_file` reads one of them per
+// call, and `umbra_world_import_end` says whether the world is open or why it is not. An
+// import is a second of work on a phone-sized save and none of it is in a frame the
+// player is looking at.
+export "umbra_world_import_begin" fn world_import_begin(path: const u8[:]) -> i64 {
+    return wl_import_begin(path)
+}
+export "umbra_world_import_file" fn world_import_file(index: i64) -> i64 {
+    return wl_import_file(index)
+}
+export "umbra_world_import_end" fn world_import_end() -> i64 {
+    return wl_import_end()
+}
+// The verdict on the last import, and every number behind it: the same numbers
+// `worldload` prints, so a save read on the phone and a save read in CI can be compared
+// line for line.
+export "umbra_world_import_ok" fn world_import_ok() -> i64 { return wl_verdict() }
+export "umbra_world_import_open" fn world_import_open() -> i64 { return wl_is_open() }
+export "umbra_world_import_message" fn world_import_message() -> const u8[:] { return wl_message() }
+export "umbra_world_import_files" fn world_import_files() -> i64 { return wl_count_files() }
+export "umbra_world_import_chunks" fn world_import_chunks() -> i64 { return wl_count_chunks() }
+export "umbra_world_import_blocks" fn world_import_blocks() -> i64 { return wl_count_blocks() }
+export "umbra_world_import_states" fn world_import_states() -> i64 { return wl_count_states() }
+export "umbra_world_import_errors" fn world_import_errors() -> i64 { return wl_count_errors() }
+export "umbra_world_import_partial" fn world_import_partial() -> i64 { return wl_count_partial() }
+export "umbra_world_import_skipped" fn world_import_skipped() -> i64 { return wl_count_skipped() }
+export "umbra_world_import_entries" fn world_import_entries() -> i64 { return wl_count_entries() }
+export "umbra_world_import_radius" fn world_import_radius() -> i64 { return wl_radius_used() }
+// Where the loaded world is. A save's columns are not at 0..47, so the camera fit, the
+// spawn and the player's first step have to ask rather than assume.
+export fn umbra_world_loaded_min_x() -> f32 { return wl_min_block_x() }
+export fn umbra_world_loaded_max_x() -> f32 { return wl_max_block_x() }
+export fn umbra_world_loaded_min_z() -> f32 { return wl_min_block_z() }
+export fn umbra_world_loaded_max_z() -> f32 { return wl_max_block_z() }
+// Is the world on screen the demo scene or an opened save? 0 demo, 1 save.
+export fn umbra_world_is_save() -> i64 { return wl_is_open() }
+// Where a picked archive lands before it is opened: the app's own directory, named so a
+// glance at the file listing says what it is. `.part`, because a copy that ended early
+// must not be mistaken for a world.
+var wl_paths_part: u8[>..] = [];
+export "umbra_world_part_path" fn world_part_path(files_dir: const u8[:]) -> const u8[:] {
+    wl_paths_part = [];
+    wl_paths_part.append(files_dir);
+    wl_paths_part.append("/world.zip.part");
+    return wl_paths_part
+}

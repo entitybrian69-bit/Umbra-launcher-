@@ -178,11 +178,26 @@ struct umbra_app {
     // with no way to do it (the PC host), which the screen says out loud.
     int (*download_fn)(void *ctx, const char *url, const char *dest, long long *got);
     int (*pick_file_fn)(void *ctx, const char *dest, const char *mime, long long *got);
+    // The same picker, told what the file is for: a world archive is a .zip, and a
+    // picker filtered to jars cannot show one at all (see android_pick_world).
+    int (*pick_world_fn)(void *ctx, const char *dest, long long *got);
     void (*progress_fn)(void *ctx, long long *got, long long *total);
     void *net_ctx;
     char gf_url[512];          // where the jar comes from, from Goose's version JSON
     char gf_platform_error[160];  // the last thing the platform's job said
     int gf_logged_width;       // the width the screen's buttons were logged at
+    // Opening a world: the game-files screen offers a fifth button, and the import runs
+    // as a job like a download does, so the frame loop keeps drawing. `world_job` is the
+    // entry index being read; `world_state` is 0 none, 1 importing, 2 open, 3 refused.
+    int world_job;
+    int world_state;
+    int world_files;           // region entries the archive held
+    char world_text[192];      // what the screen says about it
+    char world_path[512];      // where the last archive came from
+    int world_wanted;          // a world import was asked for and has not started
+    long long world_chunks, world_blocks, world_states, world_errors, world_partial;
+    long long world_skipped;
+    int world_screen_logged;   // the screen has logged this import's numbers once
     int gf_adopt;              // a verified jar is waiting to be loaded
     int gf_pending_open;       // open the screen as soon as the surface is real
     bool jar_loaded;

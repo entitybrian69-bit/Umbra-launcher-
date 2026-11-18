@@ -12,6 +12,7 @@ import test.atlas_test;
 import test.models_test;
 import test.modelstore_test;
 import test.raster_test;
+import test.worldzip_test;
 
 fn main() {
     print("umbra core tests");
@@ -28,6 +29,7 @@ fn main() {
     run_models();
     run_modelstore();
     run_raster();
+    run_worldzip();
     print("all modules passed");
 }
 

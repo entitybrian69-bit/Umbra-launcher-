@@ -670,7 +670,10 @@ int main(int argc, char **argv) {
         float rows = umbra_hud_rows(3, 3, 1);
         int whole = (int)rows + (rows > (float)(int)rows ? 1 : 0);
         printf("hud: %d rows for a bench block, a last run and a crash tail\n", whole);
-        check(whole == 20, "the row count for that overlay is the one the log reports");
+        // 21 with the world row: the overlay says whether the world is a save or the demo
+        // scene, and a row that is drawn but not counted is the class of bug this check
+        // exists for (0.3.1 drew the crash tail on bare sky exactly that way).
+        check(whole == 21, "the row count for that overlay is the one the log reports");
     }
 
     // --- the game-files screen fits, and its buttons are tappable -----------
@@ -1331,6 +1334,123 @@ int main(int argc, char **argv) {
             check(umbra_hud_sneak_hit((int)(sn.x + sn.w * 0.5f), (int)(sn.y + sn.h * 0.5f),
                                       w, h, cases[c].in, s) == 1,
                   "a tap in the middle of the sneak button holds it");
+        }
+    }
+
+
+    // --- opening a world the game generated, the way the app does it ----------
+    // This is the check for the brief's question (c): a save on disk is opened through
+    // the same four calls the phone's fifth button uses, and the world that comes out is
+    // held to what the save says. Two things are proved here that the Goose test cannot:
+    // the C path (the part names, the entry loop, the bounds) and that meshing a save's
+    // columns draws geometry where the save's chunks are -- a save's chunks are at
+    // negative coordinates, and a renderer that only ever saw 0..47 would put it
+    // off-screen or at the wrong place.
+    {
+        int64_t files = 0, chunks = 0, blocks = 0, states = 0, errors = 0, partial = 0;
+        int64_t skipped = 0;
+        int64_t t0 = umbra_now_us_headless();
+        int64_t regions = umbra_world_import_begin(
+            (sl_u8){(uint8_t *)"goose/test/fixtures/worldzip/world-classic.zip",
+                    (int64_t)strlen("goose/test/fixtures/worldzip/world-classic.zip")});
+        check(regions > 0, "the archive's region files are found through the app's import");
+        if (regions > 0) {
+            int64_t entries = umbra_world_import_entries();
+            for (int64_t i = 0; i < entries; i++) umbra_world_import_file(i);
+            check(umbra_world_import_end() == 1, "the world opens");
+            files = umbra_world_import_files();
+            chunks = umbra_world_import_chunks();
+            blocks = umbra_world_import_blocks();
+            states = umbra_world_import_states();
+            errors = umbra_world_import_errors();
+            partial = umbra_world_import_partial();
+            skipped = umbra_world_import_skipped();
+            int64_t took = umbra_now_us_headless() - t0;
+            printf("world: opened %lld chunk(s) from %lld region file(s): %lld non-air blocks, "
+                   "%lld states, %lld errors, %lld not full, %lld left out, in %.1f ms\n",
+                   (long long)chunks, (long long)files, (long long)blocks, (long long)states,
+                   (long long)errors, (long long)partial, (long long)skipped, took / 1000.0);
+            check(chunks == 4, "every chunk of the save is a column");
+            check(files == 1, "and the one region file it holds was read");
+            check(errors == 0, "with no read error");
+            check(blocks > 10000, "the world holds the save's blocks");
+            check(umbra_world_is_save() == 1, "the app says the world is a save, not the demo");
+            check(umbra_world_columns() == chunks, "the mesher was given every column");
+            // The world's own bounds: the fixture's save is chunks 0..1, so 0..32 blocks.
+            float minx = umbra_world_loaded_min_x(), maxx = umbra_world_loaded_max_x();
+            float minz = umbra_world_loaded_min_z(), maxz = umbra_world_loaded_max_z();
+            printf("world: bounds x %.1f..%.1f z %.1f..%.1f\n", minx, maxx, minz, maxz);
+            check(maxx - minx > 16.0f && maxz - minz > 16.0f, "the world has a real extent");
+            // A block the save has is a block the app can name, at the save's own position.
+            const uint8_t *nm = NULL;
+            int64_t nl = 0;
+            // The chunk the save wrote: its surface at 1,1 is the topmost block that is
+            // not air, and that is grass with dirt and stone under it.
+            int64_t sy = 90;
+            while (sy > 40) {
+                const uint8_t *q = NULL;
+                int64_t ql = 0;
+                q = umbra_block_at(1, sy, 1, &ql);
+                char tmp[64];
+                int tk = 0;
+                for (int64_t j = 0; j < ql && tk + 1 < (int)sizeof tmp; j++) tmp[tk++] = (char)q[j];
+                tmp[tk] = 0;
+                if (strcmp(tmp, "minecraft:air") != 0) break;
+                sy--;
+            }
+            printf("world: the topmost block at 1,1 is y %lld\n", (long long)sy);
+            nm = umbra_block_at(1, sy, 1, &nl);
+            char name[64];
+            int k = 0;
+            for (int64_t j = 0; j < nl && k + 1 < (int)sizeof name; j++) name[k++] = (char)nm[j];
+            name[k] = 0;
+            printf("world: the block at 1,%lld,1 is %s\n", (long long)sy, name);
+            check(strstr(name, "grass_block") != NULL, "the surface the save wrote is there");
+            // And it meshes. The geometry is where the save's chunks are, not at 0..47 by
+            // accident: every vertex's x and z are inside the world's own bounds.
+            umbra_demo_mesh_begin();
+            int64_t calls = 0;
+            int done = 0;
+            while (!done && calls < 2000000) {
+                done = umbra_demo_mesh_step(20000) != 0;
+                calls++;
+            }
+            umbra_demo_mesh_finish();
+            int64_t svlen = 0, silen = 0;
+            const uint8_t *sv = umbra_verts_ptr(&svlen);
+            const uint8_t *si = umbra_indices_ptr(&silen);
+            const umbra_vertex *svp = (const umbra_vertex *)sv;
+            (void)svlen;
+            // The arena is bigger than the geometry -- each slot keeps slack for the next
+            // edit -- so "every vertex" has to mean every vertex a range actually draws,
+            // or the check reads zeros and passes on nothing.
+            int64_t svcount = 0;
+            int outside = 0;
+            float vmin = 1e9f, vmax = -1e9f;
+            for (int64_t sid = 0; sid < umbra_range_slots(); sid++) {
+                int64_t off = umbra_range_vertex(sid), len = umbra_range_vertex_len(sid);
+                for (int64_t k = 0; k < len; k++) {
+                    const umbra_vertex *vv = &svp[off + k];
+                    if (vv->x < minx - 1.0f || vv->x > maxx + 1.0f ||
+                        vv->z < minz - 1.0f || vv->z > maxz + 1.0f) outside++;
+                    if (vv->x < vmin) vmin = vv->x;
+                    if (vv->x > vmax) vmax = vv->x;
+                    svcount++;
+                }
+            }
+            check(svcount == umbra_used_vertices(), "the ranges cover the used vertices");
+            printf("world: meshed %lld vertices in %lld calls, x %.1f..%.1f, %d outside the save's bounds\n",
+                   (long long)svcount, (long long)calls, vmin, vmax, (int)outside);
+            check(done, "the opened world meshes");
+            check(svcount > 1000, "and the mesh is a world's, not a stub's");
+            check(outside == 0, "every vertex is inside the save's own bounds");
+            check(silen > 0 && silen % 4 == 0, "the index buffer is whole u32s");
+            // An archive with no world in it is refused, and the reason reaches the caller.
+            int64_t nw = umbra_world_import_begin(
+                (sl_u8){(uint8_t *)"goose/test/fixtures/worldzip/world-not-a-world.zip",
+                        (int64_t)strlen("goose/test/fixtures/worldzip/world-not-a-world.zip")});
+            check(nw == 0, "an archive with no region file is refused");
+            check(umbra_world_import_message(&nl) != NULL && nl > 0, "with a reason");
         }
     }
 

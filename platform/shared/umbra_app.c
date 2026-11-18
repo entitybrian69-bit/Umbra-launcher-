@@ -27,6 +27,11 @@ static void gf_say(umbra_app *app, int kind, long long now, long long total, con
 static void begin_scene(umbra_app *app);
 static void upload_atlas(umbra_app *app);
 static void gf_pump(umbra_app *app);
+static void world_job_start(umbra_app *app);
+static void world_pump(umbra_app *app);
+static void rebuild_world(umbra_app *app);
+static int file_exists_at(const char *path);
+static int world_open_path(umbra_app *app, const char *path, const char *how);
 #include <stdarg.h>
 #include <time.h>
 #include <math.h>
@@ -1139,9 +1144,17 @@ void close_gamefiles_screen(umbra_app *app) {
 }
 
 // Build the world (fast) and start meshing it (slow, sliced by the frame loop).
+//
+// Two worlds can be here: the demo scene this project generates, and a save the owner
+// opened (core/worldload_in.goose). Whichever it is, the columns are in the array the
+// mesher walks, so the only difference at this point is whether `demo_build` runs. A
+// save is *not* rebuilt: its columns are the ones the import put there, and calling
+// `demo_build` would throw them away.
+static int scene_is_save(void) { return (int)umbra_world_is_save(); }
+
 static void begin_scene(umbra_app *app) {
     int64_t t0 = umbra_now_us();
-    umbra_demo_build(20261114);
+    if (scene_is_save() == 0) umbra_demo_build(20261114);
     // Saved edits go in before the first mesh: replaying them afterwards would re-mesh
     // columns that are already in the mesh, and the load is the slow part.
     edits_replay(app);
@@ -1153,8 +1166,9 @@ static void begin_scene(umbra_app *app) {
     app->mesh_worst_call_us = 0;
     app->mesh_total_us = 0;
     umbra_app_set_screen(app, UMBRA_SCREEN_LOADING);
-    umbra_log(app, "demo world built in %.1f ms; meshing starts in slices of at most %d ms",
-              (t1 - t0) / 1000.0, UMBRA_MESH_BUDGET_MS);
+    umbra_log(app, "%s built in %.1f ms; meshing starts in slices of at most %d ms",
+              scene_is_save() ? "the opened world" : "demo world", (t1 - t0) / 1000.0,
+              UMBRA_MESH_BUDGET_MS);
 }
 
 // Called once per frame while the mesh is incomplete. The budget is a soft cap:
@@ -1332,6 +1346,20 @@ int umbra_app_init(umbra_app *app) {
         edits_path(files, app->edits_path, sizeof app->edits_path);
         umbra_log(app, "edits: the file for saved edits is %s",
                   app->edits_path[0] ? app->edits_path : "(none: this build has no files directory)");
+        // A world the owner opened last time is opened again: the phone should come back
+        // to the world it was in, not to the demo scene. This is the same import the
+        // screen's fifth button runs, and it is before `begin_scene` so the save's
+        // columns are what the first mesh is built from -- nothing is built and thrown
+        // away.
+        char world_zip[512];
+        snprintf(world_zip, sizeof world_zip, "%s/world.zip", files);
+        if (file_exists_at(world_zip)) {
+            umbra_log(app, "world: a world from the game is in the app's directory; opening it");
+            world_open_path(app, world_zip, "app directory, at start-up");
+        } else {
+            umbra_log(app, "world: no world from the game in the app's directory; this is the "
+                           "demo scene (PUT A SAVE AT %s/world.zip)", files);
+        }
     }
     // No jar, no jar's textures: on a phone there is no way to put one at
     // /data/local/tmp, so the world would be drawn with the twelve-tile placeholder
@@ -1345,6 +1373,9 @@ int umbra_app_init(umbra_app *app) {
               app->download_fn ? "download" : "none",
               app->pick_file_fn ? "import" : "none",
               app->files_dir[0] ? app->files_dir : "(unknown)");
+    // A world that is already open is the world; the screen is for getting the jar's
+    // textures, and it goes up when there is no jar. The scene's source is in the log
+    // either way (see the "world:" and "atlas:" lines).
     app->gf_pending_open = (!app->jar_loaded && app->files_dir[0] && app->download_fn) ? 1 : 0;
     // The atlas goes up before the world: the mesher's UVs already point into it.
     upload_atlas(app);
@@ -2129,8 +2160,15 @@ static int app_block_fluid(void *ctx, int x, int y, int z) {
 // because "the player fell through the world" has to be distinguishable from "the
 // player was never spawned".
 static void player_spawn(umbra_app *app) {
-    float y = umbra_world_spawn(24, 24);
-    umbra_player_reset(&app->player, 24.5f, y + 0.01f, 24.5f);
+    // The middle of whatever world is loaded. The demo world is 0..48 and used to be
+    // written here as 24,24 in two places; a save's columns can be anywhere, so the
+    // position is asked for.
+    float cx = (umbra_world_loaded_min_x() + umbra_world_loaded_max_x()) * 0.5f;
+    float cz = (umbra_world_loaded_min_z() + umbra_world_loaded_max_z()) * 0.5f;
+    int32_t bx = (int32_t)cx;
+    int32_t bz = (int32_t)cz;
+    float y = umbra_world_spawn((int64_t)bx, (int64_t)bz);
+    umbra_player_reset(&app->player, cx, y + 0.01f, cz);
     app->player.yaw = 0.0f;
     app->player.pitch = -0.25f;
     app->player_on = 1;
@@ -2684,6 +2722,176 @@ static void gf_start(umbra_app *app, int kind) {
 #endif
 }
 
+// --- opening a world the game generated ----------------------------------
+//
+// The screen's fifth button. What it does, in the order a person sees it:
+//
+//   1. If a world archive is already in the app's own directory (`world.zip`), it is
+//      opened from there without a picker. That is the path the automated run and a
+//      phone that was handed a file with adb both take, and it is why the feature can be
+//      proved on a device: the picker's answer cannot be scripted on an emulator.
+//   2. Otherwise the file picker is asked for a zip, and what it copies is opened.
+//
+// The import itself is four Goose calls (core/worldload_in.goose): begin, one region
+// entry per call, end. They run here, on the frame thread, between two frames and not
+// inside one: the archive is pushed, the region files walked, and the mesh begun, all
+// before the next draw. A window of a save is a second of work; the *mesh* of it is still
+// the sliced pass, so the loading screen is what a person watches, exactly as for the
+// demo world.
+static int file_exists_at(const char *path) {
+    FILE *f = fopen(path, "rb");
+    if (!f) return 0;
+    fclose(f);
+    return 1;
+}
+
+// The numbers an import produced, in the log. One line, because the first thing anyone
+// asks about a save is whether it is the world they think it is.
+static void world_report(umbra_app *app, const char *when, int64_t took_us) {
+    int64_t n = 0;
+    const uint8_t *msg = umbra_world_import_message(&n);
+    char text[192];
+    gf_copy(app, msg, n, text, sizeof text);
+    app->world_files = (int)umbra_world_import_files();
+    app->world_chunks = (long long)umbra_world_import_chunks();
+    app->world_blocks = (long long)umbra_world_import_blocks();
+    app->world_states = (long long)umbra_world_import_states();
+    app->world_errors = (long long)umbra_world_import_errors();
+    app->world_partial = (long long)umbra_world_import_partial();
+    app->world_skipped = (long long)umbra_world_import_skipped();
+    umbra_log(app, "world: %s: %s -- files %d, entries %lld, chunks %lld, non-air blocks %lld, "
+                   "states %lld, read errors %lld, not-full chunks %lld, left out %lld "
+                   "(a window of %lld chunks around the origin), %.1f ms",
+              when, text, app->world_files,
+              (long long)umbra_world_import_entries(), app->world_chunks, app->world_blocks,
+              app->world_states, app->world_errors, app->world_partial, app->world_skipped,
+              (long long)umbra_world_import_radius(), took_us / 1000.0);
+    snprintf(app->world_text, sizeof app->world_text, "%.*s", 150, text);
+}
+
+// The world is rebuilt from the columns the import left behind. The old mesh is dropped,
+// the arena is re-planned for a different number of columns, and the camera is re-fitted
+// from the new bounds -- a save is nowhere near 0..48, so every number that was folded in
+// from the demo world's shape has to come from the world that is actually loaded.
+static void rebuild_world(umbra_app *app) {
+    umbra_demo_mesh_begin();
+    app->mesh_state = 1;
+    app->mesh_progress = 0;
+    app->mesh_calls = 0;
+    app->mesh_worst_call_us = 0;
+    app->mesh_total_us = 0;
+    app->first_draw_timed = 0;
+    app->player_on = 0;
+    app->mesh_uploaded = 0;
+    umbra_app_set_screen(app, UMBRA_SCREEN_LOADING);
+    umbra_log(app, "world: meshing %lld column(s) of the opened world, sliced as before",
+              (long long)umbra_world_columns());
+}
+
+// Open one archive, from a path. Returns 1 when a world is open and the mesh has begun.
+static int world_open_path(umbra_app *app, const char *path, const char *how) {
+    int64_t t0 = umbra_now_us();
+    umbra_log(app, "world: opening %s (%s)", path, how);
+    int64_t regions = umbra_world_import_begin((sl_u8){(uint8_t *)path, (int64_t)strlen(path)});
+    if (regions <= 0) {
+        world_report(app, "refused", umbra_now_us() - t0);
+        app->world_state = 3;
+        return 0;
+    }
+    umbra_log(app, "world: the archive holds %lld region file(s)", (long long)regions);
+    // One call per entry. Every entry is offered and the ones that are not regions are
+    // skipped inside Goose, so the app does not have to know the archive's layout.
+    int64_t entries = umbra_world_import_entries();
+    for (int64_t i = 0; i < entries; i++) {
+        umbra_world_import_file(i);
+    }
+    int64_t ok = umbra_world_import_end();
+    if (ok != 1) {
+        world_report(app, "refused", umbra_now_us() - t0);
+        app->world_state = 3;
+        return 0;
+    }
+    world_report(app, "opened", umbra_now_us() - t0);
+    // One position from the save, named: the proof that the columns in memory are the
+    // save's blocks and not an array of zeros that happens to have the right shape. The
+    // position is the tallest non-air block at the world's centre column, which is what a
+    // person would look at first.
+    {
+        float cx = (umbra_world_loaded_min_x() + umbra_world_loaded_max_x()) * 0.5f;
+        float cz = (umbra_world_loaded_min_z() + umbra_world_loaded_max_z()) * 0.5f;
+        int64_t bx = (int64_t)cx;
+        int64_t bz = (int64_t)cz;
+        int64_t y = 96;
+        int64_t nlen = 0;
+        const uint8_t *nm = NULL;
+        while (y > -64) {
+            int64_t k = 0;
+            nm = umbra_block_at(bx, y, bz, &k);
+            nlen = k;
+            if (nlen > 0 && !(nlen == 13 && memcmp(nm, "minecraft:air", 13) == 0)) break;
+            y--;
+        }
+        char name[96];
+        int k2 = 0;
+        for (int64_t j = 0; j < nlen && k2 + 1 < (int)sizeof name; j++) name[k2++] = (char)nm[j];
+        name[k2] = 0;
+        umbra_log(app, "world: the block at %lld,%lld,%lld is %s",
+                  (long long)bx, (long long)y, (long long)bz, name);
+    }
+    app->world_state = 2;
+    snprintf(app->world_path, sizeof app->world_path, "%s", path);
+    umbra_log(app, "world: the phone is drawing a world the game generated -- the columns are "
+                   "the save's, the blocks are the save's, and the jar's models drew them");
+    rebuild_world(app);
+    return 1;
+}
+
+// Runs the import for the screen's fifth button. Called from the frame loop when the
+// button is pressed, so the log has a frame on either side of it.
+static void world_job_start(umbra_app *app) {
+    app->world_state = 1;
+    app->world_wanted = 0;
+    char zip[512];
+    snprintf(zip, sizeof zip, "%s/world.zip", app->files_dir);
+    if (app->files_dir[0] && file_exists_at(zip)) {
+        // The app's own directory. This is the path a phone that was handed a file takes,
+        // and the one the automated run uses: the picker's answer cannot be scripted.
+        umbra_log(app, "world: a zip of a save is in the app's own directory");
+        world_open_path(app, zip, "app directory");
+        return;
+    }
+    if (!app->pick_world_fn) {
+        umbra_log(app, "world: no world in the app's directory and no file picker in this "
+                       "build: put a zip of the save at %s/world.zip", app->files_dir);
+        app->world_state = 3;
+        snprintf(app->world_text, sizeof app->world_text,
+                 "no world yet: put a zip of a save's region folder in the app's directory");
+        return;
+    }
+    char part[512];
+    int64_t n = 0;
+    const uint8_t *pp = umbra_world_part_path((sl_u8){(uint8_t *)app->files_dir,
+                                                      (int64_t)strlen(app->files_dir)}, &n);
+    gf_copy(app, pp, n, part, sizeof part);
+    long long got = -1;
+    umbra_log(app, "world: asking for a zip of a save (it lands at %s)", part);
+    int rc = app->pick_world_fn(app->net_ctx, part, &got);
+    if (rc != 0 || got <= 0) {
+        umbra_log(app, "world: nothing was picked (%s)", app->gf_platform_error);
+        app->world_state = 3;
+        snprintf(app->world_text, sizeof app->world_text, "no world was picked%s%s",
+                 app->gf_platform_error[0] ? ": " : "", app->gf_platform_error);
+        return;
+    }
+    umbra_log(app, "world: the picked archive was copied: %lld bytes", got);
+    world_open_path(app, part, "picked file");
+}
+
+// The frame loop's half: one import per request, never two.
+static void world_pump(umbra_app *app) {
+    if (app->world_wanted) world_job_start(app);
+}
+
 // Called once per frame while a job is running: progress for the bar, and the end
 // of the job.
 static void gf_pump(umbra_app *app) {
@@ -2721,7 +2929,8 @@ static void draw_gamefiles(umbra_app *app) {
     float s = hud_scale(app);
     float bs = umbra_gf_scale(app->dpi_scale, app->width, app->height);
     static const char *labels[UMBRA_GF_BUTTONS] = {
-        "DOWNLOAD FROM MOJANG", "IMPORT A JAR I HAVE", "RETRY", "BACK TO THE WORLD"
+        "DOWNLOAD FROM MOJANG", "IMPORT A JAR I HAVE", "OPEN A WORLD THE GAME MADE", "RETRY",
+        "BACK TO THE WORLD"
     };
     if (app->gf_logged_width != app->width) {
         app->gf_logged_width = app->width;
@@ -2779,8 +2988,8 @@ static void draw_gamefiles(umbra_app *app) {
         int busy = app->gf_job != 0;
         // RETRY only makes sense after a failure; BACK only once a jar is loaded.
         int dim = (busy && i != UMBRA_GF_BUTTONS - 1) ||
-                  (i == 2 && app->gf_state != (int)umbra_gf_state_failed()) ||
-                  (i == 3 && !app->jar_loaded);
+                  (i == 3 && app->gf_state != (int)umbra_gf_state_failed()) ||
+                  (i == 4 && !app->jar_loaded);
         hud_rect(r.x, r.y, r.w, r.h, dim ? 0.10f : 0.18f, dim ? 0.10f : 0.34f,
                  dim ? 0.12f : 0.20f, 0.92f);
         float ts = s * 0.9f;
@@ -2808,6 +3017,19 @@ static void draw_hud(umbra_app *app) {
     y += line * 1.6f;
     snprintf(buf, sizeof buf, "Umbra %s  build %s", UMBRA_APP_VERSION, UMBRA_GIT_COMMIT);
     hud_text(x, y, s, 0.8f, 0.9f, 1.0f, 1, buf);
+    y += line;
+    // Which world is on screen, in the owner's words and not the code's: a save the game
+    // generated, or the scene this project built. The brief's question (c) is answered by
+    // this line, so it is on the phone and not only in the log.
+    if (umbra_world_is_save() != 0) {
+        snprintf(buf, sizeof buf, "world: the game's own, %lld chunk(s), %lld blocks",
+                 (long long)app->world_chunks, (long long)app->world_blocks);
+        hud_text(x, y, s, 0.55f, 1.0f, 0.65f, 1, buf);
+    } else {
+        snprintf(buf, sizeof buf, "world: Umbra's demo scene (%lld columns), not a save",
+                 (long long)umbra_world_columns());
+        hud_text(x, y, s, 1.0f, 0.85f, 0.5f, 1, buf);
+    }
     y += line;
     snprintf(buf, sizeof buf, "vulkan-free GLES3  gl %s", app->gl_version);
     hud_text(x, y, s, 0.8f, 0.9f, 1.0f, 1, buf);
@@ -2982,6 +3204,7 @@ void umbra_app_frame(umbra_app *app) {
     pump_mesh(app);
     player_act(app);
     gf_pump(app);
+    world_pump(app);
     if (app->gf_pending_open && app->width >= 320 && app->mesh_state == 2) {
         app->gf_pending_open = 0;
         open_gamefiles_screen(app);
@@ -3143,8 +3366,13 @@ void umbra_app_touch_id(umbra_app *app, int32_t id, int32_t x, int32_t y, int32_
                 } else if (hit == 1) {
                     gf_start(app, 2);
                 } else if (hit == 2) {
-                    if (app->gf_state == (int)umbra_gf_state_failed()) gf_start(app, 1);
+                    // Deferred to the frame loop: an import reads an archive and begins a
+                    // mesh, and neither belongs in the middle of event dispatch.
+                    app->world_wanted = 1;
+                    umbra_log(app, "world: open requested");
                 } else if (hit == 3) {
+                    if (app->gf_state == (int)umbra_gf_state_failed()) gf_start(app, 1);
+                } else if (hit == 4) {
                     if (app->jar_loaded) {
                         close_gamefiles_screen(app);
                     } else {

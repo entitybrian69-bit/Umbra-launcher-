@@ -50,8 +50,11 @@ static float umbra_hud_scale(float dpi_scale, int width, int height, int rows, i
 // code and by the tests, because the first version counted whole rows and forgot
 // that the title is spaced at 1.6 -- which put the crash tail on bare sky.
 #define UMBRA_HUD_TITLE_ROWS 1.6f
+// The row above the GL facts that says which world is on screen (an opened save or the
+// demo scene): one row, and it is counted here so the panel is never one row short.
+#define UMBRA_HUD_WORLD_ROWS 1.0f
 static float umbra_hud_rows(int bench_lines, int last_run_lines, int crashed) {
-    float rows = UMBRA_HUD_TITLE_ROWS + 4.0f + 1.0f + 1.0f + 1.0f;
+    float rows = UMBRA_HUD_TITLE_ROWS + 4.0f + UMBRA_HUD_WORLD_ROWS + 1.0f + 1.0f + 1.0f;
     rows += (float)(bench_lines > 0 ? bench_lines : 0);
     rows += 1.0f;
     rows += (float)(last_run_lines > 0 ? last_run_lines : 0);
@@ -318,10 +321,12 @@ static int umbra_flatten(char *dst, size_t cap, const char *src) {
 // against the same rectangles that are drawn -- the emulator run taps by reading
 // these numbers back out of the log.
 //
-// Four buttons, in a column on the left of the panel area, because the screen has
+// Five buttons, in a column on the left of the panel area, because the screen has
 // no world to look at yet and there is room. The bounds are checked by the host
-// suite on a landscape phone, a portrait one and the emulator's 1920x1080.
-#define UMBRA_GF_BUTTONS 4
+// suite on a landscape phone, a portrait one and the emulator's 1920x1080. The fifth
+// is OPEN A WORLD the game made: a zip of a save's region files, which is the only
+// shape a save can reach a phone in (D-048).
+#define UMBRA_GF_BUTTONS 5
 
 static int umbra_gf_is_wide(int width, int height) {
     return height > 0 && (float)width / (float)height > 1.5f;
@@ -341,7 +346,10 @@ static float umbra_gf_scale(float dpi_scale, int width, int height) {
     // budget is a third of the height either way, and two rows is what lets a
     // button be a thumb's size (48 dp) on a phone instead of a label's.
     float budget = (float)height * 0.34f;
-    int rows = (width / (height > 0 ? height : 1) > 1.5f) ? 2 : 4;
+    // Five buttons in portrait is a taller stack than four was; the cap below is what
+    // keeps them inside a third of the screen, and it has to be told the real count or
+    // it optimises for a screen that is not the one being drawn.
+    int rows = (width / (height > 0 ? height : 1) > 1.5f) ? 2 : UMBRA_GF_BUTTONS;
     float limit = budget / ((float)rows * 22.0f + (float)(rows - 1) * 5.0f);
     if (s > limit) s = limit;
     if (s < 1.0f) s = 1.0f;

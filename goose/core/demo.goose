@@ -133,12 +133,29 @@ fn demo_build(seed: i64) {
 // offset. Everything here refuses a position outside it rather than wrapping: an edit
 // that silently lands in another column looks like a rendering bug.
 
+// A world position to a column index and an offset inside it. The demo world was
+// 0..47 and the old version refused anything negative -- which was right for a world
+// that never had a negative coordinate, and wrong the moment a real save was loaded:
+// a save's chunks are at -1,-1 as often as at 0,0, and the spawn of a real world is
+// usually a negative chunk. The column is found by its own x/z, so a save with holes in
+// it (which every save has) answers "no column" for the holes and the position for
+// everything else.
+fn demo_floor16(v: i32) -> i32 {
+    let q = v / 16;
+    if v < 0 && q * 16 != v { return q - 1; }
+    return q;
+}
+
+fn demo_rem16(v: i32) -> i32 {
+    let r = v - demo_floor16(v) * 16;
+    return r;
+}
+
 fn demo_column_of(wx: i32, wz: i32) -> i64 {
-    if wx < 0 || wz < 0 { return -1; }
-    let cx = wx / 16;
-    let cz = wz / 16;
+    let cx = demo_floor16(wx);
+    let cz = demo_floor16(wz);
     for i in demo.len {
-        if demo[i].x == cx as i32 && demo[i].z == cz as i32 { return i; }
+        if demo[i].x == cx && demo[i].z == cz { return i; }
     }
     return -1;
 }
@@ -146,13 +163,13 @@ fn demo_column_of(wx: i32, wz: i32) -> i64 {
 fn demo_block_at(wx: i32, wy: i32, wz: i32) -> u32 {
     let i = demo_column_of(wx, wz);
     if i < 0 { return 0; }
-    return chunk_block(demo[i], wx % 16, wy, wz % 16);
+    return chunk_block(demo[i], demo_rem16(wx), wy, demo_rem16(wz));
 }
 
 fn demo_set_block(wx: i32, wy: i32, wz: i32, id: u32) -> bool {
     let i = demo_column_of(wx, wz);
     if i < 0 { return false; }
-    chunk_set_block(demo[i], wx % 16, wy, wz % 16, id);
+    chunk_set_block(demo[i], demo_rem16(wx), wy, demo_rem16(wz), id);
     return true;
 }
 

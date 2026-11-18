@@ -595,6 +595,40 @@ static int android_pick_file(void *ctx, const char *dest, const char *mime, long
     return (n > 0) ? 0 : -1;
 }
 
+// The world picker: the same document picker, filtered to the two MIME types a zip of a
+// save arrives as. Android reports a zip as application/zip from some providers and
+// application/octet-stream from others, and a picker filtered to neither shows a list
+// with every world greyed out -- which reads as "Umbra cannot open saves".
+static int android_pick_world(void *ctx, const char *dest, long long *got) {
+    android_state *st = (android_state *)ctx;
+    umbra_app *app = st ? &st->app : NULL;
+    JNIEnv *env = net_env();
+    if (!env || !g_umbra_net || !g_m_pick || !st || !st->state || !st->state->activity) {
+        if (app) snprintf(app->gf_platform_error, sizeof app->gf_platform_error,
+                          "no file picker in this build");
+        return -1;
+    }
+    jobject activity = st->state->activity->clazz;
+    jstring jdest = net_string(env, dest);
+    jstring mime_zip = net_string(env, "application/zip");
+    jstring mime_bin = net_string(env, "application/octet-stream");
+    jclass string_class = (*env)->FindClass(env, "java/lang/String");
+    jobject jmimes = string_class ? (*env)->NewObjectArray(env, 2, string_class, mime_zip) : NULL;
+    if (jmimes && mime_bin) (*env)->SetObjectArrayElement(env, jmimes, 1, mime_bin);
+    jlong n = (*env)->CallStaticLongMethod(env, g_umbra_net, g_m_pick, activity, jdest,
+                                           jmimes ? jmimes : jdest);
+    int failed = 0;
+    if ((*env)->ExceptionCheck(env)) { net_throw_away(env); failed = 1; }
+    (*env)->DeleteLocalRef(env, jdest);
+    (*env)->DeleteLocalRef(env, mime_zip);
+    (*env)->DeleteLocalRef(env, mime_bin);
+    if (jmimes) (*env)->DeleteLocalRef(env, jmimes);
+    if (got) *got = (long long)n;
+    ALOGI("pick world: -> %s: %lld bytes%s", dest, (long long)n, failed ? " (threw)" : "");
+    if (n <= 0 && app) net_record_error(app);
+    return (n > 0) ? 0 : -1;
+}
+
 static void android_progress(void *ctx, long long *got, long long *total) {
     (void)ctx;
     JNIEnv *env = net_env();
@@ -763,6 +797,7 @@ void android_main(struct android_app *state) {
             // than pretending it can fetch a jar.
             g_st.app.download_fn = android_download;
             g_st.app.pick_file_fn = android_pick_file;
+            g_st.app.pick_world_fn = android_pick_world;
             g_st.app.progress_fn = android_progress;
             g_st.app.net_ctx = &g_st;
             snprintf(g_st.app.files_dir, sizeof g_st.app.files_dir, "%s", g_st.files_dir);
