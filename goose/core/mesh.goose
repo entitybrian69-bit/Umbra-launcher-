@@ -576,6 +576,18 @@ fn mesh_section_class_layers(c: ChunkColumn&, sy: i32, want: i64, ly_from: i32, 
     let idx = sy + 4;
     if idx < 0 || idx >= 24 { return; }
     if !c.sections[idx].present { return; }
+    // A layer of air emits nothing in any pass, and the map says so in eight comparisons
+    // per block instead of a full meshing walk. Skipping it here changes no vertex and no
+    // index -- which the host's byte-for-byte comparison of the sliced mesh with the
+    // whole-mesh path checks on every push, and which is why this is safe to do inside the
+    // function the tests already compare.
+    var any = false;
+    var ly = ly_from;
+    while ly < ly_to {
+        if !section_layer_empty(c.sections[idx], ly) { any = true; }
+        ly += 1;
+    }
+    if !any { return; }
     let base_y = sy * 16;
     let i_from = (ly_from as i64) * 256;
     let i_to = (ly_to as i64) * 256;
