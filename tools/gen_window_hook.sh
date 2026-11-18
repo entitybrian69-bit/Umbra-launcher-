@@ -200,9 +200,22 @@ for attempt in $(seq 1 12); do
     fi
     # No blocks in the window is not a window. This is the exact reading that went wrong
     # twice, and the reader can see it before the phone does.
-    case "$now" in
-        *"0 non-air blocks"*)
-            say "attempt $attempt: ${now:-no totals} - the window still has no blocks"
+    #
+    # Compare the *number*, not a substring. `case "$now" in *"0 non-air blocks"*)` looks
+    # right and is not: "2668210 non-air blocks" ends in "0 non-air blocks", so every good
+    # window was thrown away as empty. Run 44332432994 failed on exactly that -- twelve
+    # attempts of "81 chunks, 2668210 non-air blocks - the window still has no blocks" --
+    # while the reader's own log in the same step said "81 chunks, 2668210 non-air blocks"
+    # and "PASS - every chunk in the save was read". Two verdicts about one save, and they
+    # disagreed because one of them was testing a string and the other a number.
+    blocks="${now##*, }"
+    blocks="${blocks%% *}"
+    case "$blocks" in
+        ''|*[!0-9]*)
+            say "attempt $attempt: cannot read a block count out of '${now}'; this is a bug in the hook"
+            ;;
+        0)
+            say "attempt $attempt: ${now} - the window has no blocks in it"
             prev=""
             same=0
             sleep 4
@@ -230,7 +243,9 @@ for attempt in $(seq 1 12); do
 done
 
 if [ "$ok" != 1 ]; then
-    say "FAIL the window never settled at ${prev:-nothing}; the save would hold proto-chunks"
+    # Say the number. "never settled at nothing" was the sentence printed while the window
+    # held 2 668 210 blocks, and it is why reading this took an extra run.
+    say "FAIL the window never settled: last reading '${prev:-none}' after $attempt attempt(s)"
     tail -20 "$RUN/settle.log" 2>/dev/null | tee -a "$WLOG"
     exit 1
 fi
