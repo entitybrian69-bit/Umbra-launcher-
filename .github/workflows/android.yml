@@ -289,6 +289,9 @@ jobs:
           # the import could not tell them apart because it never had to.
           mapfile -t ALL < <(find build/server/run/world -path '*/region/*.mca' -type f 2>/dev/null | sort)
           echo "== region files written: ${#ALL[@]}"
+          # Which directories hold them, and which of those the reader chose. A 26.3 save
+          # can hold both layouts at once and only one of them is the terrain.
+          find build/server/run/world -name '*.mca' -type f 2>/dev/null | sed 's#/r\.-#/r.-#' | xargs -r -n1 dirname | sort | uniq -c
           printf '%s\n' "${ALL[@]:-}" | head -8
           if [ "${#ALL[@]}" -eq 0 ]; then
             echo "::error title=world::the server wrote no region files, so there is no world to hand the phone"

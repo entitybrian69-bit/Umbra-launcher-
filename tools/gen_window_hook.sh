@@ -115,6 +115,16 @@ for attempt in $(seq 1 12); do
     # measured; the loop is what decides whether it is finished.
     build/umbra_worldload "$RUN/world" "$RUN/settle.txt" "$RADIUS" --incomplete-ok \
         > "$RUN/settle.log" 2>&1
+    # Where the reader looked, and what the archive it read was. Run 44274426747's log
+    # showed "region dir .../dimensions/minecraft/overworld/region" for a server that had
+    # written 81 proto-chunks: a save can hold more than one region directory, and the one
+    # the reader picks decides whether it is reading terrain or generation bookkeeping.
+    case "$attempt" in
+        1|4|8|12)
+            grep -E "^worldload: region dir|^worldload: chunks|^worldload: [0-9]+ of" "$RUN/settle.log" \
+                2>/dev/null | sed 's/^/window:   /' | tee -a "$WLOG"
+            ;;
+    esac
     now="$(window)"
     un="$(unfinished)"
     if [ -n "$un" ] && ! printf '%s' "$un" | grep -q '(0 of them'; then
