@@ -249,6 +249,14 @@ jobs:
             tail -30 build/world/gen-world.log || true
             exit 1
           fi
+          # What the settling hook said, where it survives: the step log was unreadable
+          # after run 44262980478 and these lines are the whole question.
+          echo "== the settling hook's verdict"
+          cat evidence/ci/world-window.log 2>/dev/null || echo "(the hook wrote no verdict)"
+          if ! grep -q "^window: PASS" evidence/ci/world-window.log 2>/dev/null; then
+            echo "::error title=world::the save was not settled before the phone got it; see evidence/ci/world-window.log"
+            exit 1
+          fi
           # The region files, wherever the version put them. `ls` with two globs fails if
           # either matches nothing, and under `set -e` with pipefail that killed this step
           # at the assignment -- one of the two layouts always matches nothing, so the

@@ -68,13 +68,22 @@ unfinished() {
     grep -oE '\([0-9]+ of them within [0-9]+ of the origin\)' "$RUN/settle.log" 2>/dev/null | head -1
 }
 
-echo "window: settling the save at radius $RADIUS before it is handed to the phone"
+# The hook's own stdout goes to the step log, and the step log is not always readable
+# afterwards (run 44262980478: the API returned an empty body for it). So every reading is
+# also written where it survives: evidence/ci/, which the job commits.
+mkdir -p "$ROOT/evidence/ci"
+WLOG="$ROOT/evidence/ci/world-window.log"
+: > "$WLOG"
+say() { echo "window: $*" | tee -a "$WLOG"; }
+
+say "settling the save at radius $RADIUS before it is handed to the phone"
+say "reader: $ROOT/build/umbra_worldload, save: $RUN/world"
 prev=""
 same=0
 ok=0
 for attempt in $(seq 1 12); do
     if ! flush; then
-        echo "window: FAIL the server did not accept save-all flush"
+        say "FAIL the server did not accept save-all flush"
         exit 1
     fi
     # --incomplete-ok because a save that is still being written has to be readable to be
@@ -84,7 +93,7 @@ for attempt in $(seq 1 12); do
     now="$(window)"
     un="$(unfinished)"
     if [ -n "$un" ] && ! printf '%s' "$un" | grep -q '(0 of them'; then
-        echo "window: attempt $attempt: ${now:-no window totals} - not finished ${un}"
+        say "attempt $attempt: ${now:-no window totals} - not finished ${un}"
         prev=""
         same=0
         sleep 4
@@ -94,7 +103,7 @@ for attempt in $(seq 1 12); do
     # twice, and the reader can see it before the phone does.
     case "$now" in
         *"0 non-air blocks"*)
-            echo "window: attempt $attempt: ${now:-no totals} - the window still has no blocks"
+            say "attempt $attempt: ${now:-no totals} - the window still has no blocks"
             prev=""
             same=0
             sleep 4
@@ -102,8 +111,8 @@ for attempt in $(seq 1 12); do
             ;;
     esac
     if [ -z "$now" ]; then
-        echo "window: attempt $attempt: the reader printed no window totals; log tail:"
-        tail -6 "$RUN/settle.log" 2>/dev/null
+        say "attempt $attempt: the reader printed no window totals; log tail:"
+        tail -6 "$RUN/settle.log" 2>/dev/null | tee -a "$WLOG"
         sleep 4
         continue
     fi
@@ -113,7 +122,7 @@ for attempt in $(seq 1 12); do
         same=0
     fi
     prev="$now"
-    echo "window: attempt $attempt: $now (stable readings: $same)"
+    say "attempt $attempt: $now (stable readings: $same)"
     if [ "$same" -ge 2 ]; then
         ok=1
         break
@@ -122,9 +131,11 @@ for attempt in $(seq 1 12); do
 done
 
 if [ "$ok" != 1 ]; then
-    echo "window: FAIL the window never settled at ${prev:-nothing}; the save would hold proto-chunks"
-    tail -20 "$RUN/settle.log" 2>/dev/null
+    say "FAIL the window never settled at ${prev:-nothing}; the save would hold proto-chunks"
+    tail -20 "$RUN/settle.log" 2>/dev/null | tee -a "$WLOG"
     exit 1
 fi
-echo "window: PASS the window is finished and its block count is stable: $prev"
-echo "window: the save the phone gets is this one; the server stops next, which writes it"
+say "PASS the window is finished and its block count is stable: $prev"
+say "the save the phone gets is this one; the server stops next, which writes it"
+# The reader's own account, next to the verdict.
+cp "$RUN/settle.log" "$ROOT/evidence/ci/world-window-read.txt" 2>/dev/null || true
