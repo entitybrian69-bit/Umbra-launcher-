@@ -192,13 +192,18 @@ def section(y: int, fill: str, extra: dict) -> bytes:
     return t_compound(entry)
 
 
-def chunk(cx: int, cz: int, data_version: int, sections: list) -> bytes:
+def chunk(cx: int, cz: int, data_version: int, sections: list,
+          status_key: str = "Status") -> bytes:
+    """One chunk's NBT. `status_key` is the field's spelling: `Status` is the classic name
+    and `status` is what 26.3 writes, the same rename as Properties -> properties. A reader
+    that only knows one spelling does not fail, it decides every chunk is unfinished --
+    which is what the real server's save did to this project on 2026-11-18."""
     body = t_compound([
         tag(3, "DataVersion", t_int(data_version)),
         tag(3, "xPos", t_int(cx)),
         tag(3, "zPos", t_int(cz)),
         tag(3, "yPos", t_int(-4)),
-        tag(8, "Status", t_string("minecraft:full")),
+        tag(8, status_key, t_string("minecraft:full")),
         tag(9, "sections", t_list(10, sections)),
     ])
     return b"\x0a" + struct.pack(">H", 0) + body
@@ -235,7 +240,7 @@ def surface(x: int, z: int) -> int:
 WIDE_STATES = 0   # > 0: paint that many distinct states into one layer of the origin chunk
 
 
-def build(out_dir: str, count: int) -> None:
+def build(out_dir: str, count: int, status_key: str = "Status") -> None:
     os.makedirs(os.path.join(out_dir, "region"), exist_ok=True)
     chunks = {}
     for cz in range(count):
@@ -297,7 +302,7 @@ def build(out_dir: str, count: int) -> None:
                 if not extra:
                     continue
                 sections.append(section(y, "minecraft:air", extra))
-            chunks[(cx, cz)] = chunk(cx, cz, 4189, sections)
+            chunks[(cx, cz)] = chunk(cx, cz, 4189, sections, status_key)
     with open(os.path.join(out_dir, "region", "r.0.0.mca"), "wb") as f:
         f.write(region(chunks))
     with open(os.path.join(out_dir, "level.dat"), "wb") as f:

@@ -26,6 +26,7 @@ fn run_worldzip() {
     wl_layout_test("world-modern.zip", "dimensions/minecraft/overworld/region/");
     wl_refusal_test();
     wl_no_blocks_test();
+    wl_263_status_test();
     wl_cap_test();
     test_summary("worldzip");
 }
@@ -213,6 +214,37 @@ fn wl_no_blocks_test() {
         i += 1;
     }
     check(has_no, "and the reason names the blocks");
+    demo = [];
+    wl_reset_for_test();
+}
+
+// A complete save from 26.3, which writes the chunk's status field as `status` instead of
+// `Status`. Nothing about the world changes; only the spelling does. A reader that knows
+// one spelling finds no status, calls every chunk unfinished, and reports a finished world
+// as a half-generated one -- run 44279451494, "528 of 529 chunks are not minecraft:full
+// yet" over 844 904 non-air blocks.
+fn wl_263_status_test() {
+    demo = [];
+    let regions = wl_import_begin("goose/test/fixtures/worldzip/world-263-status.zip");
+    check(regions >= 1, "a 26.3 save is an archive of region files");
+    for i in wl_count_entries() { wl_import_file(i); }
+    let ended = wl_import_end();
+    check_i64(ended, 1, "a 26.3 save opens");
+    check(wl_count_chunks() > 0, "with chunks");
+    check(wl_count_blocks() > 0, "and blocks");
+    // The point of the test: `partial` counts chunks whose status is not minecraft:full,
+    // and the field is `status` here. Zero is the only right answer.
+    check_i64(wl_count_partial(), 0, "and none of its chunks is called unfinished");
+    // The same archive under the classic spelling, so the check cannot pass by counting
+    // nothing at all.
+    demo = [];
+    wl_reset_for_test();
+    let classic = wl_import_begin("goose/test/fixtures/worldzip/world-classic.zip");
+    check(classic >= 1, "the classic-spelling archive is readable too");
+    for i in wl_count_entries() { wl_import_file(i); }
+    check_i64(wl_import_end(), 1, "and opens");
+    check_i64(wl_count_partial(), 0, "with no unfinished chunks either");
+    check(wl_count_blocks() > 0, "and blocks, the same way");
     demo = [];
     wl_reset_for_test();
 }

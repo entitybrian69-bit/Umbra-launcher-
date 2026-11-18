@@ -302,12 +302,9 @@ fn wl_import_file(index: i64) -> i64 {
                 c.x = wx as i32;
                 c.z = wz as i32;
             }
-            let st = nbt_child(root, "Status");
-            if nbt_valid(st) {
-                let p = nbt_nodes[st].payload;
-                let s = nbt_payload[p.off .. p.off + p.len];
-                if !eq_bytes(s, "minecraft:full") { wl_res.partial += 1; }
-            }
+            // Either spelling of the field, through the one function that knows both.
+            let st = chunk_status(root);
+            if st.len > 0 && !eq_bytes(st, "minecraft:full") { wl_res.partial += 1; }
             wl_open_blocks(c);
             wl_cols.push(c);
             wl_res.chunks += 1;

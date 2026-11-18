@@ -256,7 +256,7 @@ fn main() {
                 }
                 var c = column_new();
                 column_from_nbt(root, c);
-                let status = nbt_string(root, "Status");
+                let status = chunk_status(root);
                 let unfinished = !eq_bytes(status, "minecraft:full");
                 if unfinished { partial_chunks += 1; }
                 let ccx = c.x as i64;

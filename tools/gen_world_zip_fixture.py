@@ -22,6 +22,8 @@ Two archives are written:
   world-no-blocks.zip    region files of the kind a save keeps in `entities/`: chunks that
                       parse, with no blocks in them. The importer must refuse this too --
                       it was reported as an opened world once.
+  world-263-status.zip   a complete save whose chunks spell the status field `status`,
+                      as 26.3 does. The importer must count zero unfinished chunks.
 
 usage: tools/gen_world_zip_fixture.py [out dir] [chunks]
 """
@@ -88,6 +90,25 @@ def main() -> None:
     os.makedirs(entities, exist_ok=True)
     empty_chunk = make_test_world.chunk(0, 0, 3837, [])
     ent_region = make_test_world.region({(0, 0): empty_chunk, (1, 0): empty_chunk})
+    # A save written by 26.3, which spells the chunk's status field `status` where older
+    # versions wrote `Status` -- the same rename as `properties`. This archive is complete
+    # by every other measure: full terrain, minecraft:full in the field that exists, a
+    # status field at all. The only thing wrong with it is the spelling, and a reader that
+    # knows one spelling calls every chunk unfinished. Run 44279451494: 529 chunks, 844 904
+    # non-air blocks, 44 states, "528 of 529 chunks are not minecraft:full yet".
+    modern_spelling = os.path.join(work, "modern-spelling")
+    make_test_world.build(modern_spelling, count, "status")
+    modern_regions = []
+    for name in sorted(os.listdir(os.path.join(modern_spelling, "region"))):
+        with open(os.path.join(modern_spelling, "region", name), "rb") as f:
+            modern_regions.append((name, f.read()))
+    spelled = os.path.join(out, "world-263-status.zip")
+    with zipfile.ZipFile(spelled, "w", zipfile.ZIP_DEFLATED) as z:
+        for name, data in modern_regions:
+            z.writestr("region/" + name, data)
+        z.writestr("level.dat", level)
+    print(f"wrote {spelled} ({os.path.getsize(spelled)} bytes)")
+
     noblocks = os.path.join(out, "world-no-blocks.zip")
     with zipfile.ZipFile(noblocks, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("dimensions/minecraft/overworld/entities/r.0.0.mca", ent_region)

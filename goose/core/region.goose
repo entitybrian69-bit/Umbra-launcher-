@@ -357,14 +357,29 @@ fn section_from_nbt(sec: i64, out: Section&) {
     }
 }
 
+// The chunk's generation status, under either spelling. `Status` is the classic name;
+// 26.3 writes `status`, exactly as it writes `properties` where the older versions wrote
+// `Properties` -- the same rename, and the same trap: a reader that only knows the
+// classic name does not fail, it finds nothing and concludes the chunk is unfinished.
+//
+// That is what happened on 2026-11-18: run 44279451494 read a save the real 26.3 server
+// had fully generated -- 529 chunks, 844 904 non-air blocks, 44 states -- and reported
+// "528 of 529 chunks are not `minecraft:full` yet", because the field it was asking for
+// did not exist. Every number was right and the verdict was wrong, which is the worst
+// kind of wrong, and it cost a day of looking at the phone for a fault in the reader.
+fn chunk_status(root: i64) -> u8[:] {
+    var st = nbt_string(root, "Status");
+    if st.len == 0 { st = nbt_string(root, "status"); }
+    return st
+}
+
 fn column_from_nbt(root: i64, c: ChunkColumn&) {
     c.x = nbt_int(root, "xPos", 0) as i32;
     c.z = nbt_int(root, "zPos", 0) as i32;
     c.data_version = nbt_int(root, "DataVersion", 0) as i32;
-    let status = nbt_child(root, "Status");
-    if nbt_valid(status) {
-        let p = nbt_nodes[status].payload;
-        c.status = p;
+    let status = chunk_status(root);
+    if status.len > 0 {
+        c.status = sref_of(status, 0, status.len);
     }
     c.present = true;
     let sections = nbt_child(root, "sections");
