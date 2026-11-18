@@ -54,23 +54,43 @@ while [ "$row" -lt "$ACROSS" ]; do
     row=$(( row + rows ))
 done
 
-# Force-loading queues the work; it does not wait for it. Ask the server what it thinks it
-# has, and give it up to a minute to agree. The number is the server's own answer, so it
-# is evidence and not a hope.
-echo "window: waiting for the server to report the chunks finished"
+# Force-loading queues the work; it does not wait for it. This is the part that went wrong
+# first time: `execute if loaded` answers true for a chunk that is *loaded and still
+# generating*, which is exactly a proto-chunk, so the hook passed in a second, the server
+# saved two seconds later, and the phone got "25 chunks, non-air blocks 0, not-full chunks
+# 25" a second run in a row. "Loaded" is not "generated".
+#
+# The probe is a block that only exists once the generator has finished: the bedrock layer
+# at y -60. A proto-chunk has no block there at all, so `execute if block` fails until the
+# chunk is real, and passes for ever after. Four points, one near each corner of the
+# window, so a single slow corner cannot pass for the whole area.
+echo "window: waiting until the window has blocks in it, not merely chunks that load"
 ok=0
-for _ in $(seq 1 30); do
-    answer="$(python3 "$TOOLS/rcon.py" "$HOST" "$PORT" \
-              "execute if loaded $BOX0 64 $BOX0 run say window" 2>&1)"
-    case "$answer" in
-        *"Test passed"*|*"window"*) ok=1; break ;;
-    esac
+probes=0
+for _ in $(seq 1 90); do
+    probes=$((probes + 1))
+    done_count=0
+    for pz in "$BOX0" "0" "$BOX1"; do
+        for px in "$BOX0" "0" "$BOX1"; do
+            answer="$(python3 "$TOOLS/rcon.py" "$HOST" "$PORT" \
+                      "execute if block $px -60 $pz minecraft:bedrock" 2>&1)"
+            case "$answer" in
+                *"Test passed"*) done_count=$((done_count + 1)) ;;
+            esac
+        done
+    done
+    if [ "$done_count" -eq 9 ]; then
+        ok=1
+        break
+    fi
+    [ $((probes % 5)) -eq 0 ] && echo "window: ${done_count}/9 probes have bedrock so far after ${probes} tries"
     sleep 2
 done
 if [ "$ok" = 1 ]; then
-    echo "window: the server reports the corner chunk (${BOX0},${BOX0}) loaded"
+    echo "window: the window is generated -- bedrock at y -60 under all 9 probe points, after ${probes} tries"
 else
-    echo "window: WARNING the corner chunk never reported loaded; the save may still hold proto-chunks"
+    echo "window: FAIL only ${done_count:-0}/9 probes have bedrock after ${probes} tries; the save would hold proto-chunks"
+    exit 1
 fi
 
 # The number that matters, said by the server: how many chunks are in the force-load set.

@@ -278,6 +278,7 @@ jobs:
           echo "== what the reader that the world gate trusts says about this save"
           mkdir -p build/diag
           if [ ! -x build/umbra_worldload ] && [ -x build/bin/goose ]; then
+            echo "(building the reader: the world gate's own, not a second copy)"
             # The same two commands tools/check_real_world.sh runs, so the reader is the
             # one the world gate uses and not a second copy of the logic.
             GOOSE_STDLIB="${GOOSE_STDLIB:-$GITHUB_WORKSPACE/build/goose-src/stdlib}" \
@@ -285,11 +286,13 @@ jobs:
               && cc -O2 -o build/umbra_worldload build/worldload.c platform/shared/umbra_glue.c \
                    -lm -lpthread > /dev/null 2>&1 || true
           fi
+          ls -l build/umbra_worldload 2>/dev/null || echo "(the reader was not built)"
           if [ -x build/umbra_worldload ]; then
             build/umbra_worldload build/server/run/world build/diag/dump.txt 2 \
               --incomplete-ok > build/diag/read.log 2>&1 || true
             grep -E "^total|^chunk (-?[0-9]+\.?)+ -?[0-9]" build/diag/dump.txt 2>/dev/null | head -4
             grep -E "^total" build/diag/dump.txt || echo "(no total line: the reader could not read it)"
+            tail -5 build/diag/read.log 2>/dev/null || true
           else
             echo "(build/umbra_worldload is not built in this job; skipping the host read)"
           fi
