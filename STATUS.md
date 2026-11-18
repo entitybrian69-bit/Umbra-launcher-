@@ -1925,3 +1925,35 @@ The rest of the run is evidence that the import changed nothing that was working
 android job, at the same commit, fetched the pinned jar through the app's own button
 (`the file is the pinned jar: 41483720 bytes, sha1 e877b6a0…`), built 4 192 models and 1 214
 textures from it, replayed two saved edits, and passed a 60-second soak with no crash.
+
+## The emulator found a real bug, and it was not the emulator's
+
+Run `44240180172` (android, at `8315fd8`) failed in the player phase:
+
+```
+player: spawned at 8.00 66.01 8.00 (floor 66.00), eye 67.63
+player: hold 1 walked 0.00 blocks (8.00,8.00 -> 8.00,8.00)
+player: hold 4 walked 0.00 blocks (8.00,8.00 -> 8.00,8.00)
+ERROR: player: a held finger did not move the body in 4 headings
+```
+
+The world import did this, indirectly and exactly: `umbra_world_loaded_min_x()` and its
+three siblings are what the app fits the camera with and where it spawns the body, and
+they were answered from the **import's** bounds. With a save open that is right. With no
+save open the staged window is 0..16, so the demo scene -- 48×48, extent 0..48 -- told the
+app it was 0..16 and the body spawned at **8,8**: the corner of the world, in a one-block
+pit. The run before it, at `24.50,24.50`, walked 0.20 then 1.20 blocks in the same code.
+
+So the phase was measuring the terrain, and the terrain was wrong. The fix makes the demo
+scene answer with its own extent, and the host check is what keeps it fixed:
+
+```
+demo: extent x 0.0..48.0 z 0.0..48.0, the mesher drew x 0.0..48.0 z 0.0..48.0
+demo: the middle of the world is 24,24 and its floor is 66.00
+PASS: 314 checks, 0 failures
+```
+
+That check compares the four exports against the vertices the mesher actually produced,
+not against a second copy of `48.0` -- the constant had already been copied once, which is
+how the two answers drifted. The emulator now also says where the body spawned when a hold
+does not move it, so the next time this fails the log names the pit.
