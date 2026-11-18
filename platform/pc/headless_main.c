@@ -186,6 +186,9 @@ int main(int argc, char **argv) {
     const umbra_vertex *v = (const umbra_vertex *)verts;
     const uint32_t *idx = (const uint32_t *)indices;
     int bad_index = 0, bad_normal = 0, bad_pos = 0;
+    // The drawn extent, so the world's four "where am I" exports can be held against the
+    // geometry rather than against a constant someone retyped.
+    float minx_seen = 1e9f, maxx_seen = -1e9f, minz_seen = 1e9f, maxz_seen = -1e9f;
     for (int64_t i = 0; i < icount; i++) {
         if (idx[i] >= (uint32_t)vcount) bad_index++;
     }
@@ -195,6 +198,10 @@ int main(int argc, char **argv) {
         // The demo world is 48x48 and 128 blocks tall. The height bound used to be 400,
         // and that is why nobody saw that three of the four columns were stacked 16, 32
         // and 48 blocks up by a `y: src.y + oz` in the column copy.
+        if (v[i].x < minx_seen) minx_seen = v[i].x;
+        if (v[i].x > maxx_seen) maxx_seen = v[i].x;
+        if (v[i].z < minz_seen) minz_seen = v[i].z;
+        if (v[i].z > maxz_seen) maxz_seen = v[i].z;
         if (!(v[i].x > -1.0f && v[i].x < 49.0f && v[i].y > -80.0f && v[i].y < 160.0f &&
               v[i].z > -1.0f && v[i].z < 49.0f)) bad_pos++;
     }
@@ -203,6 +210,35 @@ int main(int argc, char **argv) {
     check(bad_index == 0, "all indices address real vertices");
     check(bad_normal == 0, "all normals are unit length");
     check(bad_pos == 0, "all positions are inside the demo world, height included");
+
+    // 1b. The world's extent, and the floor under its middle. These four exports are what
+    //     the app fits the camera with and where it spawns the body; they answered with
+    //     the *staged window* (0..16) whenever no save was open, so on the demo scene the
+    //     app spawned at 8,8 -- the corner, in a pit -- and the emulator's walk test
+    //     failed on a hillside instead of on the input path (run 44240180172). The
+    //     question is asked here, on the world the mesher just drew, and to the same
+    //     exports the app calls.
+    {
+        float dx0 = umbra_world_loaded_min_x(), dx1 = umbra_world_loaded_max_x();
+        float dz0 = umbra_world_loaded_min_z(), dz1 = umbra_world_loaded_max_z();
+        printf("demo: extent x %.1f..%.1f z %.1f..%.1f, the mesher drew x %.1f..%.1f z %.1f..%.1f\n",
+               dx0, dx1, dz0, dz1, minx_seen, maxx_seen, minz_seen, maxz_seen);
+        check(fabsf(dx0 - minx_seen) < 0.01f && fabsf(dx1 - maxx_seen) < 0.01f &&
+              fabsf(dz0 - minz_seen) < 0.01f && fabsf(dz1 - maxz_seen) < 0.01f,
+              "the demo world's extent is the extent its geometry has");
+        // The middle of the world is where the app puts the body. If the floor there is
+        // not a floor the body can stand on, the walk test on the device measures the
+        // terrain instead of the finger.
+        int cx = (int)((dx0 + dx1) * 0.5f), cz = (int)((dz0 + dz1) * 0.5f);
+        float floor_y = umbra_world_spawn(cx, cz);
+        printf("demo: the middle of the world is %d,%d and its floor is %.2f\n", cx, cz, floor_y);
+        check(floor_y > 0.0f && floor_y < 160.0f, "the middle of the demo world has a floor");
+        // `world_spawn` returns the *surface*, so the block is the cell under it: 66.00 is
+        // the top of the block at y 65, and a slab's 65.50 is the top of the block at 65.
+        int64_t under = (int64_t)ceilf(floor_y) - 1;
+        check(umbra_block_top(cx, under, cz) > 0.0f,
+              "and that floor is a block the body can stand on");
+    }
 
     // 2b. The sliced mesher (what the phone runs) must produce exactly the same
     //     bytes as the all-at-once path (what the tools run), and it must respect

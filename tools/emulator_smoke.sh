@@ -720,6 +720,11 @@ for try in 1 2 3 4; do
                  printf "%.2f", (dx > dz ? dx : dz) }')"
     say "player: hold $try walked $DIST blocks ($BX,$BZ -> $AX,$AZ)"
     if awk -v d="$DIST" 'BEGIN { exit !(d >= 0.5) }'; then WALKED=1; break; fi
+    # A body in a one-block pit cannot walk out of it in any heading, and four headings of
+    # 0.00 is exactly what a pit looks like. Before blaming the finger, look at what the
+    # body is standing in: if the cell above the feet is solid, the terrain is the reason.
+    PIT="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "player: spawned at" | sed 's/.*spawned at //')"
+    say "player: no movement at $BX,$BZ (spawn was $PIT) -- trying another heading"
     # Turn a quarter turn and try another heading: the body may be facing a full block.
     adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 + P_WIDTH / 6 )) \
         "$P_SCENE_Y" 300 > /dev/null 2>&1 || true

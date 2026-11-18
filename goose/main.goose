@@ -962,10 +962,12 @@ export "umbra_world_spawn" fn world_spawn_export(wx: i64, wz: i64) -> f32 {
     return 64.0;
 }
 
-export fn umbra_world_min_x() -> f32 { return 0.0 }
-export fn umbra_world_max_x() -> f32 { return 48.0 }
-export fn umbra_world_min_z() -> f32 { return 0.0 }
-export fn umbra_world_max_z() -> f32 { return 48.0 }
+// The demo scene's extent, kept because the name is in older callers, answered from the
+// one function that decides it rather than from a second copy of 48.0.
+export fn umbra_world_min_x() -> f32 { return world_loaded_min_x() }
+export fn umbra_world_max_x() -> f32 { return world_loaded_max_x() }
+export fn umbra_world_min_z() -> f32 { return world_loaded_min_z() }
+export fn umbra_world_max_z() -> f32 { return world_loaded_max_z() }
 
 // --- the player's hands --------------------------------------------------
 //
@@ -1351,10 +1353,24 @@ export "umbra_world_import_entries" fn world_import_entries() -> i64 { return wl
 export "umbra_world_import_radius" fn world_import_radius() -> i64 { return wl_radius_used() }
 // Where the loaded world is. A save's columns are not at 0..47, so the camera fit, the
 // spawn and the player's first step have to ask rather than assume.
-export fn umbra_world_loaded_min_x() -> f32 { return wl_min_block_x() }
-export fn umbra_world_loaded_max_x() -> f32 { return wl_max_block_x() }
-export fn umbra_world_loaded_min_z() -> f32 { return wl_min_block_z() }
-export fn umbra_world_loaded_max_z() -> f32 { return wl_max_block_z() }
+//
+// These are two questions, and answering the first with the second's data is a bug that
+// already shipped once: with **no save open** `wl_min_block_x()` reports the *staged
+// window*, which is 0..16, not the demo world's 0..48. The app spawns the body at the
+// middle of what these four exports say, so on the demo scene it spawned at 8,8 -- the
+// corner of the terrain, on a hillside -- instead of 24,24, and the emulator's walk test
+// failed because a body at 8,8 is standing in a pit, not because a finger does nothing.
+// Run 44240180172, `player: spawned at 8.00 66.01 8.00`. The demo scene has its own
+// extent and it is the one the mesher drew.
+let DEMO_EXTENT: f32 = 48.0;
+fn world_loaded_min_x() -> f32 { if wl_is_open() != 0 { return wl_min_block_x(); } return 0.0 }
+fn world_loaded_max_x() -> f32 { if wl_is_open() != 0 { return wl_max_block_x(); } return DEMO_EXTENT }
+fn world_loaded_min_z() -> f32 { if wl_is_open() != 0 { return wl_min_block_z(); } return 0.0 }
+fn world_loaded_max_z() -> f32 { if wl_is_open() != 0 { return wl_max_block_z(); } return DEMO_EXTENT }
+export fn umbra_world_loaded_min_x() -> f32 { return world_loaded_min_x() }
+export fn umbra_world_loaded_max_x() -> f32 { return world_loaded_max_x() }
+export fn umbra_world_loaded_min_z() -> f32 { return world_loaded_min_z() }
+export fn umbra_world_loaded_max_z() -> f32 { return world_loaded_max_z() }
 // Is the world on screen the demo scene or an opened save? 0 demo, 1 save.
 export fn umbra_world_is_save() -> i64 { return wl_is_open() }
 // Where a picked archive lands before it is opened: the app's own directory, named so a
