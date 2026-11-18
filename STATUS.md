@@ -74,19 +74,21 @@ The blocks match a *second* read of the same region file block for block
 of opening an empty world. Before this change the demo world's vertices were 310 998
 outside those bounds, which is exactly the difference between "a world" and "the world".
 
-**The phone opening a server-generated save is now device-verified** (run `44301504577`,
-head `4cbe983`, both android jobs green). The android workflow generates a world with the
+**The phone opening a server-generated save is now device-verified** (run `44338752889`,
+head `3c03cc2`, all five workflows green: android, world, pc, core, jar). The android workflow generates a world with the
 real server, settles it, zips the region files and pushes them to the phone, and the phone
 opens that save and draws it:
 
 ```
+window: PASS the window is finished and its block count is stable:
+        81 chunks, 2668436 non-air blocks
 world: opened: 25 chunk(s) from 4 region file(s) -- files 4, entries 4, chunks 25,
-       non-air blocks 792922, states 2537, read errors 0, not-full chunks 0,
-       left out 1200 (a window of 2 chunks around the origin), 813.1 ms
-world: the phone read 25 chunk(s), 792922 non-air block(s), 0 read error(s)
-world: the block at 8,62,8 is minecraft:water
-world: mesh: 860904 vertices drawn, passes 1267224/24132/0 over 75 ranges
-world: shot-world.png is 1655840 bytes
+       non-air blocks 792923, states 2539, read errors 0, not-full chunks 0,
+       left out 1200 (a window of 2 chunks around the origin)
+world: the phone read 25 chunk(s), 792923 non-air block(s), 0 read error(s)
+world: mesh: 861096 vertices drawn, passes 1267488/24156/0 over 75 ranges
+notice: world: a save the game generated was opened on the device
+        (25 chunks, 792923 blocks)
 ```
 
 Getting there took three separate defects, each of which had been reporting as a fact
@@ -102,6 +104,15 @@ about the world:
 * the gate's own parser read the line above as "0 chunks", because a greedy `sed` took
   the last "chunks" on it, which is "not-full chunks 0". The world was right and the
   reading of one line was wrong.
+
+One more, found after the first green run: the hook's empty-window test was
+`case "$now" in *"0 non-air blocks"*)`, and "2668210 non-air blocks" ends in
+"0 non-air blocks" -- so a settled window was discarded as empty twelve times while the
+reader in the same step printed `PASS - every chunk in the save was read`. The count is
+now compared as a number, and `tools/test_window_parse.sh` holds the reading, the
+counter-example and a guard against the substring returning. Every one of these four was
+a *measurement* disagreeing with the world, not the world being wrong; that is the pattern
+to expect from this gate.
 
 **(c) Does the phone open a real server-generated world, or still its own demo terrain? —
 It opens a real world the server generated: on the device, `world: opened: 25 chunk(s) …
