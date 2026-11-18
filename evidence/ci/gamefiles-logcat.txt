@@ -1,99 +1,84 @@
---------- beginning of main
-11-18 17:55:11.718  6512  6534 I umbra   : 17:55:11 jar: /data/local/tmp/umbra-client.jar, 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's
-11-18 17:55:11.718  6512  6534 I umbra   : 17:55:11 edits: the file for saved edits is /data/user/0/org.umbra.client/files/edits.txt
-11-18 17:55:11.718  6512  6534 I umbra   : 17:55:11 world: a world from the game is in the app's directory; opening it
-11-18 17:55:11.718  6512  6534 I umbra   : 17:55:11 world: opening /data/user/0/org.umbra.client/files/world.zip (app directory, at start-up)
-11-18 17:55:11.718  6512  6534 I umbra   : 17:55:11 world: refused: the file is not a world: it is too small to be an archive -- files 0, entries 0, chunks 0, non-air blocks 0, states 0, read errors 0, not-full chunks 0, left out 0 (a window of 0 chunks around the origin), 0.0 ms
-11-18 17:55:11.718  6512  6534 I umbra   : 17:55:11 gamefiles: platform hooks download, picker import, files dir /data/user/0/org.umbra.client/files
-11-18 17:55:11.718  6512  6534 I umbra   : 17:55:11 atlas: 1024x1024, 4194304 bytes, 1225 tiles, hash 3ca6170e, 1 missing
-11-18 17:55:11.718  6512  6534 I umbra   : 17:55:11 atlas: source is the client jar
-11-18 17:55:11.718  6512  6534 I umbra   : 17:55:11 atlas: 1 block faces asked for a tile that is missing
-11-18 17:55:11.727  6512  6534 I umbra   : 17:55:11 edits: 2 saved edit(s) replayed from /data/user/0/org.umbra.client/files/edits.txt, 2 line(s) in the file, 0 refused
-11-18 17:55:11.734  6512  6534 I umbra   : 17:55:11 screen: home -> loading
-11-18 17:55:11.734  6512  6534 I umbra   : 17:55:11 demo world built in 2.0 ms; meshing starts in slices of at most 20 ms
-11-18 17:55:11.734  6512  6534 I umbra   : 17:55:11 check: renderer                     Android Emulator OpenGL ES Translator (Google SwiftShader)
-11-18 17:55:11.734  6512  6534 I umbra   : 17:55:11 check: gl version                   OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-11-18 17:55:11.734  6512  6534 I umbra   : 17:55:11 check: max texture size             8192 px
-11-18 17:55:11.734  6512  6534 I umbra   : 17:55:11 check: gpu timer query              none  (not available)
-11-18 17:55:11.734  6512  6534 I umbra   : 17:55:11 check: shader programs              mesh ok, hud ok, pattern ok, cube ok, atlas ok
-11-18 17:55:11.734  6512  6534 I umbra   : 17:55:11 check: depth buffer                 24 bits
-11-18 17:55:11.734  6512  6534 I umbra   : 17:55:11 check: extension string             1412 chars
-11-18 17:55:11.734  6512  6534 I umbra   : 17:55:11 check: all device checks passed
-11-18 17:55:11.734  6512  6534 I umbra   : 17:55:11 hud: button 0 at 14,1028 size 580x36 on 1920x1080 (insets 0,63,126,0)
-11-18 17:55:11.734  6512  6534 I umbra   : 17:55:11 hud: button 1 at 606,1028 size 580x36 on 1920x1080 (insets 0,63,126,0)
-11-18 17:55:11.734  6512  6534 I umbra   : 17:55:11 hud: button 2 at 1198,1028 size 580x36 on 1920x1080 (insets 0,63,126,0)
-11-18 17:55:11.754  6512  6534 I umbra   : 17:55:11 hud: 18 rows, content ends at 458 px inside a 486 px panel, fits
-11-18 17:55:11.841  6512  6534 I umbra   : app cmd 4, window 0x758879fd84c0
 --------- beginning of kernel
+--------- beginning of main
 --------- beginning of system
-11-18 17:55:14.404  6580  6607 I umbra   : android_main: files /data/user/0/org.umbra.client/files
-11-18 17:55:14.405  6580  6607 I umbra   : goose core initialised
-11-18 17:55:14.405  6580  6607 I umbra   : net: UmbraNet loaded: download and the file picker are available
-11-18 17:55:14.407  6580  6607 I umbra   : app cmd 10, window 0x0
-11-18 17:55:14.409  6580  6607 I umbra   : app cmd 11, window 0x0
-11-18 17:55:14.430  6580  6607 I umbra   : app cmd 0, window 0x0
-11-18 17:55:14.430  6580  6607 I umbra   : no window yet: waiting for the activity to become visible
-11-18 17:55:14.466  6580  6607 I umbra   : app cmd 1, window 0x758879fd84c0
-11-18 17:55:14.714  6580  6607 I umbra   : EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-11-18 17:55:14.714  6580  6607 I umbra   : app cmd 3, window 0x758879fd84c0
-11-18 17:55:14.714  6580  6607 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,63,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
-11-18 17:55:14.714  6580  6607 I umbra   : app cmd 5, window 0x758879fd84c0
-11-18 17:55:14.714  6580  6607 I umbra   : app cmd 4, window 0x758879fd84c0
-11-18 17:55:14.714  6580  6607 I umbra   : app cmd 6, window 0x758879fd84c0
-11-18 17:55:14.714  6580  6607 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,63,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 1920x1080, density bucket 420 (scale 2.62)
-11-18 17:55:14.716  6580  6607 I umbra   : 17:55:14 last run: nothing recorded yet
-11-18 17:55:14.716  6580  6607 I umbra   : 17:55:14 ---- Umbra starting, build c4f298b ----
-11-18 17:55:14.716  6580  6607 I umbra   : 17:55:14 core: umbra core: formats and meshing
-11-18 17:55:14.735  6580  6607 I umbra   : 17:55:14 shaders: 5 programs compiled and linked in 18.9 ms (mesh 3.5, hud 9.7, the rest 5.7) -- once, at start
-11-18 17:55:14.737  6580  6607 I umbra   : 17:55:14 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
-11-18 17:55:14.737  6580  6607 I umbra   : 17:55:14 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-11-18 17:55:14.737  6580  6607 I umbra   : 17:55:14 GL_VENDOR Google (Google Inc.)
-11-18 17:55:14.737  6580  6607 I umbra   : 17:55:14 depth bits 24, vertex highp 127^23, fragment highp 127^23
-11-18 17:55:14.738  6580  6607 I umbra   : 17:55:14 jar: none found; the atlas is the built-in placeholder set (set UMBRA_JAR or put client.jar in the app's files directory)
-11-18 17:55:14.738  6580  6607 I umbra   : 17:55:14 edits: the file for saved edits is /data/user/0/org.umbra.client/files/edits.txt
-11-18 17:55:14.738  6580  6607 I umbra   : 17:55:14 world: no world from the game in the app's directory; this is the demo scene (PUT A SAVE AT /data/user/0/org.umbra.client/files/world.zip)
-11-18 17:55:14.738  6580  6607 I umbra   : 17:55:14 gamefiles: platform hooks download, picker import, files dir /data/user/0/org.umbra.client/files
-11-18 17:55:14.741  6580  6607 I umbra   : 17:55:14 atlas: 128x128, 65536 bytes, 12 tiles, hash 7c205ae2, 0 missing
-11-18 17:55:14.741  6580  6607 I umbra   : 17:55:14 atlas: source is the placeholder set
-11-18 17:55:14.748  6580  6607 I umbra   : 17:55:14 edits: no saved edits at /data/user/0/org.umbra.client/files/edits.txt (this world has none yet)
-11-18 17:55:14.757  6580  6607 I umbra   : 17:55:14 screen: home -> loading
-11-18 17:55:14.758  6580  6607 I umbra   : 17:55:14 demo world built in 2.1 ms; meshing starts in slices of at most 20 ms
-11-18 17:55:14.758  6580  6607 I umbra   : 17:55:14 check: renderer                     Android Emulator OpenGL ES Translator (Google SwiftShader)
-11-18 17:55:14.758  6580  6607 I umbra   : 17:55:14 check: gl version                   OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-11-18 17:55:14.758  6580  6607 I umbra   : 17:55:14 check: max texture size             8192 px
-11-18 17:55:14.758  6580  6607 I umbra   : 17:55:14 check: gpu timer query              none  (not available)
-11-18 17:55:14.758  6580  6607 I umbra   : 17:55:14 check: shader programs              mesh ok, hud ok, pattern ok, cube ok, atlas ok
-11-18 17:55:14.758  6580  6607 I umbra   : 17:55:14 check: depth buffer                 24 bits
-11-18 17:55:14.758  6580  6607 I umbra   : 17:55:14 check: extension string             1412 chars
-11-18 17:55:14.758  6580  6607 I umbra   : 17:55:14 check: all device checks passed
-11-18 17:55:14.758  6580  6607 I umbra   : 17:55:14 hud: button 0 at 21,1005 size 573x52 on 1920x1080 (insets 0,63,126,0)
-11-18 17:55:14.758  6580  6607 I umbra   : 17:55:14 hud: button 1 at 610,1005 size 573x52 on 1920x1080 (insets 0,63,126,0)
-11-18 17:55:14.758  6580  6607 I umbra   : 17:55:14 hud: button 2 at 1199,1005 size 573x52 on 1920x1080 (insets 0,63,126,0)
-11-18 17:55:14.778  6580  6607 I umbra   : 17:55:14 hud: 12 rows, content ends at 484 px inside a 486 px panel, fits
-11-18 17:55:15.084  6580  6607 I umbra   : app cmd 4, window 0x758879fd84c0
-11-18 17:55:15.084  6580  6607 I umbra   : 17:55:15 long frame 325.9 ms (mesh 0%, 1 calls)
-11-18 17:55:16.575  6580  6607 I umbra   : 17:55:16 mesh uploaded: 26.6 MB vertices, 2.8 MB indices
-11-18 17:55:16.575  6580  6607 I umbra   : 17:55:16 upload: 26.6 MB of vertices and 2.8 MB of indices in 12.7 ms (2316 MB/s)
-11-18 17:55:16.582  6580  6607 I umbra   : 17:55:16 mesh bounds x 0.0..48.0 y -64.0..76.0 z 0.0..48.0, camera 37.6 blocks out, free band 497..995 of 1080 (46%), fog 66..146
-11-18 17:55:16.582  6580  6607 I umbra   : 17:55:16 camera: eye 47.2 75.2 48.1 look 24.0 58.0 24.0, 37.6 blocks out, fov 55
-11-18 17:55:16.582  6580  6607 I umbra   : 17:55:16 mesh: 375364 vertices drawn, passes 542592/12750/7704 over 27 ranges
-11-18 17:55:16.582  6580  6607 I umbra   : 17:55:16 startup: meshed in 860.8 ms over 42 calls (worst call 32.1 ms, worst unit 18.6 ms), longest frame 325.9 ms, frames over 250 ms: 1
-11-18 17:55:16.582  6580  6607 I umbra   : 17:55:16 units: worst meshing walk 18.6 ms, worst column copy 1.2 ms, 6 units over 10 ms of 10369
-11-18 17:55:16.582  6580  6607 I umbra   : 17:55:16 screen: loading -> home
-11-18 17:55:16.582  6580  6607 I umbra   : 17:55:16 screen: home -> game files
-11-18 17:55:16.582  6580  6607 I umbra   : 17:55:16 gamefiles: the screen is up; jar path /data/user/0/org.umbra.client/files/client.jar, 41483720 bytes pinned (sha1 e877b6a07acd633fb3bb475002175cec036e7b87), a jar is not here
-11-18 17:55:16.582  6580  6607 I umbra   : 17:55:16 gamefiles: download would fetch https://piston-data.mojang.com/v1/objects/e877b6a07acd633fb3bb475002175cec036e7b87/client.jar
-11-18 17:55:16.582  6580  6607 I umbra   : 17:55:16 hud: gamefiles button 0 at 28,502 size 444x62 on 1920x1080
-11-18 17:55:16.582  6580  6607 I umbra   : 17:55:16 hud: gamefiles button 1 at 487,502 size 444x62 on 1920x1080
-11-18 17:55:16.582  6580  6607 I umbra   : 17:55:16 hud: gamefiles button 2 at 28,578 size 444x62 on 1920x1080
-11-18 17:55:16.582  6580  6607 I umbra   : 17:55:16 hud: gamefiles button 3 at 487,578 size 444x62 on 1920x1080
-11-18 17:55:16.582  6580  6607 I umbra   : 17:55:16 hud: gamefiles button 4 at 28,654 size 444x62 on 1920x1080
-11-18 17:55:16.582  6580  6607 I umbra   : 17:55:16 gamefiles: screen 1920x1080, state 0, jar /data/user/0/org.umbra.client/files/client.jar
-11-18 17:55:22.015  6580  6607 I umbra   : 17:55:22 gamefiles: button 0 tapped
-11-18 17:55:22.015  6580  6607 I umbra   : 17:55:22 gamefiles: download started
-11-18 17:55:22.016  6580  6888 I umbra   : 17:55:22 gamefiles: downloading 41483720 bytes from Mojang
-11-18 17:55:22.044  6580  6607 I umbra   : 17:55:22 player: sneak released
-11-18 17:55:32.702  6580  6888 I umbra   : download: https://piston-data.mojang.com/v1/objects/e877b6a07acd633fb3bb475002175cec036e7b87/client.jar -> /data/user/0/org.umbra.client/files/client.jar.part: 41483720 bytes
-11-18 17:55:32.702  6580  6888 I umbra   : 17:55:32 gamefiles: the download finished: 41483720 bytes in /data/user/0/org.umbra.client/files/client.jar.part
-11-18 17:55:33.072  6580  6888 I umbra   : 17:55:33 gamefiles: the file is the pinned jar: 41483720 bytes, sha1 e877b6a07acd633fb3bb475002175cec036e7b87
-11-18 17:55:33.072  6580  6888 I umbra   : 17:55:33 gamefiles: /data/user/0/org.umbra.client/files/client.jar is now the app's client jar (41483720 bytes, sha1 e877b6a07acd633fb3bb475002175cec036e7b87)
+11-18 18:58:40.744  6843  6870 I umbra   : android_main: files /data/user/0/org.umbra.client/files
+11-18 18:58:40.744  6843  6870 I umbra   : goose core initialised
+11-18 18:58:40.744  6843  6870 I umbra   : net: UmbraNet loaded: download and the file picker are available
+11-18 18:58:40.746  6843  6870 I umbra   : app cmd 10, window 0x0
+11-18 18:58:40.746  6843  6870 I umbra   : no window yet: waiting for the activity to become visible
+11-18 18:58:40.747  6843  6870 I umbra   : app cmd 11, window 0x0
+11-18 18:58:40.761  6843  6870 I umbra   : app cmd 0, window 0x0
+11-18 18:58:40.792  6843  6870 I umbra   : app cmd 1, window 0x7cf64eceb2b0
+11-18 18:58:40.991  6843  6870 I umbra   : EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+11-18 18:58:40.991  6843  6870 I umbra   : app cmd 3, window 0x7cf64eceb2b0
+11-18 18:58:40.992  6843  6870 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,63,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
+11-18 18:58:40.992  6843  6870 I umbra   : app cmd 5, window 0x7cf64eceb2b0
+11-18 18:58:40.992  6843  6870 I umbra   : app cmd 4, window 0x7cf64eceb2b0
+11-18 18:58:40.992  6843  6870 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,63,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 1920x1080, density bucket 420 (scale 2.62)
+11-18 18:58:40.992  6843  6870 I umbra   : 18:58:40 last run: nothing recorded yet
+11-18 18:58:40.992  6843  6870 I umbra   : 18:58:40 ---- Umbra starting, build 2d1cda2 ----
+11-18 18:58:40.992  6843  6870 I umbra   : 18:58:40 core: umbra core: formats and meshing
+11-18 18:58:41.259  6843  6870 I umbra   : 18:58:41 shaders: 5 programs compiled and linked in 266.2 ms (mesh 14.9, hud 188.2, the rest 63.2) -- once, at start
+11-18 18:58:41.272  6843  6870 I umbra   : 18:58:41 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
+11-18 18:58:41.272  6843  6870 I umbra   : 18:58:41 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+11-18 18:58:41.272  6843  6870 I umbra   : 18:58:41 GL_VENDOR Google (Google Inc.)
+11-18 18:58:41.272  6843  6870 I umbra   : 18:58:41 depth bits 24, vertex highp 127^23, fragment highp 127^23
+11-18 18:58:41.291  6843  6870 I umbra   : 18:58:41 jar: none found; the atlas is the built-in placeholder set (set UMBRA_JAR or put client.jar in the app's files directory)
+11-18 18:58:41.291  6843  6870 I umbra   : 18:58:41 edits: the file for saved edits is /data/user/0/org.umbra.client/files/edits.txt
+11-18 18:58:41.291  6843  6870 I umbra   : 18:58:41 world: no world from the game in the app's directory; this is the demo scene (PUT A SAVE AT /data/user/0/org.umbra.client/files/world.zip)
+11-18 18:58:41.291  6843  6870 I umbra   : 18:58:41 gamefiles: platform hooks download, picker import, files dir /data/user/0/org.umbra.client/files
+11-18 18:58:41.296  6843  6870 I umbra   : 18:58:41 atlas: 128x128, 65536 bytes, 12 tiles, hash 7c205ae2, 0 missing
+11-18 18:58:41.296  6843  6870 I umbra   : 18:58:41 atlas: source is the placeholder set
+11-18 18:58:41.323  6843  6870 I umbra   : 18:58:41 edits: no saved edits at /data/user/0/org.umbra.client/files/edits.txt (this world has none yet)
+11-18 18:58:41.343  6843  6870 I umbra   : 18:58:41 screen: home -> loading
+11-18 18:58:41.344  6843  6870 I umbra   : 18:58:41 demo world built in 10.6 ms; meshing starts in slices of at most 20 ms
+11-18 18:58:41.345  6843  6870 I umbra   : 18:58:41 check: renderer                     Android Emulator OpenGL ES Translator (Google SwiftShader)
+11-18 18:58:41.345  6843  6870 I umbra   : 18:58:41 check: gl version                   OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+11-18 18:58:41.345  6843  6870 I umbra   : 18:58:41 check: max texture size             8192 px
+11-18 18:58:41.345  6843  6870 I umbra   : 18:58:41 check: gpu timer query              none  (not available)
+11-18 18:58:41.345  6843  6870 I umbra   : 18:58:41 check: shader programs              mesh ok, hud ok, pattern ok, cube ok, atlas ok
+11-18 18:58:41.345  6843  6870 I umbra   : 18:58:41 check: depth buffer                 24 bits
+11-18 18:58:41.345  6843  6870 I umbra   : 18:58:41 check: extension string             1412 chars
+11-18 18:58:41.345  6843  6870 I umbra   : 18:58:41 check: all device checks passed
+11-18 18:58:41.345  6843  6870 I umbra   : 18:58:41 hud: button 0 at 21,1005 size 573x52 on 1920x1080 (insets 0,63,126,0)
+11-18 18:58:41.345  6843  6870 I umbra   : 18:58:41 hud: button 1 at 610,1005 size 573x52 on 1920x1080 (insets 0,63,126,0)
+11-18 18:58:41.345  6843  6870 I umbra   : 18:58:41 hud: button 2 at 1199,1005 size 573x52 on 1920x1080 (insets 0,63,126,0)
+11-18 18:58:41.365  6843  6870 I umbra   : 18:58:41 hud: 12 rows, content ends at 484 px inside a 486 px panel, fits
+11-18 18:58:41.515  6843  6870 I umbra   : app cmd 6, window 0x7cf64eceb2b0
+11-18 18:58:41.604  6843  6870 I umbra   : app cmd 4, window 0x7cf64eceb2b0
+11-18 18:58:44.694  6843  6870 I umbra   : 18:58:44 mesh uploaded: 26.6 MB vertices, 2.8 MB indices
+11-18 18:58:44.694  6843  6870 I umbra   : 18:58:44 upload: 26.6 MB of vertices and 2.8 MB of indices in 32.2 ms (914 MB/s)
+11-18 18:58:44.702  6843  6870 I umbra   : 18:58:44 mesh bounds x 0.0..48.0 y -64.0..76.0 z 0.0..48.0, camera 37.6 blocks out, free band 497..995 of 1080 (46%), fog 66..146
+11-18 18:58:44.702  6843  6870 I umbra   : 18:58:44 camera: eye 47.2 75.2 48.1 look 24.0 58.0 24.0, 37.6 blocks out, fov 55
+11-18 18:58:44.702  6843  6870 I umbra   : 18:58:44 mesh: 375364 vertices drawn, passes 542592/12750/7704 over 27 ranges
+11-18 18:58:44.702  6843  6870 I umbra   : 18:58:44 startup: meshed in 1313.4 ms over 61 calls (worst call 50.5 ms, worst unit 42.0 ms), longest frame 169.7 ms, frames over 250 ms: 0
+11-18 18:58:44.703  6843  6870 I umbra   : 18:58:44 units: worst meshing walk 42.0 ms, worst column copy 6.3 ms, 9 units over 10 ms of 10369
+11-18 18:58:44.703  6843  6870 I umbra   : 18:58:44 screen: loading -> home
+11-18 18:58:44.703  6843  6870 I umbra   : 18:58:44 screen: home -> game files
+11-18 18:58:44.703  6843  6870 I umbra   : 18:58:44 gamefiles: the screen is up; jar path /data/user/0/org.umbra.client/files/client.jar, 41483720 bytes pinned (sha1 e877b6a07acd633fb3bb475002175cec036e7b87), a jar is not here
+11-18 18:58:44.703  6843  6870 I umbra   : 18:58:44 gamefiles: download would fetch https://piston-data.mojang.com/v1/objects/e877b6a07acd633fb3bb475002175cec036e7b87/client.jar
+11-18 18:58:44.703  6843  6870 I umbra   : 18:58:44 hud: gamefiles button 0 at 28,502 size 444x62 on 1920x1080
+11-18 18:58:44.703  6843  6870 I umbra   : 18:58:44 hud: gamefiles button 1 at 487,502 size 444x62 on 1920x1080
+11-18 18:58:44.703  6843  6870 I umbra   : 18:58:44 hud: gamefiles button 2 at 28,578 size 444x62 on 1920x1080
+11-18 18:58:44.703  6843  6870 I umbra   : 18:58:44 hud: gamefiles button 3 at 487,578 size 444x62 on 1920x1080
+11-18 18:58:44.703  6843  6870 I umbra   : 18:58:44 hud: gamefiles button 4 at 28,654 size 444x62 on 1920x1080
+11-18 18:58:44.703  6843  6870 I umbra   : 18:58:44 gamefiles: screen 1920x1080, state 0, jar /data/user/0/org.umbra.client/files/client.jar
+11-18 18:58:51.706  6843  6870 I umbra   : 18:58:51 gamefiles: button 0 tapped
+11-18 18:58:51.706  6843  6870 I umbra   : 18:58:51 gamefiles: download started
+11-18 18:58:51.708  6843  7042 I umbra   : 18:58:51 gamefiles: downloading 41483720 bytes from Mojang
+11-18 18:58:51.742  6843  6870 I umbra   : 18:58:51 player: sneak released
+11-18 18:59:03.992  6843  7042 I umbra   : download: https://piston-data.mojang.com/v1/objects/e877b6a07acd633fb3bb475002175cec036e7b87/client.jar -> /data/user/0/org.umbra.client/files/client.jar.part: 41483720 bytes
+11-18 18:59:03.992  6843  7042 I umbra   : 18:59:03 gamefiles: the download finished: 41483720 bytes in /data/user/0/org.umbra.client/files/client.jar.part
+11-18 18:59:04.863  6843  7042 I umbra   : 18:59:04 gamefiles: the file is the pinned jar: 41483720 bytes, sha1 e877b6a07acd633fb3bb475002175cec036e7b87
+11-18 18:59:04.864  6843  7042 I umbra   : 18:59:04 gamefiles: /data/user/0/org.umbra.client/files/client.jar is now the app's client jar (41483720 bytes, sha1 e877b6a07acd633fb3bb475002175cec036e7b87)
+11-18 18:59:06.166  6843  6870 I umbra   : 18:59:06 jar: /data/user/0/org.umbra.client/files/client.jar, 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's
+11-18 18:59:06.167  6843  6870 I umbra   : 18:59:06 atlas: 1024x1024, 4194304 bytes, 1225 tiles, hash 3ca6170e, 1 missing
+11-18 18:59:06.167  6843  6870 I umbra   : 18:59:06 atlas: source is the client jar
+11-18 18:59:06.167  6843  6870 I umbra   : 18:59:06 atlas: 1 block faces asked for a tile that is missing
+11-18 18:59:06.170  6843  6870 I umbra   : 18:59:06 edits: no saved edits at /data/user/0/org.umbra.client/files/edits.txt (this world has none yet)
+11-18 18:59:06.175  6843  6870 I umbra   : 18:59:06 screen: game files -> loading
+11-18 18:59:06.175  6843  6870 I umbra   : 18:59:06 demo world built in 2.9 ms; meshing starts in slices of at most 20 ms
+11-18 18:59:06.175  6843  6870 I umbra   : 18:59:06 gamefiles: ready: 4192 models, 1214 textures, 1 missing
+11-18 18:59:06.175  6843  6870 I umbra   : 18:59:06 gamefiles: leaving the game-files screen for the world
+11-18 18:59:06.182  6843  6870 I umbra   : 18:59:06 frame: the first world frame drew in 7.3 ms and the driver held it 0.1 ms (glFinish), 375364 vertices over 0 ranges
+11-18 18:59:06.193  6843  6870 I umbra   : 18:59:06 long frame 1315.2 ms (mesh 0%, 0 calls)
