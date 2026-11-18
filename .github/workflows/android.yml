@@ -245,8 +245,15 @@ jobs:
           mkdir -p build/world
           java -version 2>&1 | head -2
           if ! tools/gen_server_world.sh build/server/server.jar build/server/run > build/world/gen-world.log 2>&1; then
-            echo "::error title=world::the server wrote no world, so the phone's import cannot be proved"
-            tail -30 build/world/gen-world.log || true
+            # The step's own log is not always readable afterwards through the API, so the
+            # reason is put in an annotation too: an annotation is the one thing the run
+            # record always keeps.
+            WHY="$(grep -E '^window: |^ERROR|^WARNING' build/world/gen-world.log 2>/dev/null | tail -6 | tr '\n' ' ' | cut -c1-900)"
+            echo "::error title=world::no world for the phone: ${WHY:-no reason in gen-world.log}"
+            tail -40 build/world/gen-world.log || true
+            mkdir -p evidence/ci
+            cp build/world/gen-world.log evidence/ci/world-gen.log 2>/dev/null || true
+            cp build/server/run/server.log evidence/ci/server.log 2>/dev/null || true
             exit 1
           fi
           # What the settling hook said, where it survives: the step log was unreadable
