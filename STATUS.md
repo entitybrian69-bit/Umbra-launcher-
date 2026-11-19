@@ -100,34 +100,64 @@ One thing found while proving it, **still open**:
   the count is identical before and after (174, 42 on a border, 0 at plants). A separate
   duplicate-emission path, uninvestigated, recorded so it is not mistaken for fixed.
 
-## 0.3.8-pre: published from a CI-green head (2026-11-14)
+## 0.3.8-pre: published, and its verification is recorded (2026-11-14)
 
-Tag `v0.3.8-pre` at `e8d804b`, release run `44479597282`. 0.3.8 rather than re-using
-0.3.7-pre because that tag is already published at `d01817e` with a sha256 in
-`RELEASE_VERIFY.txt`, and it predates both changes below; publishing different bytes under
-a name that already has a hash is how a release stops meaning anything.
+Tag `v0.3.8-pre` at `cbde65d`, release run `44494786729`, all four jobs `success` in 6m55s.
 
-**CI at the tagged commit `e8d804b`, all five workflows `success`:** core `44476704112`,
-jar `44476704125`, pc `44476704127`, world `44476704525`, android `44476704153`. The
-emulator run's own verdict line is `result: PASS (installed, launched, drew, self test
-tapped, the game-files screen fetched the jar it needs, 60s soak, no crash)`.
+0.3.8 rather than re-using 0.3.7-pre because that tag is published at `d01817e` with a
+sha256 already in `RELEASE_VERIFY.txt`, and it predates both changes below; publishing
+different bytes under a name that already has a hash is how a release stops meaning
+anything.
 
-What is in it, and the device line that says so:
+**CI at the tagged commit `cbde65d`, all five workflows `success`:** core `44491748489`,
+jar `44491748569`, pc `44491748555`, world `44491748550`, android `44491748757`. The
+emulator's own verdict is `result: PASS (installed, launched, drew, self test tapped, the
+game-files screen fetched the jar it needs, 60s soak, no crash)`.
 
-| claim | device evidence (run `44476704153`, evidence commit `fb4291e`) |
+**The published bytes, from `RELEASE_VERIFY.txt` and `evidence/release/v0.3.8-pre.txt`:**
+three assets re-downloaded from their public URLs, `http: 200` and `sha256` matching for
+each (`d65be994…` apk, `f319b500…` linux-x64, `a0191c5e…` windows-x64.exe), then
+`linux: the downloaded binary passed its self-test` and `windows: the downloaded .exe ran
+under wine and passed its self-test`.
+
+What is in it, and the device line that says so (run `44476704153`, version 0.3.8):
+
+| claim | device evidence |
 |---|---|
 | the world is drawn through the jar's blockstates → models | `mesh: 300826 block(s) drawn from a model, 58576 face(s) from a model, 0 block(s) whose blockstate had no model` |
 | the atlas on the phone is the jar's | `self-test: atlas 0 of 256 texels differ`, `SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, ...)` |
 | the seam fix is in the shipped bytes | 583096 vertices for the 25-chunk save on the device, from 861096 before (`cc5c235`) |
 | a save on the phone, no jar, opens from the screen's button | `world-button: gamefiles: button 2 tapped` → `world: open requested` → `world: opened: 25 chunk(s)` → `and the app is still running (pid 6695)` |
-| the soak's crash check is this app's crash | `soak: no FATAL EXCEPTION` (the check now reads the exception's own `Process:` line; see the 44432932868 note) |
 
 **Frame rate, stated honestly.** This run's benchmark is `839 frames avg 71.63 ms (13 fps)
-1% low 9 fps`, against the 15 fps measured on the run before it (`b830866`) for the same
-code path. The emulator is shared and software-rendered, so a ±2 fps spread between runs is
-the machine, not a regression: the thing that changed between those two runs is evidence
-commits and a log line. The attribution to the seam fix rests on the vertex counts, which
-are deterministic, not on the fps, which is not.
+1% low 9 fps`, against 15 fps measured on the run before it (`b830866`) for the same code.
+The emulator is shared and software-rendered, so a ±2 fps spread is the machine: what
+changed between those runs is evidence commits and a log line, not the renderer. The
+attribution to the seam fix rests on the vertex counts, which are deterministic, not on
+the fps, which is not.
+
+### Four attempts to publish, and three real defects in the release path
+
+The release workflow was not exercised by the earlier tags in a way that could catch these,
+because `tools/commit_evidence.sh` returned early on *any* tag run and threw the evidence
+away. Each attempt after that fix found the next layer:
+
+1. **`wine` was never installed.** `apt-get install -y wine` with no package list is a
+   no-op on `ubuntu-latest` and the `|| true` hid it, so the Windows asset was published
+   but never run. Fixed with `apt-get update`, and it now runs the .exe.
+2. **The verification was written and discarded.** `commit_evidence.sh` exited 0 on
+   `refs/tags/*` regardless of the branch the release job named, so `RELEASE_VERIFY.txt`
+   still said `v0.3.6-pre` and no `evidence/release/v0.3.8-pre.txt` existed. The
+   `REQUIRE_EVIDENCE=1` check that exists to catch exactly this never fired, because the
+   early return came before it.
+3. **The commit then could not finish inside the job.** With the push finally running, its
+   ten-attempt retry budget (~9 minutes against a branch nine other jobs push to) did not
+   fit the publish job's 20-minute timeout, and run `44487807384` was cancelled at 20m10s
+   with the release already public and its verification unsaved. The job now has 30
+   minutes, and this one caller uses 4 attempts because its text is also a job artifact.
+
+All three were caught by the release path's own refusal to claim something it had not
+done, which is why the fourth attempt's record is worth more than the first's.
 
 ## The four earlier items, marked (2026-11-14)
 
