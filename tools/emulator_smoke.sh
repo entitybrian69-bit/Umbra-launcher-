@@ -1228,6 +1228,111 @@ else
     note "world: a save the game generated was opened on the device (${W_CHUNKS} chunks, ${W_BLOCKS} blocks)"
 fi
 
+# ---- 10b. the world button: a save on the phone, no jar, one tap ------------------
+# The "world" phase above proves the *import*: adb puts the archive in the app's own
+# directory and the app opens it at start-up. That is not the owner's situation in one
+# respect that matters: on a phone with no jar there is also a *screen* in the way, and
+# the way past it is a button.
+#
+# This phase is the owner's real case: app data cleared (so no jar, hence the game-files
+# screen), the save in the app's directory, cold start. Two things are then checked,
+# and the second is the one nothing else covers:
+#
+#   1. the screen comes up even though a world is already open -- the atlas is the
+#      placeholder set, and the app says so rather than drawing a wrong world quietly;
+#   2. tapping "OPEN A WORLD THE GAME MADE" reaches the import from event dispatch and
+#      leaves the screen, with the save's numbers in the log.
+if [ -z "${WORLD_ZIP:-}" ] || [ ! -f "${WORLD_ZIP:-}" ]; then
+    # Same rule as the world phase: a run that was supposed to be given a save and was
+    # not must fail, or a workflow defect reads as a pass.
+    die "world-button: no save in this run (UMBRA_WORLD_ZIP is empty), so the owner's route to a world cannot be proved"
+else
+    say "world-button: clearing the app, leaving only the save in its directory"
+    # Clearing removes world.zip too, so the archive is copied back afterwards. This is
+    # the owner's phone exactly: a save, no jar, no adb.
+    adb shell pm clear org.umbra.client > /dev/null 2>&1 || true
+    adb shell rm -f /data/local/tmp/umbra-client.jar > /dev/null 2>&1 || true
+    sleep 1
+    FILES_WB="$(adb shell "ls -d /data/user/0/org.umbra.client/files 2>/dev/null || echo /data/data/org.umbra.client/files" | tr -d '\r\n')"
+    adb shell "mkdir -p '$FILES_WB'" > /dev/null 2>&1 || true
+    adb shell "cp /data/local/tmp/umbra-world.zip '$FILES_WB/world.zip'" > /dev/null 2>&1 \
+        || die "world-button: the archive could not be put in the app's files directory"
+    say "world-button: in the app's directory: $(adb shell ls -l "$FILES_WB/world.zip" 2>/dev/null | tr -s ' ' | cut -c1-100)"
+    say "world-button: and no jar: $(adb shell ls "$FILES_WB/client.jar" 2>&1 | tr -d '\r\n')"
+    adb logcat -c > /dev/null 2>&1 || true
+    WB_LAUNCH="$(launch_app world-button-launch.log)" || die "world-button: the app would not start"
+    say "world-button: $WB_LAUNCH"
+
+    # (1) The screen has to come up. Wait for its own line, and require the placeholder
+    # atlas to be the reason -- a jar would mean this phase tested nothing.
+    WB_SCREEN=0
+    DEADLINE=$((SECONDS + 180))
+    while [ $SECONDS -lt $DEADLINE ]; do
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "gamefiles: the screen is up"; then WB_SCREEN=1; break; fi
+        sleep 3
+    done
+    [ "$WB_SCREEN" = 1 ] || die "world-button: with a save and no jar the game-files screen never came up: $(adb logcat -d -s umbra:V 2>/dev/null | grep -oE '(gamefiles|world|atlas): .*' | tail -4 | tr '\n' '|')"
+    say "world-button: the screen came up with a world already open (no jar, so the atlas is the placeholder set)"
+
+    # (2) Tap the world button. Its rectangle is the app's third button on this screen.
+    WB_RECT=""
+    DEADLINE=$((SECONDS + 120))
+    while [ $SECONDS -lt $DEADLINE ]; do
+        WB_RECT="$(adb logcat -d -s umbra:V 2>/dev/null | grep -o 'hud: gamefiles button 2 at [-0-9]*,[-0-9]* size [0-9]*x[0-9]*' | tail -1)"
+        [ -n "$WB_RECT" ] && break
+        sleep 3
+    done
+    [ -n "$WB_RECT" ] || die "world-button: the app never logged the world button's rectangle"
+    WBX=""; WBY=""
+    while read -r WB_X WB_Y WB_W WB_H; do
+        [ -n "$WB_X" ] || continue
+        WBX=$(( WB_X + WB_W / 2 )); WBY=$(( WB_Y + WB_H / 2 ))
+        say "world-button: button 2 at $WB_X,$WB_Y size ${WB_W}x${WB_H}, centre $WBX,$WBY"
+    done <<< "$(printf '%s\n' "$WB_RECT" | sed 's/.*at //; s/ size / /; s/x/ /; s/,/ /')"
+    [ -n "$WBX" ] || die "world-button: the button rectangle could not be read: $WB_RECT"
+    # Same rotation rule as the game-files phase: the app logs in its own surface space.
+    WB_USURF="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'gamefiles: screen .*x' | sed 's/.*screen \([0-9]*\)x.*/\1/')"
+    if [ -n "$WB_USURF" ] && [ "${WB_USURF:-0}" -lt "$DISP_W" ]; then
+        WBX_T=$(( DISP_H - WBY )); WBY_T=$WBX
+        say "world-button: the surface is ${WB_USURF} wide in a ${DISP_W}x${DISP_H} display, so the tap is rotated"
+    else
+        WBX_T=$WBX; WBY_T=$WBY
+    fi
+    adb logcat -c > /dev/null 2>&1 || true
+    say "world-button: tapping $WBX_T,$WBY_T"
+    adb shell input tap "$WBX_T" "$WBY_T" > /dev/null 2>&1 || die "world-button: the tap failed"
+
+    # The tap has to be *observed*: the app logs the hit before it does anything with it.
+    WB_TAPPED=0
+    DEADLINE=$((SECONDS + 120))
+    while [ $SECONDS -lt $DEADLINE ]; do
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "gamefiles: button 2 tapped"; then WB_TAPPED=1; break; fi
+        sleep 2
+    done
+    [ "$WB_TAPPED" = 1 ] || die "world-button: the tap at $WBX_T,$WBY_T did not hit button 2: $(adb logcat -d -s umbra:V 2>/dev/null | grep -oE '(gamefiles|world): .*' | tail -4 | tr '\n' '|')"
+    say "world-button: $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 -o 'gamefiles: button 2 tapped.*')"
+    say "world-button: $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 -o 'world: open requested.*')"
+
+    # And the import has to run from the frame loop, which is what "deferred to the
+    # frame loop" means and what nothing else checks: the request line is written by
+    # the tap handler, the work is done by world_job_start on the next frame.
+    WB_OPEN=0
+    DEADLINE=$((SECONDS + 240))
+    while [ $SECONDS -lt $DEADLINE ]; do
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "world: opened:"; then WB_OPEN=1; break; fi
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "world: refused:"; then break; fi
+        sleep 3
+    done
+    adb logcat -d -s umbra:V 2>/dev/null | grep -o 'world: .*' | head -4 | while IFS= read -r l; do say "world-button:   $l"; done
+    [ "$WB_OPEN" = 1 ] || die "world-button: the button was tapped and the world did not open: $(adb logcat -d -s umbra:V 2>/dev/null | grep -o 'world: .*' | tail -3 | tr '\n' '|')"
+    WB_LINE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'world: opened:' | sed 's/.*umbra *: //')"
+    say "world-button: $WB_LINE"
+    LIVE="$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')"
+    [ -n "$LIVE" ] || die "world-button: the app died opening the world from its own button"
+    say "world-button: and the app is still running (pid $LIVE)"
+    note "world-button: a save on the phone, no jar, and the screen's own button opened the world"
+fi
+
 # ---- 11. the game-files screen: a real download, through the real Java path ------
 # The CI harness pushes a jar to /data/local/tmp, which a phone cannot do; the
 # screen is how a phone gets one (D-043). This phase proves the whole path on a

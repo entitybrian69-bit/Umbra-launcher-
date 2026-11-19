@@ -2915,8 +2915,18 @@ static void world_job_start(umbra_app *app) {
     if (app->files_dir[0] && file_exists_at(zip)) {
         // The app's own directory. This is the path a phone that was handed a file takes,
         // and the one the automated run uses: the picker's answer cannot be scripted.
+        //
+        // It is also usually already open: start-up opens this exact archive before the
+        // first mesh (see begin_scene), so by the time the owner can tap this button the
+        // world behind the screen may be this save already. Re-importing it would throw
+        // away and rebuild a mesh for a world that is on screen.
+        if (app->world_state == 2 && strcmp(app->world_path, zip) == 0) {
+            umbra_log(app, "world: %s is already open; leaving the screen for it", zip);
+            close_gamefiles_screen(app);
+            return;
+        }
         umbra_log(app, "world: a zip of a save is in the app's own directory");
-        world_open_path(app, zip, "app directory");
+        if (world_open_path(app, zip, "app directory")) close_gamefiles_screen(app);
         return;
     }
     if (!app->pick_world_fn) {
@@ -2943,7 +2953,10 @@ static void world_job_start(umbra_app *app) {
         return;
     }
     umbra_log(app, "world: the picked archive was copied: %lld bytes", got);
-    world_open_path(app, part, "picked file");
+    // The path is the picked archive for this session, but the world it holds is the
+    // one at world.zip from the next start: start-up only ever looks there.
+    if (world_open_path(app, part, "picked file")) close_gamefiles_screen(app);
+    else umbra_log(app, "world: the screen stays up so the file can be picked again");
 }
 
 // The frame loop's half: one import per request, never two.

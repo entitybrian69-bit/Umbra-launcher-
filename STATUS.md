@@ -26,16 +26,66 @@ Measured on `build/seam_faces` (glue harness, demo seed 20261114, all 9 columns 
 That is the overdraw: 52% of every frame was faces nobody could see, which is what the 11 fps
 benchmark was drawing. **On the emulator, run 44430241555 (head `660f129` + evidence):**
 
-| | before (`ba59105`) | after (`660f129`) |
+| | before (`ba59105`) | after (`b830866`) |
 |---|---|---|
 | benchmark | 682 frames, avg 88.21 ms (**11 fps**), 1% low 7 fps | 909 frames, avg 66.13 ms (**15 fps**), 1% low 10 fps |
 | median / worst frame | 86.58 ms / 141.52 ms | 65.92 ms / 98.48 ms |
-| first world frame | 861 096 vertices | 234 304 vertices over 18 ranges |
+| demo world (9 columns) | 431 108 vertices | 234 304 vertices over 18 ranges |
+| the save (25 chunks) | 861 096 vertices | 583 224 vertices over 75 ranges |
 
 The 1% low matters more than the average: it went from 7 fps to 10 fps, so the frames that
 made the app feel like it was dropping were the ones that gained most. All five workflows are
 `success` on this head. `run_mesh_borders` (6 checks) fails on the old code — 2624 faces on a
 border where there must be none — and passes on the new one. D-047 has the reasoning.
+
+### Reconciling 73% with 22% (2026-11-14, corrected)
+
+An earlier version of this table said the first world frame fell **861 096 → 234 304**, which
+is a 73% drop against the host suite's 22% for the same fix, and that looked like two
+different bugs. It was one bug and one bad table: **861 096 and 234 304 are different
+worlds.** 861 096 was the save phase (25 chunks, 75 ranges); 234 304 is the demo's first
+frame (9 columns, 18 ranges). The app shows both numbers and I put them on one row.
+
+The correct pairs, now stated separately:
+
+| world | before | after | drop | faces removed |
+|---|---|---|---|---|
+| demo, 9 columns (first frame) | 431 108 | 234 304 | 45.6% | 49 201 |
+| save, 25 chunks (world phase) | 861 096 | 583 224 | 32.3% | 69 468 |
+| same save, host suite | 52 644 | 41 092 | 21.9% | 2 888 |
+
+The percentages differ because the worlds are different **shapes**, and the amount a world
+drops depends on how much of it is solid at a chunk border:
+
+* The **demo** is 3x3 solid columns: 8 interior borders, each 16 blocks by a flat ~70-block
+  height, and almost nothing else in the world is a buried face. So it drops 45.6%.
+* The **host's 25-chunk fixture** has caves, water and ore, so a smaller share of its border
+  cells have a full cube on both sides. It drops 21.9%.
+* The **device save** is a 5x5 window of a real 26.3 world: 8 interior borders again, but
+  127 blocks of height below the surface at y≈63, and far more of it solid than the small
+  fixture. It drops 32.3%.
+
+The count and the drop agree to 0.6% where both were measured on the same world: the host
+fixture's `(328908 - 256716) / 4 = 18048` faces removed against `17940` counted by
+`build/save_seam`; the demo's `49471` removed against `49222` counted.
+
+**Two things here are not fully verified, and are stated as such rather than smoothed over:**
+
+1. The 0.6% residual has no measured explanation. The probe counts only quads whose corners
+   sit exactly on a border plane with an axis-aligned normal, so faces the border cull also
+   removes from an inset model box (a slab, a plant) would be missed by it — that is a guess.
+2. The device save's `69468` removed faces cannot be checked against a count, because the
+   archive that produced it (a 4-region-file real save) is not in the repository; the host
+   fixture is a different, smaller world. The number is consistent with a 5x5 window of solid
+   terrain (8 borders x 16 wide x ~540 blocks tall, counting both sides) but that is
+   arithmetic, not a measurement.
+
+So: nothing else changed. `git log --no-merges ba59105..660f129 -- goose/ platform/ android/`
+is a single commit (`cc5c235`, the seam fix). The 73% was never real.
+
+One more correction in the same spirit: `660f129`'s evidence file is the *previous* run's,
+because CI commits evidence after the push it belongs to. The run that measured the fix is
+`b830866` (run 44430241555), and the table above cites that one.
 
 **What a person would have seen is not what was expected.** The guess was a hole: break a
 block on a border, the neighbour's face cannot come back. That is not what happened — the old
@@ -49,6 +99,26 @@ One thing found while proving it, **still open**:
 * **174 quads are drawn twice in the demo world, 42 of them on a border.** Not the seam bug:
   the count is identical before and after (174, 42 on a border, 0 at plants). A separate
   duplicate-emission path, uninvestigated, recorded so it is not mistaken for fixed.
+
+## The four earlier items, marked (2026-11-14)
+
+Each status cites the command or the run it rests on. "DONE" means a phone or a device
+emulator did it and the output is in `evidence/`; "PARTIAL" means something real works and
+something asked for does not.
+
+| item | status | evidence |
+|---|---|---|
+| real textures and models from the jar, on the phone, through blockstates → models | **DONE** | run `44430241555` (`b830866`): `jar: 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's`; `self-test: atlas 0 of 256 texels differ`; `SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 2714 ms, offscreen, atlas from the jar)` |
+| the phone can obtain the game's files | **DONE for the jar, NOT STARTED for the world** | run `44430241555` (`b830866`), gamefiles phase entered with an empty app directory: `download would fetch https://piston-data.mojang.com/v1/objects/e877b6a0.../client.jar` → `the download finished: 41483720 bytes` → `the file is the pinned jar: 41483720 bytes, sha1 e877b6a0...` → `.../files/client.jar is now the app's client jar` → `atlas: source is the client jar -- the downloaded jar draws the world`. That is a real 41 MB transfer from Mojang's CDN, the sha1 check, and the app adopting it, all on the device. The same screen offers a file-picker import (`net: UmbraNet loaded: download and the file picker are available`), but no run exercises the picker end to end, and **no route exists yet for a world zip or folder** |
+| a bigger world with chunk streaming | **NOT STARTED** | the world opens a fixed 5x5 window (`WL_WINDOW = 2`, `left out 1200 (a window of 2 chunks around the origin)`) and there is no code that loads a column as the player moves; `grep stream` finds only DEFLATE streams |
+| edit latency: re-mesh only the edited column plus border neighbours, no frame over ~50 ms | **DONE for the column, and the neighbour now works too** | run `44430241555`: `edit: re-meshed 1 of 9 columns in 87.2 ms over 5 calls (worst call 20.2 ms, worst slice 7.6 ms)`, `the longest slice was 20.2 ms (under the 50 ms an edit is allowed)`. That edit broke a block *inside* a column, so one column is right. The border case was broken and is fixed by `cc5c235`: `build/border_probe2` changed 1 of 27 slots before and 2 of 27 after |
+
+Two of these need saying plainly. **The jar half of the asset flow works on the phone**, which
+is the owner's real situation — they have only a phone — and it is the one item here whose
+evidence is a live download rather than a host suite. **The world half does not exist**: the
+screen fetches the game's jar, but a world still arrives only by a side-loaded path, and there
+is no in-app route for a world zip or folder. **Chunk streaming has not been started**, so "a
+bigger world" today means a fixed 5x5 window and nothing past it.
 
 ## The brief's four questions, answered plainly (item 1)
 

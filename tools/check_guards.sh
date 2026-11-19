@@ -37,5 +37,16 @@ guard hook_syntax   bash -n tools/gen_window_hook.sh
 guard smoke_syntax  bash -n tools/emulator_smoke.sh
 guard evidence_syn  bash -n tools/commit_evidence.sh
 
+#   c_compiles    - platform/shared/umbra_app.c is one file with two platform branches
+#                   behind #ifdef __ANDROID__, and only one of them is compiled by any
+#                   given build. A change to the game-files screen that type-checks on the
+#                   host and not for Android costs ten minutes of CI to discover, which is
+#                   exactly what happened before this guard existed.
+if [ -x build/bin/goose ] || command -v goose > /dev/null 2>&1; then
+    guard c_compiles    env GOOSE="${GOOSE:-build/bin/goose}" bash tools/check_c.sh
+else
+    printf 'skip %-18s no goose compiler; run tools/pin_goose.sh\n' c_compiles
+fi
+
 [ "$fail" = 0 ] && echo "PASS: every guard passed" || echo "FAILED: a guard above did not pass"
 exit "$fail"

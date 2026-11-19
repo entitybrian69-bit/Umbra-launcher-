@@ -17,12 +17,19 @@ if [ ! -f "$GEN/umbra_core.h" ]; then
 fi
 # Both the Android and the desktop branches of the #ifdefs are checked: the app
 # is compiled one way in the APK and the other way on PC.
+# -Werror=implicit-function-declaration is not decoration here. Without it a call to a
+# function nobody declared compiles (gcc 12 warns, and -fsyntax-only still exits 0), so
+# this check passed a build where the game-files screen called a
+# close_gamefiles_screen_typo() that does not exist -- and the Android build, which is
+# clang in C99 mode, would have failed ten minutes later in CI. Verified by putting that
+# typo back and watching this fail.
+APP_FLAGS=(-std=gnu11 -fsyntax-only -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare
+           -Werror=implicit-function-declaration -Werror=incompatible-pointer-types)
 echo "== desktop branch"
-$CC -std=gnu11 -fsyntax-only -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare \
-    -I"$INC" -I"$GEN" -Iplatform/shared "$@" platform/shared/umbra_app.c
+$CC "${APP_FLAGS[@]}" -I"$INC" -I"$GEN" -Iplatform/shared "$@" platform/shared/umbra_app.c
 echo "== android branch"
-$CC -std=gnu11 -fsyntax-only -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare \
-    -D__ANDROID__ -I"$INC" -I"$GEN" -Iplatform/shared "$@" platform/shared/umbra_app.c
+$CC "${APP_FLAGS[@]}" -D__ANDROID__ -I"$INC" -I"$GEN" -Iplatform/shared "$@" \
+    platform/shared/umbra_app.c
 # The platform mains were not checked here until 0.3.1, and the JNI inset code
 # that crashed the emulator lived in one of them. clang rejects an implicit
 # function declaration in C99 mode and gcc only warns, so the warning is an
