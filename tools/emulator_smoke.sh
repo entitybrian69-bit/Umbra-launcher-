@@ -42,6 +42,27 @@ die() {
     exit 1
 }
 
+# Is a crash in the log ours? A FATAL EXCEPTION is not this app's crash unless its own
+# process is the one that died. Run 44432932868 failed its soak on
+# "FATAL EXCEPTION: main ... Process: com.google.android.apps.youtube.music" -- a
+# preinstalled emulator app whose version string is empty in that AVD image -- while the
+# app under test was alive with the right pid, which the summary said two lines above the
+# failure. A check that cannot tell those apart fails for the machine, and this project
+# has already spent a round of commits on exactly that (D-045).
+#   ours: the "Process:" line of the exception names org.umbra.client.
+crash_is_ours() {
+    local file="$1"
+    [ -f "$file" ] || return 1
+    awk '
+        /FATAL EXCEPTION/ { infatal = 1; next }
+        infatal && /Process: / {
+            if ($0 ~ /org[.]umbra[.]client/) { found = 1 }
+            infatal = 0
+        }
+        END { exit(found ? 0 : 1) }
+    ' "$file"
+}
+
 # Collect diagnostics on any exit, success or failure, so that a failed run
 # still explains itself. Runs once.
 collect() {
@@ -92,8 +113,12 @@ collect() {
             | while IFS= read -r l; do say "focus: $(echo "$l" | tr -s ' ')"; done
         if [ -f logcat-full.txt ]; then
             say "logcat: $(wc -l < logcat-full.txt) lines, $(stat -c%s logcat-full.txt) bytes"
-            if grep -q "FATAL EXCEPTION" logcat-full.txt; then
-                err "FATAL EXCEPTION in logcat: $(grep -A10 'FATAL EXCEPTION' logcat-full.txt | tail -c 800)"
+            if crash_is_ours logcat-full.txt; then
+                err "FATAL EXCEPTION in this app: $(grep -A10 'FATAL EXCEPTION' logcat-full.txt | tail -c 800)"
+            elif grep -q "FATAL EXCEPTION" logcat-full.txt; then
+                say "logcat: a FATAL EXCEPTION was logged by another process, not this app:"
+                grep -A2 "FATAL EXCEPTION" logcat-full.txt | grep -m1 -E "Process: " \
+                    | while IFS= read -r l; do say "logcat:   $(echo "$l" | tr -s ' ' | cut -c1-160)"; done
             fi
             say "activity manager mentions of umbra:"
             grep -iE "umbra" logcat-system.txt 2>/dev/null | tail -20 \
@@ -1013,10 +1038,16 @@ sleep "$SOAK_SECONDS"
 PID2="$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')"
 [ -n "$PID2" ] || die "the app died during the ${SOAK_SECONDS}s soak (pid was $PID)"
 say "soak: survived, pid $PID2"
-if adb logcat -d 2>/dev/null | grep -q "FATAL EXCEPTION"; then
-    die "FATAL EXCEPTION appeared during the soak"
+adb logcat -d 2>/dev/null > soak-logcat.txt || true
+if crash_is_ours soak-logcat.txt; then
+    die "FATAL EXCEPTION in this app during the soak: $(grep -A6 'FATAL EXCEPTION' soak-logcat.txt | tail -c 600)"
 fi
-say "soak: no FATAL EXCEPTION"
+if grep -q "FATAL EXCEPTION" soak-logcat.txt; then
+    OTHER="$(grep -A2 'FATAL EXCEPTION' soak-logcat.txt | grep -m1 -o 'Process: [a-zA-Z0-9._]*')"
+    say "soak: no FATAL EXCEPTION in this app (${OTHER:-another process} crashed, not ours)"
+else
+    say "soak: no FATAL EXCEPTION"
+fi
 say "meminfo: $(grep -E 'TOTAL PSS|Native Heap' meminfo.txt | tr -s ' ' | tr '\n' '|' | cut -c1-240)"
 
 # ---- 9. relaunch: the previous run's results come back -------------------------
