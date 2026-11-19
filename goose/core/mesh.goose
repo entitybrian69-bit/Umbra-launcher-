@@ -12,6 +12,7 @@ import core.region;
 import core.textures;
 import core.models;
 import core.modelstore;
+import core.demo;
 
 // The vertex layout the GPU consumes. Packed, in declaration order; the C side
 // mirrors it in platform/shared/umbra_vertex.h.
@@ -528,13 +529,53 @@ fn push_model(c: ChunkColumn&, bx: i32, by: i32, bz: i32, tint: f32[3]) {
     }
 }
 
-// Neighbour lookup that reaches into the column the caller provides, and
-// reports air outside it (a chunk edge, or an unloaded neighbour). Meshing a
-// chunk with its real neighbours is the caller's job; passing air is safe, it
-// only costs a few faces at the seam.
+// Neighbour lookup. Inside the column it is the column's own block; across an
+// edge it is the adjacent column's block at the wrapped coordinate, read from the
+// world if the world has that column.
+//
+// This used to report air for everything outside 0..15, with the note that passing
+// air "only costs a few faces at the seam". It costs the opposite: a cullface test
+// that sees air keeps a face it should drop, and -- the visible one -- has no way to
+// bring back a face that the real neighbour should stop hiding. Break a block on a
+// chunk border and the neighbour's face stayed missing, a hole you can see through.
+// Loading a save made it worse: nine columns aligned with the demo's borders, so
+// every seam in a freshly opened world was cut open.
+//
+// The world it reads from is `core.demo`'s array, the one the mesher's caller walks.
+// A single column meshed with no world (the unit tests) gets air across its edge, which
+// is the same answer an empty neighbour column gives, and `run_mesh_borders` holds both
+// that case and the one with a neighbour.
+let MESH_NO_WORLD: i64 = -1000000000;
+var mesh_centre_x: i32 = MESH_NO_WORLD as i32;  // chunk x of the column being meshed
+var mesh_centre_z: i32 = MESH_NO_WORLD as i32;
+
+// Which column is being meshed. mesh_column and mesh_section_class_layers set it
+// themselves; anything else that meshes a column can say so before it starts.
+fn mesh_edging(cx: i32, cz: i32) {
+    mesh_centre_x = cx;
+    mesh_centre_z = cz;
+}
+
+// The column at this chunk position in the world, or -1 if there is no world or no
+// column there. This is only ever asked for a *neighbour* of the column being meshed.
+fn mesh_world_column(cx: i32, cz: i32) -> i64 {
+    if mesh_centre_x == MESH_NO_WORLD as i32 { return -1; }
+    return demo_column_of((cx * 16) as i32, (cz * 16) as i32);
+}
+
 fn neighbour(c: ChunkColumn&, x: i32, y: i32, z: i32) -> u32 {
-    if x < 0 || x > 15 || z < 0 || z > 15 || y < -64 || y > 319 { return 0; }
-    return chunk_block(c, x, y, z);
+    if y < -64 || y > 319 { return 0; }
+    if x >= 0 && x <= 15 && z >= 0 && z <= 15 { return chunk_block(c, x, y, z); }
+    // Outside this column: the adjacent one, at the wrapped coordinate. x and z are only
+    // ever one step outside (the cullface tests ask for x-1..x+1), so no clamping is
+    // needed and a step in diagonal would be a bug, not a case to handle.
+    let dx = if x < 0 { -1 } else if x > 15 { 1 } else { 0 };
+    let dz = if z < 0 { -1 } else if z > 15 { 1 } else { 0 };
+    let i = mesh_world_column((c.x + dx) as i32, (c.z + dz) as i32);
+    if i < 0 { return 0; }
+    let wx = (x - dx * 16) as i32;
+    let wz = (z - dz * 16) as i32;
+    return chunk_block(demo[i], wx, y, wz);
 }
 
 fn solid_at(c: ChunkColumn&, x: i32, y: i32, z: i32) -> bool {
@@ -545,6 +586,7 @@ fn solid_at(c: ChunkColumn&, x: i32, y: i32, z: i32) -> bool {
 // triangle with its batch (0 opaque, 1 cutout, 2 translucent). The batches are
 // emitted in order so the renderer can draw each with one call.
 fn mesh_column(c: ChunkColumn&) {
+    mesh_edging(c.x, c.z);
     mesh_reset();
     // Opaque and cutout share the culling rules but not the draw state; a
     // block is in exactly one batch, so three passes over the section list
@@ -573,6 +615,7 @@ fn mesh_section_class(c: ChunkColumn&, sy: i32, want: i64) {
 // order (x, then z, then y), so the mesh is byte-identical to meshing the whole
 // section at once, which tools/run_tests.sh checks.
 fn mesh_section_class_layers(c: ChunkColumn&, sy: i32, want: i64, ly_from: i32, ly_to: i32) {
+    mesh_edging(c.x, c.z);
     let idx = sy + 4;
     if idx < 0 || idx >= 24 { return; }
     if !c.sections[idx].present { return; }

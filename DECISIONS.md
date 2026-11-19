@@ -2,6 +2,50 @@
 
 Newest first. Each entry says what was decided, why, and what it costs.
 
+## D-047 The mesher reads across a chunk border, and the seam costs half the mesh
+
+`neighbour()` in `core/mesh.goose` answered air for every coordinate outside the column it
+was given, with the comment that meshing a chunk with its real neighbours "is the caller's
+job" and that passing air "only costs a few faces at the seam". Both halves of that were
+wrong, and the second one was backwards.
+
+A cullface test that sees air keeps a face it should drop. So every seam in the demo world
+carried *both* of its faces, back to back, buried in solid stone: 49 222 of 93 841 quads had
+a full cube on both sides. The mesh was twice the size it needed to be -- 52% of every frame
+was faces nobody could see -- which is what the 11 fps benchmark was drawing. On a save it is
+worse, because the seams are wherever that save's author's chunks ended.
+
+It is worth being exact about what a person would have seen, because the first guess was
+wrong. The obvious guess is a hole: break a block on a border and the neighbour's face
+cannot come back. That is not what happened, and it is why this took a measurement rather
+than a look. The old code never culled across a border at all, so the neighbour's face was
+always there -- drawn even when the border block was solid. Breaking a block changed nothing
+visible, because the face it "revealed" had been drawn the whole time. The bug was invisible
+doubling, not a hole, and the probe that settled it (`build/hole_test`, "before the break:
+DRAWN") is part of why the old behaviour is now a test rather than a story.
+
+The decision: **`neighbour()` reads the adjacent column** out of `core.demo`'s array at the
+wrapped coordinate, for the one step outside a column that a cullface or AO test asks for.
+`mesh_column` and `mesh_section_class_layers` record which column they are meshing; with no
+world (a single column in a unit test) the answer is air, which is what the old code did and
+which is the correct answer for an unloaded neighbour.
+
+**Why inside `neighbour()` and not a new parameter.** Every cull and AO test in the mesher
+already goes through `neighbour()` — five call sites — so this is one change and no call site
+can forget it. Threading a four-column neighbour set through `push_model_face`,
+`mesh_emit_model`, `push_model` and the section walk would have touched every one of them
+and left the next one added able to miss it.
+
+**Cost.** `core.mesh` now imports `core.demo`, which imports `core.mesh`: a module cycle,
+which Goose accepts. The world is the one array the app already knows about, so there is no
+second copy to keep in step. `mesh_world_column` is a linear scan of nine columns (25 for
+the largest save the renderer holds), once per border test rather than once per block.
+
+**Measured.** The demo world: 93 841 quads → 44 370, of which faces with a full cube on both
+sides 49 222 → 0. The real 26.3 save in the host suite: 52 644 vertices → 41 092.
+`run_mesh_borders` (6 checks) fails on the old code (2624 faces on the border where there
+must be none) and passes on this one.
+
 ## D-046 The unit of loading work is one layer of a section, measured rather than assumed
 
 A budget in milliseconds means nothing unless the thing the budget cuts into can be cut.

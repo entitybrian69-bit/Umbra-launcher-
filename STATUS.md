@@ -8,6 +8,38 @@ with nothing lost.
 Everything below was produced by a command whose output is quoted or linked.
 Nothing unverified is listed as done.
 
+## 2026-11-14: the seam bug -- half the mesh, and the phone's frame rate
+
+The mesher's neighbour lookup answered air for every coordinate outside the column it was
+meshing. The comment said that "only costs a few faces at the seam"; it cost the opposite.
+A cullface test that sees air keeps a face it should drop, so every chunk border in the demo
+world carried both of its faces, back to back, inside solid stone.
+
+Measured on `build/seam_faces` (glue harness, demo seed 20261114, all 9 columns meshed):
+
+| | before | after |
+|---|---|---|
+| quads drawn | 93 841 | 44 370 |
+| faces on a border with a full cube on both sides | 49 222 | 0 |
+| real 26.3 save, host suite | 52 644 vertices | 41 092 vertices |
+
+That is the overdraw: 52% of every frame was faces nobody could see, which is what the 11 fps
+benchmark was drawing. `run_mesh_borders` (6 checks) fails on the old code — 2624 faces on a
+border where there must be none — and passes on the new one. D-047 has the reasoning.
+
+**What a person would have seen is not what was expected.** The guess was a hole: break a
+block on a border, the neighbour's face cannot come back. That is not what happened — the old
+code never culled across a border, so the neighbour's face was always drawn, even when the
+border block was solid. Breaking a block changed nothing visible. The bug was invisible
+doubling, and it took a probe (`build/hole_test`: "before the break: DRAWN") to find that
+out rather than a story that sounded right.
+
+One thing found while proving it, **still open**:
+
+* **174 quads are drawn twice in the demo world, 42 of them on a border.** Not the seam bug:
+  the count is identical before and after (174, 42 on a border, 0 at plants). A separate
+  duplicate-emission path, uninvestigated, recorded so it is not mistaken for fixed.
+
 ## The brief's four questions, answered plainly (item 1)
 
 The owner's first priority is not a feature; it is four answers, with evidence, and then

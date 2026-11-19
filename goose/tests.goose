@@ -25,6 +25,7 @@ fn main() {
     run_region();
     run_json();
     run_mesh();
+    run_mesh_borders();
     run_atlas();
     run_models();
     run_modelstore();

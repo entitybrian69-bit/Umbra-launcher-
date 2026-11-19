@@ -6,6 +6,7 @@ import core.region;
 import core.mesh;
 import core.textures;
 import core.models;
+import core.demo;
 import test.harness;
 
 fn empty_column(c: ChunkColumn&) {
@@ -325,4 +326,100 @@ fn run_mesh() {
     check(model_uv_ok, "the model's faces sample the planks tile");
 
     test_summary("mesh");
+}
+
+// --- the chunk border ---------------------------------------------------
+//
+// The bug these hold: `neighbour()` reported air for anything outside 0..15, on the
+// theory that passing air "only costs a few faces at the seam". It costs the opposite.
+// A cullface test that sees air keeps a face it should drop, so every seam in the demo
+// world carried both of its faces, back to back, inside solid stone: 49 222 of 93 841
+// quads sat behind solid blocks on both sides. On a save it is worse, because its seams
+// are wherever its author's chunks happened to end.
+//
+// These build real columns in `demo` so the neighbour lookup has a world to read.
+
+// One column of solid stone from y=-64 to y=99, at chunk (cx, cz). Not pushed into
+// `demo`: the caller decides whether it is alone or has neighbours.
+fn seam_column(cx: i32, cz: i32) -> ChunkColumn {
+    var c = column_new();
+    let stone = bs_intern("minecraft:stone", "");
+    for i in 24 {
+        c.sections[i] = section_new();
+        c.sections[i].present = true;
+        c.sections[i].y = (i - 4) as i32;
+    }
+    c.section_lo = 0;
+    c.section_hi = 23;
+    c.x = cx;
+    c.z = cz;
+    c.present = true;
+    for y in -64..100 {
+        for z in 16 {
+            for x in 16 {
+                chunk_set_block(c, x as i32, y as i32, z as i32, stone);
+            }
+        }
+    }
+    return c
+}
+
+// Quads whose four vertices all lie on the plane `axis == plane` and all share the
+// normal `sign` along that axis. A quad on a chunk border is what a seam is.
+fn quads_on_plane(axis: i64, sign: f64, plane: f64) -> i64 {
+    var n: i64 = 0;
+    var k: i64 = 0;
+    while k + 5 < mesh_indices.len {
+        var all_plane = true;
+        var ok_normal = true;
+        for c in 4 {
+            let v = mesh_verts[mesh_indices[k + c] as i64];
+            let p = if axis == 0 { v.x } else { v.z };
+            let nn = if axis == 0 { v.nx } else { v.nz };
+            if (p as f64) != plane { all_plane = false; }
+            if (nn as f64) != sign { ok_normal = false; }
+        }
+        if all_plane && ok_normal { n += 1; }
+        k += 6;
+    }
+    return n
+}
+
+fn run_mesh_borders() {
+    // 1. A column with no world keeps its seam faces. That is the safe answer when the
+    // neighbours are not loaded, it is the old behaviour, and other tests in this file
+    // depend on it: 164 blocks tall by 16 deep on the east plane.
+    demo = [];
+    var lone = seam_column(0, 0);
+    mesh_column(lone);
+    check_i64(quads_on_plane(0, 1.0, 16.0), 164 * 16, "with no world the east seam is drawn");
+
+    // 2. Two columns, both solid stone: every block on the shared plane is a full cube,
+    // so no face may survive on the border, in either direction.
+    demo = [];
+    demo.push(seam_column(0, 0));
+    demo.push(seam_column(1, 0));
+    check_i64(demo.len, 2, "two columns in the test world");
+    mesh_column(demo[0]);
+    check_i64(quads_on_plane(0, 1.0, 16.0), 0, "no +x face on the border: the neighbour is solid");
+    check_i64(quads_on_plane(0, -1.0, 16.0), 0, "no -x face on the border either");
+
+    // 3. Every other plane is untouched by the border rule: the column's own west plane
+    // still has its faces, and the far side of the pair is not the meshed column's.
+    check_i64(quads_on_plane(0, -1.0, 0.0), 164 * 16, "the west plane is not the border and keeps its faces");
+
+    // 4. Break a block on the border. The face it uncovers belongs to the neighbour's
+    // block -- the one at local x=0 of chunk (1,0) -- so only the neighbour can draw it.
+    // This is the hole you could look through, and it is what an edit that names only its
+    // own column used to leave behind.
+    // Both columns keep their own local coordinates here -- mesh_column emits x and z in
+    // 0..16 and the caller offsets them into the world -- so the neighbour's face on the
+    // border is the one on *its* west plane, x == 0, and the block that used to hide it is
+    // the one broken in the column to its west.
+    chunk_set_block(demo[0], 15, 40, 8, 0);
+    mesh_column(demo[1]);
+    check_i64(quads_on_plane(0, -1.0, 0.0), 1, "breaking the border block reveals the neighbour's face");
+
+    test_summary("mesh_borders");
+    demo = [];
 }
