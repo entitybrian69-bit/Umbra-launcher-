@@ -157,49 +157,55 @@ goose/core/json.goose:280: warning: redundant `as i64`: a u8 converts to i64 imp
 goose/core/json.goose:296: warning: redundant `as i64`: a u8 converts to i64 implicitly here
         v = v * 10 + (s[i] - 48) as i64;
                       ^~~~~~~~~~~~~~~~~
-goose/core/mesh.goose:383: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:384: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             x: (bx as f32) + 0.5 + off[0],
                 ^~~~~~~~~
-goose/core/mesh.goose:384: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:385: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             y: (by as f32) + 0.5 + off[1],
                 ^~~~~~~~~
-goose/core/mesh.goose:385: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:386: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             z: (bz as f32) + 0.5 + off[2],
                 ^~~~~~~~~
-goose/core/mesh.goose:447: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:448: warning: redundant `as f32`: an i32 converts to f32 implicitly here
         let px = (bx as f32) + (if ux > 0.5 { hi[0] } else { lo[0] });
                   ^~~~~~~~~
-goose/core/mesh.goose:448: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:449: warning: redundant `as f32`: an i32 converts to f32 implicitly here
         let py = (by as f32) + (if uy > 0.5 { hi[1] } else { lo[1] });
                   ^~~~~~~~~
-goose/core/mesh.goose:449: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:450: warning: redundant `as f32`: an i32 converts to f32 implicitly here
         let pz = (bz as f32) + (if uz > 0.5 { hi[2] } else { lo[2] });
                   ^~~~~~~~~
-goose/core/mesh.goose:621: warning: redundant `as i32`: x is already i32
+goose/core/mesh.goose:563: warning: redundant `as i32`: (cx * 16) is already i32
+    return demo_column_of((cx * 16) as i32, (cz * 16) as i32);
+                           ^~~~~~~~~~~~~~~
+goose/core/mesh.goose:563: warning: redundant `as i32`: (cz * 16) is already i32
+    return demo_column_of((cx * 16) as i32, (cz * 16) as i32);
+                                             ^~~~~~~~~~~~~~~
+goose/core/mesh.goose:664: warning: redundant `as i32`: x is already i32
                 mesh_emit_model(c, x as i32, y as i32, z as i32, id);
                                    ^~~~~~~~
-goose/core/mesh.goose:621: warning: redundant `as i32`: y is already i32
+goose/core/mesh.goose:664: warning: redundant `as i32`: y is already i32
                 mesh_emit_model(c, x as i32, y as i32, z as i32, id);
                                              ^~~~~~~~
-goose/core/mesh.goose:621: warning: redundant `as i32`: z is already i32
+goose/core/mesh.goose:664: warning: redundant `as i32`: z is already i32
                 mesh_emit_model(c, x as i32, y as i32, z as i32, id);
                                                        ^~~~~~~~
-goose/core/mesh.goose:633: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:676: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
                        ^~~~~~~~
-goose/core/mesh.goose:633: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:676: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
                                  ^~~~~~~~
-goose/core/mesh.goose:633: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:676: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
                                            ^~~~~~~~
-goose/core/mesh.goose:677: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:720: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
                       ^~~~~~~~
-goose/core/mesh.goose:677: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:720: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
                                 ^~~~~~~~
-goose/core/mesh.goose:677: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:720: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
                                           ^~~~~~~~
 goose/core/atlas.goose:87: warning: redundant `as f32`: an i64 converts to f32 implicitly here
@@ -337,60 +343,66 @@ goose/test/atlas_test.goose:29: warning: redundant `as i64`: a u8 converts to i6
 goose/test/atlas_test.goose:29: warning: redundant `as i64`: a u8 converts to i64 implicitly here
     return [atlas[i] as i64, atlas[i + 1] as i64, atlas[i + 2] as i64, atlas[i + 3] as i64];
                                                                        ^~~~~~~~~~~~~~~~~~~
-goose/test/mesh_test.goose:54: warning: redundant `as i64`: mesh_verts.len is already i64
+goose/test/mesh_test.goose:55: warning: redundant `as i64`: mesh_verts.len is already i64
     check_i64(mesh_verts.len as i64, 24, "one block is 24 vertices");
               ^~~~~~~~~~~~~~~~~~~~~
-goose/test/mesh_test.goose:55: warning: redundant `as i64`: mesh_indices.len is already i64
+goose/test/mesh_test.goose:56: warning: redundant `as i64`: mesh_indices.len is already i64
     check_i64(mesh_indices.len as i64, 36, "one block is 36 indices");
               ^~~~~~~~~~~~~~~~~~~~~~~
-goose/test/mesh_test.goose:69: warning: redundant `as f64`: an f32 converts to f64 implicitly here
+goose/test/mesh_test.goose:70: warning: redundant `as f64`: an f32 converts to f64 implicitly here
     check_f64(minx as f64, 5.0, "cube min x");
               ^~~~~~~~~~~
-goose/test/mesh_test.goose:70: warning: redundant `as f64`: an f32 converts to f64 implicitly here
+goose/test/mesh_test.goose:71: warning: redundant `as f64`: an f32 converts to f64 implicitly here
     check_f64(maxx as f64, 6.0, "cube max x");
               ^~~~~~~~~~~
-goose/test/mesh_test.goose:71: warning: redundant `as f64`: an f32 converts to f64 implicitly here
+goose/test/mesh_test.goose:72: warning: redundant `as f64`: an f32 converts to f64 implicitly here
     check_f64(miny as f64, 5.0, "cube min y");
               ^~~~~~~~~~~
-goose/test/mesh_test.goose:72: warning: redundant `as f64`: an f32 converts to f64 implicitly here
+goose/test/mesh_test.goose:73: warning: redundant `as f64`: an f32 converts to f64 implicitly here
     check_f64(maxy as f64, 6.0, "cube max y");
               ^~~~~~~~~~~
-goose/test/mesh_test.goose:75: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+goose/test/mesh_test.goose:76: warning: redundant `as i64`: a u32 converts to i64 implicitly here
         if mesh_indices[i] as i64 >= mesh_verts.len { idx_ok = false; }
            ^~~~~~~~~~~~~~~~~~~~~~
-goose/test/mesh_test.goose:194: warning: redundant `as i64`: mesh_indices.len is already i64
+goose/test/mesh_test.goose:195: warning: redundant `as i64`: mesh_indices.len is already i64
     check_i64(mesh_indices.len as i64, 54 * 6, "a 3x3x3 stone cube shows only its 54 outer faces");
               ^~~~~~~~~~~~~~~~~~~~~~~
-goose/test/mesh_test.goose:202: warning: redundant `as i64`: mesh_indices.len is already i64
+goose/test/mesh_test.goose:203: warning: redundant `as i64`: mesh_indices.len is already i64
     check_i64(mesh_indices.len as i64, 10 * 6, "shared face is culled");
               ^~~~~~~~~~~~~~~~~~~~~~~
-goose/test/mesh_test.goose:221: warning: redundant `as i64`: mesh_indices.len is already i64
+goose/test/mesh_test.goose:222: warning: redundant `as i64`: mesh_indices.len is already i64
     check_i64(mesh_indices.len as i64, 12, "a cross is two quads");
               ^~~~~~~~~~~~~~~~~~~~~~~
-goose/test/mesh_test.goose:229: warning: redundant `as i64`: mesh_indices.len is already i64
+goose/test/mesh_test.goose:230: warning: redundant `as i64`: mesh_indices.len is already i64
     check_i64(mesh_indices.len as i64, 36, "grass block is a cube");
               ^~~~~~~~~~~~~~~~~~~~~~~
-goose/test/mesh_test.goose:237: warning: redundant `as i64`: mesh_indices.len is already i64
+goose/test/mesh_test.goose:238: warning: redundant `as i64`: mesh_indices.len is already i64
     check_i64(mesh_indices.len as i64, 10 * 6, "stacked blocks cull their shared face");
               ^~~~~~~~~~~~~~~~~~~~~~~
-goose/test/mesh_test.goose:253: warning: redundant `as i64`: mesh_verts.len is already i64
+goose/test/mesh_test.goose:254: warning: redundant `as i64`: mesh_verts.len is already i64
         check_i64(mesh_verts.len as i64 % 4, 0, "vertices come in quads");
                   ^~~~~~~~~~~~~~~~~~~~~
-goose/test/mesh_test.goose:254: warning: redundant `as i64`: mesh_indices.len is already i64
+goose/test/mesh_test.goose:255: warning: redundant `as i64`: mesh_indices.len is already i64
         check_i64(mesh_indices.len as i64 % 6, 0, "indices come in triangles");
                   ^~~~~~~~~~~~~~~~~~~~~~~
-goose/test/mesh_test.goose:270: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+goose/test/mesh_test.goose:271: warning: redundant `as u64`: a u32 converts to u64 implicitly here
               " indices, fnv1a ", u64_to_hex(hash as u64, 8));
                                              ^~~~~~~~~~~
-goose/test/mesh_test.goose:287: warning: redundant `as i64`: mesh_verts.len is already i64
+goose/test/mesh_test.goose:288: warning: redundant `as i64`: mesh_verts.len is already i64
     check_i64(mesh_verts.len as i64, 24, "a floating slab is six faces");
               ^~~~~~~~~~~~~~~~~~~~~
-goose/test/mesh_test.goose:295: warning: redundant `as f64`: an f32 converts to f64 implicitly here
+goose/test/mesh_test.goose:296: warning: redundant `as f64`: an f32 converts to f64 implicitly here
     check_f64(top_y as f64, 10.5, "the slab's top is half a block up");
               ^~~~~~~~~~~~
-goose/test/mesh_test.goose:296: warning: redundant `as f64`: an f32 converts to f64 implicitly here
+goose/test/mesh_test.goose:297: warning: redundant `as f64`: an f32 converts to f64 implicitly here
     check_f64(bottom_y as f64, 10.0, "and its bottom is the block's bottom");
               ^~~~~~~~~~~~~~~
+goose/test/mesh_test.goose:379: warning: redundant `as f64`: an f32 converts to f64 implicitly here
+            if (p as f64) != plane { all_plane = false; }
+                ^~~~~~~~
+goose/test/mesh_test.goose:380: warning: redundant `as f64`: an f32 converts to f64 implicitly here
+            if (nn as f64) != sign { ok_normal = false; }
+                ^~~~~~~~~
 goose/test/json_test.goose:13: warning: redundant `as i64`: a u8 converts to i64 implicitly here
         check_i64(json_kind(root), J_OBJ as i64, "the root is an object");
                                    ^~~~~~~~~~~~
@@ -561,10 +573,11 @@ PASS region (248 checks)
 PASS json (313 checks)
 mesh: real chunk -> 35652 vertices, 53478 indices, fnv1a 4f270675
 PASS mesh (365 checks)
-PASS atlas (414 checks)
-PASS models (436 checks)
-PASS modelstore (486 checks)
-PASS raster (496 checks)
-PASS worldzip (581 checks)
+PASS mesh_borders (371 checks)
+PASS atlas (420 checks)
+PASS models (442 checks)
+PASS modelstore (492 checks)
+PASS raster (502 checks)
+PASS worldzip (587 checks)
 all modules passed
 c-host: goose_exit returned 0
