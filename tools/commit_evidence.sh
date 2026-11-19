@@ -23,9 +23,19 @@ branch="${2:-${GITHUB_REF_NAME:-}}"
 # is in its artifacts and is the same code as the branch run's; say so and stop.
 case "${GITHUB_REF:-}" in
     refs/tags/*)
-        echo "commit_evidence: this run was triggered by ${GITHUB_REF}; a tag cannot receive"
-        echo "commit_evidence: a commit, so the evidence stays in the run's artifact"
-        exit 0
+        # A tag cannot receive a commit, so a tag run's evidence has to go somewhere else.
+        # The release workflow passes the branch explicitly for exactly this reason, and
+        # the early return here used to ignore it: v0.3.8-pre's verification was written,
+        # reported "success", and pushed nothing, so RELEASE_VERIFY.txt still carried
+        # v0.3.6-pre and no evidence/release/v0.3.8-pre.txt existed. A caller that named a
+        # branch meant it. Only a tag run with no branch has nowhere to commit.
+        if [ -z "$branch" ] || [ "$branch" = "${GITHUB_REF_NAME:-}" ]; then
+            echo "commit_evidence: this run was triggered by ${GITHUB_REF} and named no branch;"
+            echo "commit_evidence: a tag cannot receive a commit, so the evidence stays in the artifact"
+            exit 0
+        fi
+        echo "commit_evidence: this run was triggered by ${GITHUB_REF}; the evidence goes to"
+        echo "commit_evidence: branch $branch, which the caller named"
         ;;
 esac
 
