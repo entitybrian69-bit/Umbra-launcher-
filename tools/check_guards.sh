@@ -35,6 +35,10 @@ guard zip_world     python3 tools/zip_world.py --selftest
 guard workflows     python3 tools/check_workflows.py
 guard hook_syntax   bash -n tools/gen_window_hook.sh
 guard smoke_syntax  bash -n tools/emulator_smoke.sh
+#   crash_ours    - run 44432932868's soak failed on another preinstalled app's crash
+#                   (YouTube Music's empty version string) while this app was alive with
+#                   the right pid. The check is now a function, and this tests it.
+guard crash_ours    bash tools/test_crash_ours.sh
 guard evidence_syn  bash -n tools/commit_evidence.sh
 
 #   c_compiles    - platform/shared/umbra_app.c is one file with two platform branches
