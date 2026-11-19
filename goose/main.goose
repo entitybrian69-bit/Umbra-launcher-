@@ -174,6 +174,10 @@ fn dm_reset_pass(cols: i64[:], edit: bool) {
 
 // The whole world, into empty arenas.
 fn demo_mesh_begin() {
+    // Once per world, not once per column: the model counters are the thing that says
+    // whether the world is drawn from the jar's blockstates or from cubes, and a number
+    // that only described the last column would be worse than none.
+    mesh_world_reset();
     world_verts = [];
     world_indices = [];
     dm_v_cursor = 0;
@@ -673,6 +677,14 @@ export "umbra_demo_mesh_edit" fn demo_mesh_edit_export(cols: i64[:]) -> i64 {
 
 // What the last pass was: how many columns, whether it was an edit, and how much
 // work it took. The numbers behind "an edit does not rebuild the world".
+// How much of the world was drawn from a model the jar's blockstates chose, rather
+// than as a fallback cube. This is the number that says item 3 is real: a phone that
+// loaded the jar's textures but drew every block as a cube would report 0 here, and
+// the host suite's jar-render test prints the same three numbers from the same code.
+export fn umbra_mesh_model_blocks() -> i64 { return mesh_model_block_count() }
+export fn umbra_mesh_model_faces() -> i64 { return mesh_model_face_count() }
+export fn umbra_mesh_model_missing() -> i64 { return mesh_model_missing() }
+
 export fn umbra_mesh_columns() -> i64 { return dm_cols.len }
 export fn umbra_mesh_is_edit() -> i64 { return if dm_edit { 1 } else { 0 } }
 export fn umbra_mesh_worst_unit_ms() -> f32 { return (dm_worst_unit_us as f32) / 1000.0 }

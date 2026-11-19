@@ -423,3 +423,63 @@ fn run_mesh_borders() {
     test_summary("mesh_borders");
     demo = [];
 }
+
+// --- the model counters count the world, not the last column --------------------
+//
+// "blocks drawn from a model" is the number that answers item 3: is the world drawn
+// from the jar's blockstates, or from fallback cubes? It was reset by mesh_reset(),
+// which runs once per column, so on a nine-column world it reported the ninth column
+// (33347 blocks) instead of the world (300826) -- a number that meant something other
+// than its name, which is worse than no number at all.
+fn run_mesh_model_counts() {
+    // A world of two columns, each with a different number of the one block that has a
+    // model bound to it: column 0 gets three slabs, column 1 gets one. The counts are in
+    // blocks and faces *drawn from a model*, so they differ per column -- which is the
+    // only way this test can tell a per-world counter from a per-column one.
+    let slab = bs_intern("minecraft:oak_slab", "type=bottom");
+    mesh_bind_model(slab);
+
+    demo = [];
+    demo.push(seam_column(0, 0));
+    demo.push(seam_column(1, 0));
+    // Clear the stone that fills them: the test wants only the slabs to be there.
+    for c in demo.len {
+        for y in -64..100 {
+            for z in 16 {
+                for x in 16 { chunk_set_block(demo[c], x as i32, y as i32, z as i32, 0); }
+            }
+        }
+    }
+    for k in 3 { chunk_set_block(demo[0], 2, 10, (2 + k) as i32, slab); }
+    chunk_set_block(demo[1], 5, 10, 5, slab);
+
+    mesh_world_reset();
+    mesh_column(demo[0]);
+    let blocks_after_first = mesh_model_block_count();
+    check_i64(blocks_after_first, 3, "the first column drew three blocks from its model");
+
+    // The regression: mesh_reset() runs once per column, so before the fix this was 1
+    // (the second column alone) instead of 4 (the world). The number is asserted through
+    // the accessor the phone's log line uses.
+    mesh_column(demo[1]);
+    check_i64(mesh_model_block_count(), 4,
+              "the second column adds to the world's count instead of replacing it");
+    check(mesh_model_face_count() > 0, "and the faces drawn from the model are counted");
+
+    // The explicit reset is the caller's to make, and it clears the world's count.
+    mesh_world_reset();
+    check_i64(mesh_model_block_count(), 0, "mesh_world_reset clears the count");
+
+    // A placeholder world with nothing bound draws nothing from a model, and says 0
+    // rather than leaving the last world's number in place.
+    mesh_reset();
+    let plain = bs_intern("minecraft:stone", "");
+    var c = column_new();
+    empty_column(c);
+    chunk_set_block(c, 1, 1, 1, plain);
+    mesh_column(c);
+    check_i64(mesh_model_block_count(), 0, "stone is drawn as a cube, not from a model");
+
+    test_summary("mesh_model_counts");
+    demo = [];
+}
