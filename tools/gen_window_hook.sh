@@ -33,7 +33,15 @@ PW="${4:-umbra-ci}"
 # here is 4, so the four chunks that share a face with the window are finished too: a
 # neighbour that is still a proto-chunk has no blocks, and the mesher would cull faces
 # against it as though it were air.
-RADIUS="${UMBRA_PROBE_RADIUS:-4}"
+# Step 1 of the brief: a world worth walking in. The radius here is the chunk radius the
+# *save* is made to hold, not the radius the phone renders -- the phone streams what it
+# needs from these region files, and a save that holds radius 16 around the spawn is a
+# 33x33 chunk world (1 089 chunks) instead of the 81 that radius 4 gave.
+#
+# It costs server time, not app memory: the app holds four region files and one window of
+# chunks at a time (see `core.worldstream`), so the save can be bigger than anything the
+# phone ever draws. 16 is the brief's number and the biggest that is cheap to generate.
+RADIUS="${UMBRA_PROBE_RADIUS:-16}"
 
 cd "$ROOT" || exit 1
 
@@ -136,9 +144,15 @@ unfinished() {
 # `forceload add` is that ask, and it is exactly what tools/compare_with_server.sh does
 # before its own settle loop. The server caps one call at 256 chunks, so the box goes in
 # strips and every reply is read.
+# The box, in blocks. The window is chunks -RADIUS..RADIUS, and a chunk is 16 blocks, so
+# the corners are -RADIUS*16 and RADIUS*16+15 -- 1 089 chunks for radius 16, which is
+# 33 columns by 33 rows.
 BOX0=$(( -RADIUS * 16 ))
 BOX1=$(( RADIUS * 16 + 15 ))
 ACROSS=$(( (BOX1 - BOX0 + 1) / 16 ))
+# The server refuses a `forceload add` of more than 256 chunks, so the box goes in strips
+# of whole rows: 256 / 33 = 7 rows for radius 16. The old divide-by-ACROSS did the same
+# arithmetic and is kept -- what changed is only the radius it divides for.
 STRIP=$(( 256 / ACROSS ))
 [ "$STRIP" -lt 1 ] && STRIP=1
 say "force-loading chunk -${RADIUS}..${RADIUS} (${ACROSS}x${ACROSS} chunks) so it is generated"

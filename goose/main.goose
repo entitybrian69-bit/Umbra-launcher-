@@ -26,6 +26,8 @@ import core.modelstore;
 import core.jarpack;
 import core.demo;
 import core.worldload_in;
+import core.worldstream;
+import core.sampleworld;
 import core.sha1;
 import core.gamefiles;
 
@@ -1363,6 +1365,61 @@ export "umbra_world_import_partial" fn world_import_partial() -> i64 { return wl
 export "umbra_world_import_skipped" fn world_import_skipped() -> i64 { return wl_count_skipped() }
 export "umbra_world_import_entries" fn world_import_entries() -> i64 { return wl_count_entries() }
 export "umbra_world_import_radius" fn world_import_radius() -> i64 { return wl_radius_used() }
+
+// --- the stream ---------------------------------------------------------
+//
+// The world the player walks in is not the whole window at once: it is the chunks within
+// a radius of the player, parsed from the save as they are approached, and the radius is
+// a setting (see `core.worldstream`). These four calls are the frame loop's side of it:
+// ask for a window, do a slice of it, ask whether it is done, and read the numbers.
+//
+// The radii are exported so the setting has one home: C clamps nothing, it reads what
+// Goose says the ceiling is and puts the number on the screen.
+export "umbra_world_radius_max" fn world_radius_max() -> i64 { return WL_RADIUS_MAX }
+export "umbra_world_radius_setting" fn world_radius_setting() -> i64 { return wl_radius_current() }
+export "umbra_world_set_radius" fn world_set_radius(want: i64) -> i64 { return wl_set_radius(want) }
+// Centre the resident set on a chunk. Cheap: it evicts and plans, and parses nothing.
+export "umbra_world_stream_centre" fn world_stream_centre(cx: i64, cz: i64, radius: i64) -> i64 {
+    return ws_recentre(cx, cz, radius)
+}
+// One slice of parsing. Returns 1 when the window is complete.
+export "umbra_world_stream_step" fn world_stream_step(budget_us: i64) -> i64 {
+    return if ws_stream_step(budget_us) { 1 } else { 0 }
+}
+export "umbra_world_stream_pending" fn world_stream_pending() -> i64 { return ws_pending() }
+export "umbra_world_stream_open" fn world_stream_open() -> i64 { return ws_is_open() }
+export "umbra_world_stream_resident" fn world_stream_resident() -> i64 { return ws_stats.resident }
+export "umbra_world_stream_loaded" fn world_stream_loaded() -> i64 { return ws_stats.loaded }
+export "umbra_world_stream_evicted" fn world_stream_evicted() -> i64 { return ws_stats.evicted }
+export "umbra_world_stream_missing" fn world_stream_missing() -> i64 { return ws_stats.missing }
+export "umbra_world_stream_errors" fn world_stream_errors() -> i64 { return ws_stats.parse_errors }
+export "umbra_world_stream_peak" fn world_stream_peak() -> i64 { return ws_stats.peak_resident }
+export "umbra_world_stream_seen" fn world_stream_seen() -> i64 { return ws_stats.seen }
+export "umbra_world_stream_slices" fn world_stream_slices() -> i64 { return ws_stats.slice_calls }
+export "umbra_world_stream_worst_us" fn world_stream_worst_us() -> i64 { return ws_stats.worst_slice_us }
+export "umbra_world_stream_bytes" fn world_stream_bytes() -> i64 { return ws_bytes_held() }
+export "umbra_world_stream_regions" fn world_stream_regions() -> i64 { return ws_regions_count() }
+
+// --- the sample world, downloaded ---------------------------------------
+//
+// A release a person installs ships no world: the APK stays small and the world comes
+// from the release's own assets, where CI generated and verified it. These calls are the
+// app's half (see `core.sampleworld`): the URL, the digest, whether a copy is already
+// here, and the one sentence to refuse with.
+export "umbra_world_url" fn sample_world_url() -> const u8[:] { return um_world_url_out() }
+export "umbra_world_pinned" fn sample_world_pinned() -> i64 { return um_world_is_pinned() }
+export "umbra_world_pinned_bytes" fn sample_world_pinned_bytes() -> i64 { return um_world_bytes_pinned() }
+export "umbra_world_sha256" fn sample_world_sha256() -> const u8[:] { return um_world_sha256() }
+export "umbra_world_refusal" fn sample_world_refusal() -> const u8[:] { return um_world_refusal() }
+export "umbra_world_present" fn sample_world_present(files_dir: const u8[:]) -> i64 {
+    return um_world_present(files_dir)
+}
+export "umbra_world_file" fn sample_world_file(files_dir: const u8[:]) -> const u8[:] {
+    return um_world_path(files_dir)
+}
+export "umbra_world_part_file" fn sample_world_part_file(files_dir: const u8[:]) -> const u8[:] {
+    return um_world_part_path(files_dir)
+}
 // Where the loaded world is. A save's columns are not at 0..47, so the camera fit, the
 // spawn and the player's first step have to ask rather than assume.
 //

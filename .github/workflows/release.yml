@@ -222,6 +222,58 @@ jobs:
               --notes-file "$NOTES" \
               --prerelease
           fi
+      # Step 1 of the brief, published: the world the world gate generated is the world a
+      # fresh install walks in, and it ships as an asset rather than inside the APK. The
+      # step refuses a zip that is not a settled save and pins the digest into the source,
+      # so the build that accepts a download names the bytes it will accept.
+      #
+      # A world asset missing is not a failed release: the app falls back to its file
+      # picker and says why, so this warns rather than failing the job. What *would* be
+      # wrong is failing the release of a working APK because a large asset timed out.
+      - name: Publish the sample world from the world gate (never committed)
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          # The world gate's artifact, if this run has one. A release run has not
+          # generated a world itself, so it reads the newest one the gate left behind --
+          # or skips, loudly, and the app falls back to the picker.
+          mkdir -p /tmp/world
+          if ! gh run list --workflow=world.yml --status=success --limit 1 \
+                --json databaseId --jq '.[0].databaseId' > /tmp/world/run.txt 2>/dev/null; then
+            echo "::warning title=world::could not ask for the world gate's last run; the release has no sample world"
+            echo "    (the app's world screen falls back to the file picker, and says so)"
+            exit 0
+          fi
+          RUNID="$(cat /tmp/world/run.txt)"
+          if [ -z "$RUNID" ]; then
+            echo "::warning title=world::no successful world gate run; the release has no sample world"
+            exit 0
+          fi
+          echo "world: the gate's last successful run is $RUNID"
+          if ! gh run download "$RUNID" -n world-evidence -D /tmp/world/e 2>/dev/null; then
+            echo "::warning title=world::the gate's evidence artifact could not be downloaded"
+            exit 0
+          fi
+          # The gate zips the save it settled. Take the zip, not the evidence, when both
+          # are there; a run that did not zip one leaves the release without a world.
+          ZIP="$(find /tmp/world -name '*.zip' -type f | head -1 || true)"
+          if [ -z "$ZIP" ]; then
+            echo "::warning title=world::the gate's artifact holds no world zip"
+            ls -l /tmp/world/e || true
+            exit 0
+          fi
+          echo "world: publishing $(ls -l "$ZIP" | awk '{print $5}') bytes from $ZIP"
+          bash tools/release_world.sh "$TAG" "$ZIP"
+          echo "world: this release carries the world, and the pin is in the source:"
+          grep -E "UM_WORLD_(TAG|BYTES|SHA256)" goose/core/sampleworld.goose || true
+          # The pin moved, and the source is the record: commit it to the evidence branch
+          # so the next build reads the digest this release published.
+          git add -f goose/core/sampleworld.goose
+          REQUIRE_EVIDENCE=0 bash tools/commit_evidence.sh \
+            "ci: pin the sample world published by $TAG [skip ci]" || true
+
       - name: Verify by downloading every asset from its public URL
         run: |
           bash tools/verify_release.sh "$TAG" dist RELEASE_VERIFY.txt

@@ -15,6 +15,12 @@ uint32_t umbra_c_time_seconds(void) { return (uint32_t)time(NULL); }
 // Monotonic microseconds. Goose asks for this to measure how much of a frame's
 // meshing budget it has used; the sliced mesher cannot be timed from C without
 // handing the loop back and forth once per section.
+// A second name for the same clock, for a Goose module that is compiled both on its own
+// and alongside `main.goose`: two `extern fn` declarations of one symbol are an ambiguous
+// overload, and a module that needs the clock should not have to know whether the app's
+// declaration is in the same program. The cost is this alias.
+int64_t umbra_stream_now_us(void);
+
 #ifdef _WIN32
 #include <windows.h>
 int64_t umbra_c_now_us(void) {
@@ -31,3 +37,7 @@ int64_t umbra_c_now_us(void) {
     return (int64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
 }
 #endif
+
+// The alias `core.worldstream` asks for. Declared above, defined here, so the two names
+// cannot drift: this one calls the real clock and nothing else.
+int64_t umbra_stream_now_us(void) { return umbra_c_now_us(); }

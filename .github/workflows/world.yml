@@ -196,6 +196,42 @@ jobs:
           grep "not .minecraft:full" build/partial/log.txt | sed 's/^/world: /'
           echo "PASS: a partly generated save is refused, by name, and moved nothing"
 
+      - name: Zip the settled window, for the release's sample world
+        # Step 1 of the brief. The world a person walks in is this save: the server
+        # generated it, the hook waited until the window was finished, and the read above
+        # compared it block by block with the server's own answers. Zipped here, uploaded
+        # as this run's artifact, and published by the release job as an asset -- the APK
+        # stays small and the world arrives on its own.
+        #
+        # The zip holds the region files around the origin, which is where a player
+        # spawns. The window is what the hook settled, so a chunk inside it is `full` and
+        # a chunk outside it is not shipped at all rather than shipped as a proto-chunk.
+        run: |
+          set -o pipefail
+          mkdir -p build/release-world
+          # The settled layout: 26.3 writes the overworld under dimensions/, and the
+          # legacy world/region files can exist alongside it and hold something else.
+          mapfile -t REGIONS < <(find build/server/run/world -path '*/dimensions/minecraft/overworld/region/*.mca' -type f 2>/dev/null | sort)
+          if [ "${#REGIONS[@]}" -eq 0 ]; then
+            mapfile -t REGIONS < <(find build/server/run/world -path '*/region/*.mca' -type f 2>/dev/null | sort)
+          fi
+          echo "release world: ${#REGIONS[@]} region file(s)"
+          if [ "${#REGIONS[@]}" -eq 0 ]; then
+            echo "::error title=sample world::the save holds no region file to publish"
+            exit 1
+          fi
+          printf '%s\n' "${REGIONS[@]}"
+          python3 tools/zip_world.py build/release-world/world.zip "${REGIONS[@]}"
+          ls -l build/release-world/world.zip
+          # What the release will claim, measured here rather than in the publishing job:
+          # the reader's count of chunks in the save, and the window's block count.
+          build/umbra_worldload build/server/run/world build/release-world/read.txt 16 \
+            --incomplete-ok 2>&1 | tee build/release-world/read.log | tail -4
+          grep -oE 'chunks [0-9]+, non-air blocks [0-9]+' build/release-world/read.log | head -1 \
+            | tee evidence/world/sample-world.txt
+          echo "sha256 $(sha256sum build/release-world/world.zip | cut -d' ' -f1)" \
+            | tee -a evidence/world/sample-world.txt
+
       - name: Read the real world twice and compare it block by block
         run: |
           set -o pipefail
@@ -281,6 +317,7 @@ jobs:
           name: world-evidence
           path: |
             evidence/world
+            build/release-world/world.zip
             docs/reference/real_world.png
             build/fetch-server.log
             build/fetch-jar.log

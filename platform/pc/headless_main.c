@@ -1533,6 +1533,106 @@ int main(int argc, char **argv) {
         }
     }
 
+    // --- the streaming world, measured ---------------------------------------
+    // Step 1 of the brief asks for a world worth walking in, and the claim that it is
+    // bigger has to be a number. This opens a save that spans four region files (all four
+    // quadrants around the origin), streams a window into it, and reports what is
+    // resident, how long it took, and what the longest single slice was -- the number
+    // that decides whether a frame can carry it. Then it meshes the window and reports
+    // the geometry, so "bigger world" is chunks *and* vertices.
+    {
+        const char *path = "goose/test/fixtures/worldstream/world-stream.zip";
+        int64_t regions = umbra_world_import_begin((sl_u8){(uint8_t *)path, (int64_t)strlen(path)});
+        check(regions >= 4, "the streaming fixture spans four region files");
+        int64_t entries = umbra_world_import_entries();
+        for (int64_t i = 0; i < entries; i++) umbra_world_import_file(i);
+        check(umbra_world_import_end() == 1, "and it opens");
+        check(umbra_world_stream_open() == 1, "the stream kept the save's region files");
+        // The import put its own window in `demo` and told the stream how many: the number
+        // the report quotes is `demo.len`, not a counter that starts at zero.
+        check(umbra_world_stream_resident() == umbra_world_columns(),
+              "the stream's resident count is the columns the import left");
+
+        // The radius the app would use by default, through the same four calls the frame
+        // loop makes. Every step is timed, and the worst one is what a frame has to fit.
+        int radius = (int)umbra_world_set_radius(2);
+        int64_t t0 = umbra_now_us_headless();
+        int64_t gone = umbra_world_stream_centre(0, 0, radius);
+        int64_t t_centre = umbra_now_us_headless() - t0;
+        int64_t slices = 0, worst = 0;
+        int done = 0;
+        t0 = umbra_now_us_headless();
+        while (!done && slices < 1000000) {
+            int64_t s0 = umbra_now_us_headless();
+            done = umbra_world_stream_step(6000) != 0;
+            int64_t took = umbra_now_us_headless() - s0;
+            if (took > worst) worst = took;
+            slices++;
+        }
+        int64_t t_fill = umbra_now_us_headless() - t0;
+        int64_t resident = umbra_world_stream_resident();
+        printf("stream: radius %d -> %lld column(s) resident of %lld asked for, "
+               "%lld evicted, %lld missing, %lld error(s)\n",
+               radius, (long long)resident, (long long)umbra_world_stream_seen(),
+               (long long)gone, (long long)umbra_world_stream_missing(),
+               (long long)umbra_world_stream_errors());
+        printf("stream: centre %.2f ms, fill %.2f ms over %lld slice(s), worst slice %.2f ms, "
+               "%.1f MB of region files\n",
+               t_centre / 1000.0, t_fill / 1000.0, (long long)slices, worst / 1000.0,
+               umbra_world_stream_bytes() / (1024.0 * 1024.0));
+        check(done, "the window fills");
+        check(resident == 16, "and every chunk of the save inside it is resident");
+        check(umbra_world_columns() == resident, "the mesher walks exactly the resident set");
+        // The ceiling the setting enforces, and the fact that a request above it is
+        // clamped rather than obeyed: a phone cannot hold 289 chunks of 301 KB columns.
+        check(umbra_world_radius_max() == 8, "the setting's ceiling is radius 8");
+        check(umbra_world_set_radius(16) == 8, "and a request for 16 is clamped to it");
+        umbra_world_set_radius(2);
+
+        // The window meshes, and the geometry is the window's: 16 columns whose chunks are
+        // all in the save. The vertex count is what says "24 of the world's 26 vertices per
+        // block" did not change -- it is the same mesher, over more chunks.
+        umbra_demo_mesh_begin();
+        int64_t calls = 0;
+        done = 0;
+        t0 = umbra_now_us_headless();
+        while (!done && calls < 2000000) {
+            done = umbra_demo_mesh_step(20000) != 0;
+            calls++;
+        }
+        int64_t mesh_us = umbra_now_us_headless() - t0;
+        umbra_demo_mesh_finish();
+        printf("stream: meshed %lld vertex(es) of %lld column(s) in %lld call(s), %.1f ms\n",
+               (long long)umbra_used_vertices(), (long long)umbra_world_columns(),
+               (long long)calls, mesh_us / 1000.0);
+        check(done, "the streamed window meshes");
+        check(umbra_used_vertices() > 1000, "and it is a world's geometry");
+        // Every vertex is inside the window's own bounds: a column meshed at the wrong
+        // place is the failure a bigger window makes easier to miss.
+        {
+            int64_t vlen = 0;
+            const uint8_t *v = umbra_verts_ptr(&vlen);
+            const umbra_vertex *vp = (const umbra_vertex *)v;
+            (void)vlen;
+            float x0 = umbra_world_loaded_min_x(), x1 = umbra_world_loaded_max_x();
+            float z0 = umbra_world_loaded_min_z(), z1 = umbra_world_loaded_max_z();
+            int64_t outside = 0, seen = 0;
+            for (int64_t sid = 0; sid < umbra_range_slots(); sid++) {
+                int64_t off = umbra_range_vertex(sid), len = umbra_range_vertex_len(sid);
+                for (int64_t k = 0; k < len; k++) {
+                    const umbra_vertex *q = &vp[off + k];
+                    if (q->x < x0 - 1.0f || q->x > x1 + 1.0f ||
+                        q->z < z0 - 1.0f || q->z > z1 + 1.0f) outside++;
+                    seen++;
+                }
+            }
+            printf("stream: %lld vertex(es) drawn, %lld outside x %.0f..%.0f z %.0f..%.0f\n",
+                   (long long)seen, (long long)outside, x0, x1, z0, z1);
+            check(seen > 0 && seen == umbra_used_vertices(), "the ranges cover the mesh");
+            check(outside == 0, "and every vertex is inside the window's bounds");
+        }
+    }
+
     goose_exit();
     printf("%s: %d checks, %d failures\n", failures ? "FAILED" : "PASS", checks, failures);
     return failures ? 1 : 0;

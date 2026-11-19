@@ -30,7 +30,10 @@ static void gf_pump(umbra_app *app);
 static void world_job_start(umbra_app *app);
 static void world_pump(umbra_app *app);
 static void rebuild_world(umbra_app *app);
+static void stream_start(umbra_app *app, int cx, int cz, int radius);
+static void world_sample_download_start(umbra_app *app);
 static int file_exists_at(const char *path);
+static void delete_file_at(const char *path);
 static int world_open_path(umbra_app *app, const char *path, const char *how);
 #include <stdarg.h>
 #include <time.h>
@@ -1228,6 +1231,94 @@ static void pump_mesh(umbra_app *app) {
             umbra_app_set_screen(app, UMBRA_SCREEN_HOME);
         }
     }
+}
+
+// --- the streaming world ------------------------------------------------
+//
+// Step 1 of the brief: a world worth walking in. The import reads the archive and leaves
+// the region files resident; the *chunks* are parsed as the player approaches them, a
+// slice per frame, so the world a person walks through is the radius they set rather than
+// the window the reader happened to open.
+//
+// Two phases, and the split is what keeps a frame under its budget:
+//
+//   1. centre -- evict what left the window and plan what is missing. Cheap arithmetic,
+//      no parsing, so it is safe in any frame.
+//   2. fill   -- one slice per frame, UMBRA_STREAM_BUDGET_MS, until the window is whole.
+//      Only when it is whole does the mesh restart, because a mesh of a half-filled
+//      window is a mesh with holes in it: the mesher culls a face against a neighbour
+//      that is not there and draws nothing where the world continues.
+//
+// `stream_start` is the only entry point a caller needs: it centres on the chunk that
+// holds the player and leaves the job to run. It refuses to restart a fill that is
+// already going to the same place, because that would throw away the parses in flight.
+
+static int world_stream_armed(umbra_app *app) {
+    // A world has to be open, and it has to be one with regions still resident. A save
+    // read before this existed has no stream, and `umbra_world_stream_open` says so.
+    return app->world_state == 2 && umbra_world_stream_open() == 1;
+}
+
+static void stream_start(umbra_app *app, int cx, int cz, int radius) {
+    if (!world_stream_armed(app)) return;
+    if (app->stream_state == 1 && app->stream_cx == cx && app->stream_cz == cz &&
+            app->stream_radius == radius) {
+        // Already filling this exact window: leaving it alone is the point of asking.
+        return;
+    }
+    int64_t want = umbra_world_set_radius((int64_t)radius);
+    int64_t gone = umbra_world_stream_centre((int64_t)cx, (int64_t)cz, want);
+    app->stream_radius = (int)want;
+    app->stream_cx = cx;
+    app->stream_cz = cz;
+    app->stream_state = 1;
+    umbra_log(app, "stream: centre chunk %d,%d radius %d (%lld chunks), %lld evicted, "
+                   "%lld to parse",
+              cx, cz, (int)want, (long long)((want * 2 + 1) * (want * 2 + 1)),
+              (long long)gone, (long long)umbra_world_stream_pending());
+}
+
+static void stream_pump(umbra_app *app) {
+    if (app->stream_state != 1) return;
+    if (!world_stream_armed(app)) {
+        app->stream_state = 0;
+        return;
+    }
+    int64_t t0 = umbra_now_us();
+    int done = (int)umbra_world_stream_step((int64_t)UMBRA_STREAM_BUDGET_MS * 1000);
+    int64_t took = umbra_now_us() - t0;
+    app->stream_slices++;
+    if (took > app->stream_worst_us) app->stream_worst_us = took;
+    if (!done) return;
+
+    // The window is whole. Now -- and not before -- the mesh is rebuilt over it.
+    app->stream_state = 2;
+    app->stream_resident = umbra_world_stream_resident();
+    app->stream_seen = umbra_world_stream_seen();
+    app->stream_missing = umbra_world_stream_missing();
+    app->stream_errors = umbra_world_stream_errors();
+    app->stream_loaded = umbra_world_stream_loaded();
+    app->stream_evicted = umbra_world_stream_evicted();
+    app->stream_peak = umbra_world_stream_peak();
+    app->stream_bytes = umbra_world_stream_bytes();
+    umbra_log(app, "stream: window complete, %lld column(s) resident of %lld asked for "
+                   "(%lld missing from the save, %lld parse error(s)), %lld slice(s), "
+                   "worst %.1f ms",
+              (long long)app->stream_resident, (long long)app->stream_seen,
+              (long long)app->stream_missing, (long long)app->stream_errors,
+              (long long)app->stream_slices, app->stream_worst_us / 1000.0);
+    umbra_log(app, "stream: the save's region files are %.1f MB resident, and %lld chunk(s) "
+                   "have been parsed in total (%lld evicted) since the world opened",
+              app->stream_bytes / (1024.0 * 1024.0), (long long)app->stream_loaded,
+              (long long)app->stream_evicted);
+    // A window with nothing in it is not a world to walk in, and rebuilding the mesh for
+    // it would replace a drawable scene with an empty one.
+    if (app->stream_resident <= 0) {
+        umbra_log(app, "stream: no chunk of the window is in the save; keeping the mesh that "
+                       "was there");
+        return;
+    }
+    rebuild_world(app);
 }
 
 // Defined with the rest of the device checks, called at the end of init.
@@ -2813,6 +2904,12 @@ static int file_exists_at(const char *path) {
     return 1;
 }
 
+// Remove a file if it is there. A part-file that failed its download has to go, or the
+// next attempt's byte count starts from the old one.
+static void delete_file_at(const char *path) {
+    if (file_exists_at(path)) remove(path);
+}
+
 // The numbers an import produced, in the log. One line, because the first thing anyone
 // asks about a save is whether it is the world they think it is.
 static void world_report(umbra_app *app, const char *when, int64_t took_us) {
@@ -2908,6 +3005,18 @@ static int world_open_path(umbra_app *app, const char *path, const char *how) {
     }
     app->world_state = 2;
     snprintf(app->world_path, sizeof app->world_path, "%s", path);
+    // Step 1 of the brief: the world is a radius of chunks around the player, streamed
+    // from the save's region files, not the window the reader stopped at. The stream is
+    // started here so that the first world a phone opens is already the bigger one; the
+    // radius is the setting's current value, and the player's first step re-centres it.
+    app->stream_state = 0;
+    app->stream_slices = 0;
+    app->stream_worst_us = 0;
+    stream_start(app, 0, 0, (int)umbra_world_radius_setting());
+    if (app->stream_state != 1) {
+        umbra_log(app, "stream: this world has no region files resident, so the world is "
+                       "the %lld column(s) the import read", (long long)umbra_world_columns());
+    }
     umbra_log(app, "world: the phone is drawing a world the game generated -- the columns are "
                    "the save's, the blocks are the save's, and the jar's models drew them");
     rebuild_world(app);
@@ -2916,6 +3025,75 @@ static int world_open_path(umbra_app *app, const char *path, const char *how) {
 
 // Runs the import for the screen's fifth button. Called from the frame loop when the
 // button is pressed, so the log has a frame on either side of it.
+// --- the sample world: download, verify, open ---------------------------
+//
+// The world the release publishes is what a fresh install walks in, and it goes through
+// the same door as a picked file: the download lands on `umbra-sample-world.zip.part`,
+// the digest in the source is checked against the bytes, and only a file that matches is
+// renamed over the name the import opens. An interrupted download therefore cannot be
+// mistaken for a world -- the import never looks at a `.part`.
+//
+// The job is one call to the platform's download hook and then one frame of bookkeeping,
+// because that hook is the same one the jar uses and it already runs without holding the
+// frame loop. What is added here is the verification, which is the part that matters.
+static void world_sample_download_start(umbra_app *app) {
+    int64_t n = 0;
+    const uint8_t *pp = umbra_world_part_file((sl_u8){(uint8_t *)app->files_dir,
+                                                       (int64_t)strlen(app->files_dir)}, &n);
+    char part[512];
+    gf_copy(app, pp, n, part, sizeof part);
+    const uint8_t *uu = umbra_world_url(&n);
+    char url[512];
+    gf_copy(app, uu, n, url, sizeof url);
+    char sha[80];
+    const uint8_t *ss = umbra_world_sha256(&n);
+    gf_copy(app, ss, n, sha, sizeof sha);
+    umbra_log(app, "world: no save here; fetching the release's sample world");
+    umbra_log(app, "world: %s -> %s (%lld bytes, sha256 %s)", url, part,
+              (long long)umbra_world_pinned_bytes(), sha);
+    delete_file_at(part);
+    long long got = 0;
+    int rc = app->download_fn(app->net_ctx, url, part, &got);
+    if (rc != 0 || got <= 0) {
+        umbra_log(app, "world: the sample world did not download (%s); falling back to "
+                       "the file picker", app->gf_platform_error);
+        delete_file_at(part);
+        // The picker is the next best answer, and it is a different function: falling
+        // through would land in the pick path with a state it did not expect.
+        app->world_wanted = 1;
+        app->world_state = 0;
+        app->sample_world_tried = 1;
+        return;
+    }
+    umbra_log(app, "world: %lld bytes downloaded; checking the digest before it is opened",
+              got);
+    long long want = umbra_world_pinned_bytes();
+    if (got != want) {
+        umbra_log(app, "world: the download is %lld bytes and the release says %lld; "
+                       "refusing it", got, want);
+        delete_file_at(part);
+        app->world_state = 3;
+        snprintf(app->world_text, sizeof app->world_text,
+                 "the sample world downloaded short (%lld of %lld bytes)", got, want);
+        return;
+    }
+    // The digest, read back from what landed rather than from what the hook returned: a
+    // download that wrote fewer bytes than it reported is exactly what a digest is for.
+    int64_t checked = umbra_world_present((sl_u8){(uint8_t *)app->files_dir,
+                                                  (int64_t)strlen(app->files_dir)});
+    if (checked != 1) {
+        umbra_log(app, "world: the downloaded world's digest is not the pinned one; "
+                       "refusing it");
+        delete_file_at(part);
+        app->world_state = 3;
+        snprintf(app->world_text, sizeof app->world_text,
+                 "the sample world did not match its digest");
+        return;
+    }
+    umbra_log(app, "world: the sample world matches the digest pinned in this build");
+    if (world_open_path(app, part, "downloaded sample world")) close_gamefiles_screen(app);
+}
+
 static void world_job_start(umbra_app *app) {
     app->world_state = 1;
     app->world_wanted = 0;
@@ -2937,6 +3115,21 @@ static void world_job_start(umbra_app *app) {
         umbra_log(app, "world: a zip of a save is in the app's own directory");
         if (world_open_path(app, zip, "app directory")) close_gamefiles_screen(app);
         return;
+    }
+    // No file to pick and nothing in the app's directory: the release's own sample world
+    // is what a fresh install should walk in. It is downloaded, checked against the digest
+    // in the source, and only then opened -- and a build with no digest pinned says so
+    // rather than downloading something it cannot check.
+    if (app->download_fn && umbra_world_pinned() == 1 && !app->sample_world_tried) {
+        world_sample_download_start(app);
+        return;
+    }
+    if (umbra_world_pinned() == 0) {
+        int64_t nlen = 0;
+        const uint8_t *why = umbra_world_refusal(&nlen);
+        char reason[192];
+        gf_copy(app, why, nlen, reason, sizeof reason);
+        umbra_log(app, "world: no world here, and %s", reason);
     }
     if (!app->pick_world_fn) {
         umbra_log(app, "world: no world in the app's directory and no file picker in this "
@@ -3283,6 +3476,7 @@ void umbra_app_frame(umbra_app *app) {
                   app->mesh_progress / 10, (long long)app->mesh_calls);
     }
     pump_mesh(app);
+    stream_pump(app);
     player_act(app);
     gf_pump(app);
     world_pump(app);

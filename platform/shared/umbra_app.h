@@ -50,6 +50,12 @@ typedef enum {
 // slice would not work either: the host suites measured 52.33 ms for it, over the
 // number the brief names.
 #define UMBRA_MESH_BUDGET_MS 20
+
+// Parsing chunks for a streaming world runs in the same frame as the mesher, so its slice
+// is separate and smaller than the mesh's. One chunk is ~0.3 ms on the host and the parse
+// cannot be split, so this budget is "a few chunks per frame until the window is full",
+// and the worst slice the stream reports is one chunk regardless.
+#define UMBRA_STREAM_BUDGET_MS 6
 // A call may overrun the slice by one unit; the unit is a layer (1.7 ms host), and on
 // the device the worst loading call measured 33.0 ms with a two-layer unit, so the
 // headroom this leaves (20 + 30 = 50) is what the slice is spent out of.
@@ -198,6 +204,18 @@ struct umbra_app {
     long long world_chunks, world_blocks, world_states, world_errors, world_partial;
     long long world_skipped;
     int world_screen_logged;   // the screen has logged this import's numbers once
+    // Streaming: the world is a radius of chunks around the player, parsed from the save
+    // as they walk. `stream_state` is 0 idle, 1 filling (a slice per frame), 2 complete.
+    // The numbers are the ones the report needs: what is resident, what the window asked
+    // for, and what the longest single parse took.
+    int stream_state;
+    int stream_radius;         // the radius in chunks, as set
+    int stream_cx, stream_cz;  // the chunk the resident set is centred on
+    long long stream_resident, stream_seen, stream_missing, stream_errors;
+    long long stream_loaded, stream_evicted, stream_peak, stream_bytes, stream_slices;
+    int64_t stream_worst_us;   // the longest single slice: one chunk's parse
+    int stream_logged_window;  // the number of columns the last mesh was for
+    int sample_world_tried;    // the release's sample world was attempted once
     int gf_adopt;              // a verified jar is waiting to be loaded
     int gf_pending_open;       // open the screen as soon as the surface is real
     bool jar_loaded;

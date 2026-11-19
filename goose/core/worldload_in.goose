@@ -37,6 +37,7 @@ import core.zip;
 import core.nbt;
 import core.region;
 import core.demo;
+import core.worldstream;
 
 // Where the world's regions are inside the archive. A save exported the way Minecraft
 // exports one puts them under `region/`; 26.3 keeps the overworld under
@@ -57,11 +58,42 @@ let WL_ZIP_MODERN = "dimensions/minecraft/overworld/region/";
 // the window is a decision, it is in the log with the count left out, and the number is
 // here rather than spread through the reader.
 let WL_MAX_CHUNKS: i64 = 25;
+// The render distance the owner chose, in chunks, and the ceiling on it. The window used
+// to be these two constants and nothing could change it, which is why the 1 200 chunks the
+// server generated were thrown away. Now it is a setting: `wl_set_radius` takes what the
+// app asks for, clamps it to what a phone can hold, and the import uses it.
+//
+// The ceiling is 8 (289 chunks, 6.7 M vertices, 0.32 GB of buffer, 87 MB of block data).
+// Radius 16 was the aim and it is 1.22 GB of geometry plus 328 MB of block data on a phone
+// (see the arithmetic in D-048), which is not a budget question -- the app would be killed.
+// 8 is the largest radius whose *whole window* fits; past that, what has to change is that
+// only part of the window is resident, and that is streaming, not a radius.
+const WL_RADIUS_MAX: i64 = 8;
+const WL_RADIUS_DEFAULT: i64 = 4;
+var wl_radius_setting: i64 = WL_RADIUS_DEFAULT;
+
+// What the owner asked for, clamped. Returns the radius that will actually be used, so
+// the caller can put the real number in the log rather than the one it wanted.
+fn wl_set_radius(want: i64) -> i64 {
+    var r = want;
+    if r < 0 { r = 0; }
+    if r > WL_RADIUS_MAX { r = WL_RADIUS_MAX; }
+    wl_radius_setting = r;
+    return r
+}
+fn wl_radius_current() -> i64 { return wl_radius_setting }
 // The window's radius in chunks. Constant, not derived from the archive's size: a save
 // holds its chunks in region files of 32x32, so "how many files" says nothing about which
 // chunks are near the spawn, and reading the first 25 the reader happens to meet would be
 // a window whose position depends on the order of a directory listing.
 let WL_WINDOW: i64 = 2;
+// The cap for this import: the window the radius asks for, never less than the old
+// constant, so a radius of 0 or 2 behaves exactly as before.
+fn wl_max_chunks() -> i64 {
+    let n = wl_chunks_for(wl_radius_setting);
+    return if n < WL_MAX_CHUNKS { WL_MAX_CHUNKS } else { n }
+}
+
 // The most one chunk may ask the block-state registry for. A section's palette is capped
 // at 1024 entries by the format (`resolve_palette`), 24 sections a column, so this is the
 // format's ceiling and not a guess.
@@ -172,6 +204,7 @@ fn wl_archive_reset() {
 // a sentence if it is not. Returns the number of region entries, or 0 when refused.
 fn wl_import_begin(path: const u8[:]) -> i64 {
     wl_archive_reset();
+    ws_reset();
     // The zip layer checks every extracted entry's CRC; its table is built here because a
     // host that only ever opens a world (the app at start-up, before any jar) has not
     // built it, and an uninitialised table rejects every entry with a CRC mismatch --
@@ -239,7 +272,15 @@ fn wl_import_begin(path: const u8[:]) -> i64 {
 // 529 chunks and Umbra read 441" is a line, not a surprise.
 fn wl_radius_for(regions: i64) -> i64 {
     if regions <= 0 { return 0; }
-    return WL_WINDOW;
+    let r = wl_radius_setting;
+    return r
+}
+
+// How many chunks a radius covers, and how many a radius-16 world would have been. The
+// second is what the log line quotes so the owner can see the trade they are making.
+fn wl_chunks_for(radius: i64) -> i64 {
+    let across = radius * 2 + 1;
+    return across * across
 }
 
 // Phase 2: the region files. One call per entry, so the frame loop can spread the work;
@@ -261,6 +302,12 @@ fn wl_import_file(index: i64) -> i64 {
         wl_res.errors += 1;
         return 0;
     }
+    // Keep the region file's bytes for the stream. The stream parses a chunk on demand
+    // when the player walks into it, and the archive is the only place those bytes still
+    // are: `region` is a scratch buffer that the next entry reuses. The view is taken
+    // *before* the read below appends to anything, and it is an offset and a length, so
+    // the copies the stream makes of these bytes cannot invalidate it.
+    ws_note_region(rx, rz, region[..]);
     var taken: i64 = 0;
     var nbt: u8[>..] = [];
     for cz in 32 {
@@ -290,7 +337,10 @@ fn wl_import_file(index: i64) -> i64 {
                     continue;
                 }
             }
-            if wl_res.chunks >= WL_MAX_CHUNKS {
+            // The cap is the window's own size, not a constant: a radius of 8 is 289
+            // chunks and the old 25 would have stopped at the fifth of it, which reads as
+            // "the save is small" rather than "the setting is being ignored".
+            if wl_res.chunks >= wl_max_chunks() {
                 wl_res.skipped += 1;
                 continue;
             }
@@ -374,6 +424,10 @@ fn wl_import_end() -> i64 {
     wl_open_files = wl_res.files;
     wl_open_chunks = wl_res.chunks;
     wl_bounds_update();
+    // The stream's count of what is resident is `demo.len`, and the import has just
+    // written that array itself. Tell it, or the first log line about the opened world
+    // says nothing is resident while sixteen columns are being drawn.
+    ws_resident_sync();
     wl_opened = 1;
     wl_accepted = 1;
     wl_msg = [];

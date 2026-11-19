@@ -2,6 +2,53 @@
 
 Newest first. Each entry says what was decided, why, and what it costs.
 
+## D-048 A world worth walking in is generated, published as an asset, and downloaded by the app
+
+The 25-chunk patch is too small to evaluate anything in, and 1 200 of the 1 225 chunks the
+server generates are thrown away (`WL_WINDOW = 2`). The owner asked for a radius of 16+
+chunks around spawn, hosted as a release asset so the APK stays small.
+
+**What the asset is.** A zip of four or more Anvil region files that a *published Minecraft
+server* wrote when it generated terrain around its spawn. It is generated inside the CI run
+that publishes it: `tools/fetch_server.sh` fetches the pinned server jar, the server
+generates, `tools/gen_window_hook.sh` forces a box of chunks and waits for the save to
+settle, and the region files are zipped and attached to the release. **The server jar is
+never committed and never published**; only the world it wrote, after the run that wrote it.
+
+**Why publish rather than bundle.** The archive at radius 4 is about 5 MB and at radius 16
+is 40-80 MB. The APK is under 1 MB and would multiply overnight, and a world is not part of
+the application. Making it an asset also means the reader is exercised against a world it
+did not ship with, which is closer to the case that matters: the owner's own save.
+
+**The legal question, stated rather than settled.** D-043 covers the client jar, which is
+downloaded on the owner's device from Mojang's server and never redistributed. A world is a
+different thing and the difference is not obviously in this project's favour:
+
+* The **world files are the output of running the program**, which is the case most likely
+  to be defensible under "you may use the game on your own devices": nothing Mojang
+  published is being copied. The blocks in it are block-state ids and noise-generated
+  terrain, not artwork.
+* But the world is still **produced by their software and offered to third parties by this
+  project**, which the jar flow does not do. Minecraft EULA's "essentials" guidelines talk
+  about what you may do with the game and its assets, and a redistributable world is not
+  clearly inside them.
+* **What this project will not do**: publish the client jar, publish the server jar, publish
+  the game's textures, models or sounds, or publish a world the *owner* extracted from the
+  game. The published world is only the one a CI run generated, and it is a plain terrain
+  patch with no structures copied from anywhere.
+
+**This is not legal advice and has not been reviewed by a lawyer.** The position taken is:
+publish a generated world, never publish the game's own files, and if the owner wants the
+safest possible artefact, `tools/make_test_world.py` still makes an asset-free world for the
+host tests (a fixture needs no terrain to be realistic). The owner should decide before a
+public non-pre-release.
+
+**Cost.** A 1.9 MB -> ~5 MB download on first run at radius 4, and a bigger one at radius
+16, over the same `UmbraNet` path the jar already uses. The app must handle "the asset is
+not reachable" by falling back to the demo world and saying so, which it already does for
+the jar. And a published asset cannot be changed after the fact without changing the tag,
+so the world is pinned by sha256 in the app like the jar is.
+
 ## D-047 The mesher reads across a chunk border, and the seam costs half the mesh
 
 `neighbour()` in `core/mesh.goose` answered air for every coordinate outside the column it

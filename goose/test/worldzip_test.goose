@@ -255,9 +255,38 @@ fn wl_263_status_test() {
 fn wl_cap_test() {
     check(WL_MAX_CHUNKS >= 16, "the cap is a piece of a world, not a demo");
     check(WL_MAX_CHUNKS <= 64, "and not more than a phone can hold in buffers");
-    check_i64(wl_radius_for(1), WL_WINDOW, "the window is centred on the world's origin");
-    check_i64(wl_radius_for(64), WL_WINDOW, "and does not depend on how many files there are");
-    check(WL_WINDOW <= 4, "the window is small enough that the cap is rarely reached");
+
+    // The window is a setting now, so what these check is the setting's own behaviour
+    // rather than "the radius equals a constant". The old assertions were
+    // `wl_radius_for(n) == WL_WINDOW`, which is true only while the setting cannot be
+    // changed -- and they failed the moment it could, which is the test doing its job.
+    let saved = wl_set_radius(WL_RADIUS_DEFAULT);
+    check_i64(wl_radius_for(1), WL_RADIUS_DEFAULT, "the window is the radius that was set");
+    check_i64(wl_radius_for(64), WL_RADIUS_DEFAULT,
+              "and does not depend on how many files there are");
+    check_i64(wl_radius_for(0), 0, "with no region files there is no window at all");
+
+    // The clamp: a radius the phone cannot hold is clamped, not obeyed and not ignored.
+    check_i64(wl_set_radius(16), WL_RADIUS_MAX, "a radius of 16 is clamped to the ceiling");
+    check_i64(wl_radius_for(1), WL_RADIUS_MAX, "and the import uses the clamped value");
+    check_i64(wl_set_radius(-3), 0, "a negative radius is zero, not a wrap");
+    check(wl_radius_for(1) == 0, "and that is what the import uses");
+
+    // The chunk count a radius covers, which is what the log line quotes. Radius 2 is the
+    // old window exactly, which is the check that this did not change the old behaviour.
+    check_i64(wl_chunks_for(2), 25, "radius 2 is the 25-chunk window it always was");
+    check_i64(wl_chunks_for(4), 81, "radius 4 is 81 chunks");
+    check_i64(wl_chunks_for(8), 289, "radius 8 is 289 chunks");
+    // The cap follows the radius rather than staying at 25: with the ceiling set, an import
+    // must be allowed to fill its window.
+    wl_set_radius(WL_RADIUS_MAX);
+    check_i64(wl_max_chunks(), 289, "the chunk cap follows the radius");
+    wl_set_radius(2);
+    check_i64(wl_max_chunks(), WL_MAX_CHUNKS, "and never falls below the old constant");
+
+    // Put the setting back: the module's state is shared by every test in the program.
+    wl_set_radius(saved);
+    check_i64(wl_radius_current(), saved, "the radius is back where the test found it");
 }
 
 // The radius of the last import: set by the fixture, and 0 because its save is one region.
