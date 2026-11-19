@@ -108,10 +108,37 @@ something asked for does not.
 
 | item | status | evidence |
 |---|---|---|
-| real textures and models from the jar, on the phone, through blockstates → models | **DONE** | run `44430241555` (`b830866`): `jar: 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's`; `self-test: atlas 0 of 256 texels differ`; `SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 2714 ms, offscreen, atlas from the jar)` |
+| real textures and models from the jar, on the phone, through blockstates → models | **DONE** | run `44430241555` (`b830866`): `jar: 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's`; `self-test: atlas 0 of 256 texels differ`; `SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 2714 ms, offscreen, atlas from the jar)`. The **count of blocks drawn from a model** is now logged too (`a01ff02`) so the device says how much of the world came from the jar's blockstates rather than only that the jar loaded — see the note below |
 | the phone can obtain the game's files | **DONE for the jar, NOT STARTED for the world** | run `44430241555` (`b830866`), gamefiles phase entered with an empty app directory: `download would fetch https://piston-data.mojang.com/v1/objects/e877b6a0.../client.jar` → `the download finished: 41483720 bytes` → `the file is the pinned jar: 41483720 bytes, sha1 e877b6a0...` → `.../files/client.jar is now the app's client jar` → `atlas: source is the client jar -- the downloaded jar draws the world`. That is a real 41 MB transfer from Mojang's CDN, the sha1 check, and the app adopting it, all on the device. The same screen offers a file-picker import (`net: UmbraNet loaded: download and the file picker are available`), but no run exercises the picker end to end, and **no route exists yet for a world zip or folder** |
 | a bigger world with chunk streaming | **NOT STARTED** | the world opens a fixed 5x5 window (`WL_WINDOW = 2`, `left out 1200 (a window of 2 chunks around the origin)`) and there is no code that loads a column as the player moves; `grep stream` finds only DEFLATE streams |
 | edit latency: re-mesh only the edited column plus border neighbours, no frame over ~50 ms | **DONE for the column, and the neighbour now works too** | run `44430241555`: `edit: re-meshed 1 of 9 columns in 87.2 ms over 5 calls (worst call 20.2 ms, worst slice 7.6 ms)`, `the longest slice was 20.2 ms (under the 50 ms an edit is allowed)`. That edit broke a block *inside* a column, so one column is right. The border case was broken and is fixed by `cc5c235`: `build/border_probe2` changed 1 of 27 slots before and 2 of 27 after |
+
+### Item 3's own number (2026-11-14)
+
+The atlas check answers "is the atlas the jar's". It does not answer "is the **world** drawn
+from the jar's blockstates", and a build that loaded the jar's textures and then drew every
+block as a fallback cube would have printed every line above. So the mesher's three model
+counters — blocks drawn from a model, faces from a model, blocks whose blockstate had no
+model — are now exported to the app and logged after the vertex count.
+
+Getting that number right found three defects, none of them visible from the outside:
+
+* `mesh_reset()` ran once per **column** and zeroed the counters, so on a nine-column world
+  "blocks drawn from a model" reported the ninth column: `33347` instead of `300826` for the
+  fake jar's demo world. Fixed by `mesh_world_reset()`, called once from `demo_mesh_begin()`.
+* `mesh_model_faces()` was a dead accessor over `model_faces_drawn`, which nothing
+  incremented, and it shared its name with the live counter. Deleted.
+* the single-bound placeholder path never counted at all, so part of the world could be
+  drawn from a model and reported as zero.
+
+`run_mesh_model_counts` holds it: two columns with three slabs and one slab, requiring 3 then
+4. It took three attempts to write a test that fails on the bug — the first two passed on the
+broken code (one compared two columns that drew nothing from a model; the other was a
+tautology). With the per-column reset restored it fails `got 1 want 4`.
+
+The host's `jrender` prints the same counters from the same code — `blocks drawn from a model
+1498125, faces 454261, blocks whose blockstate had no model 0` for the fake jar — so the
+device line and the CI line are one measurement at two scales rather than two measurements.
 
 Two of these need saying plainly. **The jar half of the asset flow works on the phone**, which
 is the owner's real situation — they have only a phone — and it is the one item here whose
