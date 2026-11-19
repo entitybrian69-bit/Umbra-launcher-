@@ -66,7 +66,7 @@ fi
 # after every one of its twelve test steps had passed, so a green gate read as a red one.
 # The wait grows and the last attempt is still a real attempt.
 attempt=1
-max=10
+max="${UMBRA_EVIDENCE_ATTEMPTS:-10}"
 while [ "$attempt" -le "$max" ]; do
     case "$attempt" in
         1|2) wait=5 ;; 3) wait=10 ;; 4) wait=15 ;; 5) wait=25 ;; 6) wait=40 ;;

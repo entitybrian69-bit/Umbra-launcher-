@@ -156,7 +156,13 @@ jobs:
     name: Publish, then download every asset again and check it
     needs: [apk, pc-linux, pc-windows]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 30, not 20. The evidence commit at the end retries a rejected push ten times with
+    # growing waits (up to ~9 minutes) because nine jobs push to one branch, and until
+    # this job's evidence actually went to a branch that budget was never spent. Run
+    # 44487807384 spent it: the verify and wine steps took their usual few minutes, the
+    # push fought with the branch's other committers, and the job was cancelled at
+    # 20m10s with the release already published and its verification unsaved.
+    timeout-minutes: 30
     permissions:
       contents: write
     steps:
@@ -294,4 +300,9 @@ jobs:
           mkdir -p evidence/release
           cp RELEASE_VERIFY.txt "evidence/release/${TAG}.txt" 2>/dev/null || true
           git add -f RELEASE_VERIFY.txt evidence/release
-          REQUIRE_EVIDENCE=1 bash tools/commit_evidence.sh "ci: release verification for $TAG from run $GITHUB_RUN_ID [skip ci]" "$EVIDENCE_BRANCH"
+          # The verification text is also uploaded as this job's artifact, so a push that
+          # loses a race is not a lost record -- it is a record in one place instead of
+          # two. That is why this one commit gets a short retry budget: the publication
+          # is already done, and a job cancelled at its timeout saves nothing at all.
+          UMBRA_EVIDENCE_ATTEMPTS=4 REQUIRE_EVIDENCE=1 \
+            bash tools/commit_evidence.sh "ci: release verification for $TAG from run $GITHUB_RUN_ID [skip ci]" "$EVIDENCE_BRANCH"
