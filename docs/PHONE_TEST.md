@@ -5,7 +5,7 @@ Umbra is **not** an official Minecraft product.
 ## What you are installing
 
 ```
-https://github.com/entitybrian69-bit/Umbra-launcher-/releases/tag/v0.3.7-pre
+https://github.com/entitybrian69-bit/Umbra-launcher-/releases/tag/v0.3.8-pre
 umbra-0.3.4-pre-arm64.apk
 ```
 

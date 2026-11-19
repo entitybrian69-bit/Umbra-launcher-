@@ -29,7 +29,7 @@ import core.worldload_in;
 import core.sha1;
 import core.gamefiles;
 
-let UMBRA_VERSION = "0.3.7";
+let UMBRA_VERSION = "0.3.8";
 
 // --- a demo world ------------------------------------------------------
 //
