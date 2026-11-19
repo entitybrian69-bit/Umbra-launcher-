@@ -1025,6 +1025,15 @@ static void finish_scene(umbra_app *app) {
               app->vert_count, (long long)app->batch_count[0],
               (long long)app->batch_count[1], (long long)app->batch_count[2],
               (long long)umbra_range_slots());
+    // Item 3's own question, in one line: how much of this world came out of the jar's
+    // blockstates -> models -> geometry, and how much fell back to a cube because a
+    // blockstate named no model. A phone that loaded the jar's textures but drew every
+    // block as a cube reports 0 blocks and 0 faces here, and the "the atlas is the jar's"
+    // line would still be true -- which is why this number is logged separately.
+    umbra_log(app, "mesh: %lld block(s) drawn from a model, %lld face(s) from a model, "
+                   "%lld block(s) whose blockstate had no model",
+              (long long)umbra_mesh_model_blocks(), (long long)umbra_mesh_model_faces(),
+              (long long)umbra_mesh_model_missing());
     umbra_log(app, "startup: meshed in %.1f ms over %lld calls (worst call %.1f ms, worst unit %.1f ms), "
                    "longest frame %.1f ms, frames over 250 ms: %lld",
               app->mesh_total_us / 1000.0, (long long)app->mesh_calls,

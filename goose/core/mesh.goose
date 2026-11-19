@@ -106,8 +106,6 @@ fn mesh_bind_model(id: u32) {
     model_bound = true;
 }
 
-fn mesh_model_faces() -> i64 { return model_faces_drawn; }
-
 var mesh_verts: Vertex[>..] = [];
 var mesh_indices: u32[>..] = [];
 // Per-batch ranges: [start, count] in indices, in the order the renderer draws
@@ -122,6 +120,18 @@ fn mesh_reset() {
         batch_starts[i] = 0;
         batch_counts[i] = 0;
     }
+    // The model counters are *not* reset here. They describe the world that has been
+    // meshed since the caller last cleared them, and mesh_reset() runs once per column:
+    // resetting them here would make "blocks drawn from a model" report the last column
+    // only (33347 for the fake jar's demo world, against 1498125 for the same world
+    // through jrender, which clears once at the start). A per-column counter is not
+    // wrong, but it is not what the log line means, and a number that silently means
+    // something else is worse than no number.
+}
+
+// The start of a world: the counters describe everything meshed until this is called
+// again, so the caller that is about to mesh every column clears them once.
+fn mesh_world_reset() {
     mesh_model_blocks = 0;
     mesh_model_faces = 0;
     mesh_model_skipped = 0;
@@ -666,8 +676,15 @@ fn mesh_section_class_layers(c: ChunkColumn&, sy: i32, want: i64, ly_from: i32, 
             }
         }
         if model_bound && id == model_block {
-            // The single-bound demo path, kept for the placeholder world.
+            // The single-bound demo path, kept for the placeholder world. It counts as
+            // a block drawn from a model like any other: the number this feeds answers
+            // "did a model draw this world", not "did the jar's store draw it", and a
+            // placeholder world with a bound slab has a model drawing part of it.
+            let before = mesh_verts.len;
             push_model(c, x, y, z, tint);
+            let drew = (mesh_verts.len - before) / 4;
+            mesh_model_blocks += 1;
+            mesh_model_faces += drew;
             continue;
         }
         if ends_with(path, "_leaves") || rc == RC_CROSS { tint = [0.55, 0.75, 0.35]; }
