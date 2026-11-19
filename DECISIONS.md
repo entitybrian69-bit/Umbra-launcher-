@@ -42,7 +42,9 @@ second copy to keep in step. `mesh_world_column` is a linear scan of nine column
 the largest save the renderer holds), once per border test rather than once per block.
 
 **Measured.** The demo world: 93 841 quads → 44 370, of which faces with a full cube on both
-sides 49 222 → 0. The real 26.3 save in the host suite: 52 644 vertices → 41 092.
+sides 49 222 → 0. The real 26.3 save in the host suite: 52 644 vertices → 41 092. On the
+emulator (runs `ba59105` → `660f129`, same emulator, same scene): 88.21 ms a frame → 66.13 ms,
+11 fps → 15 fps, and the 1% low 7 fps → 10 fps. The phone-visible number is the last one.
 `run_mesh_borders` (6 checks) fails on the old code (2624 faces on the border where there
 must be none) and passes on this one.
 

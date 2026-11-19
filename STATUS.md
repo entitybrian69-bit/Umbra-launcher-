@@ -24,7 +24,17 @@ Measured on `build/seam_faces` (glue harness, demo seed 20261114, all 9 columns 
 | real 26.3 save, host suite | 52 644 vertices | 41 092 vertices |
 
 That is the overdraw: 52% of every frame was faces nobody could see, which is what the 11 fps
-benchmark was drawing. `run_mesh_borders` (6 checks) fails on the old code — 2624 faces on a
+benchmark was drawing. **On the emulator, run 44430241555 (head `660f129` + evidence):**
+
+| | before (`ba59105`) | after (`660f129`) |
+|---|---|---|
+| benchmark | 682 frames, avg 88.21 ms (**11 fps**), 1% low 7 fps | 909 frames, avg 66.13 ms (**15 fps**), 1% low 10 fps |
+| median / worst frame | 86.58 ms / 141.52 ms | 65.92 ms / 98.48 ms |
+| first world frame | 861 096 vertices | 234 304 vertices over 18 ranges |
+
+The 1% low matters more than the average: it went from 7 fps to 10 fps, so the frames that
+made the app feel like it was dropping were the ones that gained most. All five workflows are
+`success` on this head. `run_mesh_borders` (6 checks) fails on the old code — 2624 faces on a
 border where there must be none — and passes on the new one. D-047 has the reasoning.
 
 **What a person would have seen is not what was expected.** The guess was a hole: break a
