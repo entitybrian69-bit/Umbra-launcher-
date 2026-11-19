@@ -248,7 +248,14 @@ jobs:
           if [ -n "$WIN" ]; then
             # Wine is a coarse stand-in for Windows, but it is execution: a
             # binary that does not start under wine is not a Windows binary.
-            sudo apt-get install -y -qq wine64 >/dev/null 2>&1 || sudo apt-get install -y -qq wine >/dev/null 2>&1 || true
+            #
+            # `sudo apt-get install -y wine` with no package list is a no-op on
+            # ubuntu-latest -- it answers "Unable to locate package" and the `|| true`
+            # hid that, which is how run 44234179264 skipped this section and passed.
+            # `apt-get update` first, and the answer is checked rather than assumed.
+            sudo apt-get update -qq >/dev/null 2>&1 || true
+            sudo apt-get install -y -qq wine64 >/dev/null 2>&1 \
+                || sudo apt-get install -y -qq wine >/dev/null 2>&1 || true
             WINE=$(command -v wine64 || command -v wine || true)
             if [ -n "$WINE" ]; then
               "$WINE" "$WIN" > /tmp/wine.log 2>&1 || true
