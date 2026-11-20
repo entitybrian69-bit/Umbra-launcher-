@@ -2374,19 +2374,29 @@ static void player_spawn(umbra_app *app) {
             }
         }
     }
-    if (!found) {
-        // Print what the scan actually saw before falling back. A spawn at the top of the
-        // world says the terrain read "solid" everywhere, and the two ways that happens
-        // (a wrong column, a wrong air test) cannot be told apart from the fallback alone.
-        // Cost: one line, only when the spawn has already failed.
-        char seen[256];
+    // A floor above 200 is not this save's terrain, and the line that reports it is worth
+    // one more line saying what the scan read. Run 44704980963 spawned the body at 320.01
+    // -- the top of the world -- with the scan reporting a floor there, and "floor 320"
+    // alone cannot distinguish the ways that happens: the wrong column, an air that tests
+    // solid, or a section the reader placed at the wrong y.
+    if (found && y > 200.0f) {
+        char seen[384];
         int nseen = 0;
-        for (int wy = 130; wy >= 40 && nseen + 24 < (int)sizeof seen; wy -= 10) {
-            float t = umbra_block_top((int64_t)bx, (int64_t)wy, (int64_t)bz);
-            nseen += snprintf(seen + nseen, sizeof seen - (size_t)nseen, " y%d=%.0f",
-                              wy, t);
+        const int64_t ys[] = {319, 310, 300, 200, 100, 70, 63};
+        for (int k = 0; k < 7 && nseen + 40 < (int)sizeof seen; k++) {
+            int64_t nl2 = 0;
+            const uint8_t *nm2 = umbra_block_at((int64_t)bx, ys[k], (int64_t)bz, &nl2);
+            char b[24];
+            int bl = 0;
+            for (int64_t j = 0; j < nl2 && bl + 1 < (int)sizeof b; j++) b[bl++] = (char)nm2[j];
+            b[bl] = 0;
+            nseen += snprintf(seen + nseen, sizeof seen - (size_t)nseen, " y%lld=%s(t%.0f)",
+                              (long long)ys[k], bl ? b : "?", umbra_block_top((int64_t)bx, ys[k], (int64_t)bz));
         }
-        umbra_log(app, "player: the scan at %d,%d saw%s", bx, bz, seen);
+        umbra_log(app, "player: the floor at %d,%d is %.0f, and the column reads%s",
+                  bx, bz, y, seen);
+    }
+    if (!found) {
         y = umbra_world_spawn((int64_t)bx, (int64_t)bz);
         umbra_log(app, "player: no open cell within 6 blocks of %d,%d; standing on the "
                        "middle at floor %.2f, which may be walled in", bx, bz, y);
