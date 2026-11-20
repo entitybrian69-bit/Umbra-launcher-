@@ -302,6 +302,7 @@ fn run_worldstream() {
 //
 // The fixture's own columns are 60-odd high, which is exactly why it passed: the numbers
 // have to be *made* tall for this to be testable, and they are made here.
+
 fn ws_spawn_above_the_demo_ceiling_test() {
     ws_close_fixture();
     bs_reset();

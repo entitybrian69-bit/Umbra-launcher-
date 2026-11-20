@@ -2375,8 +2375,18 @@ static void player_spawn(umbra_app *app) {
         }
     }
     if (!found) {
-        // Nothing within six blocks is open. Stand on the middle anyway and say so: a
-        // body that cannot move is a fact the log has to carry, not a silent failure.
+        // Print what the scan actually saw before falling back. A spawn at the top of the
+        // world says the terrain read "solid" everywhere, and the two ways that happens
+        // (a wrong column, a wrong air test) cannot be told apart from the fallback alone.
+        // Cost: one line, only when the spawn has already failed.
+        char seen[256];
+        int nseen = 0;
+        for (int wy = 130; wy >= 40 && nseen + 24 < (int)sizeof seen; wy -= 10) {
+            float t = umbra_block_top((int64_t)bx, (int64_t)wy, (int64_t)bz);
+            nseen += snprintf(seen + nseen, sizeof seen - (size_t)nseen, " y%d=%.0f",
+                              wy, t);
+        }
+        umbra_log(app, "player: the scan at %d,%d saw%s", bx, bz, seen);
         y = umbra_world_spawn((int64_t)bx, (int64_t)bz);
         umbra_log(app, "player: no open cell within 6 blocks of %d,%d; standing on the "
                        "middle at floor %.2f, which may be walled in", bx, bz, y);
