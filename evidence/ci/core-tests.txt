@@ -25,13 +25,13 @@ goose/test/worldstream_test.goose:256: warning: redundant `as i64`: demo.len is 
 goose/test/worldstream_test.goose:259: warning: redundant `as i64`: demo.len is already i64
     check_i64(demo.len as i64, before, "recentring on the same window parses nothing");
               ^~~~~~~~~~~~~~~
-goose/test/worldstream_test.goose:308: warning: redundant `as i64`: demo.len is already i64
+goose/test/worldstream_test.goose:360: warning: redundant `as i64`: demo.len is already i64
     check(demo.len as i64 == 0, "so the world is not built twice");
           ^~~~~~~~~~~~~~~
-goose/test/worldstream_test.goose:314: warning: redundant `as i64`: demo.len is already i64
+goose/test/worldstream_test.goose:366: warning: redundant `as i64`: demo.len is already i64
     check_i64(demo.len as i64, 16, "and the mesher walks exactly those");
               ^~~~~~~~~~~~~~~
-goose/test/worldstream_test.goose:327: warning: redundant `as i64`: demo.len is already i64
+goose/test/worldstream_test.goose:379: warning: redundant `as i64`: demo.len is already i64
     check_i64(demo.len as i64, 16, "and the world is not duplicated by a second fill");
               ^~~~~~~~~~~~~~~
 goose/core/worldstream.goose:179: warning: redundant `as i64`: bytes.len is already i64
@@ -58,31 +58,34 @@ goose/core/worldstream.goose:414: warning: redundant `as i64`: an i32 converts t
 goose/core/worldstream.goose:456: warning: redundant `as i64`: demo.len is already i64
     ws_stats.resident = demo.len as i64;
                         ^~~~~~~~~~~~~~~
-goose/core/demo.goose:213: warning: redundant `as f32`: fx is already f32
+goose/core/demo.goose:178: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+        if t > 0.0 { return (y as f32) + t; }
+                             ^~~~~~~~
+goose/core/demo.goose:246: warning: redundant `as f32`: fx is already f32
     if fx < 0.0 && (fx as f32) != fx { x -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:214: warning: redundant `as f32`: fy is already f32
+goose/core/demo.goose:247: warning: redundant `as f32`: fy is already f32
     if fy < 0.0 && (fy as f32) != fy { y -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:215: warning: redundant `as f32`: fz is already f32
+goose/core/demo.goose:248: warning: redundant `as f32`: fz is already f32
     if fz < 0.0 && (fz as f32) != fz { z -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:220: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:253: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_x = if stepx == 0 { inf } else if stepx > 0 { (1.0 - (fx - (x as f32))) / nx } else { ((x as f32) - fx) / nx };
                                                                          ^~~~~~~~
-goose/core/demo.goose:220: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:253: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_x = if stepx == 0 { inf } else if stepx > 0 { (1.0 - (fx - (x as f32))) / nx } else { ((x as f32) - fx) / nx };
                                                                                                      ^~~~~~~~
-goose/core/demo.goose:221: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:254: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_y = if stepy == 0 { inf } else if stepy > 0 { (1.0 - (fy - (y as f32))) / ny } else { ((y as f32) - fy) / ny };
                                                                          ^~~~~~~~
-goose/core/demo.goose:221: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:254: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_y = if stepy == 0 { inf } else if stepy > 0 { (1.0 - (fy - (y as f32))) / ny } else { ((y as f32) - fy) / ny };
                                                                                                      ^~~~~~~~
-goose/core/demo.goose:222: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:255: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
                                                                          ^~~~~~~~
-goose/core/demo.goose:222: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:255: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
                                                                                                      ^~~~~~~~
 goose/core/modelstore.goose:52: warning: redundant `as i64`: path.len is already i64
@@ -235,7 +238,7 @@ goose/core/region.goose:66: warning: redundant `as i64`: a u32 converts to i64 i
 goose/core/region.goose:142: warning: redundant `as u32`: a u16 converts to u32 implicitly here
     return s.blocks[i] as u32;
            ^~~~~~~~~~~~~~~~~~
-goose/core/region.goose:515: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+goose/core/region.goose:526: warning: redundant `as u32`: a u8 converts to u32 implicitly here
             put_be_u32(out, (offsets[i] << 8) | (counts[i] as u32));
                                                  ^~~~~~~~~~~~~~~~
 goose/core/inflate.goose:84: warning: redundant `as i64`: a u32 converts to i64 implicitly here
@@ -640,8 +643,8 @@ PASS models (447 checks)
 PASS modelstore (497 checks)
 PASS raster (507 checks)
 PASS worldzip (602 checks)
-  ws: 2 slices for 16 chunks, worst 263 us
+  ws: 2 slices for 16 chunks, worst 172 us
 
-PASS worldstream (657 checks)
+PASS worldstream (662 checks)
 all modules passed
 c-host: goose_exit returned 0
