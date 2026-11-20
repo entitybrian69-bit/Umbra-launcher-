@@ -421,6 +421,37 @@ fn ws_column_of(cx: i64, cz: i64) -> i64 {
 // "0 columns resident" for a world that is holding sixteen of them -- the number was
 // right and the sentence was wrong, which is the kind of report that sends the next
 // person looking in the wrong place.
+// Is this import streamed? Set by the caller before `wl_import_begin`, because it is a
+// decision about who reads the world -- the import reading a window it will then throw
+// away is the thing this whole file exists to stop -- and it has to be known before the
+// first chunk is met.
+//
+// Off by default: a tool that reads a save and prints what is in it (`worldload`, the
+// comparison against the server) wants every chunk in the window parsed in one call, and
+// asking it to drive a stepper would be a second implementation of the same loop.
+var ws_stream_mode_on: bool = false;
+fn ws_set_stream_mode(on: bool) { ws_stream_mode_on = on; }
+fn ws_stream_mode_on_now() -> bool { return ws_stream_mode_on }
+
+// How many non-air blocks the resident window holds. Counted from the columns that are
+// there rather than remembered from a parse, so it is the number the mesher is looking at.
+fn ws_blocks_in_window() -> i64 {
+    var n: i64 = 0;
+    for i in demo.len {
+        var y: i32 = -64;
+        while y < 320 {
+            for z in 16 {
+                for x in 16 {
+                    let id = chunk_block(demo[i], x as i32, y, z as i32);
+                    if id != 0 && !demo_is_air(id) { n += 1; }
+                }
+            }
+            y += 1;
+        }
+    }
+    return n
+}
+
 fn ws_resident_sync() {
     ws_stats.resident = demo.len as i64;
     if ws_stats.resident > ws_stats.peak_resident { ws_stats.peak_resident = ws_stats.resident; }

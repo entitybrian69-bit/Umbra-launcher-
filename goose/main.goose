@@ -1376,6 +1376,12 @@ export "umbra_world_import_radius" fn world_import_radius() -> i64 { return wl_r
 // The radii are exported so the setting has one home: C clamps nothing, it reads what
 // Goose says the ceiling is and puts the number on the screen.
 export "umbra_world_radius_max" fn world_radius_max() -> i64 { return WL_RADIUS_MAX }
+// A streamed import: the archive is validated and its region files kept, and the window is
+// parsed by the stream. Set once, at start-up, before any world is opened; a tool that
+// wants a whole-save read leaves it off.
+export "umbra_world_set_stream_mode" fn world_set_stream_mode(on: i64) {
+    ws_set_stream_mode(on != 0)
+}
 export "umbra_world_radius_setting" fn world_radius_setting() -> i64 { return wl_radius_current() }
 export "umbra_world_set_radius" fn world_set_radius(want: i64) -> i64 { return wl_set_radius(want) }
 // Centre the resident set on a chunk. Cheap: it evicts and plans, and parses nothing.

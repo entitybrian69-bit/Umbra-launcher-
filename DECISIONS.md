@@ -2,6 +2,44 @@
 
 Newest first. Each entry says what was decided, why, and what it costs.
 
+## D-049 The resident set is a radius the save is streamed into, not a window read once
+
+**Decided:** the world is not held. The save's region files are held (a few MB, as `Sref`
+views into one arena), and the chunks within a radius of the player are parsed from them on
+demand, one budgeted slice per frame, evicting what leaves the radius. The radius is a
+setting, 0..8, clamped and reported.
+
+**Why not a bigger static window.** The arithmetic is the decision:
+
+| radius | chunks | vertices | geometry | block data (columns) |
+|--------|--------|----------|----------|----------------------|
+| 2 (the old window) | 25 | 0.58 M | 28 MB | 7.5 MB |
+| 4 | 81 | 1.89 M | 91 MB | 24 MB |
+| 8 (the ceiling) | 289 | 6.7 M | 324 MB | 87 MB |
+| 16 (the brief's aim) | 1 089 | 25.4 M | 1.22 GB | 328 MB |
+
+A `ChunkColumn` is 301 056 bytes (24 sections of 12 544). Radius 16 is 1.22 GB of vertex
+buffer plus 328 MB of columns: not a budget question, an out-of-memory kill. Radius 8 fits
+a desktop and is still too much for a phone's vertex buffer, which is why the *default* is
+4 (81 chunks, 91 MB) and 8 is the ceiling a caller may ask for rather than the number any
+default uses.
+
+**Why streaming and not "open less".** Radius 8 is 7.2x the old window's geometry. A
+player who walks 80 blocks should still be inside a world, and with a fixed window they are
+outside it -- `demo_block_at` answers 0 for a column that is not resident, so the world does
+not end in fog, it ends in air the mesher culls faces against. Streaming is what makes the
+radius mean the distance the player sees.
+
+**What it costs.** The save stays in memory: four region files, ~30 MB for the sample. A
+move evicts and plans without parsing (measured: 0.01 ms for a plan of 25 positions), and
+the parse is sliced (worst slice = one chunk, ~0.3 ms on the host). The mesh restarts when
+a move completes, which is the one operation already sliced to fit a frame.
+
+**The bug this cost, on the record.** `ws_column_of` was written as `demo_column_of`, which
+takes *block* coordinates and floors them by 16 -- so chunk 1 looked up block 0 and matched
+the column at chunk 0. The window held 10 of its 16 chunks with every missing one at a
+positive coordinate. The lesson is in the code: a lookup has to say which space it is in.
+
 ## D-048 A world worth walking in is generated, published as an asset, and downloaded by the app
 
 The 25-chunk patch is too small to evaluate anything in, and 1 200 of the 1 225 chunks the

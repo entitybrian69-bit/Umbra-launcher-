@@ -1466,6 +1466,14 @@ int umbra_app_init(umbra_app *app) {
         // screen's fifth button runs, and it is before `begin_scene` so the save's
         // columns are what the first mesh is built from -- nothing is built and thrown
         // away.
+        // The world is read by the stream, not by the import: the import validates the
+        // archive and keeps its region files, and the window the player is in is parsed
+        // from them as they walk. Set here, before any world is opened, because it is a
+        // decision about who reads the save and it has to be made before the first chunk.
+        umbra_world_set_stream_mode(1);
+        umbra_log(app, "stream: the world is streamed: radius %lld (max %lld), the import "
+                       "validates the archive and the stream parses the window",
+                  (long long)umbra_world_radius_setting(), (long long)umbra_world_radius_max());
         char world_zip[512];
         snprintf(world_zip, sizeof world_zip, "%s/world.zip", files);
         if (file_exists_at(world_zip)) {

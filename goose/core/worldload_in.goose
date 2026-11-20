@@ -110,12 +110,13 @@ struct WlResult {
     errors: i64,       // chunks that could not be read
     partial: i64,      // chunks whose Status is not minecraft:full
     skipped: i64,      // chunks dropped for being outside the radius or over the cap
+    deferred: i64,     // chunks a streamed import left for the stream to parse
     radius: i64,       // the chunk radius used (0 = every chunk)
 }
 
 var wl_res = WlResult {
     files: 0, entries: 0, chunks: 0, blocks: 0, states: 0, errors: 0, partial: 0, skipped: 0,
-    radius: 0,
+    deferred: 0, radius: 0,
 };
 // The archive's bytes, while it is being read. The phases are separate calls so the
 // frame loop can do a little at a time: opening a 30 MB archive is a memcpy, reading 600
@@ -202,6 +203,11 @@ fn wl_archive_reset() {
 
 // Phase 1: the bytes. One file, checked for being a zip with regions in it, refused with
 // a sentence if it is not. Returns the number of region entries, or 0 when refused.
+// Is the world being read a streamed one? See `core.worldstream`: the import validates
+// the archive and the stream parses the window, so this decides whether `wl_import_file`
+// reads chunks at all.
+fn wl_stream_mode() -> bool { return ws_stream_mode_on_now() }
+
 fn wl_import_begin(path: const u8[:]) -> i64 {
     wl_archive_reset();
     ws_reset();
@@ -213,7 +219,7 @@ fn wl_import_begin(path: const u8[:]) -> i64 {
     crc32_init();
     wl_res = WlResult {
         files: 0, entries: 0, chunks: 0, blocks: 0, states: 0, errors: 0, partial: 0,
-        skipped: 0, radius: 0,
+        skipped: 0, deferred: 0, radius: 0,
     };
     wl_accepted = 0;
     wl_cols = [];
@@ -337,6 +343,15 @@ fn wl_import_file(index: i64) -> i64 {
                     continue;
                 }
             }
+            // A streamed import reads *no* chunk here. The archive is validated (there is
+            // a region file, there are chunks in it, they have blocks) and the region
+            // bytes are kept for the stream, which then parses exactly the window the
+            // player is in. Reading a window here as well would parse the same chunks
+            // twice and hold the first window's columns alongside the second's.
+            if wl_stream_mode() {
+                wl_res.deferred += 1;
+                continue;
+            }
             // The cap is the window's own size, not a constant: a radius of 8 is 289
             // chunks and the old 25 would have stopped at the fifth of it, which reads as
             // "the save is small" rather than "the setting is being ignored".
@@ -392,6 +407,13 @@ fn wl_open_blocks(c: ChunkColumn&) {
 // and the save's columns are what the mesher will walk. `wl_opened` says so, and the HUD
 // and the log both report it.
 fn wl_import_end() -> i64 {
+    if wl_stream_mode() {
+        // A streamed import has countits chunks per region file and parsed none. The
+        // refusals still apply -- a file with no region, or one whose chunks hold no
+        // block, is not a world -- but they are asked of the stream, which is where the
+        // chunks are read.
+        return wl_import_end_streamed()
+    }
     if wl_res.chunks <= 0 {
         wl_say3("the archive held ", "no chunks", " the reader could take");
         wl_accepted = 0;
@@ -436,6 +458,54 @@ fn wl_import_end() -> i64 {
     return 1;
 }
 
+// The end of a streamed import. Nothing has been parsed yet, so this asks the stream for
+// the window around the origin -- which is where a player spawns -- and refuses a save
+// that holds no block in it.
+//
+// The window is parsed in full here rather than over the following frames: the app is on
+// its loading screen, the work is bounded by the radius, and a world that opens with half
+// a window is a mesh with holes at its edge. `ws_stream_all` is the stepper run to
+// completion, so it is the same code the frame loop drives, not a second path.
+fn wl_import_end_streamed() -> i64 {
+    if wl_res.files <= 0 {
+        wl_say3("the archive held ", "no region file", " the reader could take");
+        wl_accepted = 0;
+        wl_archive_reset();
+        return 0
+    }
+    let radius = wl_radius_setting;
+    demo = [];
+    ws_resident_sync();
+    let resident = ws_stream_all(0, 0, radius);
+    if resident <= 0 {
+        // Every position the window asked for was missing or unreadable. A save whose
+        // origin is in a part of the world nobody generated is not a world to walk in,
+        // and opening it would replace a drawable scene with an empty one.
+        wl_say3("the save holds ", "no chunk", " within the window around its origin");
+        wl_accepted = 0;
+        demo = [];
+        wl_archive_reset();
+        return 0;
+    }
+    // "blocks" for a streamed import is what the window holds, not what the whole save
+    // holds: the number a person can check is the one about the world on screen.
+    wl_res.blocks = ws_blocks_in_window();
+    wl_res.chunks = resident;
+    wl_open_files = wl_res.files;
+    wl_open_chunks = resident;
+    wl_bounds_update();
+    ws_resident_sync();
+    wl_opened = 1;
+    wl_accepted = 1;
+    wl_msg = [];
+    format(wl_msg, resident, " chunk(s) from ", wl_res.files);
+    wl_msg.append(" region file(s), radius ");
+    var rtxt: u8[>..] = [];
+    format(rtxt, radius, "", "");
+    wl_msg.append(rtxt[..]);
+    return 1
+}
+
 // What the last import did, for the C screen and for the log. One call per number keeps
 // the shared header small; they are cheap and the screen refreshes once.
 fn wl_count_chunks() -> i64 { return wl_res.chunks; }
@@ -446,6 +516,7 @@ fn wl_count_errors() -> i64 { return wl_res.errors; }
 fn wl_count_partial() -> i64 { return wl_res.partial; }
 fn wl_count_skipped() -> i64 { return wl_res.skipped; }
 fn wl_count_entries() -> i64 { return wl_res.entries; }
+fn wl_deferred() -> i64 { return wl_res.deferred; }
 fn wl_radius_used() -> i64 { return wl_res.radius; }
 fn wl_message() -> const u8[:] { return wl_msg; }
 fn wl_is_open() -> i64 { return wl_opened; }

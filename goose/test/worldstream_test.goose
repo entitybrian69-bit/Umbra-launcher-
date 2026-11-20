@@ -273,5 +273,60 @@ fn run_worldstream() {
     ws_slice_test();
     ws_move_test();
     ws_recentre_is_cheap_test();
+    ws_streamed_import_test();
     test_summary("worldstream");
+}
+
+// --- the streamed import ------------------------------------------------
+
+// The app's path: `wl_import_begin` validates the archive, every entry is offered, and
+// `wl_import_end` parses the window around the origin -- because in stream mode the
+// import parses no chunk at all, and the window comes from the stream.
+//
+// Three numbers have to agree, and they are three different questions:
+//   * `deferred` is what the import left for the stream (every chunk in the save);
+//   * `resident` is what the stream then parsed (the window's own count, or less where
+//     the save runs out);
+//   * `demo.len` is what the mesher walks, which must be the same as `resident`.
+fn ws_streamed_import_test() {
+    ws_close_fixture();
+    bs_reset();
+    demo = [];
+    ws_set_stream_mode(true);
+    wl_set_radius(2);
+
+    let regions = wl_import_begin(WS_ZIP);
+    check(regions >= 4, "the streamed import finds the region files");
+    var i: i64 = 0;
+    while i < wl_count_entries() {
+        wl_import_file(i);
+        i += 1;
+    }
+    // Not one chunk parsed by the import: the whole save was deferred.
+    check_i64(wl_count_chunks(), 0, "a streamed import parses no chunk itself");
+    check(wl_deferred() > 0, "and counts what it left for the stream");
+    check(demo.len as i64 == 0, "so the world is not built twice");
+
+    let opened = wl_import_end();
+    check_i64(opened, 1, "and it opens");
+    // Radius 2 is 25 positions; the save holds 16 of them.
+    check_i64(wl_count_chunks(), 16, "the window the stream filled is the save's 16 chunks");
+    check_i64(demo.len as i64, 16, "and the mesher walks exactly those");
+    check_i64(wl_count_files(), regions, "the region files are still counted");
+    check(wl_count_blocks() > 1000, "the window holds the save's blocks");
+
+    // The blocks are the save's: the top of a chunk is the height the fixture wrote for
+    // that position, read through the world the import handed to the mesher.
+    check_i64(ws_surface_of_column(0, 0), ws_height(0, 0), "a block read from the opened world");
+    check_i64(ws_surface_of_column(-1, -1), ws_height(-1, -1), "and one from the far corner");
+
+    // The radius is still the setting, and the window follows it.
+    check_i64(wl_set_radius(3), 3, "the radius is settable");
+    let r3 = ws_stream_all(0, 0, 3);
+    check_i64(r3, 16, "a bigger radius is still only what the save holds");
+    check_i64(demo.len as i64, 16, "and the world is not duplicated by a second fill");
+
+    ws_close_fixture();
+    ws_set_stream_mode(false);
+    wl_set_radius(4);
 }
