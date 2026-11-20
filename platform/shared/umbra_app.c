@@ -2925,6 +2925,30 @@ static void world_report(umbra_app *app, const char *when, int64_t took_us) {
     const uint8_t *msg = umbra_world_import_message(&n);
     char text[192];
     gf_copy(app, msg, n, text, sizeof text);
+    // A streamed import read no chunk, so the import's own counters ("states 0", "left
+    // out N") are about a reader that did not run. The numbers that describe the world on
+    // the screen are the stream's, and they are printed here or not at all: a report that
+    // quotes a zero from the wrong counter is worse than one that quotes nothing.
+    if (umbra_world_stream_open() == 1 && umbra_world_stream_resident() > 0) {
+        // The wording is not free: tools/emulator_smoke.sh reads this line by position.
+        // It wants `world: <when>:` so it can find the line, then a leading chunk count,
+        // then `<n> non-air blocks`, then `<n> read errors`. A streamed world has to keep
+        // that contract or the device test dies on a line it cannot parse -- which is the
+        // failure this comment exists to prevent, because the tempting thing to write is
+        // the more accurate prose that breaks it.
+        umbra_log(app, "world: %s: %lld chunk(s) from %lld region file(s), radius %lld, "
+                       "non-air blocks %lld, read errors %lld, %lld chunk(s) parsed by the "
+                       "stream, missing from the save %lld, %.1f MB of region files, "
+                       "%.1f ms",
+                  when, (long long)umbra_world_stream_resident(),
+                  (long long)umbra_world_import_files(),
+                  (long long)umbra_world_import_radius(),
+                  (long long)umbra_world_import_blocks(),
+                  (long long)umbra_world_stream_errors(),
+                  (long long)umbra_world_stream_loaded(),
+                  (long long)umbra_world_stream_missing(),
+                  umbra_world_stream_bytes() / (1024.0 * 1024.0), took_us / 1000.0);
+    }
     app->world_files = (int)umbra_world_import_files();
     app->world_chunks = (long long)umbra_world_import_chunks();
     app->world_blocks = (long long)umbra_world_import_blocks();
@@ -2932,13 +2956,19 @@ static void world_report(umbra_app *app, const char *when, int64_t took_us) {
     app->world_errors = (long long)umbra_world_import_errors();
     app->world_partial = (long long)umbra_world_import_partial();
     app->world_skipped = (long long)umbra_world_import_skipped();
-    umbra_log(app, "world: %s: %s -- files %d, entries %lld, chunks %lld, non-air blocks %lld, "
-                   "states %lld, read errors %lld, not-full chunks %lld, left out %lld "
-                   "(a window of %lld chunks around the origin), %.1f ms",
-              when, text, app->world_files,
-              (long long)umbra_world_import_entries(), app->world_chunks, app->world_blocks,
-              app->world_states, app->world_errors, app->world_partial, app->world_skipped,
-              (long long)umbra_world_import_radius(), took_us / 1000.0);
+    // The import's own line is for the case the import did the reading. In stream mode it
+    // did not, and its counters describe work that never happened -- which is how a
+    // report ends up saying "states 0" about a world that is drawing 81 chunks.
+    int streamed = umbra_world_stream_open() == 1 && umbra_world_stream_resident() > 0;
+    if (!streamed) {
+        umbra_log(app, "world: %s: %s -- files %d, entries %lld, chunks %lld, "
+                       "non-air blocks %lld, states %lld, read errors %lld, not-full chunks "
+                       "%lld, left out %lld, %.1f ms",
+                  when, text, app->world_files,
+                  (long long)umbra_world_import_entries(), app->world_chunks, app->world_blocks,
+                  app->world_states, app->world_errors, app->world_partial, app->world_skipped,
+                  took_us / 1000.0);
+    }
     snprintf(app->world_text, sizeof app->world_text, "%.*s", 150, text);
 }
 

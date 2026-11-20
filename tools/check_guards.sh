@@ -31,6 +31,7 @@ guard() {
 #   workflows     - a heredoc at column 0 inside `run: |` stopped a workflow being YAML, and
 #                   a run failed in 0 seconds with zero jobs.
 guard window_parse  bash tools/test_window_parse.sh
+guard open_line     bash tools/test_open_line_parse.sh
 guard zip_world     python3 tools/zip_world.py --selftest
 guard workflows     python3 tools/check_workflows.py
 guard hook_syntax   bash -n tools/gen_window_hook.sh

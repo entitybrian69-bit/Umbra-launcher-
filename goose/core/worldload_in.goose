@@ -503,6 +503,13 @@ fn wl_import_end_streamed() -> i64 {
     var rtxt: u8[>..] = [];
     format(rtxt, radius, "", "");
     wl_msg.append(rtxt[..]);
+    // The other counters are about the *import*, and in stream mode the import read no
+    // chunk: saying "states 0" or "left out 3 400" would be a sentence about a reader
+    // that did not run. What took its place is the deferral, stated as a number.
+    if wl_res.deferred > 0 {
+        wl_msg.append(", ");
+        format(wl_msg, wl_res.deferred, " chunk(s) deferred to the stream", "");
+    }
     return 1
 }
 
