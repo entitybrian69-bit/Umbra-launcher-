@@ -1,5 +1,23 @@
 # Decisions and their reasons
 
+## D-051. One block reader, addressed by chunk coordinate
+
+`goose/main.goose` kept its own `demo_column_at` / `demo_block_at` from when `demo` was a
+fixed 3x3 scene. The copy answered a block position with the demo scene's index --
+`(wz/16)*3 + (wx/16)`, -1 outside 0..48 -- and once `demo` held a save's chunks, that index
+pointed at a different chunk. It is the same defect as D-050 one layer down, and it is the
+one that actually put the body at y 320: fixing the scan's start did nothing while the
+column it read was not the column it asked for.
+
+With the old addressing restored deliberately, the host suite does not merely get the wrong
+answer, it panics: `index 4 out of bounds (length 4)`. That is the shape the bug had all
+along; a 16-column save was being addressed through a 9-slot grid.
+
+The copy is deleted, not fixed. `core.demo`'s reader is the only one, it is keyed by chunk
+coordinate (which is how a save's columns are addressed), and it is reachable from a test.
+The host check reads floors at 1,17 and 17,17 -- two different chunks of the same save --
+and requires each to answer with its own surface (64 and 62); a single shared read fails it.
+
 ## D-050. The spawn scan starts at the top of the world, not at the demo scene's ceiling
 
 `umbra_world_spawn` scans down from a y and returns the first block that can be stood on.

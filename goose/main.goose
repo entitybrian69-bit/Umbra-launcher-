@@ -922,20 +922,24 @@ export "umbra_atlas_named" fn atlas_named(name: const u8[:]) -> i64 {
 // anything you can walk through -- air, water, plants, leaves are not solid here --
 // is -1. This is the same knowledge the mesher used, asked the other way round.
 
-fn demo_column_at(wx: i64, wz: i64) -> i64 {
-    if wx < 0 || wz < 0 || wx >= 48 || wz >= 48 { return -1; }
-    return (wz / 16) * 3 + (wx / 16);
-}
+// There used to be a `demo_column_at` and a `demo_block_at` here: a copy of core.demo's
+// pair, kept from when `demo` was a fixed 3x3 scene and this file was the only reader.
+//
+// The copy went stale the moment `demo` started holding a save. It answered a block
+// position with the demo scene's index -- `(wz/16)*3 + (wx/16)`, -1 outside 0..48 -- and a
+// save's chunk 0,0 is not at that index, so every read of a loaded world returned some
+// other column. On the phone (run 44700657029) the body spawned at 8.5 **320.01** 8.5,
+// the top of the world, and could not be moved by any heading.
+//
+// It is deleted rather than fixed, and `core.demo`'s pair is imported, because this is the
+// second time the copy disagreed with the original and there is no reason for two. The one
+// that remains is addressed by chunk coordinate, which is what a save's columns are keyed
+// by, and it is reachable from a test -- this file's was not, which is why 662 checks and
+// a working device run never asked the question.
 
-fn demo_block_at(wx: i64, wy: i64, wz: i64) -> u32 {
-    let ci = demo_column_at(wx, wz);
-    if ci < 0 { return 0; }
-    let c = demo[ci];
-    return chunk_block(c, (wx % 16) as i32, wy as i32, (wz % 16) as i32);
-}
 
 export "umbra_block_top" fn block_top_export(wx: i64, wy: i64, wz: i64) -> f32 {
-    let id = demo_block_at(wx, wy, wz);
+    let id = demo_block_at((wx as i32), (wy as i32), (wz as i32));
     if id == 0 { return -1.0; }
     let rc = render_class(id);
     if rc == RC_CROSS { return -1.0; }
@@ -955,7 +959,7 @@ export "umbra_block_top" fn block_top_export(wx: i64, wy: i64, wz: i64) -> f32 {
 // to both questions would have made a pond indistinguishable from air, which is why
 // the body walked along the bottom of one (D-041's cost list).
 export "umbra_block_fluid" fn block_fluid_export(wx: i64, wy: i64, wz: i64) -> i64 {
-    let id = demo_block_at(wx, wy, wz);
+    let id = demo_block_at((wx as i32), (wy as i32), (wz as i32));
     if id == 0 { return 0; }
     if render_class(id) != RC_TRANSLUCENT { return 0; }
     // Glass and ice are translucent and are not swimmable; only water and lava are.
@@ -1054,7 +1058,7 @@ export "umbra_edit_line" fn edit_line(i: i64) -> const u8[:] {
 // changed, 0 if the line was refused, and the reason is left in act_text.
 export "umbra_apply_edit" fn apply_edit(x: i64, y: i64, z: i64, name: const u8[:]) -> i64 {
     let id = bs_intern(name, "");
-    if !demo_set_block(x as i32, y as i32, z as i32, id) {
+    if !demo_set_block((x as i32), (y as i32), (z as i32), id) {
         act_text = []; act_text.append("outside the world");
         return 0;
     }
@@ -1084,7 +1088,7 @@ export "umbra_player_act" fn player_act(kind: i64, ex: f32, ey: f32, ez: f32,
     if kind == 0 {
         if !h.hit { act_text = []; act_text.append("nothing in reach"); return 0; }
         let name = bs_name(h.id);
-        if !demo_set_block(h.x, h.y, h.z, 0) {
+        if !demo_set_block((h.x as i32), (h.y as i32), (h.z as i32), 0) {
             act_text = []; act_text.append("that block is outside the world");
             return -1;
         }
@@ -1101,12 +1105,12 @@ export "umbra_player_act" fn player_act(kind: i64, ex: f32, ey: f32, ez: f32,
     }
     var cell: i32[3] = [0, 0, 0];
     demo_face_neighbour(h, cell);
-    if !demo_is_air(demo_block_at(cell[0], cell[1], cell[2])) {
+    if !demo_is_air(demo_block_at((cell[0] as i32), (cell[1] as i32), (cell[2] as i32))) {
         act_text = []; act_text.append("that space is taken");
         return -1;
     }
     let id = hb_ids[hb_sel];
-    if !demo_set_block(cell[0], cell[1], cell[2], id) {
+    if !demo_set_block((cell[0] as i32), (cell[1] as i32), (cell[2] as i32), id) {
         act_text = []; act_text.append("outside the world");
         return -1;
     }
@@ -1126,12 +1130,12 @@ export "umbra_player_target" fn player_target(ex: f32, ey: f32, ez: f32, dx: f32
 }
 
 export "umbra_block_at" fn block_at_export(x: i32, y: i32, z: i32) -> const u8[:] {
-    return bs_name(demo_block_at(x, y, z))
+    return bs_name(demo_block_at((x as i32), (y as i32), (z as i32)))
 }
 
 export "umbra_set_block" fn set_block_export(x: i32, y: i32, z: i32, name: const u8[:]) -> i64 {
     let id = bs_intern(name, "");
-    return if demo_set_block(x, y, z, id) { 1 } else { 0 }
+    return if demo_set_block((x as i32), (y as i32), (z as i32), id) { 1 } else { 0 }
 }
 
 // --- the world's draw ranges -------------------------------------------
@@ -1204,7 +1208,7 @@ export fn umbra_world_columns() -> i64 { return demo.len }
 // through this, so the numbers they report are the numbers the phone gets.
 export "umbra_edit_block" fn edit_block_export(x: i32, y: i32, z: i32, name: const u8[:]) -> i64 {
     let id = bs_intern(name, "");
-    if !demo_set_block(x, y, z, id) { return 0; }
+    if !demo_set_block((x as i32), (y as i32), (z as i32), id) { return 0; }
     edit_record(x, y, z, id);
     edit_cols = edit_columns_for(x, z);
     demo_mesh_begin_edit(edit_cols[..]);

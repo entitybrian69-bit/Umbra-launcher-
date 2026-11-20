@@ -1485,6 +1485,25 @@ int main(int argc, char **argv) {
             name[k] = 0;
             printf("world: the block at 1,%lld,1 is %s\n", (long long)sy, name);
             check(strstr(name, "grass_block") != NULL, "the surface the save wrote is there");
+            // And a column the old 3x3 grid would have read *out of bounds*, which is the
+            // check that would have caught run 44700657029. `main` kept its own
+            // `demo_block_at`, addressed by the demo scene's arithmetic -- `(wz/16)*3 +
+            // (wx/16)`, correct only for a 3x3 scene -- while `demo` held the save's
+            // chunks in region order. For block 17,17 that index is 4, and a save with
+            // four columns has no index 4: the read answers with air, the spawn scan finds
+            // no floor, and the body is placed at the demo world's middle instead of the
+            // save's surface. Correctly addressed, chunk 1,1 is `demo[3]` and its surface
+            // is 62.
+            {
+                float f11 = umbra_world_spawn(1, 17);
+                float f1717 = umbra_world_spawn(17, 17);
+                printf("world: the floors at 1,17 and 17,17 are %.2f and %.2f\n", f11, f1717);
+                check(f11 > 0.0f && f11 < 160.0f, "the save's chunk 0,1 has a floor");
+                check(f1717 > 0.0f && f1717 < 160.0f,
+                      "and so does chunk 1,1, which the demo scene's grid indexed past the end");
+                check(fabsf(f11 - f1717) > 0.5f,
+                      "two different chunks answer with their own surface, not one shared read");
+            }
             // And it meshes. The geometry is where the save's chunks are, not at 0..47 by
             // accident: every vertex's x and z are inside the world's own bounds.
             umbra_demo_mesh_begin();
