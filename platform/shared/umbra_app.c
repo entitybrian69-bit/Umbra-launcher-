@@ -31,6 +31,7 @@ static void world_job_start(umbra_app *app);
 static void world_pump(umbra_app *app);
 static void rebuild_world(umbra_app *app);
 static void stream_start(umbra_app *app, int cx, int cz, int radius);
+static void stream_maybe_recentre(umbra_app *app);
 static void world_sample_download_start(umbra_app *app);
 static int file_exists_at(const char *path);
 static void delete_file_at(const char *path);
@@ -1278,6 +1279,41 @@ static void stream_start(umbra_app *app, int cx, int cz, int radius) {
               (long long)gone, (long long)umbra_world_stream_pending());
 }
 
+// Re-centre the window on the chunk the player is standing in -- but only once they are
+// a whole chunk away from the middle of the window they already have.
+//
+// The hysteresis is not an optimisation. Centring on the chunk under the player means a
+// player who stands on a chunk border alternates between two windows every frame, and
+// every recentre evicts, plans, parses and re-meshes the whole world. A stride of one
+// chunk costs at most one chunk of draw distance ahead of the player (they are never
+// more than one chunk inside the window's edge) and makes the number of re-meshes a
+// function of distance walked rather than of frames.
+//
+// It also refuses while a fill or a mesh is in flight: a re-centre during either one
+// throws away the work in progress, and the player is not moving fast enough for that to
+// be worth it.
+static void stream_maybe_recentre(umbra_app *app) {
+    if (app->stream_state != 1 && app->stream_state != 2) return;
+    if (!world_stream_armed(app)) return;
+    if (app->mesh_state == 1) return;            // a mesh is being rebuilt: wait for it
+    if (app->stream_state == 1) return;          // a window is still filling
+    // A chunk is 16 blocks and the body's position is its centre, so this is the chunk it
+    // is standing in.
+    int cx = (int)floorf(app->player.x / 16.0f);
+    int cz = (int)floorf(app->player.z / 16.0f);
+    // The stride, and the whole point of this function: only re-centre when the body is a
+    // whole *radius* of chunks away from the middle of the window it has. A stride of one
+    // chunk (the obvious version) re-centres on every chunk crossing, which at walking
+    // speed is once a second -- and every recentre evicts, plans, parses and re-meshes the
+    // whole world. With this stride a radius-4 window is rebuilt when the player has walked
+    // 64 blocks, and the window always extends at least `radius` chunks ahead of them.
+    if (cx >= app->stream_cx - app->stream_radius && cx <= app->stream_cx + app->stream_radius &&
+        cz >= app->stream_cz - app->stream_radius && cz <= app->stream_cz + app->stream_radius) {
+        return;
+    }
+    stream_start(app, cx, cz, app->stream_radius);
+}
+
 static void stream_pump(umbra_app *app) {
     if (app->stream_state != 1) return;
     if (!world_stream_armed(app)) {
@@ -1471,6 +1507,27 @@ int umbra_app_init(umbra_app *app) {
         // from them as they walk. Set here, before any world is opened, because it is a
         // decision about who reads the save and it has to be made before the first chunk.
         umbra_world_set_stream_mode(1);
+        // A test can ask for a particular render distance by leaving `radius.txt` beside
+        // the save. This is the *only* way the radius is set from outside, and it exists
+        // because the device walk is 1.5-second holds: at radius 4 the stride is 64
+        // blocks and no hold crosses it, so a re-centre cannot be proved at the default.
+        // The file is read once, here, and the value is clamped by Goose like any other.
+        {
+            char rp[560];
+            snprintf(rp, sizeof rp, "%s/radius.txt", files);
+            FILE *rf = fopen(rp, "rb");
+            if (rf) {
+                char line[32];
+                if (fgets(line, (int)sizeof line, rf)) {
+                    int want = atoi(line);
+                    int64_t used = umbra_world_set_radius((int64_t)want);
+                    umbra_log(app, "stream: radius %d asked for in radius.txt, %lld used "
+                                   "(max %lld)", want, (long long)used,
+                              (long long)umbra_world_radius_max());
+                }
+                fclose(rf);
+            }
+        }
         umbra_log(app, "stream: the world is streamed: radius %lld (max %lld), the import "
                        "validates the archive and the stream parses the window",
                   (long long)umbra_world_radius_setting(), (long long)umbra_world_radius_max());
@@ -2340,6 +2397,19 @@ static void player_spawn(umbra_app *app) {
     umbra_log(app, "player: spawned at %.2f %.2f %.2f (floor %.2f), eye %.2f",
               app->player.x, app->player.y, app->player.z, y,
               app->player.y + UMBRA_PLAYER_EYE);
+    // The window follows the body, and it starts where the body starts. Centring here, on
+    // the spawn the app just chose, is what makes a save whose origin is not its spawn
+    // work: `wl_import_end_streamed` filled the window around the save's *origin* (0,0),
+    // and a player put at the middle of the loaded bounds may be nowhere near it. Asking
+    // for the window around the body supersedes it, and the evictions of the origin window
+    // are the first thing the log reports.
+    if (app->stream_state != 0 || world_stream_armed(app) == 0) {
+        // No stream on this world: the demo scene, or a save with no region files.
+        return;
+    }
+    int pcx = (int)floorf(app->player.x / 16.0f);
+    int pcz = (int)floorf(app->player.z / 16.0f);
+    stream_start(app, pcx, pcz, (int)umbra_world_radius_setting());
 }
 
 // One physics step with the current input. dt is the real frame time, and the
@@ -2378,6 +2448,11 @@ static void player_update(umbra_app *app) {
         umbra_log(app, app->player.in_water ? "player: entered water, swimming"
                                             : "player: out of the water");
     }
+    // Has the player walked far enough from the middle of the window that a chunk at its
+    // edge should be dropped and one ahead of them parsed? `stream_maybe_recentre` is
+    // cheap when the answer is no (two comparisons), and it is called every frame because
+    // the alternative -- centring on a border chunk -- re-meshes the world every step.
+    stream_maybe_recentre(app);
     // Once every two seconds, so a phone log says where the body is and whether it
     // is standing, without the log costing anything.
     int64_t now = umbra_now_us();
@@ -3047,6 +3122,12 @@ static int world_open_path(umbra_app *app, const char *path, const char *how) {
     // from the save's region files, not the window the reader stopped at. The stream is
     // started here so that the first world a phone opens is already the bigger one; the
     // radius is the setting's current value, and the player's first step re-centres it.
+    // The window is centred on the spawn, which is only known once the body has a place
+    // -- and the body's place comes from the bounds of what is loaded, which is this. So
+    // the stream is started here, around the *save's origin* (the import filled that
+    // window), and `player_spawn` moves it to the body as soon as there is one. The
+    // alternative -- guessing a centre before the first window exists -- is what centring
+    // on 0,0 already does, and a save whose spawn is elsewhere would draw nothing.
     app->stream_state = 0;
     app->stream_slices = 0;
     app->stream_worst_us = 0;

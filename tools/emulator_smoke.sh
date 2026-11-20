@@ -1259,6 +1259,95 @@ else
     note "world: a save the game generated was opened on the device (${W_CHUNKS} chunks, ${W_BLOCKS} blocks)"
 fi
 
+# ---- 10b-0. the window follows the body: a re-centre, on the device ---------------
+# The phases above prove the *window*: the import validates the save, the stream parses
+# the radius around the origin, and the mesh is that window. They do not prove the thing
+# that makes a window a world, which is that walking out of it takes the world with you.
+#
+# This walks the body a long way in one heading and requires the app to say it re-centred
+# the stream. The radius is cut to 1 first, so the walk crosses the stride (a whole radius
+# of chunks, 16 blocks) rather than needing 64: the point is the mechanism, not the
+# distance. What is checked:
+#   * the stream reports a centre that is not the one it started at;
+#   * it happens after the walk, not at open;
+#   * the number of resident columns is still the window's, so the eviction happened;
+#   * the app is alive afterwards.
+# A run that never re-centres fails here rather than passing quietly with a fixed window.
+if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
+    section "stream-recentre"
+    adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
+    sleep 1
+    adb shell "cp /data/local/tmp/umbra-world.zip '$FILES_W/world.zip'" > /dev/null 2>&1 || true
+    adb logcat -c > /dev/null 2>&1 || true
+    # Radius 1 for this phase: 16 blocks of stride is a walk, 64 is not. The app reads this
+    # file once, at start-up, before it opens the world.
+    adb shell "echo 1 > '$FILES_W/radius.txt'" > /dev/null 2>&1 \
+        || die "stream-recentre: could not put radius.txt in the app's directory"
+    R="$(adb shell "cat '$FILES_W/radius.txt'" 2>/dev/null | tr -d '\r\n')"
+    say "stream-recentre: the app's radius file says '${R:-nothing}'"
+    LAUNCH="$(launch_app stream-recentre-launch.log)" || die "stream-recentre: the app would not start: $LAUNCH"
+    say "stream-recentre: $LAUNCH"
+    OPENED=0
+    DEADLINE=$((SECONDS + 240))
+    while [ $SECONDS -lt $DEADLINE ]; do
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "stream: window complete"; then OPENED=1; break; fi
+        sleep 3
+    done
+    [ "$OPENED" = 1 ] || die "stream-recentre: the world never finished its first window: $(adb logcat -d -s umbra:V 2>/dev/null | grep -E 'stream:|world: ' | tail -3 | tr '\n' '|')"
+    # Two centres before any walking: the import fills the window around the save's
+    # origin, and `player_spawn` then moves it to the body (a save's spawn is near 0,0 but
+    # the body is placed at the middle of the loaded bounds, which is a different chunk).
+    # So the count to beat is whatever it is *before* the walk, not one.
+    BASE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -c 'stream: centre chunk')"
+    say "stream-recentre: ${BASE:-0} centre(s) before walking, last: $(adb logcat -d -s umbra:V 2>/dev/null | grep 'stream: centre chunk' | tail -1 | sed 's/.*umbra *: //')"
+    # Wait for the mesh, then walk. A world that is still meshing refuses input.
+    WAITED=0
+    DEADLINE=$((SECONDS + 240))
+    while [ $SECONDS -lt $DEADLINE ]; do
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "screen: loading -> home"; then WAITED=1; break; fi
+        sleep 3
+    done
+    [ "$WAITED" = 1 ] || say "stream-recentre: the loading screen did not clear; walking anyway"
+    # Point the body at a heading and hold: four holds of 1.5 s is up to a few blocks each,
+    # so the heading is tried more than once and the loop stops as soon as the app
+    # re-centres. The walk is the same gesture the player phase uses.
+    RECENTRED=0
+    for try in 1 2 3 4 5 6 7 8; do
+        adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 + P_WIDTH / 4 )) \
+            "$P_SCENE_Y" 300 > /dev/null 2>&1 || true
+        adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 )) "$P_SCENE_Y" 1500 \
+            > /dev/null 2>&1 || true
+        sleep 1
+        N="$(adb logcat -d -s umbra:V 2>/dev/null | grep -c 'stream: centre chunk')"
+        if [ "${N:-0}" -gt "${BASE:-0}" ]; then RECENTRED=1; break; fi
+    done
+    if [ "$RECENTRED" != 1 ]; then
+        POS="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'player: at ' | tail -1 | sed 's/.*umbra *: //')"
+        die "stream-recentre: the body walked and the window never moved with it (last position: ${POS:-none}); a fixed window is what this phase exists to catch"
+    fi
+    MOVED="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'stream: centre chunk' | tail -1 | sed 's/.*umbra *: //')"
+    say "stream-recentre: the window moved with the body: $MOVED"
+    RES="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'stream: window complete' | tail -1 | sed 's/.*umbra *: //')"
+    say "stream-recentre: $RES"
+    # Resident must still be the window's own count, not the union of every window walked.
+    # Radius 1 is 9 positions; a save that holds them all is 9 columns, and a stream that
+    # only ever appended would be at 18 by the second window.
+    RESN="$(printf '%s\n' "$RES" | sed -n 's/.*window complete, \([0-9]*\) column(s).*/\1/p')"
+    case "${RESN:-}" in
+        ''|*[!0-9]*) say "stream-recentre: the resident count is not readable, so the eviction is not checked" ;;
+        *)
+            if [ "$RESN" -gt 9 ]; then
+                die "stream-recentre: the window holds $RESN columns after moving, and radius 1 is at most 9 -- the stream appended instead of evicting"
+            fi
+            say "stream-recentre: $RESN column(s) resident after the move, which is the window's own count (radius 1 is at most 9)"
+            ;;
+    esac
+    LIVE="$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')"
+    [ -n "$LIVE" ] || die "stream-recentre: the app died while walking"
+    say "stream-recentre: the app is still running (pid $LIVE) after a re-centre"
+    note "stream-recentre: the window followed the body on the device ($MOVED)"
+fi
+
 # ---- 10b. the world button: a save on the phone, no jar, one tap ------------------
 # The "world" phase above proves the *import*: adb puts the archive in the app's own
 # directory and the app opens it at start-up. That is not the owner's situation in one

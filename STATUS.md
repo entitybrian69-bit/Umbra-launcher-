@@ -100,6 +100,60 @@ One thing found while proving it, **still open**:
   the count is identical before and after (174, 42 on a border, 0 at plants). A separate
   duplicate-emission path, uninvestigated, recorded so it is not mistaken for fixed.
 
+## Step 1: a world worth walking in, streamed (2026-11-14)
+
+The 25-chunk window is gone. The import validates the archive and keeps its region files;
+the chunks within a radius of the player are parsed from them on demand, one budgeted slice
+per frame (`core.worldstream`, `D-049`). The radius is a setting, 0 to 8, clamped and
+reported.
+
+**The save is now the size the brief asked for.** `gen_window_hook.sh` generates radius 16
+around the spawn (33x33 = 1 089 chunks) instead of radius 4 (81), force-loaded in strips of
+7 rows because the server caps one `forceload add` at 256 chunks. The gate's own verdict,
+run `44688168842`:
+
+| | before | now |
+|---|---|---|
+| window the gate settles | 81 chunks | **1 089 chunks** |
+| non-air blocks in it | 2 668 206 | **34 249 656** |
+| save the phone is given | 1.9 MB | **11.6 MB** |
+| chunks the phone opens | 25 | **81** (radius 4, the default) |
+| vertices drawn | 583 096 | **1 900 884** over 243 ranges |
+| read time | 811.9 ms | **2 553 ms**, 81 chunks parsed by the stream, 0 missing |
+
+The window the phone opens is the setting, not the save: radius 4 is 81 chunks, and the
+1 089-chunk save is what it streams from, so a radius of 8 in the same save is
+`wl_set_radius(8)` and a walk out of the window re-centres.
+
+**Why the phone opens 81 and not 1 089.** Holding the whole thing is 1.22 GB of vertices and
+328 MB of columns (`D-049` has the table). Radius 8 is the ceiling and 324 MB; radius 4,
+the default, is 91 MB, which is 1.9x what the app already uploaded for the demo world. The
+number that matters is that the phone *can* now walk in a world whose save is 14x bigger
+than the window it draws.
+
+**Frame budget.** The worst meshing call on the phone was **26.4 ms** (run `44694293223`),
+inside the 50 ms limit; that run's worst *unit* was 10.1 ms. The longest frame was 225.8 ms,
+at start-up, and zero frames went over 250 ms. The stream's slice is checked separately: the host suite
+reports the worst slice as one chunk's parse (~0.3 ms) and the window fills in 1 to 2
+slices at radius 2 on the fixture (`stream: 2 slices for 16 chunks, worst 355 us`).
+
+**The sample world is published, not bundled.** `tools/release_world.sh` uploads the
+gate's zip as `umbra-sample-world.zip` and pins its digest into `goose/core/sampleworld.goose`;
+the app downloads it on a first run, checks the digest, and only then opens it. The legal
+question is stated in `D-048` and is not settled.
+
+**What is proved, and by what.** The phone's streamed path, run `44694293223`:
+`world: opened: 81 chunk(s) from 4 region file(s), radius 4, non-air blocks 2606919,
+read errors 0, 81 chunk(s) parsed by the stream, missing from the save 0, 19.6 MB of
+region files, 2553.0 ms` -- the import wrote no chunk (`deferred`), the stream parsed
+exactly the 81 the window asked for, no position was missing, and the same line was read
+back by the smoke test's own parser (`world: the phone read 81 chunk(s), 2606919 non-air
+block(s), 0 read error(s)`). The mesh is 243 ranges for 81 columns, which is three passes
+per column, as the slot table promises. What is not yet proved on a device is a
+*re-centre*: walking far enough to evict a column, watch it leave the mesh and come back.
+The host suite proves the eviction and the re-add (`ws_move_test`), and the device run only
+walks a few blocks. That is the next device check, and it is named here rather than assumed.
+
 ## Where the sample world comes from, and how big it is (2026-11-14)
 
 Before changing anything, the question the owner asked: the 25-chunk patch they walk in
