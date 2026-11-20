@@ -1,767 +1,141 @@
---------- beginning of kernel
 --------- beginning of main
+11-20 07:59:01.584  6797  6818 I umbra   : 07:59:01 jar: /data/local/tmp/umbra-client.jar, 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's
+11-20 07:59:01.584  6797  6818 I umbra   : 07:59:01 edits: the file for saved edits is /data/user/0/org.umbra.client/files/edits.txt
+11-20 07:59:01.585  6797  6818 I umbra   : 07:59:01 stream: the world is streamed: radius 4 (max 8), the import validates the archive and the stream parses the window
+11-20 07:59:01.585  6797  6818 I umbra   : 07:59:01 world: a world from the game is in the app's directory; opening it
+11-20 07:59:01.585  6797  6818 I umbra   : 07:59:01 world: opening /data/user/0/org.umbra.client/files/world.zip (app directory, at start-up)
+11-20 07:59:01.585  6797  6818 I umbra   : 07:59:01 world: refused: the file is not a world: it is too small to be an archive -- files 0, entries 0, chunks 0, non-air blocks 0, states 0, read errors 0, not-full chunks 0, left out 0, 0.0 ms
+11-20 07:59:01.585  6797  6818 I umbra   : 07:59:01 gamefiles: platform hooks download, picker import, files dir /data/user/0/org.umbra.client/files
+11-20 07:59:01.586  6797  6818 I umbra   : 07:59:01 atlas: 1024x1024, 4194304 bytes, 1225 tiles, hash 3ca6170e, 1 missing
+11-20 07:59:01.586  6797  6818 I umbra   : 07:59:01 atlas: source is the client jar
+11-20 07:59:01.586  6797  6818 I umbra   : 07:59:01 atlas: 1 block faces asked for a tile that is missing
+11-20 07:59:01.596  6797  6818 I umbra   : 07:59:01 edits: 2 saved edit(s) replayed from /data/user/0/org.umbra.client/files/edits.txt, 2 line(s) in the file, 0 refused
+11-20 07:59:01.607  6797  6818 I umbra   : 07:59:01 screen: home -> loading
+11-20 07:59:01.607  6797  6818 I umbra   : 07:59:01 demo world built in 2.8 ms; meshing starts in slices of at most 20 ms
+11-20 07:59:01.608  6797  6818 I umbra   : 07:59:01 check: renderer                     Android Emulator OpenGL ES Translator (Google SwiftShader)
+11-20 07:59:01.608  6797  6818 I umbra   : 07:59:01 check: gl version                   OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+11-20 07:59:01.608  6797  6818 I umbra   : 07:59:01 check: max texture size             8192 px
+11-20 07:59:01.608  6797  6818 I umbra   : 07:59:01 check: gpu timer query              none  (not available)
+11-20 07:59:01.608  6797  6818 I umbra   : 07:59:01 check: shader programs              mesh ok, hud ok, pattern ok, cube ok, atlas ok
+11-20 07:59:01.608  6797  6818 I umbra   : 07:59:01 check: depth buffer                 24 bits
+11-20 07:59:01.608  6797  6818 I umbra   : 07:59:01 check: extension string             1447 chars
+11-20 07:59:01.608  6797  6818 I umbra   : 07:59:01 check: all device checks passed
+11-20 07:59:01.608  6797  6818 I umbra   : 07:59:01 hud: button 0 at 14,1028 size 580x36 on 1920x1080 (insets 0,63,126,0)
+11-20 07:59:01.608  6797  6818 I umbra   : 07:59:01 hud: button 1 at 606,1028 size 580x36 on 1920x1080 (insets 0,63,126,0)
+11-20 07:59:01.608  6797  6818 I umbra   : 07:59:01 hud: button 2 at 1198,1028 size 580x36 on 1920x1080 (insets 0,63,126,0)
+11-20 07:59:01.628  6797  6818 I umbra   : 07:59:01 hud: 18 rows, content ends at 458 px inside a 486 px panel, fits
+11-20 07:59:01.716  6797  6818 I umbra   : app cmd 4, window 0x716a1905b4c0
+--------- beginning of kernel
 --------- beginning of system
-11-19 01:03:57.007   499   499 I ActivityManager: Memory class: 192
-11-19 01:04:08.995   499   540 I ActivityManager: Connection with lmkd established
-11-19 01:04:10.620   499   532 I WindowManager: No existing display settings, starting empty
-11-19 01:04:10.925   499   499 I WindowManager: SAFE MODE not enabled
-11-19 01:04:10.974   499   499 I WindowManager: Override config changes=60007dfc {1.0 ?mcc?mnc [en_US] ldltr sw411dp w411dp h659dp 420dpi nrml port ?uimode ?night -touch qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 1920) mAppBounds=Rect(0, 0 - 1080, 1794) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} s.2} for displayId=0
-11-19 01:04:10.975   499   499 I WindowManager: Override config changes=8 {1.0 ?mcc?mnc [en_US] ldltr sw411dp w411dp h659dp 420dpi nrml port ?uimode ?night finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 1920) mAppBounds=Rect(0, 0 - 1080, 1794) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} s.4} for displayId=0
-11-19 01:04:15.923   499   499 W ActivityManager: Unable to start service Intent { act=android.service.notification.NotificationListenerService cmp=com.google.android.apps.nexuslauncher/com.android.launcher3.notification.NotificationListener } U=0: not found
-11-19 01:04:16.690   499   499 I WindowManager: Override config changes=200 {1.0 ?mcc?mnc [en_US] ldltr sw411dp w411dp h659dp 420dpi nrml port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 1920) mAppBounds=Rect(0, 0 - 1080, 1794) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} s.6} for displayId=0
-11-19 01:04:17.158   499   499 I ActivityManager: System now ready
-11-19 01:04:17.198   499   499 W ActivityManager: Too early to start/bind service in system_server: Phase=550 ComponentInfo{com.android.server.telecom/com.android.server.telecom.components.TelecomService}
-11-19 01:04:17.198   499   499 W ActivityManager: Too early to start/bind service in system_server: Phase=550 ComponentInfo{com.android.server.telecom/com.android.server.telecom.components.TelecomService}
-11-19 01:04:17.212   499   539 W ActivityManager: com.android.bluetooth inode == 0 (b/152760674)
-11-19 01:04:17.212   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:17.229   499   539 I ActivityManager: Start proc 699:com.android.bluetooth/1002 for service {com.android.bluetooth/com.android.bluetooth.btservice.AdapterService}
-11-19 01:04:17.268   499   539 W ActivityManager: com.android.systemui inode == 0 (b/152760674)
-11-19 01:04:17.268   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:17.306   499   539 I ActivityManager: Start proc 719:com.android.systemui/u0a157 for service {com.android.systemui/com.android.systemui.ImageWallpaper}
-11-19 01:04:17.307   499   539 W ActivityManager: com.google.android.permissioncontroller inode == 0 (b/152760674)
-11-19 01:04:17.307   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:17.311   499   539 I ActivityManager: Start proc 725:com.google.android.permissioncontroller/u0a163 for service {com.google.android.permissioncontroller/com.android.permissioncontroller.permission.service.PermissionControllerServiceImpl}
-11-19 01:04:18.160   499   539 W ActivityManager: com.android.server.telecom inode == 0 (b/152760674)
-11-19 01:04:18.160   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:18.204   499   539 I ActivityManager: Start proc 862:WebViewLoader-x86/1037 [android.webkit.WebViewLibraryLoader$RelroFileCreator] for null
-11-19 01:04:18.204   499   539 W ActivityManager: com.android.server.telecom inode == 0 (b/152760674)
-11-19 01:04:18.204   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:18.217   499   539 W ActivityManager: Slow operation: 61ms so far, now at startProcess: returned from zygote!
-11-19 01:04:18.217   499   539 W ActivityManager: Slow operation: 61ms so far, now at startProcess: done updating battery stats
-11-19 01:04:18.217   499   539 W ActivityManager: Slow operation: 61ms so far, now at startProcess: building log message
-11-19 01:04:18.217   499   539 I ActivityManager: Start proc 869:WebViewLoader-x86_64/1037 [android.webkit.WebViewLibraryLoader$RelroFileCreator] for null
-11-19 01:04:18.217   499   539 W ActivityManager: Slow operation: 61ms so far, now at startProcess: starting to update pids map
-11-19 01:04:18.217   499   539 W ActivityManager: Slow operation: 61ms so far, now at startProcess: done updating pids map
-11-19 01:04:18.322   499   527 W ActivityManager: Slow operation: 59ms so far, now at attachApplicationLocked: immediately after bindApplication
-11-19 01:04:18.322   499   527 W ActivityManager: Slow operation: 59ms so far, now at attachApplicationLocked: after updateLruProcessLocked
-11-19 01:04:18.322   499   527 W ActivityManager: Slow operation: 59ms so far, now at attachApplicationLocked: after mServices.attachApplicationLocked
-11-19 01:04:18.322   499   527 W ActivityManager: Slow operation: 59ms so far, now at attachApplicationLocked: after updateOomAdjLocked
-11-19 01:04:18.425   499   539 W ActivityManager: com.google.android.apps.nexuslauncher inode == 0 (b/152760674)
-11-19 01:04:18.425   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:18.430   499   539 I ActivityManager: Start proc 915:com.google.android.apps.nexuslauncher/u0a154 for service {com.google.android.apps.nexuslauncher/com.android.quickstep.TouchInteractionService}
-11-19 01:04:18.531   499   526 I ActivityManager: Process WebViewLoader-x86 (pid 862) has died: psvc PER 
-11-19 01:04:18.674   499   592 I ActivityManager: Process WebViewLoader-x86_64 (pid 869) has died: psvc PER 
-11-19 01:04:19.095   499   539 W ActivityManager: com.google.android.networkstack.tethering inode == 0 (b/152760674)
-11-19 01:04:19.095   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:19.102   499   539 I ActivityManager: Start proc 989:com.android.networkstack.process/1073 for service {com.google.android.networkstack/com.android.server.NetworkStackService}
-11-19 01:04:19.194   499   593 W ActivityManager: Slow operation: 55ms so far, now at attachApplicationLocked: immediately after bindApplication
-11-19 01:04:19.194   499   593 W ActivityManager: Slow operation: 55ms so far, now at attachApplicationLocked: after updateLruProcessLocked
-11-19 01:04:19.201   499   593 W ActivityManager: Slow operation: 62ms so far, now at attachApplicationLocked: after mServices.attachApplicationLocked
-11-19 01:04:19.220   499   499 I ActivityManager: Current user:0
-11-19 01:04:19.890   499   539 W ActivityManager: com.android.se inode == 0 (b/152760674)
-11-19 01:04:19.890   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:20.005   499   539 W ActivityManager: Slow operation: 120ms so far, now at startProcess: done updating battery stats
-11-19 01:04:20.005   499   539 W ActivityManager: Slow operation: 120ms so far, now at startProcess: building log message
-11-19 01:04:20.005   499   539 I ActivityManager: Start proc 1027:com.android.se/1068 for added application com.android.se
-11-19 01:04:20.005   499   539 W ActivityManager: Slow operation: 120ms so far, now at startProcess: starting to update pids map
-11-19 01:04:20.006   499   539 W ActivityManager: Slow operation: 121ms so far, now at startProcess: done updating pids map
-11-19 01:04:20.006   499   539 W ActivityManager: Slow operation: 121ms so far, now at startProcess: asking zygote to start proc
-11-19 01:04:20.006   499   539 W ActivityManager: com.android.mms.service inode == 0 (b/152760674)
-11-19 01:04:20.006   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:20.011   499   539 W ActivityManager: Slow operation: 126ms so far, now at startProcess: returned from zygote!
-11-19 01:04:20.017   499   539 W ActivityManager: Slow operation: 132ms so far, now at startProcess: done updating battery stats
-11-19 01:04:20.017   499   539 W ActivityManager: Slow operation: 132ms so far, now at startProcess: building log message
-11-19 01:04:20.017   499   539 I ActivityManager: Start proc 1048:com.android.phone/1001 for added application com.android.phone
-11-19 01:04:20.017   499   539 W ActivityManager: Slow operation: 132ms so far, now at startProcess: starting to update pids map
-11-19 01:04:20.017   499   539 W ActivityManager: Slow operation: 132ms so far, now at startProcess: done updating pids map
-11-19 01:04:20.017   499   539 W ActivityManager: com.android.server.telecom inode == 0 (b/152760674)
-11-19 01:04:20.017   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:20.066   499   539 W ActivityManager: Slow operation: 56ms so far, now at startProcess: returned from zygote!
-11-19 01:04:20.066   499   539 W ActivityManager: Slow operation: 56ms so far, now at startProcess: done updating battery stats
-11-19 01:04:20.066   499   539 W ActivityManager: Slow operation: 56ms so far, now at startProcess: building log message
-11-19 01:04:20.066   499   539 I ActivityManager: Start proc 1065:com.android.settings:CryptKeeper/1000 for top-activity {com.android.settings/com.android.settings.CryptKeeper}
-11-19 01:04:20.067   499   539 W ActivityManager: Slow operation: 57ms so far, now at startProcess: starting to update pids map
-11-19 01:04:20.067   499   539 W ActivityManager: Slow operation: 57ms so far, now at startProcess: done updating pids map
-11-19 01:04:20.671   499   539 W ActivityManager: com.google.android.setupwizard inode == 0 (b/152760674)
-11-19 01:04:20.671   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:20.689   499   539 I ActivityManager: Start proc 1118:com.google.android.setupwizard/u0a114 for top-activity {com.google.android.setupwizard/com.google.android.setupwizard.SetupWizardActivity}
-11-19 01:04:21.105   499   539 W ActivityManager: com.google.android.gsf inode == 0 (b/152760674)
-11-19 01:04:21.117   499   539 I ActivityManager: Start proc 1161:com.google.android.gms.persistent/u0a120 for service {com.google.android.gms/com.google.android.gms.chimera.PersistentDirectBootAwareApiService}
-11-19 01:04:21.351   499   539 W ActivityManager: com.android.server.telecom inode == 0 (b/152760674)
-11-19 01:04:21.351   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:21.368   499   499 W ActivityManager: Unable to start service Intent { act=android.service.notification.NotificationListenerService cmp=com.google.android.apps.nexuslauncher/com.android.launcher3.notification.NotificationListener } U=0: not found
-11-19 01:04:21.437   499   539 W ActivityManager: Slow operation: 86ms so far, now at startProcess: returned from zygote!
-11-19 01:04:21.437   499   539 W ActivityManager: Slow operation: 86ms so far, now at startProcess: done updating battery stats
-11-19 01:04:21.437   499   539 W ActivityManager: Slow operation: 86ms so far, now at startProcess: building log message
-11-19 01:04:21.437   499   539 I ActivityManager: Start proc 1198:com.android.settings/1000 for top-activity {com.android.settings/com.android.settings.FallbackHome}
-11-19 01:04:21.437   499   539 W ActivityManager: Slow operation: 86ms so far, now at startProcess: starting to update pids map
-11-19 01:04:21.437   499   539 W ActivityManager: Slow operation: 86ms so far, now at startProcess: done updating pids map
-11-19 01:04:21.461   499   499 I ActivityManager: PendingStartActivityUids startActivity to updateOomAdj delay:1172ms, uid:1000
-11-19 01:04:21.783   499   592 E WindowManager: Window Session Crash
-11-19 01:04:21.783   499   592 E WindowManager: java.lang.IllegalArgumentException: Requested window null does not exist
-11-19 01:04:21.783   499   592 E WindowManager: 	at com.android.server.wm.WindowManagerService.windowForClientLocked(WindowManagerService.java:5433)
-11-19 01:04:21.783   499   592 E WindowManager: 	at com.android.server.wm.Session.actionOnWallpaper(Session.java:356)
-11-19 01:04:21.783   499   592 E WindowManager: 	at com.android.server.wm.Session.setWallpaperZoomOut(Session.java:382)
-11-19 01:04:21.783   499   592 E WindowManager: 	at android.view.IWindowSession$Stub.onTransact(IWindowSession.java:1154)
-11-19 01:04:21.783   499   592 E WindowManager: 	at com.android.server.wm.Session.onTransact(Session.java:139)
-11-19 01:04:21.783   499   592 E WindowManager: 	at android.os.Binder.execTransactInternal(Binder.java:1159)
-11-19 01:04:21.783   499   592 E WindowManager: 	at android.os.Binder.execTransact(Binder.java:1123)
-11-19 01:04:21.854   499   530 W WindowManager: Keyguard drawn timeout. Setting mKeyguardDrawComplete
-11-19 01:04:22.057   499   499 W ActivityManager: Unable to start service Intent { act=android.service.contentcapture.ContentCaptureService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiContentCaptureService } U=0: not found
-11-19 01:04:22.057   499   499 W ActivityManager: Unable to start service Intent { act=android.service.contentcapture.ContentCaptureService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiContentCaptureService } U=0: not found
-11-19 01:04:22.057   499   499 W ActivityManager: Unable to start service Intent { act=android.service.systemcaptions.SystemCaptionsManagerService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.captions.SystemCaptionsManagerService } U=0: not found
-11-19 01:04:22.876   499   539 W ActivityManager: com.google.android.apps.wellbeing inode == 0 (b/152760674)
-11-19 01:04:22.876   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:22.895   499   539 I ActivityManager: Start proc 1313:com.google.android.apps.wellbeing/u0a113 for broadcast {com.google.android.apps.wellbeing/com.google.android.apps.wellbeing.winddown.impl.WindDownTimezoneChangedBroadcastReceiver_Receiver}
-11-19 01:04:23.502   499  1101 W ActivityManager: Unable to start service Intent { act=com.google.android.gms.phenotype.service.START pkg=com.google.android.gms } U=0: not found
-11-19 01:04:23.523   499  1101 W ActivityManager: Unbind failed: could not find connection for android.os.BinderProxy@994dfa9
-11-19 01:04:23.554   499   539 W ActivityManager: com.google.android.deskclock inode == 0 (b/152760674)
-11-19 01:04:23.554   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:23.560   499   539 I ActivityManager: Start proc 1356:com.google.android.deskclock/u0a128 for broadcast {com.google.android.deskclock/com.android.deskclock.AlarmInitReceiver}
-11-19 01:04:23.690   499  1101 W ActivityManager: Unable to start service Intent { act=com.google.android.contextmanager.service.ContextManagerService.START pkg=com.google.android.gms } U=0: not found
-11-19 01:04:23.691   499  1101 W ActivityManager: Unbind failed: could not find connection for android.os.BinderProxy@4458eaf
-11-19 01:04:24.100   499   593 I WindowManager: Override config changes=3 {1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h659dp 420dpi nrml port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 1920) mAppBounds=Rect(0, 0 - 1080, 1794) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} s.9} for displayId=0
-11-19 01:04:24.275   499   593 E ActivityManager: Sending non-protected broadcast com.android.systemui.demo from system 719:com.android.systemui/u0a157 pkg com.android.systemui
-11-19 01:04:24.275   499   593 E ActivityManager: java.lang.Throwable
-11-19 01:04:24.275   499   593 E ActivityManager: 	at com.android.server.am.ActivityManagerService.checkBroadcastFromSystem(ActivityManagerService.java:15912)
-11-19 01:04:24.275   499   593 E ActivityManager: 	at com.android.server.am.ActivityManagerService.broadcastIntentLocked(ActivityManagerService.java:16493)
-11-19 01:04:24.275   499   593 E ActivityManager: 	at com.android.server.am.ActivityManagerService.broadcastIntentLocked(ActivityManagerService.java:15929)
-11-19 01:04:24.275   499   593 E ActivityManager: 	at com.android.server.am.ActivityManagerService.broadcastIntentWithFeature(ActivityManagerService.java:16743)
-11-19 01:04:24.275   499   593 E ActivityManager: 	at android.app.IActivityManager$Stub.onTransact(IActivityManager.java:2267)
-11-19 01:04:24.275   499   593 E ActivityManager: 	at com.android.server.am.ActivityManagerService.onTransact(ActivityManagerService.java:2883)
-11-19 01:04:24.275   499   593 E ActivityManager: 	at android.os.Binder.execTransactInternal(Binder.java:1154)
-11-19 01:04:24.275   499   593 E ActivityManager: 	at android.os.Binder.execTransact(Binder.java:1123)
-11-19 01:04:24.276   499   593 E ActivityManager: Sending non-protected broadcast com.android.systemui.demo from system 719:com.android.systemui/u0a157 pkg com.android.systemui
-11-19 01:04:24.276   499   593 E ActivityManager: java.lang.Throwable
-11-19 01:04:24.276   499   593 E ActivityManager: 	at com.android.server.am.ActivityManagerService.checkBroadcastFromSystem(ActivityManagerService.java:15912)
-11-19 01:04:24.276   499   593 E ActivityManager: 	at com.android.server.am.ActivityManagerService.broadcastIntentLocked(ActivityManagerService.java:16587)
-11-19 01:04:24.276   499   593 E ActivityManager: 	at com.android.server.am.ActivityManagerService.broadcastIntentLocked(ActivityManagerService.java:15929)
-11-19 01:04:24.276   499   593 E ActivityManager: 	at com.android.server.am.ActivityManagerService.broadcastIntentWithFeature(ActivityManagerService.java:16743)
-11-19 01:04:24.276   499   593 E ActivityManager: 	at android.app.IActivityManager$Stub.onTransact(IActivityManager.java:2267)
-11-19 01:04:24.276   499   593 E ActivityManager: 	at com.android.server.am.ActivityManagerService.onTransact(ActivityManagerService.java:2883)
-11-19 01:04:24.276   499   593 E ActivityManager: 	at android.os.Binder.execTransactInternal(Binder.java:1154)
-11-19 01:04:24.276   499   593 E ActivityManager: 	at android.os.Binder.execTransact(Binder.java:1123)
-11-19 01:04:25.073   499   539 W ActivityManager: com.google.android.gsf inode == 0 (b/152760674)
-11-19 01:04:25.128   499   539 W ActivityManager: Slow operation: 55ms so far, now at startProcess: returned from zygote!
-11-19 01:04:25.135   499   539 W ActivityManager: Slow operation: 62ms so far, now at startProcess: done updating battery stats
-11-19 01:04:25.135   499   539 W ActivityManager: Slow operation: 62ms so far, now at startProcess: building log message
-11-19 01:04:25.135   499   539 I ActivityManager: Start proc 1397:com.google.android.gms/u0a120 for service {com.google.android.gms/com.google.android.gms.chimera.GmsIntentOperationService}
-11-19 01:04:25.135   499   539 W ActivityManager: Slow operation: 62ms so far, now at startProcess: starting to update pids map
-11-19 01:04:25.135   499   539 W ActivityManager: Slow operation: 62ms so far, now at startProcess: done updating pids map
-11-19 01:04:25.946   499   539 W ActivityManager: com.android.carrierconfig inode == 0 (b/152760674)
-11-19 01:04:25.946   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:25.965   499   539 I ActivityManager: Start proc 1432:com.android.carrierconfig/u0a156 for service {com.android.carrierconfig/com.android.carrierconfig.DefaultCarrierConfigService}
-11-19 01:04:26.042   499  1101 W ActivityManager: Unable to start service Intent { act=com.google.android.gms.clearcut.bootcount.service.START cmp=com.google.android.gms/.chimera.PersistentBoundBrokerService } U=0: not found
-11-19 01:04:26.046   499   539 W ActivityManager: com.google.android.cellbroadcastreceiver inode == 0 (b/152760674)
-11-19 01:04:26.046   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:26.054   499   539 I ActivityManager: Start proc 1452:com.google.android.cellbroadcastreceiver/u0a161 for broadcast {com.google.android.cellbroadcastreceiver/com.android.cellbroadcastreceiver.CellBroadcastReceiver}
-11-19 01:04:26.110   499   532 W WindowManager: Window freeze timeout expired.
-11-19 01:04:26.110   499   532 W WindowManager: Force clearing orientation change: Window{e7f314d u0 NavigationBar0}
-11-19 01:04:26.110   499   532 W WindowManager: Force clearing orientation change: Window{44c07bd u0 StatusBar}
-11-19 01:04:26.313   499   539 W ActivityManager: com.android.dialer inode == 0 (b/152760674)
-11-19 01:04:26.313   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:26.399   499   539 W ActivityManager: Slow operation: 262ms so far, now at startProcess: returned from zygote!
-11-19 01:04:26.411   499   539 W ActivityManager: Slow operation: 274ms so far, now at startProcess: done updating battery stats
-11-19 01:04:26.411   499   539 W ActivityManager: Slow operation: 274ms so far, now at startProcess: building log message
-11-19 01:04:26.411   499   539 I ActivityManager: Start proc 1474:com.android.dialer/u0a121 for broadcast {com.android.dialer/com.android.dialer.app.voicemail.LegacyVoicemailNotificationReceiver}
-11-19 01:04:26.411   499   539 W ActivityManager: Slow operation: 274ms so far, now at startProcess: starting to update pids map
-11-19 01:04:26.411   499   539 W ActivityManager: Slow operation: 274ms so far, now at startProcess: done updating pids map
-11-19 01:04:26.920   499   539 W ActivityManager: com.android.calllogbackup inode == 0 (b/152760674)
-11-19 01:04:26.920   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:27.053   499   539 W ActivityManager: Slow operation: 133ms so far, now at startProcess: returned from zygote!
-11-19 01:04:27.053   499   539 W ActivityManager: Slow operation: 133ms so far, now at startProcess: done updating battery stats
-11-19 01:04:27.054   499   539 W ActivityManager: Slow operation: 134ms so far, now at startProcess: building log message
-11-19 01:04:27.054   499   539 I ActivityManager: Start proc 1507:android.process.acore/u0a79 for content provider {com.android.providers.blockednumber/com.android.providers.blockednumber.BlockedNumberProvider}
-11-19 01:04:27.054   499   539 W ActivityManager: Slow operation: 134ms so far, now at startProcess: starting to update pids map
-11-19 01:04:27.054   499   539 W ActivityManager: Slow operation: 134ms so far, now at startProcess: done updating pids map
-11-19 01:04:27.077   499   539 W ActivityManager: com.android.cellbroadcastreceiver inode == 0 (b/152760674)
-11-19 01:04:27.078   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:27.209   499   539 W ActivityManager: Slow operation: 132ms so far, now at startProcess: returned from zygote!
-11-19 01:04:27.209   499   539 W ActivityManager: Slow operation: 132ms so far, now at startProcess: done updating battery stats
-11-19 01:04:27.210   499   539 W ActivityManager: Slow operation: 133ms so far, now at startProcess: building log message
-11-19 01:04:27.210   499   539 I ActivityManager: Start proc 1529:com.android.cellbroadcastreceiver/u0a81 for content provider {com.android.cellbroadcastreceiver/com.android.cellbroadcastreceiver.LegacyCellBroadcastContentProvider}
-11-19 01:04:27.210   499   539 W ActivityManager: Slow operation: 133ms so far, now at startProcess: starting to update pids map
-11-19 01:04:27.210   499   539 W ActivityManager: Slow operation: 133ms so far, now at startProcess: done updating pids map
-11-19 01:04:27.376   499   593 W ActivityManager: Unbind failed: could not find connection for android.os.BinderProxy@3127044
-11-19 01:04:28.677   499   532 I WindowManager: ******* TELLING SURFACE FLINGER WE ARE BOOTED!
-11-19 01:04:28.751   499   539 W ActivityManager: com.google.android.inputmethod.latin inode == 0 (b/152760674)
-11-19 01:04:28.751   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:28.774   499   532 I ActivityManager: About to commit checkpoint
-11-19 01:04:28.897   499   532 I ActivityManager: User 0 state changed from BOOTING to RUNNING_LOCKED
-11-19 01:04:28.898   499   532 W ActivityManager: UserLifecycleEvent 4 received without an active userJourneySession.
-11-19 01:04:28.909   499   539 W ActivityManager: Slow operation: 160ms so far, now at startProcess: returned from zygote!
-11-19 01:04:28.928   499   532 W ActivityManager: UserLifecycleEvent 5 received without an active userJourneySession.
-11-19 01:04:28.933   499   539 W ActivityManager: Slow operation: 184ms so far, now at startProcess: done updating battery stats
-11-19 01:04:28.933   499   539 W ActivityManager: Slow operation: 184ms so far, now at startProcess: building log message
-11-19 01:04:28.933   499   539 I ActivityManager: Start proc 1594:com.google.android.inputmethod.latin/u0a131 for service {com.google.android.inputmethod.latin/com.android.inputmethod.latin.LatinIME}
-11-19 01:04:28.933   499   539 W ActivityManager: Slow operation: 184ms so far, now at startProcess: starting to update pids map
-11-19 01:04:28.940   499   539 W ActivityManager: Slow operation: 191ms so far, now at startProcess: done updating pids map
-11-19 01:04:28.941   499   539 W ActivityManager: com.google.android.ext.services inode == 0 (b/152760674)
-11-19 01:04:28.941   499   539 W ActivityManager: com.google.android.gms inode == 0 (b/152760674)
-11-19 01:04:28.982   499   532 I WindowManager: Using new display size: 1080x1920
-11-19 01:04:29.088   499   539 W ActivityManager: Slow operation: 194ms so far, now at startProcess: returned from zygote!
-11-19 01:04:29.446   499   539 W ActivityManager: Slow operation: 552ms so far, now at startProcess: done updating battery stats
-11-19 01:04:29.446   499   539 W ActivityManager: Slow operation: 552ms so far, now at startProcess: building log message
-11-19 01:04:29.446   499   539 I ActivityManager: Start proc 1616:com.google.android.ext.services/u0a166 for on-hold
-11-19 01:04:29.446   499   539 W ActivityManager: Slow operation: 552ms so far, now at startProcess: starting to update pids map
-11-19 01:04:29.446   499   539 W ActivityManager: Slow operation: 552ms so far, now at startProcess: done updating pids map
-11-19 01:04:31.347   499   527 W ActivityManager: Unable to start service Intent { flg=0x89000010 cmp=com.google.android.gms/.gcm.nts.SchedulerService (has extras) } U=0: not found
-11-19 01:04:32.359   499   529 I ActivityManager: User 0 state changed from RUNNING_LOCKED to RUNNING_UNLOCKING
-11-19 01:04:32.374   499   499 W ActivityManager: Unable to start service Intent { act=android.service.contentcapture.ContentCaptureService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiContentCaptureService } U=0: not found
-11-19 01:04:32.374   499   499 W ActivityManager: Unable to start service Intent { act=android.service.contentcapture.ContentCaptureService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiContentCaptureService } U=0: not found
-11-19 01:04:32.374   499   499 W ActivityManager: Unable to start service Intent { act=android.service.systemcaptions.SystemCaptionsManagerService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.captions.SystemCaptionsManagerService } U=0: not found
-11-19 01:04:32.455   499   538 W ActivityManager: UserLifecycleEvent 5 received without an active userJourneySession.
-11-19 01:04:32.455   499   538 W ActivityManager: UserLifecycleEvent 6 received without an active userJourneySession.
-11-19 01:04:32.455   499   538 I ActivityManager: User 0 state changed from RUNNING_UNLOCKING to RUNNING_UNLOCKED
-11-19 01:04:32.680   499   539 W ActivityManager: Slow operation: 229ms so far, now at startProcess: returned from zygote!
-11-19 01:04:32.833   499  1109 W ActivityManager: Slow operation: 70ms so far, now at startProcess: done starting proc!
-11-19 01:04:32.833   499  1109 W ActivityManager: Slow operation: 71ms so far, now at getContentProviderImpl: after start process
-11-19 01:04:32.833   499  1109 W ActivityManager: Slow operation: 71ms so far, now at getContentProviderImpl: updating data structures
-11-19 01:04:32.833   499  1109 W ActivityManager: Slow operation: 71ms so far, now at getContentProviderImpl: done!
-11-19 01:04:32.833   499   593 W ActivityManager: Slow operation: 382ms so far, now at startProcess: done updating battery stats
-11-19 01:04:32.833   499   593 W ActivityManager: Slow operation: 382ms so far, now at startProcess: building log message
-11-19 01:04:32.833   499   593 I ActivityManager: Start proc 1694:com.google.android.googlequicksearchbox:interactor/u0a123 for service {com.google.android.googlequicksearchbox/com.google.android.voiceinteraction.GsaVoiceInteractionService}
-11-19 01:04:32.833   499   593 W ActivityManager: Slow operation: 382ms so far, now at startProcess: starting to update pids map
-11-19 01:04:32.834   499   593 W ActivityManager: Slow operation: 383ms so far, now at startProcess: done updating pids map
-11-19 01:04:33.084   499   532 W ActivityManager: Slow operation: 66ms so far, now at startProcess: done creating new process record
-11-19 01:04:33.084   499   532 W ActivityManager: Slow operation: 66ms so far, now at startProcess: stepping in to startProcess
-11-19 01:04:33.084   499   532 W ActivityManager: Slow operation: 66ms so far, now at startProcess: done starting proc!
-11-19 01:04:33.086   499   539 W ActivityManager: Slow operation: 631ms so far, now at startProcess: asking zygote to start proc
-11-19 01:04:33.199   499   539 W ActivityManager: Slow operation: 744ms so far, now at startProcess: returned from zygote!
-11-19 01:04:33.253   499   539 W ActivityManager: Slow operation: 798ms so far, now at startProcess: done updating battery stats
-11-19 01:04:33.253   499   539 W ActivityManager: Slow operation: 798ms so far, now at startProcess: building log message
-11-19 01:04:33.253   499   539 I ActivityManager: Start proc 1751:com.google.android.apps.messaging:rcs/u0a146 for service {com.google.android.apps.messaging/com.google.android.ims.binding.SystemBindingService}
-11-19 01:04:33.253   499   539 W ActivityManager: Slow operation: 798ms so far, now at startProcess: starting to update pids map
-11-19 01:04:33.254   499   539 W ActivityManager: Slow operation: 799ms so far, now at startProcess: done updating pids map
-11-19 01:04:33.254   499   539 W ActivityManager: Slow operation: 789ms so far, now at startProcess: asking zygote to start proc
-11-19 01:04:33.259   499   539 W ActivityManager: Slow operation: 794ms so far, now at startProcess: returned from zygote!
-11-19 01:04:33.259   499   539 W ActivityManager: Slow operation: 794ms so far, now at startProcess: done updating battery stats
-11-19 01:04:33.259   499   539 W ActivityManager: Slow operation: 794ms so far, now at startProcess: building log message
-11-19 01:04:33.259   499   539 I ActivityManager: Start proc 1771:com.android.ims.rcsservice/1001 for added application com.android.ims.rcsservice
-11-19 01:04:33.259   499   539 W ActivityManager: Slow operation: 794ms so far, now at startProcess: starting to update pids map
-11-19 01:04:33.259   499   539 W ActivityManager: Slow operation: 794ms so far, now at startProcess: done updating pids map
-11-19 01:04:33.259   499   539 W ActivityManager: Slow operation: 738ms so far, now at startProcess: asking zygote to start proc
-11-19 01:04:33.483   499   539 W ActivityManager: Slow operation: 962ms so far, now at startProcess: returned from zygote!
-11-19 01:04:33.684   499   539 W ActivityManager: Slow operation: 1163ms so far, now at startProcess: done updating battery stats
-11-19 01:04:33.684   499   539 W ActivityManager: Slow operation: 1163ms so far, now at startProcess: building log message
-11-19 01:04:33.684   499   539 I ActivityManager: Start proc 1799:com.android.emulator.multidisplay/1000 for added application com.android.emulator.multidisplay
-11-19 01:04:33.684   499   539 W ActivityManager: Slow operation: 1163ms so far, now at startProcess: starting to update pids map
-11-19 01:04:33.685   499   539 W ActivityManager: Slow operation: 1164ms so far, now at startProcess: done updating pids map
-11-19 01:04:33.685   499   539 W ActivityManager: Slow operation: 1140ms so far, now at startProcess: asking zygote to start proc
-11-19 01:04:33.731   499   539 W ActivityManager: Slow operation: 1186ms so far, now at startProcess: returned from zygote!
-11-19 01:04:33.736   499   539 W ActivityManager: Slow operation: 1191ms so far, now at startProcess: done updating battery stats
-11-19 01:04:33.736   499   539 W ActivityManager: Slow operation: 1191ms so far, now at startProcess: building log message
-11-19 01:04:33.736   499   539 I ActivityManager: Start proc 1825:com.android.managedprovisioning/u0a91 for broadcast {com.android.managedprovisioning/com.android.managedprovisioning.ota.PreBootListener}
-11-19 01:04:33.736   499   539 W ActivityManager: Slow operation: 1191ms so far, now at startProcess: starting to update pids map
-11-19 01:04:33.736   499   539 W ActivityManager: Slow operation: 1191ms so far, now at startProcess: done updating pids map
-11-19 01:04:33.736   499   539 W ActivityManager: Slow operation: 1190ms so far, now at startProcess: asking zygote to start proc
-11-19 01:04:33.871   499   539 W ActivityManager: Slow operation: 1325ms so far, now at startProcess: returned from zygote!
-11-19 01:04:33.909   499   539 W ActivityManager: Slow operation: 1363ms so far, now at startProcess: done updating battery stats
-11-19 01:04:33.909   499   539 W ActivityManager: Slow operation: 1363ms so far, now at startProcess: building log message
-11-19 01:04:33.909   499   539 I ActivityManager: Start proc 1852:com.android.keychain/1000 for service {com.android.keychain/com.android.keychain.KeyChainService}
-11-19 01:04:33.909   499   539 W ActivityManager: Slow operation: 1363ms so far, now at startProcess: starting to update pids map
-11-19 01:04:33.910   499   539 W ActivityManager: Slow operation: 1364ms so far, now at startProcess: done updating pids map
-11-19 01:04:33.910   499   539 W ActivityManager: Slow operation: 1150ms so far, now at startProcess: asking zygote to start proc
-11-19 01:04:34.003   499   539 W ActivityManager: Slow operation: 1243ms so far, now at startProcess: returned from zygote!
-11-19 01:04:34.005   499   539 W ActivityManager: Slow operation: 1245ms so far, now at startProcess: done updating battery stats
-11-19 01:04:34.005   499   539 W ActivityManager: Slow operation: 1245ms so far, now at startProcess: building log message
-11-19 01:04:34.005   499   539 I ActivityManager: Start proc 1873:com.google.android.apps.youtube.music/u0a140 for service {com.google.android.apps.youtube.music/com.google.android.apps.youtube.music.mediabrowser.MusicBrowserService}
-11-19 01:04:34.005   499   539 W ActivityManager: Slow operation: 1245ms so far, now at startProcess: starting to update pids map
-11-19 01:04:34.005   499   539 W ActivityManager: Slow operation: 1245ms so far, now at startProcess: done updating pids map
-11-19 01:04:34.005   499   539 W ActivityManager: Slow operation: 1242ms so far, now at startProcess: asking zygote to start proc
-11-19 01:04:34.188   499   539 W ActivityManager: Slow operation: 1425ms so far, now at startProcess: returned from zygote!
-11-19 01:04:34.513   499  1636 W ActivityManager: Slow operation: 370ms so far, now at attachApplicationLocked: before bindApplication
-11-19 01:04:34.513   499  1636 W ActivityManager: Slow operation: 370ms so far, now at attachApplicationLocked: immediately before bindApplication
-11-19 01:04:34.514   499  1636 W ActivityManager: Slow operation: 371ms so far, now at attachApplicationLocked: immediately after bindApplication
-11-19 01:04:34.514   499  1636 W ActivityManager: Slow operation: 371ms so far, now at attachApplicationLocked: after updateLruProcessLocked
-11-19 01:04:34.515   499  1636 W ActivityManager: Slow operation: 372ms so far, now at attachApplicationLocked: after mServices.attachApplicationLocked
-11-19 01:04:34.516   499  1017 W ActivityManager: Slow operation: 1753ms so far, now at startProcess: done updating battery stats
-11-19 01:04:34.516   499  1017 W ActivityManager: Slow operation: 1753ms so far, now at startProcess: building log message
-11-19 01:04:34.516   499  1017 I ActivityManager: Start proc 1903:com.google.process.gservices/u0a120 for content provider {com.google.android.gsf/com.google.android.gsf.gservices.GservicesProvider}
-11-19 01:04:34.516   499  1017 W ActivityManager: Slow operation: 1753ms so far, now at startProcess: starting to update pids map
-11-19 01:04:34.516   499  1017 W ActivityManager: Slow operation: 1753ms so far, now at startProcess: done updating pids map
-11-19 01:04:34.520   499   539 W ActivityManager: Slow operation: 1608ms so far, now at startProcess: asking zygote to start proc
-11-19 01:04:34.542   499   539 W ActivityManager: Slow operation: 1630ms so far, now at startProcess: returned from zygote!
-11-19 01:04:34.544   499   539 W ActivityManager: Slow operation: 1632ms so far, now at startProcess: done updating battery stats
-11-19 01:04:34.544   499   539 W ActivityManager: Slow operation: 1632ms so far, now at startProcess: building log message
-11-19 01:04:34.544   499   539 I ActivityManager: Start proc 1943:com.google.android.googlequicksearchbox:search/u0a123 for service {com.google.android.googlequicksearchbox/com.google.android.apps.gsa.staticplugins.mediabrowser.PodcastsMediaBrowserService}
-11-19 01:04:34.544   499   539 W ActivityManager: Slow operation: 1632ms so far, now at startProcess: starting to update pids map
-11-19 01:04:34.544   499   539 W ActivityManager: Slow operation: 1632ms so far, now at startProcess: done updating pids map
-11-19 01:04:34.544   499   539 W ActivityManager: Slow operation: 1460ms so far, now at startProcess: asking zygote to start proc
-11-19 01:04:34.550   499   539 W ActivityManager: Slow operation: 1466ms so far, now at startProcess: returned from zygote!
-11-19 01:04:34.550   499   539 W ActivityManager: Slow operation: 1466ms so far, now at startProcess: done updating battery stats
-11-19 01:04:34.550   499   539 W ActivityManager: Slow operation: 1466ms so far, now at startProcess: building log message
-11-19 01:04:34.550   499   539 I ActivityManager: Start proc 1951:com.google.android.sdksetup/u0a151 for top-activity {com.google.android.sdksetup/com.google.android.sdksetup.DefaultActivity}
-11-19 01:04:34.550   499   539 W ActivityManager: Slow operation: 1466ms so far, now at startProcess: starting to update pids map
-11-19 01:04:34.550   499   539 W ActivityManager: Slow operation: 1466ms so far, now at startProcess: done updating pids map
-11-19 01:04:34.550   499   539 W ActivityManager: Slow operation: 1459ms so far, now at startProcess: asking zygote to start proc
-11-19 01:04:34.735   499   539 W ActivityManager: Slow operation: 1644ms so far, now at startProcess: returned from zygote!
-11-19 01:04:34.753   499   539 W ActivityManager: Slow operation: 1662ms so far, now at startProcess: done updating battery stats
-11-19 01:04:34.753   499   539 W ActivityManager: Slow operation: 1662ms so far, now at startProcess: building log message
-11-19 01:04:34.753   499   539 I ActivityManager: Start proc 1999:com.google.android.youtube/u0a147 for service {com.google.android.youtube/com.google.android.apps.youtube.app.extensions.mediabrowser.impl.MainAppMediaBrowserService}
-11-19 01:04:34.753   499   539 W ActivityManager: Slow operation: 1662ms so far, now at startProcess: starting to update pids map
-11-19 01:04:34.753   499   539 W ActivityManager: Slow operation: 1662ms so far, now at startProcess: done updating pids map
-11-19 01:04:34.753   499   539 W ActivityManager: Slow operation: 1460ms so far, now at startProcess: asking zygote to start proc
-11-19 01:04:34.798   499   539 W ActivityManager: Slow operation: 1505ms so far, now at startProcess: returned from zygote!
-11-19 01:04:34.798   499   539 W ActivityManager: Slow operation: 1505ms so far, now at startProcess: done updating battery stats
-11-19 01:04:34.798   499   539 W ActivityManager: Slow operation: 1505ms so far, now at startProcess: building log message
-11-19 01:04:34.798   499   539 I ActivityManager: Start proc 2019:com.google.android.providers.media.module/u0a162 for service {com.google.android.providers.media.module/com.android.providers.media.fuse.ExternalStorageServiceImpl}
-11-19 01:04:34.798   499   539 W ActivityManager: Slow operation: 1505ms so far, now at startProcess: starting to update pids map
-11-19 01:04:34.798   499   539 W ActivityManager: Slow operation: 1505ms so far, now at startProcess: done updating pids map
-11-19 01:04:34.798   499   539 W ActivityManager: Slow operation: 1047ms so far, now at startProcess: asking zygote to start proc
-11-19 01:04:35.075   499   539 W ActivityManager: Slow operation: 1324ms so far, now at startProcess: returned from zygote!
-11-19 01:04:35.075   499   539 W ActivityManager: Slow operation: 1324ms so far, now at startProcess: done updating battery stats
-11-19 01:04:35.075   499   539 W ActivityManager: Slow operation: 1324ms so far, now at startProcess: building log message
-11-19 01:04:35.075   499   539 I ActivityManager: Start proc 2048:com.google.process.gapps/u0a120 for content provider {com.google.android.gsf/com.google.android.gsf.settings.GoogleSettingsProvider}
-11-19 01:04:35.075   499   539 W ActivityManager: Slow operation: 1324ms so far, now at startProcess: starting to update pids map
-11-19 01:04:35.075   499   539 W ActivityManager: Slow operation: 1324ms so far, now at startProcess: done updating pids map
-11-19 01:04:35.075   499   539 W ActivityManager: Slow operation: 539ms so far, now at startProcess: asking zygote to start proc
-11-19 01:04:35.272   499   539 W ActivityManager: Slow operation: 736ms so far, now at startProcess: returned from zygote!
-11-19 01:04:35.283   499   539 W ActivityManager: Slow operation: 747ms so far, now at startProcess: done updating battery stats
-11-19 01:04:35.283   499   539 W ActivityManager: Slow operation: 747ms so far, now at startProcess: building log message
-11-19 01:04:35.283   499   539 I ActivityManager: Start proc 2076:com.google.android.syncadapters.contacts/u0a143 for content provider {com.google.android.syncadapters.contacts/com.google.android.syncadapters.contacts.ProxyGalProvider}
-11-19 01:04:35.283   499   539 W ActivityManager: Slow operation: 747ms so far, now at startProcess: starting to update pids map
-11-19 01:04:35.284   499   539 W ActivityManager: Slow operation: 748ms so far, now at startProcess: done updating pids map
-11-19 01:04:35.550   499   539 I ActivityManager: Start proc 2118:com.google.android.gm/u0a135 for content provider {com.google.android.gm/com.android.exchange.provider.ExchangeDirectoryProvider}
-11-19 01:04:35.672   499   555 I ActivityManager: Killing 1951:com.google.android.sdksetup/u0a151 (adj 0): change com.google.android.sdksetup
-11-19 01:04:35.721   499   539 I ActivityManager: Start proc 2145:android.process.media/u0a80 for content provider {com.android.providers.media/com.android.providers.media.LegacyMediaProvider}
-11-19 01:04:35.926   499   533 W WindowManager: Failed looking up window session=Session{fe37406 499:1000} callers=com.android.server.wm.WindowManagerService.windowForClientLocked:5425 com.android.server.wm.WindowManagerService.removeWindow:1892 com.android.server.wm.Session.remove:193 
-11-19 01:04:36.819   499   539 I ActivityManager: Start proc 2311:com.google.android.partnersetup/u0a116 for broadcast {com.google.android.partnersetup/com.google.android.partnersetup.PhoneStateReceiver}
-11-19 01:04:37.167   499   539 I ActivityManager: Start proc 2413:com.android.localtransport/1000 for service {com.android.localtransport/com.android.localtransport.LocalTransportService}
-11-19 01:04:37.253   499   499 W ActivityManager: Unable to start service Intent { act=android.service.contentsuggestions.ContentSuggestionsService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiContentSuggestionsService } U=0: not found
-11-19 01:04:37.545   499   592 W ActivityManager: Unable to start service Intent { act=android.service.appprediction.AppPredictionService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiPredictionService } U=0: not found
-11-19 01:04:37.578   499  1101 W ActivityManager: Unable to start service Intent { act=android.service.appprediction.AppPredictionService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiPredictionService } U=0: not found
-11-19 01:04:37.579   499   499 W ActivityManager: Unable to start service Intent { act=android.service.appprediction.AppPredictionService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiPredictionService } U=0: not found
-11-19 01:04:37.639   499   527 W ActivityManager: Slow operation: 57ms so far, now at getContentProviderImpl: after updateLruProcess
-11-19 01:04:37.639   499   527 W ActivityManager: Slow operation: 57ms so far, now at getContentProviderImpl: before updateOomAdj
-11-19 01:04:37.639   499   527 W ActivityManager: Slow operation: 57ms so far, now at getContentProviderImpl: after updateOomAdj
-11-19 01:04:37.639   499   527 W ActivityManager: Slow operation: 57ms so far, now at getContentProviderImpl: done!
-11-19 01:04:37.831   499  2140 W ActivityManager: Unable to start service Intent { act=android.service.appprediction.AppPredictionService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiPredictionService } U=0: not found
-11-19 01:04:37.841   499  1109 W ActivityManager: Unable to start service Intent { act=android.service.appprediction.AppPredictionService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiPredictionService } U=0: not found
-11-19 01:04:37.842   499  1255 W ActivityManager: Unable to start service Intent { act=android.service.appprediction.AppPredictionService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiPredictionService } U=0: not found
-11-19 01:04:37.842   499   499 W ActivityManager: Unable to start service Intent { act=android.service.appprediction.AppPredictionService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiPredictionService } U=0: not found
-11-19 01:04:38.588   499  1745 W ActivityManager: Unable to start service Intent { cmp=com.google.android.gm/com.android.email.service.AttachmentService } U=0: not found
-11-19 01:04:38.729   499   539 W ActivityManager: Slow operation: 60ms so far, now at startProcess: returned from zygote!
-11-19 01:04:38.768   499  1937 W ActivityManager: Foreground service started from background can not have location/camera/microphone access: service com.google.android.inputmethod.latin/com.google.android.apps.inputmethod.libs.dataservice.superpacks.SuperpacksForegroundTaskService
-11-19 01:04:38.772   499   539 W ActivityManager: Slow operation: 103ms so far, now at startProcess: done updating battery stats
-11-19 01:04:38.772   499   539 W ActivityManager: Slow operation: 103ms so far, now at startProcess: building log message
-11-19 01:04:38.772   499   539 I ActivityManager: Start proc 2575:com.android.providers.calendar/u0a84 for broadcast {com.android.providers.calendar/com.android.providers.calendar.CalendarUpgradeReceiver}
-11-19 01:04:38.772   499   539 W ActivityManager: Slow operation: 103ms so far, now at startProcess: starting to update pids map
-11-19 01:04:38.775   499   539 W ActivityManager: Slow operation: 106ms so far, now at startProcess: done updating pids map
-11-19 01:04:39.069   499   555 I ActivityManager:   Force stopping service ServiceRecord{f626ff3 u0 com.google.android.apps.messaging/com.google.android.ims.binding.SystemBindingService}
-11-19 01:04:39.457   499   539 I ActivityManager: Start proc 2614:com.android.externalstorage/u0a86 for broadcast {com.android.externalstorage/com.android.externalstorage.MountReceiver}
-11-19 01:04:40.504   499   593 W ActivityManager: Slow operation: 89ms so far, now at getContentProviderImpl: before checkContentProviderPermission
-11-19 01:04:40.504   499   593 W ActivityManager: Slow operation: 89ms so far, now at getContentProviderImpl: after checkContentProviderPermission
-11-19 01:04:40.504   499   593 W ActivityManager: Slow operation: 89ms so far, now at getContentProviderImpl: incProviderCountLocked
-11-19 01:04:40.504   499   593 W ActivityManager: Slow operation: 89ms so far, now at getContentProviderImpl: before updateLruProcess
-11-19 01:04:40.504   499   593 W ActivityManager: Slow operation: 89ms so far, now at getContentProviderImpl: after updateLruProcess
-11-19 01:04:40.504   499   593 W ActivityManager: Slow operation: 89ms so far, now at getContentProviderImpl: before updateOomAdj
-11-19 01:04:40.505   499   593 W ActivityManager: Slow operation: 90ms so far, now at getContentProviderImpl: after updateOomAdj
-11-19 01:04:40.505   499   593 W ActivityManager: Slow operation: 90ms so far, now at getContentProviderImpl: done!
-11-19 01:04:40.559   499   539 I ActivityManager: Start proc 2700:com.google.android.apps.photos/u0a137 for broadcast {com.google.android.apps.photos/com.google.android.apps.photos.sdcard.envcache.ExternalStorageStateChangeBroadcastReceiver}
-11-19 01:04:41.085   499  2140 I ActivityManager: Killing 1065:com.android.settings:CryptKeeper/1000 (adj 975): empty #17
-11-19 01:04:41.314   499   539 I ActivityManager: Start proc 2810:com.android.printspooler/u0a110 for service {com.android.printspooler/com.android.printspooler.model.PrintSpoolerService}
-11-19 01:04:41.493   499   834 W ActivityManager: Unable to start service Intent { act=android.service.appprediction.AppPredictionService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiPredictionService } U=0: not found
-11-19 01:04:41.507   499   499 W ActivityManager: Unable to start service Intent { act=android.service.appprediction.AppPredictionService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiPredictionService } U=0: not found
-11-19 01:04:41.594   499   539 I ActivityManager: Start proc 2870:com.google.android.webview:webview_service/u0a144 for service {com.google.android.webview/org.chromium.android_webview.services.VariationsSeedServer}
-11-19 01:04:41.633   499   499 W ActivityManager: Unable to start service Intent { act=android.service.contentcapture.ContentCaptureService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiContentCaptureService } U=0: not found
-11-19 01:04:41.633   499   499 W ActivityManager: Unable to start service Intent { act=android.service.contentcapture.ContentCaptureService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.app.AiAiContentCaptureService } U=0: not found
-11-19 01:04:41.633   499   499 W ActivityManager: Unable to start service Intent { act=android.service.systemcaptions.SystemCaptionsManagerService cmp=com.google.android.as/com.google.android.apps.miphone.aiai.captions.SystemCaptionsManagerService } U=0: not found
-11-19 01:04:41.843   499  1745 I ActivityManager: Killing 1118:com.google.android.setupwizard/u0a114 (adj 985): empty #17
-11-19 01:04:42.949   499   539 I ActivityManager: Start proc 2995:com.google.android.gms.unstable/u0a120 for service {com.google.android.gms/com.google.android.gms.droidguard.DroidGuardService}
-11-19 01:04:42.988   499   539 I ActivityManager: Start proc 3012:com.google.android.documentsui/u0a92 for broadcast {com.google.android.documentsui/com.android.documentsui.PreBootReceiver}
-11-19 01:04:43.267   499  2533 I ActivityManager: Posting BOOT_COMPLETED user #0
-11-19 01:04:43.276   499   538 W ActivityManager: UserLifecycleEvent 6 received without an active userJourneySession.
-11-19 01:04:43.510   499   527 I ActivityManager: Killing 1432:com.android.carrierconfig/u0a156 (adj 985): empty #17
-11-19 01:04:44.041   499   539 I ActivityManager: Start proc 3088:com.google.android.apps.docs/u0a139 for content provider {com.google.android.apps.docs/com.google.android.apps.docs.storagebackend.StorageBackendContentProvider}
-11-19 01:04:44.116   499  2540 I ActivityManager: Killing 1474:com.android.dialer/u0a121 (adj 985): empty #17
-11-19 01:04:44.568   499   527 W ActivityManager: Unable to start service Intent { act=com.google.android.gms.auth.key.retrieval.service.START pkg=com.google.android.gms } U=0: not found
-11-19 01:04:44.569   499  2535 W ActivityManager: Unbind failed: could not find connection for android.os.BinderProxy@26b2339
-11-19 01:04:45.064   499   539 I ActivityManager: Start proc 3173:com.android.dialer/u0a121 for broadcast {com.android.dialer/com.android.dialer.app.calllog.CallLogReceiver}
-11-19 01:04:45.729   499  2542 I ActivityManager: Killing 1452:com.google.android.cellbroadcastreceiver/u0a161 (adj 985): empty #17
-11-19 01:04:45.807   499   539 I ActivityManager: Start proc 3269:com.google.android.calendar/u0a145 for broadcast {com.google.android.calendar/com.google.android.calendar.SyncUpgradeReceiver}
-11-19 01:04:46.026   499   539 I ActivityManager: Start proc 3300:com.google.android.cellbroadcastreceiver/u0a161 for broadcast {com.google.android.cellbroadcastreceiver/com.android.cellbroadcastreceiver.CellBroadcastReceiver}
-11-19 01:04:46.160   499  2540 I ActivityManager: Killing 1356:com.google.android.deskclock/u0a128 (adj 985): empty #17
-11-19 01:04:46.183   499   539 I ActivityManager: Start proc 3332:com.google.android.ims/u0a115 for broadcast {com.google.android.ims/com.google.android.ims.receivers.CarrierConfigChangedReceiver}
-11-19 01:04:46.566   499  1634 I ActivityManager: Killing 1825:com.android.managedprovisioning/u0a91 (adj 985): empty #17
-11-19 01:04:46.595   499   539 I ActivityManager: Start proc 3393:com.android.camera2/u0a133 for broadcast {com.android.camera2/com.android.camera.SetActivitiesCameraReceiver}
-11-19 01:04:46.703   499   834 I ActivityManager: Killing 2076:com.google.android.syncadapters.contacts/u0a143 (adj 985): empty #17
-11-19 01:04:46.722   499   539 I ActivityManager: Start proc 3427:com.android.contacts/u0a119 for broadcast {com.android.contacts/com.android.contacts.interactions.OnBootOrUpgradeReceiver}
-11-19 01:04:46.837   499   539 I ActivityManager: Start proc 3455:com.android.dynsystem/1000 for broadcast {com.android.dynsystem/com.android.dynsystem.BootCompletedReceiver}
-11-19 01:04:46.841   499   527 I ActivityManager: Killing 2413:com.android.localtransport/1000 (adj 975): empty #17
-11-19 01:04:46.950   499   593 I ActivityManager: Killing 1873:com.google.android.apps.youtube.music/u0a140 (adj 985): empty #17
-11-19 01:04:46.959   499   539 I ActivityManager: Start proc 3488:com.android.managedprovisioning/u0a91 for broadcast {com.android.managedprovisioning/com.android.managedprovisioning.BootReminder}
-11-19 01:04:46.981   499   539 I ActivityManager: Start proc 3508:com.google.android.apps.messaging/u0a146 for service {com.google.android.apps.messaging/com.google.android.apps.messaging.rcsmigration.RcsMigrationService}
-11-19 01:04:47.065   499  2540 I ActivityManager: Killing 2614:com.android.externalstorage/u0a86 (adj 985): empty #17
-11-19 01:04:47.096   499  2540 I ActivityManager: Killing 2700:com.google.android.apps.photos/u0a137 (adj 985): empty #17
-11-19 01:04:47.105   499   539 I ActivityManager: Start proc 3540:com.android.nfc/1027 for broadcast {com.android.nfc/com.android.nfc.NfcBootCompletedReceiver}
-11-19 01:04:47.267   499  2539 I ActivityManager: Killing 1999:com.google.android.youtube/u0a147 (adj 985): empty #17
-11-19 01:04:47.299   499   539 I ActivityManager: Start proc 3581:com.google.android.gms.ui/u0a120 for service {com.google.android.gms/com.google.android.gms.chimera.UiIntentOperationService}
-11-19 01:04:47.513   499   539 W ActivityManager: Slow operation: 107ms so far, now at startProcess: done updating battery stats
-11-19 01:04:47.513   499   539 W ActivityManager: Slow operation: 107ms so far, now at startProcess: building log message
-11-19 01:04:47.513   499   539 I ActivityManager: Start proc 3619:com.android.shell/2000 for broadcast {com.android.shell/com.android.shell.HeapDumpReceiver}
-11-19 01:04:47.513   499   539 W ActivityManager: Slow operation: 107ms so far, now at startProcess: starting to update pids map
-11-19 01:04:47.514   499   539 W ActivityManager: Slow operation: 108ms so far, now at startProcess: done updating pids map
-11-19 01:04:47.635   499  1101 I ActivityManager: Killing 1852:com.android.keychain/1000 (adj 985): empty #17
-11-19 01:04:47.688   499   539 I ActivityManager: Start proc 3664:com.android.traceur/u0a103 for broadcast {com.android.traceur/com.android.traceur.Receiver}
-11-19 01:04:47.801   499  1820 I ActivityManager: Killing 1751:com.google.android.apps.messaging:rcs/u0a146 (adj 925): empty #17
-11-19 01:04:48.270   499  1109 I ActivityManager: Killing 2810:com.android.printspooler/u0a110 (adj 985): empty #17
-11-19 01:04:48.275   499   539 I ActivityManager: Start proc 3739:com.google.android.apps.maps/u0a134 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.navigation.service.detection.StartDetectionReceiver}
-11-19 01:04:48.331   499   539 I ActivityManager: Start proc 3759:com.google.android.apps.photos/u0a137 for service {com.google.android.apps.photos/com.google.android.apps.photos.dbprocessor.impl.DatabaseProcessorJobService}
-11-19 01:04:48.618   499  1823 W ActivityManager: Unable to start service Intent { act=com.google.android.ims.SIM_LOADED cmp=com.google.android.ims/eew (has extras) } U=0: not found
-11-19 01:04:48.626   499  1017 W ActivityManager: Receiver with filter android.content.IntentFilter@104a334 already registered for pid 3332, callerPackage is com.google.android.ims
-11-19 01:04:48.967   499   555 I ActivityManager: Killing 3540:com.android.nfc/1027 (adj 935): change com.android.nfc
-11-19 01:04:52.363   499   539 I ActivityManager: Start proc 3994:com.google.android.apps.messaging:rcs/u0a146 for broadcast {com.google.android.apps.messaging/com.google.android.ims.receiver.AutoStartReceiver}
-11-19 01:04:52.501   499  3942 I ActivityManager: Killing 1529:com.android.cellbroadcastreceiver/u0a81 (adj 985): empty #17
-11-19 01:04:52.763   499   539 I ActivityManager: Start proc 4034:com.google.android.apps.wallpaper/u0a148 for broadcast {com.google.android.apps.wallpaper/com.android.wallpaper.module.RotationWallpaperUpdateReceiver}
-11-19 01:04:52.932   499  2537 I ActivityManager: Killing 3012:com.google.android.documentsui/u0a92 (adj 975): empty #17
-11-19 01:04:53.113   499  1823 I ActivityManager: Killing 2870:com.google.android.webview:webview_service/u0a144 (adj 975): empty #17
-11-19 01:04:53.927   499   539 I ActivityManager: Start proc 4099:com.google.android.apps.youtube.music/u0a140 for broadcast {com.google.android.apps.youtube.music/com.google.android.libraries.youtube.mdx.background.MdxBackgroundScanBootReceiver}
---------- beginning of crash
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: FATAL EXCEPTION: main
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: Process: com.google.android.apps.youtube.music, PID: 4099
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: java.lang.RuntimeException: Unable to create application com.google.android.apps.youtube.music.application.YouTubeMusicApplication: java.lang.IllegalArgumentException: version cannot be null or empty.
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:6717)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at android.app.ActivityThread.access$1300(ActivityThread.java:237)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:1913)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at android.os.Handler.dispatchMessage(Handler.java:106)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at android.os.Looper.loop(Looper.java:223)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at android.app.ActivityThread.main(ActivityThread.java:7656)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at java.lang.reflect.Method.invoke(Native Method)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:592)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:947)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: Caused by: java.lang.IllegalArgumentException: version cannot be null or empty.
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at zbm.a(PG:5)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at qjo.a(PG:6)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at rvv.<init>(PG:5)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at dep.ec(PG:2537)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at dep.iO(PG:5207)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at deo.get(PG:49)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at dfw.onCreate(PG:159)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at android.app.Instrumentation.callApplicationOnCreate(Instrumentation.java:1192)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	at android.app.ActivityThread.handleBindApplication(ActivityThread.java:6712)
-11-19 01:04:54.115  4099  4099 E AndroidRuntime: 	... 8 more
-11-19 01:04:54.251   499  2140 I ActivityManager: Process com.google.android.apps.youtube.music (pid 4099) has died: fg  RCVR
-11-19 01:04:54.268   499   539 I ActivityManager: Start proc 4222:com.google.android.apps.youtube.music/u0a140 for broadcast {com.google.android.apps.youtube.music/com.google.android.libraries.youtube.mdx.notification.local.LocalNotificationsBroadcastReceiver}
-11-19 01:04:54.548   499   539 I ActivityManager: Start proc 4325:com.google.android.configupdater/u0a117 for broadcast {com.google.android.configupdater/com.google.android.configupdater.MainReceiver}
-11-19 01:04:54.748   499  2958 I ActivityManager: Killing 3300:com.google.android.cellbroadcastreceiver/u0a161 (adj 985): empty #17
-11-19 01:04:54.758   499   539 I ActivityManager: Start proc 4378:com.google.android.deskclock/u0a128 for broadcast {com.google.android.deskclock/com.android.deskclock.AlarmInitReceiver}
-11-19 01:04:54.909   499   593 I ActivityManager: Killing 3393:com.android.camera2/u0a133 (adj 975): empty #17
-11-19 01:04:55.040   499  2533 I ActivityManager: Killing 3427:com.android.contacts/u0a119 (adj 985): empty #17
-11-19 01:04:55.193   499   539 W ActivityManager: Slow operation: 53ms so far, now at startProcess: asking zygote to start proc
-11-19 01:04:55.439   499   539 W ActivityManager: Slow operation: 299ms so far, now at startProcess: returned from zygote!
-11-19 01:04:55.442   499   539 W ActivityManager: Slow operation: 302ms so far, now at startProcess: done updating battery stats
-11-19 01:04:55.442   499   539 W ActivityManager: Slow operation: 302ms so far, now at startProcess: building log message
-11-19 01:04:55.442   499   539 I ActivityManager: Start proc 4435:org.umbra.client/u0a167 for pre-top-activity {org.umbra.client/org.umbra.client.UmbraNet$UmbraActivity}
-11-19 01:04:55.442   499   539 W ActivityManager: Slow operation: 302ms so far, now at startProcess: starting to update pids map
-11-19 01:04:55.442   499   539 W ActivityManager: Slow operation: 302ms so far, now at startProcess: done updating pids map
-11-19 01:04:55.746   499   555 I ActivityManager: Killing 2118:com.google.android.gm/u0a135 (adj 0): change com.google.android.gm
-11-19 01:04:55.815  4435  4461 I umbra   : android_main: files /data/user/0/org.umbra.client/files
-11-19 01:04:55.816  4435  4461 I umbra   : goose core initialised
-11-19 01:04:55.816  4435  4461 I umbra   : net: UmbraNet loaded: download and the file picker are available
-11-19 01:04:55.875   499   555 W ActivityManager: Scheduling restart of crashed service com.google.android.gm/.job.GmailInitialSetupJob$GmailInitialSetupJobService in 1000ms for connection
-11-19 01:04:55.875   499   555 W ActivityManager: Scheduling restart of crashed service com.google.android.gm/com.android.email.job.UpgradeJob$UpgradeJobService in 10999ms for connection
-11-19 01:04:55.885  4435  4461 I umbra   : app cmd 10, window 0x0
-11-19 01:04:55.885  4435  4461 I umbra   : no window yet: waiting for the activity to become visible
-11-19 01:04:55.885  4435  4461 I umbra   : app cmd 11, window 0x0
-11-19 01:04:55.892  4435  4461 I umbra   : app cmd 0, window 0x0
-11-19 01:04:55.918   499   539 I ActivityManager: Start proc 4463:com.google.android.gm/u0a135 for broadcast {com.google.android.gm/com.google.android.libraries.notifications.entrypoints.restart.RestartReceiver}
-11-19 01:04:55.935   499   539 W ActivityManager: Slow operation: 56ms so far, now at startProcess: done updating pids map
-11-19 01:04:55.936  4435  4461 I umbra   : app cmd 1, window 0x7418c00826d0
-11-19 01:04:56.150   499   532 I WindowManager: Override config changes=20000480 {1.0 310mcc260mnc [en_US] ldltr sw411dp w683dp h387dp 420dpi nrml land finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1794, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_90} s.27} for displayId=0
-11-19 01:04:56.231  4435  4461 I umbra   : EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-11-19 01:04:56.231  4435  4461 I umbra   : app cmd 3, window 0x7418c00826d0
-11-19 01:04:56.231  4435  4461 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
-11-19 01:04:56.231  4435  4461 I umbra   : app cmd 5, window 0x7418c00826d0
-11-19 01:04:56.231  4435  4461 I umbra   : app cmd 4, window 0x7418c00826d0
-11-19 01:04:56.231  4435  4461 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 1920x1080, density bucket 420 (scale 2.62)
-11-19 01:04:56.238  4435  4461 I umbra   : 01:04:56 last run: nothing recorded yet
-11-19 01:04:56.238  4435  4461 I umbra   : 01:04:56 ---- Umbra starting, build fd418ad ----
-11-19 01:04:56.238  4435  4461 I umbra   : 01:04:56 core: umbra core: formats and meshing
-11-19 01:04:56.298  4435  4461 I umbra   : 01:04:56 shaders: 5 programs compiled and linked in 57.9 ms (mesh 18.2, hud 3.3, the rest 36.4) -- once, at start
-11-19 01:04:56.299  4435  4461 I umbra   : 01:04:56 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
-11-19 01:04:56.299  4435  4461 I umbra   : 01:04:56 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-11-19 01:04:56.299  4435  4461 I umbra   : 01:04:56 GL_VENDOR Google (Google Inc.)
-11-19 01:04:56.299  4435  4461 I umbra   : 01:04:56 depth bits 24, vertex highp 127^23, fragment highp 127^23
-11-19 01:04:57.565   499  1109 W ActivityManager: Unable to start service Intent { cmp=com.google.android.gm/com.android.email.service.AttachmentService } U=0: not found
-11-19 01:04:57.764   499  1255 W ActivityManager: Unable to start service Intent { act=com.google.android.gms.auth.key.retrieval.service.START pkg=com.google.android.gms } U=0: not found
-11-19 01:04:57.764   499  1255 W ActivityManager: Unbind failed: could not find connection for android.os.BinderProxy@609b0c6
-11-19 01:04:57.795   499   539 I ActivityManager: Start proc 4532:com.android.chrome/u0a132 for service {com.android.chrome/org.chromium.chrome.browser.customtabs.CustomTabsConnectionService}
-11-19 01:04:57.874  4435  4461 I umbra   : 01:04:57 jar: /data/local/tmp/umbra-client.jar, 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's
-11-19 01:04:57.874  4435  4461 I umbra   : 01:04:57 edits: the file for saved edits is /data/user/0/org.umbra.client/files/edits.txt
-11-19 01:04:57.874  4435  4461 I umbra   : 01:04:57 world: no world from the game in the app's directory; this is the demo scene (PUT A SAVE AT /data/user/0/org.umbra.client/files/world.zip)
-11-19 01:04:57.874  4435  4461 I umbra   : 01:04:57 gamefiles: platform hooks download, picker import, files dir /data/user/0/org.umbra.client/files
-11-19 01:04:57.877  4435  4461 I umbra   : 01:04:57 atlas: 1024x1024, 4194304 bytes, 1225 tiles, hash 3ca6170e, 1 missing
-11-19 01:04:57.877  4435  4461 I umbra   : 01:04:57 atlas: source is the client jar
-11-19 01:04:57.877  4435  4461 I umbra   : 01:04:57 atlas: 1 block faces asked for a tile that is missing
-11-19 01:04:57.896  4435  4461 I umbra   : 01:04:57 edits: no saved edits at /data/user/0/org.umbra.client/files/edits.txt (this world has none yet)
-11-19 01:04:57.902  4435  4461 I umbra   : 01:04:57 screen: home -> loading
-11-19 01:04:57.902  4435  4461 I umbra   : 01:04:57 demo world built in 2.5 ms; meshing starts in slices of at most 20 ms
-11-19 01:04:57.902  4435  4461 I umbra   : 01:04:57 check: renderer                     Android Emulator OpenGL ES Translator (Google SwiftShader)
-11-19 01:04:57.902  4435  4461 I umbra   : 01:04:57 check: gl version                   OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-11-19 01:04:57.902  4435  4461 I umbra   : 01:04:57 check: max texture size             8192 px
-11-19 01:04:57.902  4435  4461 I umbra   : 01:04:57 check: gpu timer query              none  (not available)
-11-19 01:04:57.902  4435  4461 I umbra   : 01:04:57 check: shader programs              mesh ok, hud ok, pattern ok, cube ok, atlas ok
-11-19 01:04:57.902  4435  4461 I umbra   : 01:04:57 check: depth buffer                 24 bits
-11-19 01:04:57.902  4435  4461 I umbra   : 01:04:57 check: extension string             1412 chars
-11-19 01:04:57.902  4435  4461 I umbra   : 01:04:57 check: all device checks passed
-11-19 01:04:57.902  4435  4461 I umbra   : 01:04:57 hud: button 0 at 21,1005 size 573x52 on 1920x1080 (insets 0,63,126,0)
-11-19 01:04:57.902  4435  4461 I umbra   : 01:04:57 hud: button 1 at 610,1005 size 573x52 on 1920x1080 (insets 0,63,126,0)
-11-19 01:04:57.902  4435  4461 I umbra   : 01:04:57 hud: button 2 at 1199,1005 size 573x52 on 1920x1080 (insets 0,63,126,0)
-11-19 01:04:57.923  4435  4461 I umbra   : 01:04:57 hud: 12 rows, content ends at 484 px inside a 486 px panel, fits
-11-19 01:04:57.923   499  1255 I ActivityManager: Killing 3455:com.android.dynsystem/1000 (adj 985): empty #17
-11-19 01:04:57.968   499   539 I ActivityManager: Start proc 4557:com.google.android.onetimeinitializer/u0a152 for broadcast {com.google.android.onetimeinitializer/com.google.android.onetimeinitializer.OneTimeInitializerReceiver}
-11-19 01:04:58.127  4435  4461 I umbra   : app cmd 4, window 0x7418c00826d0
-11-19 01:04:58.127  4435  4461 I umbra   : app cmd 6, window 0x7418c00826d0
-11-19 01:04:58.230   499  1937 I ActivityManager: Killing 3488:com.android.managedprovisioning/u0a91 (adj 975): empty #17
-11-19 01:04:58.397   499  1819 I ActivityManager: Killing 3173:com.android.dialer/u0a121 (adj 985): empty #17
-11-19 01:04:58.406   499   539 I ActivityManager: Start proc 4643:com.google.android.packageinstaller/u0a89 for broadcast {com.google.android.packageinstaller/com.android.packageinstaller.TemporaryFileManager}
-11-19 01:04:58.650   499  1937 I ActivityManager: Killing 3581:com.google.android.gms.ui/u0a120 (adj 985): empty #17
-11-19 01:04:58.938   499  1937 I ActivityManager: Killing 1198:com.android.settings/1000 (adj 975): empty #17
-11-19 01:04:59.746   499   539 I ActivityManager: Start proc 4676:com.google.android.projection.gearhead:shared/u0a118 for broadcast {com.google.android.projection.gearhead/com.google.android.apps.auto.components.app.fzero.FzeroReceiver}
-11-19 01:05:00.443   499  1101 I ActivityManager: Killing 3619:com.android.shell/2000 (adj 985): empty #17
-11-19 01:05:00.542   499   539 W ActivityManager: Slow operation: 99ms so far, now at startProcess: returned from zygote!
-11-19 01:05:00.542   499   539 W ActivityManager: Slow operation: 99ms so far, now at startProcess: done updating battery stats
-11-19 01:05:00.542   499   539 W ActivityManager: Slow operation: 99ms so far, now at startProcess: building log message
-11-19 01:05:00.542   499   539 I ActivityManager: Start proc 4710:com.google.android.projection.gearhead:car/u0a118 for broadcast {com.google.android.projection.gearhead/com.google.android.apps.auto.carservice.frx.FrxReceiver}
-11-19 01:05:00.542   499   539 W ActivityManager: Slow operation: 99ms so far, now at startProcess: starting to update pids map
-11-19 01:05:00.542   499   539 W ActivityManager: Slow operation: 99ms so far, now at startProcess: done updating pids map
-11-19 01:05:00.718  4435  4461 I umbra   : 01:05:00 mesh uploaded: 22.0 MB vertices, 2.2 MB indices
-11-19 01:05:00.718  4435  4461 I umbra   : 01:05:00 upload: 22.0 MB of vertices and 2.2 MB of indices in 47.1 ms (514 MB/s)
-11-19 01:05:00.722  4435  4461 I umbra   : 01:05:00 mesh bounds x 0.0..48.0 y -64.0..76.0 z 0.0..48.0, camera 37.6 blocks out, free band 497..995 of 1080 (46%), fog 66..146
-11-19 01:05:00.722  4435  4461 I umbra   : 01:05:00 camera: eye 47.2 75.2 48.1 look 24.0 58.0 24.0, 37.6 blocks out, fov 55
-11-19 01:05:00.722  4435  4461 I umbra   : 01:05:00 mesh: 234304 vertices drawn, passes 317172/34284/0 over 27 ranges
-11-19 01:05:00.722  4435  4461 I umbra   : 01:05:00 startup: meshed in 1368.8 ms over 66 calls (worst call 28.0 ms, worst unit 24.7 ms), longest frame 224.4 ms, frames over 250 ms: 0
-11-19 01:05:00.722  4435  4461 I umbra   : 01:05:00 units: worst meshing walk 24.7 ms, worst column copy 0.9 ms, 4 units over 10 ms of 10369
-11-19 01:05:00.722  4435  4461 I umbra   : 01:05:00 screen: loading -> home
-11-19 01:05:00.764   499  2958 I ActivityManager: Killing 3664:com.android.traceur/u0a103 (adj 985): empty #17
-11-19 01:05:00.779   499   539 I ActivityManager: Start proc 4738:com.google.android.setupwizard/u0a114 for broadcast {com.google.android.setupwizard/com.google.android.setupwizard.deferred.ComponentStateMitigationReceiver}
-11-19 01:05:00.899  4435  4461 I umbra   : 01:05:00 frame: the first world frame drew in 116.0 ms and the driver held it 61.5 ms (glFinish), 234304 vertices over 18 ranges
-11-19 01:05:00.909  4435  4461 I umbra   : 01:05:00 long frame 276.1 ms (mesh 100%, 66 calls)
-11-19 01:05:00.920   499  1634 I ActivityManager: Killing 3088:com.google.android.apps.docs/u0a139 (adj 985): empty #17
-11-19 01:05:00.930   499   539 I ActivityManager: Start proc 4768:com.google.android.syncadapters.contacts/u0a143 for broadcast {com.google.android.syncadapters.contacts/com.google.android.syncadapters.contacts.ContactsSyncAdapterBroadcastReceiver}
-11-19 01:05:01.063   499   539 I ActivityManager: Start proc 4792:com.google.android.videos/u0a142 for broadcast {com.google.android.videos/com.google.android.apps.play.movies.common.service.pinning.TransferService$Receiver}
-11-19 01:05:01.104   499  1634 I ActivityManager: Killing 3739:com.google.android.apps.maps/u0a134 (adj 945): empty #17
-11-19 01:05:01.463   499  2541 W ActivityManager: Unable to start service Intent { act=com.android.vending.contentfilters.IContentFiltersService.BIND pkg=com.android.vending } U=0: not found
-11-19 01:05:03.075   499   526 W ActivityManager: Foreground service started from background can not have location/camera/microphone access: service com.google.android.videos/com.google.android.apps.play.movies.common.service.pinning.TransferService
-11-19 01:05:03.176   499   539 I ActivityManager: Start proc 4909:com.google.android.youtube/u0a147 for broadcast {com.google.android.youtube/com.google.android.libraries.youtube.mdx.background.MdxBackgroundScanBootReceiver}
-11-19 01:05:03.265   499  2541 I ActivityManager: Killing 3994:com.google.android.apps.messaging:rcs/u0a146 (adj 945): empty #17
-11-19 01:05:04.428   499  1937 I ActivityManager: Killing 4034:com.google.android.apps.wallpaper/u0a148 (adj 985): empty #17
-11-19 01:05:05.061   499   538 I ActivityManager: Waited long enough for: ServiceRecord{c0d0ef0 u0 com.google.android.apps.messaging/.shared.datamodel.action.execution.ActionExecutorImpl$EmptyService}
-11-19 01:05:05.989   499   526 I ActivityManager: Finished processing BOOT_COMPLETED for u0
-11-19 01:05:06.007   499   539 I ActivityManager: Start proc 5050:com.google.android.cellbroadcastreceiver/u0a161 for broadcast {com.google.android.cellbroadcastreceiver/com.android.cellbroadcastreceiver.CellBroadcastReceiver}
-11-19 01:05:06.512   499  2958 I ActivityManager: Killing 3759:com.google.android.apps.photos/u0a137 (adj 985): empty #17
-11-19 01:05:07.921   499   539 I ActivityManager: Start proc 5104:com.google.android.gms.ui/u0a120 for service {com.google.android.gms/com.google.android.gms.chimera.UiIntentOperationService}
-11-19 01:05:09.145   499   539 I ActivityManager: Start proc 5138:com.android.dialer/u0a121 for broadcast {com.android.dialer/com.android.voicemail.impl.scheduling.TaskReceiver}
-11-19 01:05:09.888   499  2542 I ActivityManager: Killing 4222:com.google.android.apps.youtube.music/u0a140 (adj 945): empty #17
-11-19 01:05:10.511   499   539 I ActivityManager: Start proc 5197:com.google.android.apps.messaging:rcs/u0a146 for broadcast {com.google.android.apps.messaging/com.google.android.ims.receiver.ProvisioningEventReceiver}
-11-19 01:05:11.374   499   539 W ActivityManager: Slow operation: 102ms so far, now at startProcess: returned from zygote!
-11-19 01:05:11.374   499   539 W ActivityManager: Slow operation: 102ms so far, now at startProcess: done updating battery stats
-11-19 01:05:11.374   499   539 W ActivityManager: Slow operation: 102ms so far, now at startProcess: building log message
-11-19 01:05:11.374   499   539 I ActivityManager: Start proc 5227:com.google.android.apps.maps/u0a134 for broadcast {com.google.android.apps.maps/com.google.android.apps.gmm.ugc.ataplace.AtAPlaceService}
-11-19 01:05:11.374   499   539 W ActivityManager: Slow operation: 102ms so far, now at startProcess: starting to update pids map
-11-19 01:05:11.381   499   539 W ActivityManager: Slow operation: 109ms so far, now at startProcess: done updating pids map
-11-19 01:05:14.519   499  1937 I ActivityManager: Killing 4378:com.google.android.deskclock/u0a128 (adj 985): empty #17
-11-19 01:05:15.253   499  3942 I ActivityManager: Killing 4463:com.google.android.gm/u0a135 (adj 985): empty #17
-11-19 01:05:20.459   499  3942 I ActivityManager: Killing 4532:com.android.chrome/u0a132 (adj 975): empty #17
-11-19 01:05:22.167   499  1935 W ActivityManager: Unable to start service Intent { act=com.google.android.gms.auth.key.retrieval.service.START pkg=com.google.android.gms } U=0: not found
-11-19 01:05:22.189   499  2541 W ActivityManager: Unbind failed: could not find connection for android.os.BinderProxy@87be815
-11-19 01:05:23.266   499  1935 I ActivityManager: Killing 4557:com.google.android.onetimeinitializer/u0a152 (adj 985): empty #17
-11-19 01:05:23.609   499   539 I ActivityManager: Start proc 5422:com.google.android.apps.photos/u0a137 for broadcast {com.google.android.apps.photos/com.google.android.apps.photos.experiments.phenotype.full.PhenotypeUpdateBroadcastReceiver}
-11-19 01:05:24.508   499   539 I ActivityManager: Start proc 5460:com.google.android.apps.pixelmigrate/u0a112 for broadcast {com.google.android.apps.pixelmigrate/com.google.android.apps.pixelmigrate.component.PhenotypeUpdateReceiver}
-11-19 01:05:24.698   499   539 I ActivityManager: Start proc 5493:com.google.android.apps.restore/u0a122 for broadcast {com.google.android.apps.restore/com.google.android.apps.pixelmigrate.component.PhenotypeUpdateReceiver}
-11-19 01:05:24.870   499  2140 I ActivityManager: Killing 4710:com.google.android.projection.gearhead:car/u0a118 (adj 985): empty #17
-11-19 01:05:24.979   499   539 I ActivityManager: Start proc 5533:com.google.android.apps.youtube.music/u0a140 for broadcast {com.google.android.apps.youtube.music/com.google.firebase.iid.FirebaseInstanceIdReceiver}
-11-19 01:05:26.051   499   539 W ActivityManager: Slow operation: 61ms so far, now at startProcess: returned from zygote!
-11-19 01:05:26.060   499   539 W ActivityManager: Slow operation: 70ms so far, now at startProcess: done updating battery stats
-11-19 01:05:26.060   499   539 W ActivityManager: Slow operation: 70ms so far, now at startProcess: building log message
-11-19 01:05:26.060   499   539 I ActivityManager: Start proc 5625:com.google.android.gm/u0a135 for broadcast {com.google.android.gm/com.google.android.gm.MailIntentReceiver}
-11-19 01:05:26.060   499   539 W ActivityManager: Slow operation: 70ms so far, now at startProcess: starting to update pids map
-11-19 01:05:26.060   499   539 W ActivityManager: Slow operation: 70ms so far, now at startProcess: done updating pids map
-11-19 01:05:27.612   499  2542 W ActivityManager: Unable to start service Intent { cmp=com.google.android.gm/com.android.email.service.AttachmentService } U=0: not found
-11-19 01:05:27.904   499  1017 I ActivityManager: Killing 4676:com.google.android.projection.gearhead:shared/u0a118 (adj 955): empty #17
-11-19 01:05:31.274   499   593 I ActivityManager: Killing 4768:com.google.android.syncadapters.contacts/u0a143 (adj 985): empty #17
-11-19 01:05:31.447   499  1101 W ActivityManager: Unable to start service Intent { act=com.google.android.c2dm.intent.REGISTRATION pkg=com.google.android.apps.maps } U=0: not found
-11-19 01:05:32.484   499  1101 W ActivityManager: Slow operation: 57ms so far, now at getContentProviderImpl: before checkContentProviderPermission
-11-19 01:05:32.484   499  1101 W ActivityManager: Slow operation: 57ms so far, now at getContentProviderImpl: after checkContentProviderPermission
-11-19 01:05:32.484   499  1101 W ActivityManager: Slow operation: 57ms so far, now at getContentProviderImpl: incProviderCountLocked
-11-19 01:05:32.485   499  1101 W ActivityManager: Slow operation: 58ms so far, now at getContentProviderImpl: before updateOomAdj
-11-19 01:05:32.485   499  1101 W ActivityManager: Slow operation: 58ms so far, now at getContentProviderImpl: after updateOomAdj
-11-19 01:05:32.485   499  1101 W ActivityManager: Slow operation: 58ms so far, now at getContentProviderImpl: done!
-11-19 01:05:37.863   499   539 I ActivityManager: Start proc 5854:com.google.android.projection.gearhead:shared/u0a118 for broadcast {com.google.android.projection.gearhead/com.google.android.gearhead.common.phenotype.PhenotypeCommitter$CommitRequestReceiver}
-11-19 01:05:38.165   499  2542 I ActivityManager: Killing 5050:com.google.android.cellbroadcastreceiver/u0a161 (adj 985): empty #17
-11-19 01:05:38.359   499   592 I ActivityManager: Killing 3269:com.google.android.calendar/u0a145 (adj 985): empty #17
-11-19 01:05:38.370   499   539 I ActivityManager: Start proc 5888:com.google.android.apps.docs/u0a139 for broadcast {com.google.android.apps.docs/com.google.android.libraries.internal.growth.growthkit.internal.experiments.impl.PhenotypeBroadcastReceiver}
-11-19 01:05:38.956   499   539 W ActivityManager: Slow operation: 149ms so far, now at startProcess: returned from zygote!
-11-19 01:05:38.981   499   539 W ActivityManager: Slow operation: 174ms so far, now at startProcess: done updating battery stats
-11-19 01:05:38.981   499   539 W ActivityManager: Slow operation: 174ms so far, now at startProcess: building log message
-11-19 01:05:38.981   499   539 I ActivityManager: Start proc 5942:com.google.android.projection.gearhead:car/u0a118 for service {com.google.android.projection.gearhead/com.google.android.apps.auto.carservice.service.impl.GearheadCarStartupService}
-11-19 01:05:38.981   499   539 W ActivityManager: Slow operation: 174ms so far, now at startProcess: starting to update pids map
-11-19 01:05:38.981   499   539 W ActivityManager: Slow operation: 174ms so far, now at startProcess: done updating pids map
-11-19 01:05:39.376   499  2533 I ActivityManager: Killing 1507:android.process.acore/u0a79 (adj 975): empty #17
-11-19 01:05:40.079   499   592 I ActivityManager: Killing 5197:com.google.android.apps.messaging:rcs/u0a146 (adj 985): empty #17
-11-19 01:05:40.083   499   539 I ActivityManager: Start proc 6023:com.google.android.calendar/u0a145 for broadcast {com.google.android.calendar/com.google.android.apps.calendar.config.phenotypesupport.broadcast.PhenotypeBroadcastReceiver}
-11-19 01:05:41.523   499   592 I ActivityManager: Killing 4643:com.google.android.packageinstaller/u0a89 (adj 985): empty #17
-11-19 01:05:41.533   499  1745 W ActivityManager: Unable to start service Intent { act=com.google.android.gms.auth.key.retrieval.service.START pkg=com.google.android.gms } U=0: not found
-11-19 01:05:41.533   499  1745 W ActivityManager: Unbind failed: could not find connection for android.os.BinderProxy@3205fd5
-11-19 01:05:41.979   499   601 W ActivityManager: Unable to start service Intent { act=com.google.android.gms.drive.ApiService.RESET_AFTER_BOOT flg=0x4 cmp=com.google.android.gms/.drive.api.ApiService (has extras) } U=0: not found
-11-19 01:05:42.535   499  2541 I ActivityManager: Killing 4738:com.google.android.setupwizard/u0a114 (adj 985): empty #17
-11-19 01:05:42.575   499  1936 W ActivityManager: Unable to start service Intent { act=com.google.android.gms.auth.key.retrieval.service.START pkg=com.google.android.gms } U=0: not found
-11-19 01:05:42.587   499  1634 W ActivityManager: Unbind failed: could not find connection for android.os.BinderProxy@ef2f4e
-11-19 01:05:43.362  4435  4461 I umbra   : 01:05:43 self-test: requested
-11-19 01:05:43.374  4435  4461 I umbra   : 01:05:43 self-test: begin (1920x1080), tile 78 rows
-11-19 01:05:43.435  4435  4461 I umbra   : 01:05:43 self-test: pattern drawn in 55.4 ms into the offscreen target
-11-19 01:05:43.495  4435  4461 I umbra   : 01:05:43 player: sneak released
-11-19 01:05:43.495  4435  4461 I umbra   : 01:05:43 self-test: reading the offscreen target in 78-row tiles
-11-19 01:05:43.843   499  1109 I ActivityManager: Killing 4792:com.google.android.videos/u0a142 (adj 985): empty #17
-11-19 01:05:44.709  4435  4461 I umbra   : 01:05:44 self-test: pattern compared, 0 of 2073600 px differ, max channel diff 0
-11-19 01:05:44.864  4435  4461 I umbra   : 01:05:44 self-test: cube drawn in 76.7 ms
-11-19 01:05:46.182  4435  4461 I umbra   : 01:05:46 self-test: cube compared, 0 of 2073600 px differ
-11-19 01:05:46.342  4435  4461 I umbra   : 01:05:46 self-test: atlas tile 749 sampled in 0.2 ms
-11-19 01:05:46.420  4435  4461 I umbra   : 01:05:46 self-test: atlas 0 of 256 texels differ
-11-19 01:05:46.420  4435  4461 I umbra   : 01:05:46 SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 3058 ms, offscreen, atlas from the jar)
-11-19 01:05:46.420  4435  4461 I umbra   : 01:05:46 self-test: end after 3058 ms, 34 steps
-11-19 01:05:46.421  4435  4461 I umbra   : 01:05:46 last run: self-test saved to /data/user/0/org.umbra.client/files/last_selftest.txt
-11-19 01:05:46.421  4435  4461 I umbra   : 01:05:46 last run: LAST RUN SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 3058 ms, offscreen, atlas from the jar)
-11-19 01:05:46.429  4435  4461 I umbra   : 01:05:46 hud: 14 rows, content ends at 457 px inside a 486 px panel, fits
-11-19 01:05:47.099   499  2541 W ActivityManager: Unable to start service Intent { act=com.google.android.gms.auth.key.retrieval.service.START pkg=com.google.android.gms } U=0: not found
-11-19 01:05:47.099   499  2541 W ActivityManager: Unbind failed: could not find connection for android.os.BinderProxy@4eaa4c1
-11-19 01:05:54.328   499  1824 I ActivityManager: Killing 4909:com.google.android.youtube/u0a147 (adj 975): empty #17
-11-19 01:05:55.527  4435  4461 I umbra   : swap interval 0: accepted by EGL
-11-19 01:05:55.527  4435  4461 I umbra   : 01:05:55 benchmark: uncapped swap interval requested and accepted
-11-19 01:05:55.527  4435  4461 I umbra   : 01:05:55 benchmark: start, 60 seconds, gpu timer off
-11-19 01:05:55.545  4435  4461 I umbra   : 01:05:55 hud: 15 rows, content ends at 432 px inside a 486 px panel, fits
-11-19 01:05:56.195   499  2535 I ActivityManager: Killing 5227:com.google.android.apps.maps/u0a134 (adj 985): empty #17
-11-19 01:05:56.620   499   539 I ActivityManager: Start proc 6174:com.google.android.apps.wallpaper/u0a148 for broadcast {com.google.android.apps.wallpaper/com.android.wallpaper.module.DailyLoggingAlarmReceiver}
-11-19 01:05:56.811   499  1935 I ActivityManager: Killing 1313:com.google.android.apps.wellbeing/u0a113 (adj 985): empty #17
-11-19 01:06:02.679   499   539 I ActivityManager: Start proc 6227:android.process.acore/u0a79 for content provider {com.android.providers.contacts/com.android.providers.contacts.CallLogProvider}
-11-19 01:06:03.238   499   539 I ActivityManager: Start proc 6259:com.google.android.syncadapters.contacts/u0a143 for content provider {com.google.android.syncadapters.contacts/com.google.android.syncadapters.contacts.ProxyGalProvider}
-11-19 01:06:17.463   499  2533 W ActivityManager: Slow operation: 71ms so far, now at getContentProviderImpl: incProviderCountLocked
-11-19 01:06:17.463   499  2533 W ActivityManager: Slow operation: 71ms so far, now at getContentProviderImpl: before updateLruProcess
-11-19 01:06:17.463   499  2533 W ActivityManager: Slow operation: 71ms so far, now at getContentProviderImpl: after updateLruProcess
-11-19 01:06:17.463   499  2533 W ActivityManager: Slow operation: 71ms so far, now at getContentProviderImpl: before updateOomAdj
-11-19 01:06:17.464   499  2533 W ActivityManager: Slow operation: 72ms so far, now at getContentProviderImpl: after updateOomAdj
-11-19 01:06:17.464   499  2533 W ActivityManager: Slow operation: 72ms so far, now at getContentProviderImpl: done!
-11-19 01:06:26.843   499  1936 I ActivityManager: Killing 5460:com.google.android.apps.pixelmigrate/u0a112 (adj 985): empty #17
-11-19 01:06:26.843   499  1936 I ActivityManager: Killing 3508:com.google.android.apps.messaging/u0a146 (adj 985): empty #18
-11-19 01:06:26.843   499  1936 I ActivityManager: Killing 2995:com.google.android.gms.unstable/u0a120 (adj 995): empty #19
-11-19 01:06:26.843   499  1936 I ActivityManager: Killing 5104:com.google.android.gms.ui/u0a120 (adj 995): empty #20
-11-19 01:06:43.905   499   592 I ActivityManager: Killing 5533:com.google.android.apps.youtube.music/u0a140 (adj 975): empty #17
-11-19 01:06:46.971   499   539 I ActivityManager: Start proc 6353:com.google.android.gms.unstable/u0a120 for service {com.google.android.gms/com.google.android.gms.droidguard.DroidGuardService}
-11-19 01:06:55.026   499  1935 I ActivityManager: Killing 5854:com.google.android.projection.gearhead:shared/u0a118 (adj 925): empty #17
-11-19 01:06:55.060   499  1935 I ActivityManager: Killing 5942:com.google.android.projection.gearhead:car/u0a118 (adj 915): empty #17
-11-19 01:06:55.632  4435  4461 I umbra   : swap interval 1: accepted by EGL
-11-19 01:06:55.632  4435  4461 I umbra   : 01:06:55 benchmark: swap interval restored to 1
-11-19 01:06:55.633  4435  4461 I umbra   : 01:06:55 bench: 827 frames  avg 72.67 ms (13 fps)
-11-19 01:06:55.633  4435  4461 I umbra   : 1% low 9 fps (109.68 ms)
-11-19 01:06:55.633  4435  4461 I umbra   : median 72.64 ms  worst 122.01 ms
-11-19 01:06:55.633  4435  4461 I umbra   : Android Emulator OpenGL ES Translator (Google SwiftShader) | Android OpenGL ES 3.0
-11-19 01:06:55.633  4435  4461 I umbra   : gpu n/a (no GPU timer results)
-11-19 01:06:55.633  4435  4461 I umbra   : vsync: uncapped requested
-11-19 01:06:55.633  4435  4461 I umbra   : 01:06:55 last run: benchmark saved to /data/user/0/org.umbra.client/files/last_bench.txt
-11-19 01:06:55.633  4435  4461 I umbra   : 01:06:55 last run: LAST RUN SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 3058 ms, offscreen, atlas from the jar) bench: 827 frames  avg 72.67 ms (13 fps) 1% low 9 fps (109.68 ms) median 72.64 ms  worst 122.01 ms Android Emulator OpenGL ES Translator (Google SwiftShade
-11-19 01:06:55.640  4435  4461 I umbra   : 01:06:55 hud: 21 rows, content ends at 452 px inside a 492 px panel, fits
-11-19 01:06:59.847  4435  4461 I umbra   : 01:06:59 player: spawned at 24.50 66.01 24.50 (floor 66.00), eye 67.63
-11-19 01:06:59.847  4435  4461 I umbra   : 01:06:59 player: first-person view on; drag to look, hold to walk, tap to jump
-11-19 01:06:59.848  4435  4461 I umbra   : 01:06:59 player: at 24.50 66.00 24.50, yaw 0.00 pitch -0.25, on ground, 0 steps up
-11-19 01:06:59.851  4435  4461 I umbra   : 01:06:59 hud: hand hotbar 0 at 621,898 size 115x115 on 1920x1080
-11-19 01:06:59.851  4435  4461 I umbra   : 01:06:59 hud: hand hotbar 1 at 762,898 size 115x115 on 1920x1080
-11-19 01:06:59.851  4435  4461 I umbra   : 01:06:59 hud: hand hotbar 2 at 902,898 size 115x115 on 1920x1080
-11-19 01:06:59.851  4435  4461 I umbra   : 01:06:59 hud: hand hotbar 3 at 1042,898 size 115x115 on 1920x1080
-11-19 01:06:59.851  4435  4461 I umbra   : 01:06:59 hud: hand hotbar 4 at 1182,898 size 115x115 on 1920x1080
-11-19 01:06:59.851  4435  4461 I umbra   : 01:06:59 hud: hand break at 1447,535 size 280x132 on 1920x1080
-11-19 01:06:59.851  4435  4461 I umbra   : 01:06:59 hud: hand place at 1447,692 size 280x132 on 1920x1080
-11-19 01:06:59.851  4435  4461 I umbra   : 01:06:59 hud: hand sneak at 66,717 size 280x132 on 1920x1080 (held)
-11-19 01:06:59.872  4435  4461 I umbra   : 01:06:59 player: tap, jumping
-11-19 01:07:01.849  4435  4461 I umbra   : 01:07:01 player: at 24.50 66.00 24.50, yaw 0.00 pitch -0.25, on ground, 0 steps up
-11-19 01:07:02.838  4435  4461 I umbra   : 01:07:02 player: holding, walking forward
-11-19 01:07:03.851  4435  4461 I umbra   : 01:07:03 player: at 24.50 66.00 24.30, yaw 0.00 pitch -0.25, on ground, 0 steps up
-11-19 01:07:05.865  4435  4461 I umbra   : 01:07:05 player: at 24.50 66.00 24.30, yaw 0.00 pitch -0.25, on ground, 0 steps up
-11-19 01:07:07.882  4435  4461 I umbra   : 01:07:07 player: at 24.50 66.00 24.30, yaw -1.45 pitch -0.25, on ground, 0 steps up
-11-19 01:07:09.157  4435  4461 I umbra   : 01:07:09 player: holding, walking forward
-11-19 01:07:09.897  4435  4461 I umbra   : 01:07:09 player: at 25.70 66.00 24.00, yaw -1.45 pitch -0.25, on ground, 0 steps up
-11-19 01:07:11.925  4435  4461 I umbra   : 01:07:11 player: at 25.70 66.00 23.84, yaw -1.45 pitch -0.25, on ground, 0 steps up
-11-19 01:07:12.932  4435  4461 I umbra   : 01:07:12 player: tap, jumping
-11-19 01:07:13.930  4435  4461 I umbra   : 01:07:13 player: at 25.70 66.00 23.84, yaw -1.45 pitch -0.25, on ground, 0 steps up
-11-19 01:07:15.470   499  1935 I ActivityManager: Killing 5493:com.google.android.apps.restore/u0a122 (adj 985): empty #17
-11-19 01:07:15.851  4435  4461 I umbra   : 01:07:15 player: hotbar slot 4 selected (oak_slab)
-11-19 01:07:15.946  4435  4461 I umbra   : 01:07:15 player: at 25.70 66.00 23.84, yaw -1.45 pitch -0.25, on ground, 0 steps up
-11-19 01:07:17.947  4435  4461 I umbra   : 01:07:17 player: at 25.70 66.00 23.84, yaw -1.45 pitch -0.25, on ground, 0 steps up
-11-19 01:07:19.967  4435  4461 I umbra   : 01:07:19 player: at 25.70 66.00 23.84, yaw -1.45 pitch -1.52, on ground, 0 steps up
-11-19 01:07:21.987  4435  4461 I umbra   : 01:07:21 player: at 25.70 66.00 23.84, yaw -1.45 pitch -1.52, on ground, 0 steps up
-11-19 01:07:22.363  4435  4461 I umbra   : 01:07:22 player: break tapped
-11-19 01:07:22.363  4435  4461 I umbra   : 01:07:22 player: break -> 1 (broke grass_block at 25 65 23)
-11-19 01:07:22.363  4435  4461 I umbra   : 01:07:22 player: re-meshing 1 column(s) after edit 1
-11-19 01:07:22.725  4435  4461 I umbra   : 01:07:22 edit: uploaded 3 slot(s), 727.3 KB of vertices, 90.9 KB of indices
-11-19 01:07:22.725  4435  4461 I umbra   : 01:07:22 edit: re-meshed 1 of 9 columns in 125.1 ms over 7 calls (worst call 20.4 ms, worst slice 7.0 ms), 3 slot(s) changed
-11-19 01:07:22.732  4435  4461 I umbra   : 01:07:22 edit: on screen in 368.9 ms (re-mesh 361.8 ms from 49.3 ms after the edit, of which the sub-upload 1.00 ms; the frame that drew it 7.1 ms)
-11-19 01:07:23.993  4435  4461 I umbra   : 01:07:23 player: at 25.70 65.00 23.84, yaw -1.45 pitch -1.52, on ground, 0 steps up
-11-19 01:07:26.012  4435  4461 I umbra   : 01:07:26 player: at 25.70 65.00 23.84, yaw -1.45 pitch -1.52, on ground, 0 steps up
-11-19 01:07:28.019  4435  4461 I umbra   : 01:07:28 player: at 25.70 65.00 23.84, yaw -1.45 pitch -1.52, on ground, 0 steps up
-11-19 01:07:30.050  4435  4461 I umbra   : 01:07:30 player: at 25.70 65.00 23.84, yaw -1.45 pitch -1.52, on ground, 0 steps up
-11-19 01:07:30.761  4435  4461 I umbra   : 01:07:30 player: place tapped
-11-19 01:07:30.761  4435  4461 I umbra   : 01:07:30 player: place -> 1 (placed oak_slab at 25 65 23)
-11-19 01:07:30.761  4435  4461 I umbra   : 01:07:30 player: re-meshing 1 column(s) after edit 2
-11-19 01:07:31.077  4435  4461 I umbra   : 01:07:31 edit: uploaded 3 slot(s), 728.1 KB of vertices, 91.0 KB of indices
-11-19 01:07:31.077  4435  4461 I umbra   : 01:07:31 edit: re-meshed 1 of 9 columns in 116.7 ms over 6 calls (worst call 24.5 ms, worst slice 8.7 ms), 3 slot(s) changed
-11-19 01:07:31.082  4435  4461 I umbra   : 01:07:31 edit: on screen in 321.0 ms (re-mesh 315.9 ms from 36.2 ms after the edit, of which the sub-upload 0.68 ms; the frame that drew it 5.1 ms)
-11-19 01:07:32.090  4435  4461 I umbra   : 01:07:32 player: at 25.70 65.00 23.84, yaw -1.45 pitch -1.52, on ground, 0 steps up
-11-19 01:07:34.101  4435  4461 I umbra   : 01:07:34 player: at 25.70 65.00 23.84, yaw -1.45 pitch -1.52, on ground, 0 steps up
-11-19 01:07:36.118  4435  4461 I umbra   : 01:07:36 player: at 25.70 65.00 23.84, yaw -1.45 pitch -1.52, on ground, 0 steps up
-11-19 01:07:36.458  4435  4461 I umbra   : 01:07:36 player: sneak held
-11-19 01:07:37.712  4435  4461 I umbra   : 01:07:37 player: sneak released
-11-19 01:07:38.157  4435  4461 I umbra   : 01:07:38 player: at 25.70 65.00 23.84, yaw -1.45 pitch -1.52, on ground, 0 steps up
-11-19 01:07:38.971   499  2462 I ActivityManager: Force stopping org.umbra.client appid=10167 user=0: from pid 6648
-11-19 01:07:38.972   499  2462 I ActivityManager: Killing 4435:org.umbra.client/u0a167 (adj 0): stop org.umbra.client due to from pid 6648
-11-19 01:07:39.044   499  2535 W WindowManager: Failed looking up window session=Session{ebb7bb2 4435:u0a10167} callers=com.android.server.wm.WindowManagerService.windowForClientLocked:5425 com.android.server.wm.WindowState$DeathRecipient.binderDied:2810 android.os.IBinder$DeathRecipient.binderDied:305 
-11-19 01:07:39.044   499  2535 I WindowManager: WIN DEATH: null
-11-19 01:07:39.054   499   532 W ActivityManager: setHasOverlayUi called on unknown pid: 4435
-11-19 01:07:39.547   499   532 I WindowManager: Override config changes=20000480 {1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h659dp 420dpi nrml port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 1920) mAppBounds=Rect(0, 0 - 1080, 1794) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} s.72} for displayId=0
-11-19 01:07:41.095   499   539 I ActivityManager: Start proc 6663:org.umbra.client/u0a167 for pre-top-activity {org.umbra.client/org.umbra.client.UmbraNet$UmbraActivity}
-11-19 01:07:41.313  6663  6692 I umbra   : android_main: files /data/user/0/org.umbra.client/files
-11-19 01:07:41.316  6663  6692 I umbra   : goose core initialised
-11-19 01:07:41.317  6663  6692 I umbra   : net: UmbraNet loaded: download and the file picker are available
-11-19 01:07:41.344  6663  6692 I umbra   : app cmd 10, window 0x0
-11-19 01:07:41.344  6663  6692 I umbra   : no window yet: waiting for the activity to become visible
-11-19 01:07:41.345  6663  6692 I umbra   : app cmd 11, window 0x0
-11-19 01:07:41.355  6663  6692 I umbra   : app cmd 0, window 0x0
-11-19 01:07:41.396  6663  6692 I umbra   : app cmd 1, window 0x7418c00826d0
-11-19 01:07:41.599  6663  6692 I umbra   : EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-11-19 01:07:41.599  6663  6692 I umbra   : app cmd 3, window 0x7418c00826d0
-11-19 01:07:41.599  6663  6692 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
-11-19 01:07:41.599  6663  6692 I umbra   : app cmd 5, window 0x7418c00826d0
-11-19 01:07:41.599  6663  6692 I umbra   : app cmd 4, window 0x7418c00826d0
-11-19 01:07:41.599  6663  6692 I umbra   : app cmd 6, window 0x7418c00826d0
-11-19 01:07:41.599  6663  6692 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 1920x1080, density bucket 420 (scale 2.62)
-11-19 01:07:41.599  6663  6692 I umbra   : 01:07:41 last run: LAST RUN SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 3058 ms, offscreen, atlas from the jar) bench: 827 frames  avg 72.67 ms (13 fps) 1% low 9 fps (109.68 ms) median 72.64 ms  worst 122.01 ms Android Emulator OpenGL ES Translator (Google SwiftShade
-11-19 01:07:41.599  6663  6692 I umbra   : 01:07:41 ---- Umbra starting, build fd418ad ----
-11-19 01:07:41.600  6663  6692 I umbra   : 01:07:41 core: umbra core: formats and meshing
-11-19 01:07:41.602  6663  6692 I umbra   : 01:07:41 previous run did not exit cleanly
-11-19 01:07:41.711   499   532 I WindowManager: Override config changes=20000480 {1.0 310mcc260mnc [en_US] ldltr sw411dp w683dp h387dp 420dpi nrml land finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1794, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_90} s.106} for displayId=0
-11-19 01:07:41.851  6663  6692 I umbra   : 01:07:41 shaders: 5 programs compiled and linked in 248.7 ms (mesh 136.5, hud 50.1, the rest 62.1) -- once, at start
-11-19 01:07:41.851  6663  6692 I umbra   : 01:07:41 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
-11-19 01:07:41.851  6663  6692 I umbra   : 01:07:41 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-11-19 01:07:41.851  6663  6692 I umbra   : 01:07:41 GL_VENDOR Google (Google Inc.)
-11-19 01:07:41.851  6663  6692 I umbra   : 01:07:41 depth bits 24, vertex highp 127^23, fragment highp 127^23
-11-19 01:07:42.995  6663  6692 I umbra   : 01:07:42 jar: /data/local/tmp/umbra-client.jar, 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's
-11-19 01:07:42.995  6663  6692 I umbra   : 01:07:42 edits: the file for saved edits is /data/user/0/org.umbra.client/files/edits.txt
-11-19 01:07:42.995  6663  6692 I umbra   : 01:07:42 world: no world from the game in the app's directory; this is the demo scene (PUT A SAVE AT /data/user/0/org.umbra.client/files/world.zip)
-11-19 01:07:42.995  6663  6692 I umbra   : 01:07:42 gamefiles: platform hooks download, picker import, files dir /data/user/0/org.umbra.client/files
-11-19 01:07:42.996  6663  6692 I umbra   : 01:07:42 atlas: 1024x1024, 4194304 bytes, 1225 tiles, hash 3ca6170e, 1 missing
-11-19 01:07:42.996  6663  6692 I umbra   : 01:07:42 atlas: source is the client jar
-11-19 01:07:42.996  6663  6692 I umbra   : 01:07:42 atlas: 1 block faces asked for a tile that is missing
-11-19 01:07:43.008  6663  6692 I umbra   : 01:07:43 edits: 2 saved edit(s) replayed from /data/user/0/org.umbra.client/files/edits.txt, 2 line(s) in the file, 0 refused
-11-19 01:07:43.014  6663  6692 I umbra   : 01:07:43 screen: home -> loading
-11-19 01:07:43.014  6663  6692 I umbra   : 01:07:43 demo world built in 2.2 ms; meshing starts in slices of at most 20 ms
-11-19 01:07:43.015  6663  6692 I umbra   : 01:07:43 check: renderer                     Android Emulator OpenGL ES Translator (Google SwiftShader)
-11-19 01:07:43.015  6663  6692 I umbra   : 01:07:43 check: gl version                   OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-11-19 01:07:43.015  6663  6692 I umbra   : 01:07:43 check: max texture size             8192 px
-11-19 01:07:43.015  6663  6692 I umbra   : 01:07:43 check: gpu timer query              none  (not available)
-11-19 01:07:43.015  6663  6692 I umbra   : 01:07:43 check: shader programs              mesh ok, hud ok, pattern ok, cube ok, atlas ok
-11-19 01:07:43.015  6663  6692 I umbra   : 01:07:43 check: depth buffer                 24 bits
-11-19 01:07:43.015  6663  6692 I umbra   : 01:07:43 check: extension string             1412 chars
-11-19 01:07:43.015  6663  6692 I umbra   : 01:07:43 check: all device checks passed
-11-19 01:07:43.015  6663  6692 I umbra   : 01:07:43 hud: button 0 at 14,1028 size 580x36 on 1920x1080 (insets 0,63,126,0)
-11-19 01:07:43.015  6663  6692 I umbra   : 01:07:43 hud: button 1 at 606,1028 size 580x36 on 1920x1080 (insets 0,63,126,0)
-11-19 01:07:43.015  6663  6692 I umbra   : 01:07:43 hud: button 2 at 1198,1028 size 580x36 on 1920x1080 (insets 0,63,126,0)
-11-19 01:07:43.035  6663  6692 I umbra   : 01:07:43 hud: 18 rows, content ends at 458 px inside a 486 px panel, fits
-11-19 01:07:43.145  6663  6692 I umbra   : app cmd 4, window 0x7418c00826d0
-11-19 01:07:45.048  6663  6692 I umbra   : 01:07:45 mesh uploaded: 22.0 MB vertices, 2.2 MB indices
-11-19 01:07:45.048  6663  6692 I umbra   : 01:07:45 upload: 22.0 MB of vertices and 2.2 MB of indices in 14.7 ms (1642 MB/s)
-11-19 01:07:45.054  6663  6692 I umbra   : 01:07:45 mesh bounds x 0.0..48.0 y -64.0..76.0 z 0.0..48.0, camera 37.6 blocks out, free band 493..1022 of 1080 (49%), fog 66..146
-11-19 01:07:45.054  6663  6692 I umbra   : 01:07:45 camera: eye 47.2 75.2 48.1 look 24.0 58.0 24.0, 37.6 blocks out, fov 55
-11-19 01:07:45.054  6663  6692 I umbra   : 01:07:45 mesh: 234276 vertices drawn, passes 317130/34284/0 over 27 ranges
-11-19 01:07:45.054  6663  6692 I umbra   : 01:07:45 startup: meshed in 1125.9 ms over 55 calls (worst call 24.6 ms, worst unit 11.2 ms), longest frame 130.3 ms, frames over 250 ms: 0
-11-19 01:07:45.054  6663  6692 I umbra   : 01:07:45 units: worst meshing walk 11.2 ms, worst column copy 0.3 ms, 1 units over 10 ms of 10369
-11-19 01:07:45.054  6663  6692 I umbra   : 01:07:45 screen: loading -> home
-11-19 01:07:45.196  6663  6692 I umbra   : 01:07:45 frame: the first world frame drew in 87.9 ms and the driver held it 54.0 ms (glFinish), 234276 vertices over 18 ranges
+11-20 07:59:02.238   493  1854 I ActivityManager: Force stopping org.umbra.client appid=10167 user=0: from pid 6838
+11-20 07:59:02.238   493  1854 I ActivityManager: Killing 6797:org.umbra.client/u0a167 (adj 0): stop org.umbra.client due to from pid 6838
+11-20 07:59:02.266   493   527 W ActivityManager: setHasOverlayUi called on unknown pid: 6797
+11-20 07:59:02.640   493   527 I WindowManager: Override config changes=20000480 {1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h659dp 420dpi nrml port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 1920) mAppBounds=Rect(0, 0 - 1080, 1794) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0} s.420} for displayId=0
+11-20 07:59:03.493   493   808 I ActivityManager: Force stopping org.umbra.client appid=10167 user=0: from pid 6848
+11-20 07:59:04.623   493   534 I ActivityManager: Start proc 6872:org.umbra.client/u0a167 for pre-top-activity {org.umbra.client/org.umbra.client.UmbraNet$UmbraActivity}
+11-20 07:59:04.717  6872  6894 I umbra   : android_main: files /data/user/0/org.umbra.client/files
+11-20 07:59:04.718  6872  6894 I umbra   : goose core initialised
+11-20 07:59:04.719  6872  6894 I umbra   : net: UmbraNet loaded: download and the file picker are available
+11-20 07:59:04.719  6872  6894 I umbra   : app cmd 10, window 0x0
+11-20 07:59:04.719  6872  6894 I umbra   : no window yet: waiting for the activity to become visible
+11-20 07:59:04.720  6872  6894 I umbra   : app cmd 11, window 0x0
+11-20 07:59:04.721  6872  6894 I umbra   : app cmd 0, window 0x0
+11-20 07:59:04.757  6872  6894 I umbra   : app cmd 1, window 0x716a1905b4c0
+11-20 07:59:04.918  6872  6894 I umbra   : EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+11-20 07:59:04.918  6872  6894 I umbra   : app cmd 3, window 0x716a1905b4c0
+11-20 07:59:04.918  6872  6894 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
+11-20 07:59:04.918  6872  6894 I umbra   : app cmd 5, window 0x716a1905b4c0
+11-20 07:59:04.918  6872  6894 I umbra   : app cmd 4, window 0x716a1905b4c0
+11-20 07:59:04.918  6872  6894 I umbra   : app cmd 6, window 0x716a1905b4c0
+11-20 07:59:04.918  6872  6894 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 1920x1080, density bucket 420 (scale 2.62)
+11-20 07:59:04.920  6872  6894 I umbra   : 07:59:04 last run: LAST RUN SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 2795 ms, offscreen, atlas from the jar) bench: 874 frames  avg 68.75 ms (14 fps) 1% low 10 fps (99.75 ms) median 68.32 ms  worst 107.09 ms Android Emulator OpenGL ES Translator (Google SwiftShade
+11-20 07:59:04.920  6872  6894 I umbra   : 07:59:04 ---- Umbra starting, build d874d63 ----
+11-20 07:59:04.920  6872  6894 I umbra   : 07:59:04 core: umbra core: formats and meshing
+11-20 07:59:04.920  6872  6894 I umbra   : 07:59:04 previous run did not exit cleanly
+11-20 07:59:05.088   493   527 I WindowManager: Override config changes=20000480 {1.0 310mcc260mnc [en_US] ldltr sw411dp w683dp h387dp 420dpi nrml land finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1794, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_90} s.454} for displayId=0
+11-20 07:59:05.147  6872  6894 I umbra   : 07:59:05 shaders: 5 programs compiled and linked in 227.0 ms (mesh 45.8, hud 3.1, the rest 178.2) -- once, at start
+11-20 07:59:05.148  6872  6894 I umbra   : 07:59:05 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
+11-20 07:59:05.148  6872  6894 I umbra   : 07:59:05 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+11-20 07:59:05.148  6872  6894 I umbra   : 07:59:05 GL_VENDOR Google (Google Inc.)
+11-20 07:59:05.148  6872  6894 I umbra   : 07:59:05 depth bits 24, vertex highp 127^23, fragment highp 127^23
+11-20 07:59:06.386  6872  6894 I umbra   : 07:59:06 jar: /data/local/tmp/umbra-client.jar, 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's
+11-20 07:59:06.386  6872  6894 I umbra   : 07:59:06 edits: the file for saved edits is /data/user/0/org.umbra.client/files/edits.txt
+11-20 07:59:06.386  6872  6894 I umbra   : 07:59:06 stream: radius 1 asked for in radius.txt, 1 used (max 8)
+11-20 07:59:06.386  6872  6894 I umbra   : 07:59:06 stream: the world is streamed: radius 1 (max 8), the import validates the archive and the stream parses the window
+11-20 07:59:06.386  6872  6894 I umbra   : 07:59:06 world: a world from the game is in the app's directory; opening it
+11-20 07:59:06.386  6872  6894 I umbra   : 07:59:06 world: opening /data/user/0/org.umbra.client/files/world.zip (app directory, at start-up)
+11-20 07:59:06.392  6872  6894 I umbra   : 07:59:06 world: the archive holds 4 region file(s)
+11-20 07:59:07.242  6872  6894 I umbra   : 07:59:07 world: opened: 9 chunk(s) from 4 region file(s), radius 1, non-air blocks 282332, read errors 0, 9 chunk(s) parsed by the stream, missing from the save 0, 19.6 MB of region files, 856.0 ms
+11-20 07:59:07.242  6872  6894 I umbra   : 07:59:07 world: the block at 8,62,8 is minecraft:water
+11-20 07:59:07.242  6872  6894 I umbra   : 07:59:07 stream: centre chunk 0,0 radius 1 (9 chunks), 0 evicted, 9 to parse
+11-20 07:59:07.242  6872  6894 I umbra   : 07:59:07 world: the phone is drawing a world the game generated -- the columns are the save's, the blocks are the save's, and the jar's models drew them
+11-20 07:59:07.252  6872  6894 I umbra   : 07:59:07 screen: home -> loading
+11-20 07:59:07.252  6872  6894 I umbra   : 07:59:07 world: meshing 9 column(s) of the opened world, sliced as before
+11-20 07:59:07.252  6872  6894 I umbra   : 07:59:07 gamefiles: platform hooks download, picker import, files dir /data/user/0/org.umbra.client/files
+11-20 07:59:07.254  6872  6894 I umbra   : 07:59:07 atlas: 1024x1024, 4194304 bytes, 1225 tiles, hash 3ca6170e, 1 missing
+11-20 07:59:07.254  6872  6894 I umbra   : 07:59:07 atlas: source is the client jar
+11-20 07:59:07.254  6872  6894 I umbra   : 07:59:07 atlas: 1 block faces asked for a tile that is missing
+11-20 07:59:07.261  6872  6894 I umbra   : 07:59:07 edits: 2 saved edit(s) replayed from /data/user/0/org.umbra.client/files/edits.txt, 2 line(s) in the file, 0 refused
+11-20 07:59:07.264  6872  6894 I umbra   : 07:59:07 the opened world built in 0.1 ms; meshing starts in slices of at most 20 ms
+11-20 07:59:07.264  6872  6894 I umbra   : 07:59:07 check: renderer                     Android Emulator OpenGL ES Translator (Google SwiftShader)
+11-20 07:59:07.264  6872  6894 I umbra   : 07:59:07 check: gl version                   OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+11-20 07:59:07.264  6872  6894 I umbra   : 07:59:07 check: max texture size             8192 px
+11-20 07:59:07.264  6872  6894 I umbra   : 07:59:07 check: gpu timer query              none  (not available)
+11-20 07:59:07.264  6872  6894 I umbra   : 07:59:07 check: shader programs              mesh ok, hud ok, pattern ok, cube ok, atlas ok
+11-20 07:59:07.264  6872  6894 I umbra   : 07:59:07 check: depth buffer                 24 bits
+11-20 07:59:07.264  6872  6894 I umbra   : 07:59:07 check: extension string             1447 chars
+11-20 07:59:07.264  6872  6894 I umbra   : 07:59:07 check: all device checks passed
+11-20 07:59:07.264  6872  6894 I umbra   : 07:59:07 hud: button 0 at 14,1028 size 580x36 on 1920x1080 (insets 0,63,126,0)
+11-20 07:59:07.264  6872  6894 I umbra   : 07:59:07 hud: button 1 at 606,1028 size 580x36 on 1920x1080 (insets 0,63,126,0)
+11-20 07:59:07.264  6872  6894 I umbra   : 07:59:07 hud: button 2 at 1198,1028 size 580x36 on 1920x1080 (insets 0,63,126,0)
+11-20 07:59:07.285  6872  6894 I umbra   : 07:59:07 stream: window complete, 9 column(s) resident of 9 asked for (0 missing from the save, 0 parse error(s)), 1 slice(s), worst 0.0 ms
+11-20 07:59:07.285  6872  6894 I umbra   : 07:59:07 stream: the save's region files are 19.6 MB resident, and 9 chunk(s) have been parsed in total (0 evicted) since the world opened
+11-20 07:59:07.287  6872  6894 I umbra   : 07:59:07 world: meshing 9 column(s) of the opened world, sliced as before
+11-20 07:59:07.287  6872  6894 I umbra   : 07:59:07 hud: 18 rows, content ends at 458 px inside a 486 px panel, fits
+11-20 07:59:07.374  6872  6894 I umbra   : app cmd 4, window 0x716a1905b4c0
+11-20 07:59:08.991  6872  6894 I umbra   : 07:59:08 mesh uploaded: 22.0 MB vertices, 2.2 MB indices
+11-20 07:59:08.991  6872  6894 I umbra   : 07:59:08 upload: 22.0 MB of vertices and 2.2 MB of indices in 21.5 ms (1124 MB/s)
+11-20 07:59:08.996  6872  6894 I umbra   : 07:59:08 mesh bounds x -16.0..32.0 y -63.0..76.0 z -16.0..32.0, camera 37.6 blocks out, free band 493..1022 of 1080 (49%), fog 66..146
+11-20 07:59:08.996  6872  6894 I umbra   : 07:59:08 camera: eye 31.2 75.2 32.1 look 8.0 58.0 8.0, 37.6 blocks out, fov 55
+11-20 07:59:08.996  6872  6894 I umbra   : 07:59:08 mesh: 221744 vertices drawn, passes 318384/14232/0 over 27 ranges
+11-20 07:59:08.996  6872  6894 I umbra   : 07:59:08 mesh: 752671 block(s) drawn from a model, 55436 face(s) from a model, 0 block(s) whose blockstate had no model
+11-20 07:59:08.996  6872  6894 I umbra   : 07:59:08 startup: meshed in 971.2 ms over 48 calls (worst call 22.3 ms, worst unit 8.0 ms), longest frame 110.0 ms, frames over 250 ms: 0
+11-20 07:59:08.996  6872  6894 I umbra   : 07:59:08 units: worst meshing walk 8.0 ms, worst column copy 3.4 ms, 0 units over 10 ms of 10369
+11-20 07:59:08.996  6872  6894 I umbra   : 07:59:08 screen: loading -> home
+11-20 07:59:09.073  6872  6894 I umbra   : 07:59:09 frame: the first world frame drew in 59.1 ms and the driver held it 17.7 ms (glFinish), 221744 vertices over 12 ranges
+11-20 07:59:11.489  6872  6894 I umbra   : 07:59:11 player: no open cell within 6 blocks of 8,8; standing on the middle at floor 121.00, which may be walled in
+11-20 07:59:11.489  6872  6894 I umbra   : 07:59:11 player: spawned at 8.50 121.01 8.50 (floor 121.00), eye 122.63
+11-20 07:59:11.489  6872  6894 I umbra   : 07:59:11 player: first-person view on; drag to look, hold to walk, tap to jump
+11-20 07:59:11.490  6872  6894 I umbra   : 07:59:11 player: at 8.50 121.01 8.50, yaw 0.00 pitch -0.25, on ground, 0 steps up
+11-20 07:59:11.494  6872  6894 I umbra   : 07:59:11 hud: hand hotbar 0 at 621,898 size 115x115 on 1920x1080
+11-20 07:59:11.494  6872  6894 I umbra   : 07:59:11 hud: hand hotbar 1 at 762,898 size 115x115 on 1920x1080
+11-20 07:59:11.494  6872  6894 I umbra   : 07:59:11 hud: hand hotbar 2 at 902,898 size 115x115 on 1920x1080
+11-20 07:59:11.494  6872  6894 I umbra   : 07:59:11 hud: hand hotbar 3 at 1042,898 size 115x115 on 1920x1080
+11-20 07:59:11.494  6872  6894 I umbra   : 07:59:11 hud: hand hotbar 4 at 1182,898 size 115x115 on 1920x1080
+11-20 07:59:11.494  6872  6894 I umbra   : 07:59:11 hud: hand break at 1447,535 size 280x132 on 1920x1080
+11-20 07:59:11.494  6872  6894 I umbra   : 07:59:11 hud: hand place at 1447,692 size 280x132 on 1920x1080
+11-20 07:59:11.494  6872  6894 I umbra   : 07:59:11 hud: hand sneak at 66,717 size 280x132 on 1920x1080 (held)
+11-20 07:59:12.870  6872  6894 I umbra   : 07:59:12 player: holding, walking forward
+11-20 07:59:13.491  6872  6894 I umbra   : 07:59:13 player: at 8.50 121.01 8.50, yaw -2.26 pitch -0.25, on ground, 0 steps up
+11-20 07:59:15.501  6872  6894 I umbra   : 07:59:15 player: at 8.50 121.01 8.50, yaw -2.26 pitch -0.25, on ground, 0 steps up
+11-20 07:59:17.176  6872  6894 I umbra   : 07:59:17 player: holding, walking forward
+11-20 07:59:17.523  6872  6894 I umbra   : 07:59:17 player: at 8.50 121.01 8.50, yaw 1.74 pitch -0.25, on ground, 0 steps up
+11-20 07:59:19.525  6872  6894 I umbra   : 07:59:19 player: at 8.50 121.01 8.50, yaw 1.74 pitch -0.25, on ground, 0 steps up
+11-20 07:59:21.479  6872  6894 I umbra   : 07:59:21 player: holding, walking forward
+11-20 07:59:21.541  6872  6894 I umbra   : 07:59:21 player: at 8.50 121.01 8.50, yaw -0.57 pitch -0.25, on ground, 0 steps up
+11-20 07:59:23.556  6872  6894 I umbra   : 07:59:23 player: at 8.50 121.01 8.50, yaw -0.57 pitch -0.25, on ground, 0 steps up
+11-20 07:59:25.584  6872  6894 I umbra   : 07:59:25 player: at 8.50 121.01 8.50, yaw -2.80 pitch -0.25, on ground, 0 steps up
+11-20 07:59:25.694  6872  6894 I umbra   : 07:59:25 player: holding, walking forward
+11-20 07:59:27.612  6872  6894 I umbra   : 07:59:27 player: at 8.50 121.01 8.50, yaw -2.80 pitch -0.25, on ground, 0 steps up
+11-20 07:59:29.623  6872  6894 I umbra   : 07:59:29 player: at 8.50 121.01 8.50, yaw 1.23 pitch -0.25, on ground, 0 steps up
+11-20 07:59:29.927  6872  6894 I umbra   : 07:59:29 player: holding, walking forward
+11-20 07:59:31.653  6872  6894 I umbra   : 07:59:31 player: at 8.50 121.01 8.50, yaw 1.23 pitch -0.25, on ground, 0 steps up
+11-20 07:59:33.654  6872  6894 I umbra   : 07:59:33 player: at 8.50 121.01 8.50, yaw -1.07 pitch -0.25, on ground, 0 steps up
+11-20 07:59:34.057  6872  6894 I umbra   : 07:59:34 player: holding, walking forward
+11-20 07:59:35.667  6872  6894 I umbra   : 07:59:35 player: at 8.50 121.01 8.50, yaw -1.07 pitch -0.25, on ground, 0 steps up
+11-20 07:59:37.695  6872  6894 I umbra   : 07:59:37 player: at 8.50 121.01 8.50, yaw 3.08 pitch -0.25, on ground, 0 steps up
+11-20 07:59:38.392  6872  6894 I umbra   : 07:59:38 player: holding, walking forward
+11-20 07:59:39.708  6872  6894 I umbra   : 07:59:39 player: at 8.50 121.01 8.50, yaw 3.08 pitch -0.25, on ground, 0 steps up
+11-20 07:59:41.712  6872  6894 I umbra   : 07:59:41 player: at 8.50 121.01 8.50, yaw 0.74 pitch -0.25, on ground, 0 steps up
+11-20 07:59:42.594  6872  6894 I umbra   : 07:59:42 player: holding, walking forward
+11-20 07:59:43.712  6872  6894 I umbra   : 07:59:43 player: at 8.50 121.01 8.50, yaw 0.74 pitch -0.25, on ground, 0 steps up

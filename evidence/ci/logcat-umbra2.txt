@@ -1,76 +1,78 @@
---------- beginning of kernel
 --------- beginning of main
+--------- beginning of kernel
 --------- beginning of system
-11-20 07:32:36.472  3952  3980 I umbra   : android_main: files /data/user/0/org.umbra.client/files
-11-20 07:32:36.472  3952  3980 I umbra   : goose core initialised
-11-20 07:32:36.472  3952  3980 I umbra   : net: UmbraNet loaded: download and the file picker are available
-11-20 07:32:36.473  3952  3980 I umbra   : app cmd 10, window 0x0
-11-20 07:32:36.473  3952  3980 I umbra   : no window yet: waiting for the activity to become visible
-11-20 07:32:36.473  3952  3980 I umbra   : app cmd 11, window 0x0
-11-20 07:32:36.720  3952  3980 I umbra   : app cmd 0, window 0x0
-11-20 07:32:36.827  3952  3980 I umbra   : app cmd 1, window 0x70e6bb5436d0
-11-20 07:32:36.928  3952  3980 I umbra   : EGL up: 1920x1080 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-11-20 07:32:36.928  3952  3980 I umbra   : app cmd 3, window 0x70e6bb5436d0
-11-20 07:32:36.929  3952  3980 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
-11-20 07:32:36.929  3952  3980 I umbra   : app cmd 5, window 0x70e6bb5436d0
-11-20 07:32:36.929  3952  3980 I umbra   : app cmd 4, window 0x70e6bb5436d0
-11-20 07:32:36.929  3952  3980 I umbra   : app cmd 4, window 0x70e6bb5436d0
-11-20 07:32:36.929  3952  3980 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 1920x1080, density bucket 420 (scale 2.62)
-11-20 07:32:36.929  3952  3980 I umbra   : 07:32:36 last run: nothing recorded yet
-11-20 07:32:36.929  3952  3980 I umbra   : 07:32:36 ---- Umbra starting, build 734154b ----
-11-20 07:32:36.929  3952  3980 I umbra   : 07:32:36 core: umbra core: formats and meshing
-11-20 07:32:36.984  3952  3980 I umbra   : 07:32:36 shaders: 5 programs compiled and linked in 54.8 ms (mesh 11.2, hud 20.0, the rest 23.7) -- once, at start
-11-20 07:32:36.986  3952  3980 I umbra   : 07:32:36 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
-11-20 07:32:36.986  3952  3980 I umbra   : 07:32:36 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-11-20 07:32:36.986  3952  3980 I umbra   : 07:32:36 GL_VENDOR Google (Google Inc.)
-11-20 07:32:36.986  3952  3980 I umbra   : 07:32:36 depth bits 24, vertex highp 127^23, fragment highp 127^23
-11-20 07:32:38.682  3952  3980 I umbra   : 07:32:38 jar: /data/local/tmp/umbra-client.jar, 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's
-11-20 07:32:38.682  3952  3980 I umbra   : 07:32:38 edits: the file for saved edits is /data/user/0/org.umbra.client/files/edits.txt
-11-20 07:32:38.682  3952  3980 I umbra   : 07:32:38 stream: the world is streamed: radius 4 (max 8), the import validates the archive and the stream parses the window
-11-20 07:32:38.682  3952  3980 I umbra   : 07:32:38 world: no world from the game in the app's directory; this is the demo scene (PUT A SAVE AT /data/user/0/org.umbra.client/files/world.zip)
-11-20 07:32:38.682  3952  3980 I umbra   : 07:32:38 gamefiles: platform hooks download, picker import, files dir /data/user/0/org.umbra.client/files
-11-20 07:32:38.682  3952  3980 I umbra   : 07:32:38 atlas: 1024x1024, 4194304 bytes, 1225 tiles, hash 3ca6170e, 1 missing
-11-20 07:32:38.682  3952  3980 I umbra   : 07:32:38 atlas: source is the client jar
-11-20 07:32:38.682  3952  3980 I umbra   : 07:32:38 atlas: 1 block faces asked for a tile that is missing
-11-20 07:32:38.731  3952  3980 I umbra   : 07:32:38 edits: no saved edits at /data/user/0/org.umbra.client/files/edits.txt (this world has none yet)
-11-20 07:32:38.743  3952  3980 I umbra   : 07:32:38 screen: home -> loading
-11-20 07:32:38.743  3952  3980 I umbra   : 07:32:38 demo world built in 2.0 ms; meshing starts in slices of at most 20 ms
-11-20 07:32:38.743  3952  3980 I umbra   : 07:32:38 check: renderer                     Android Emulator OpenGL ES Translator (Google SwiftShader)
-11-20 07:32:38.743  3952  3980 I umbra   : 07:32:38 check: gl version                   OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
-11-20 07:32:38.743  3952  3980 I umbra   : 07:32:38 check: max texture size             8192 px
-11-20 07:32:38.743  3952  3980 I umbra   : 07:32:38 check: gpu timer query              none  (not available)
-11-20 07:32:38.743  3952  3980 I umbra   : 07:32:38 check: shader programs              mesh ok, hud ok, pattern ok, cube ok, atlas ok
-11-20 07:32:38.743  3952  3980 I umbra   : 07:32:38 check: depth buffer                 24 bits
-11-20 07:32:38.743  3952  3980 I umbra   : 07:32:38 check: extension string             1447 chars
-11-20 07:32:38.743  3952  3980 I umbra   : 07:32:38 check: all device checks passed
-11-20 07:32:38.743  3952  3980 I umbra   : 07:32:38 hud: button 0 at 21,1005 size 573x52 on 1920x1080 (insets 0,63,126,0)
-11-20 07:32:38.743  3952  3980 I umbra   : 07:32:38 hud: button 1 at 610,1005 size 573x52 on 1920x1080 (insets 0,63,126,0)
-11-20 07:32:38.743  3952  3980 I umbra   : 07:32:38 hud: button 2 at 1199,1005 size 573x52 on 1920x1080 (insets 0,63,126,0)
-11-20 07:32:38.765  3952  3980 I umbra   : 07:32:38 hud: 12 rows, content ends at 484 px inside a 486 px panel, fits
-11-20 07:32:38.969  3952  3980 I umbra   : app cmd 6, window 0x70e6bb5436d0
-11-20 07:32:41.506  3952  3980 I umbra   : 07:32:41 mesh uploaded: 22.0 MB vertices, 2.2 MB indices
-11-20 07:32:41.506  3952  3980 I umbra   : 07:32:41 upload: 22.0 MB of vertices and 2.2 MB of indices in 24.6 ms (985 MB/s)
-11-20 07:32:41.510  3952  3980 I umbra   : 07:32:41 mesh bounds x 0.0..48.0 y -64.0..76.0 z 0.0..48.0, camera 37.6 blocks out, free band 497..995 of 1080 (46%), fog 66..146
-11-20 07:32:41.510  3952  3980 I umbra   : 07:32:41 camera: eye 47.2 75.2 48.1 look 24.0 58.0 24.0, 37.6 blocks out, fov 55
-11-20 07:32:41.510  3952  3980 I umbra   : 07:32:41 mesh: 234304 vertices drawn, passes 317172/34284/0 over 27 ranges
-11-20 07:32:41.510  3952  3980 I umbra   : 07:32:41 mesh: 300826 block(s) drawn from a model, 58576 face(s) from a model, 0 block(s) whose blockstate had no model
-11-20 07:32:41.510  3952  3980 I umbra   : 07:32:41 startup: meshed in 1267.6 ms over 62 calls (worst call 26.4 ms, worst unit 10.1 ms), longest frame 225.8 ms, frames over 250 ms: 0
-11-20 07:32:41.510  3952  3980 I umbra   : 07:32:41 units: worst meshing walk 10.1 ms, worst column copy 0.4 ms, 1 units over 10 ms of 10369
-11-20 07:32:41.510  3952  3980 I umbra   : 07:32:41 screen: loading -> home
-11-20 07:32:41.684  3952  3980 I umbra   : 07:32:41 frame: the first world frame drew in 123.6 ms and the driver held it 51.0 ms (glFinish), 234304 vertices over 18 ranges
-11-20 07:32:41.696  3952  3980 I umbra   : 07:32:41 long frame 252.0 ms (mesh 100%, 62 calls)
-11-20 07:33:19.363  3952  3980 I umbra   : 07:33:19 self-test: requested
-11-20 07:33:19.363  3952  3980 I umbra   : 07:33:19 self-test: begin (1920x1080), tile 78 rows
-11-20 07:33:19.436  3952  3980 I umbra   : 07:33:19 self-test: pattern drawn in 70.4 ms into the offscreen target
-11-20 07:33:19.511  3952  3980 I umbra   : 07:33:19 player: sneak released
-11-20 07:33:19.511  3952  3980 I umbra   : 07:33:19 self-test: reading the offscreen target in 78-row tiles
-11-20 07:33:20.659  3952  3980 I umbra   : 07:33:20 self-test: pattern compared, 0 of 2073600 px differ, max channel diff 0
-11-20 07:33:20.780  3952  3980 I umbra   : 07:33:20 self-test: cube drawn in 46.2 ms
-11-20 07:33:22.013  3952  3980 I umbra   : 07:33:22 self-test: cube compared, 0 of 2073600 px differ
-11-20 07:33:22.164  3952  3980 I umbra   : 07:33:22 self-test: atlas tile 749 sampled in 0.2 ms
-11-20 07:33:22.219  3952  3980 I umbra   : 07:33:22 self-test: atlas 0 of 256 texels differ
-11-20 07:33:22.219  3952  3980 I umbra   : 07:33:22 SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 2856 ms, offscreen, atlas from the jar)
-11-20 07:33:22.219  3952  3980 I umbra   : 07:33:22 self-test: end after 2856 ms, 34 steps
-11-20 07:33:22.219  3952  3980 I umbra   : 07:33:22 last run: self-test saved to /data/user/0/org.umbra.client/files/last_selftest.txt
-11-20 07:33:22.219  3952  3980 I umbra   : 07:33:22 last run: LAST RUN SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 2856 ms, offscreen, atlas from the jar)
-11-20 07:33:22.225  3952  3980 I umbra   : 07:33:22 hud: 14 rows, content ends at 457 px inside a 486 px panel, fits
+11-20 07:54:35.419  4276  4332 I umbra   : android_main: files /data/user/0/org.umbra.client/files
+11-20 07:54:35.420  4276  4332 I umbra   : goose core initialised
+11-20 07:54:35.420  4276  4332 I umbra   : net: UmbraNet loaded: download and the file picker are available
+11-20 07:54:35.421  4276  4332 I umbra   : app cmd 10, window 0x0
+11-20 07:54:35.421  4276  4332 I umbra   : no window yet: waiting for the activity to become visible
+11-20 07:54:35.422  4276  4332 I umbra   : app cmd 11, window 0x0
+11-20 07:54:35.457  4276  4332 I umbra   : app cmd 0, window 0x0
+11-20 07:54:35.521  4276  4332 I umbra   : app cmd 1, window 0x716a1905d6d0
+11-20 07:54:35.692  4276  4332 I umbra   : EGL up: 1x1 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+11-20 07:54:35.692  4276  4332 I umbra   : app cmd 3, window 0x716a1905d6d0
+11-20 07:54:35.693  4276  4332 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,0,0,0, legacy 0,0,0,0, cutout 0,0,0,0, source debug.umbra.insets override) on 0x0, density bucket 420 (scale 2.62)
+11-20 07:54:35.693  4276  4332 I umbra   : app cmd 4, window 0x716a1905d6d0
+11-20 07:54:35.693  4276  4332 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,0,0,0, legacy 0,0,0,0, cutout 0,0,0,0, source debug.umbra.insets override) on 1x1, density bucket 420 (scale 2.62)
+11-20 07:54:35.693  4276  4332 I umbra   : 07:54:35 last run: nothing recorded yet
+11-20 07:54:35.693  4276  4332 I umbra   : 07:54:35 ---- Umbra starting, build d874d63 ----
+11-20 07:54:35.693  4276  4332 I umbra   : 07:54:35 core: umbra core: formats and meshing
+11-20 07:54:35.786  4276  4332 I umbra   : 07:54:35 shaders: 5 programs compiled and linked in 92.8 ms (mesh 34.6, hud 2.2, the rest 56.0) -- once, at start
+11-20 07:54:35.787  4276  4332 I umbra   : 07:54:35 GL_RENDERER Android Emulator OpenGL ES Translator (Google SwiftShader)
+11-20 07:54:35.787  4276  4332 I umbra   : 07:54:35 GL_VERSION OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+11-20 07:54:35.787  4276  4332 I umbra   : 07:54:35 GL_VENDOR Google (Google Inc.)
+11-20 07:54:35.787  4276  4332 I umbra   : 07:54:35 depth bits 24, vertex highp 127^23, fragment highp 127^23
+11-20 07:54:37.680  4276  4332 I umbra   : 07:54:37 jar: /data/local/tmp/umbra-client.jar, 41483720 bytes: 4192 models, 1288 blockstates, 1214 textures (1 missing) -- the atlas and the models are the jar's
+11-20 07:54:37.680  4276  4332 I umbra   : 07:54:37 edits: the file for saved edits is /data/user/0/org.umbra.client/files/edits.txt
+11-20 07:54:37.680  4276  4332 I umbra   : 07:54:37 stream: the world is streamed: radius 4 (max 8), the import validates the archive and the stream parses the window
+11-20 07:54:37.680  4276  4332 I umbra   : 07:54:37 world: no world from the game in the app's directory; this is the demo scene (PUT A SAVE AT /data/user/0/org.umbra.client/files/world.zip)
+11-20 07:54:37.680  4276  4332 I umbra   : 07:54:37 gamefiles: platform hooks download, picker import, files dir /data/user/0/org.umbra.client/files
+11-20 07:54:37.682  4276  4332 I umbra   : 07:54:37 atlas: 1024x1024, 4194304 bytes, 1225 tiles, hash 3ca6170e, 1 missing
+11-20 07:54:37.682  4276  4332 I umbra   : 07:54:37 atlas: source is the client jar
+11-20 07:54:37.682  4276  4332 I umbra   : 07:54:37 atlas: 1 block faces asked for a tile that is missing
+11-20 07:54:37.695  4276  4332 I umbra   : 07:54:37 edits: no saved edits at /data/user/0/org.umbra.client/files/edits.txt (this world has none yet)
+11-20 07:54:37.707  4276  4332 I umbra   : 07:54:37 screen: home -> loading
+11-20 07:54:37.707  4276  4332 I umbra   : 07:54:37 demo world built in 2.7 ms; meshing starts in slices of at most 20 ms
+11-20 07:54:37.707  4276  4332 I umbra   : 07:54:37 check: renderer                     Android Emulator OpenGL ES Translator (Google SwiftShader)
+11-20 07:54:37.707  4276  4332 I umbra   : 07:54:37 check: gl version                   OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)
+11-20 07:54:37.707  4276  4332 I umbra   : 07:54:37 check: max texture size             8192 px
+11-20 07:54:37.707  4276  4332 I umbra   : 07:54:37 check: gpu timer query              none  (not available)
+11-20 07:54:37.707  4276  4332 I umbra   : 07:54:37 check: shader programs              mesh ok, hud ok, pattern ok, cube ok, atlas ok
+11-20 07:54:37.707  4276  4332 I umbra   : 07:54:37 check: depth buffer                 24 bits
+11-20 07:54:37.707  4276  4332 I umbra   : 07:54:37 check: extension string             1447 chars
+11-20 07:54:37.707  4276  4332 I umbra   : 07:54:37 check: all device checks passed
+11-20 07:54:37.762  4276  4332 I umbra   : app cmd 3, window 0x716a1905d6d0
+11-20 07:54:37.762  4276  4332 I umbra   : insets: L,T,R,B = 0,63,126,0 (modern 0,0,126,0, legacy 0,0,126,0, cutout 0,0,0,0, source debug.umbra.insets override) on 1x1, density bucket 420 (scale 2.62)
+11-20 07:54:37.762  4276  4332 I umbra   : app cmd 5, window 0x716a1905d6d0
+11-20 07:54:37.762  4276  4332 I umbra   : app cmd 4, window 0x716a1905d6d0
+11-20 07:54:37.762  4276  4332 I umbra   : app cmd 6, window 0x716a1905d6d0
+11-20 07:54:37.762  4276  4332 I umbra   : 07:54:37 hud: button 0 at 21,1005 size 573x52 on 1920x1080 (insets 0,63,126,0)
+11-20 07:54:37.762  4276  4332 I umbra   : 07:54:37 hud: button 1 at 610,1005 size 573x52 on 1920x1080 (insets 0,63,126,0)
+11-20 07:54:37.762  4276  4332 I umbra   : 07:54:37 hud: button 2 at 1199,1005 size 573x52 on 1920x1080 (insets 0,63,126,0)
+11-20 07:54:37.782  4276  4332 I umbra   : 07:54:37 hud: 12 rows, content ends at 484 px inside a 486 px panel, fits
+11-20 07:54:39.622  4276  4332 I umbra   : 07:54:39 mesh uploaded: 22.0 MB vertices, 2.2 MB indices
+11-20 07:54:39.622  4276  4332 I umbra   : 07:54:39 upload: 22.0 MB of vertices and 2.2 MB of indices in 32.8 ms (737 MB/s)
+11-20 07:54:39.629  4276  4332 I umbra   : 07:54:39 mesh bounds x 0.0..48.0 y -64.0..76.0 z 0.0..48.0, camera 37.6 blocks out, free band 497..995 of 1080 (46%), fog 66..146
+11-20 07:54:39.629  4276  4332 I umbra   : 07:54:39 camera: eye 47.2 75.2 48.1 look 24.0 58.0 24.0, 37.6 blocks out, fov 55
+11-20 07:54:39.629  4276  4332 I umbra   : 07:54:39 mesh: 234304 vertices drawn, passes 317172/34284/0 over 27 ranges
+11-20 07:54:39.629  4276  4332 I umbra   : 07:54:39 mesh: 300826 block(s) drawn from a model, 58576 face(s) from a model, 0 block(s) whose blockstate had no model
+11-20 07:54:39.629  4276  4332 I umbra   : 07:54:39 startup: meshed in 995.4 ms over 49 calls (worst call 25.9 ms, worst unit 12.8 ms), longest frame 100.9 ms, frames over 250 ms: 0
+11-20 07:54:39.629  4276  4332 I umbra   : 07:54:39 units: worst meshing walk 12.8 ms, worst column copy 4.3 ms, 3 units over 10 ms of 10369
+11-20 07:54:39.629  4276  4332 I umbra   : 07:54:39 screen: loading -> home
+11-20 07:54:39.791  4276  4332 I umbra   : 07:54:39 frame: the first world frame drew in 102.7 ms and the driver held it 58.9 ms (glFinish), 234304 vertices over 18 ranges
+11-20 07:54:39.802  4276  4332 I umbra   : 07:54:39 long frame 276.3 ms (mesh 100%, 49 calls)
+11-20 07:55:15.634  4276  4332 I umbra   : 07:55:15 self-test: requested
+11-20 07:55:15.635  4276  4332 I umbra   : 07:55:15 self-test: begin (1920x1080), tile 78 rows
+11-20 07:55:15.705  4276  4332 I umbra   : 07:55:15 self-test: pattern drawn in 68.5 ms into the offscreen target
+11-20 07:55:15.769  4276  4332 I umbra   : 07:55:15 player: sneak released
+11-20 07:55:15.769  4276  4332 I umbra   : 07:55:15 self-test: reading the offscreen target in 78-row tiles
+11-20 07:55:16.856  4276  4332 I umbra   : 07:55:16 self-test: pattern compared, 0 of 2073600 px differ, max channel diff 0
+11-20 07:55:16.984  4276  4332 I umbra   : 07:55:16 self-test: cube drawn in 61.4 ms
+11-20 07:55:18.197  4276  4332 I umbra   : 07:55:18 self-test: cube compared, 0 of 2073600 px differ
+11-20 07:55:18.365  4276  4332 I umbra   : 07:55:18 self-test: atlas tile 749 sampled in 0.3 ms
+11-20 07:55:18.429  4276  4332 I umbra   : 07:55:18 self-test: atlas 0 of 256 texels differ
+11-20 07:55:18.429  4276  4332 I umbra   : 07:55:18 SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 2795 ms, offscreen, atlas from the jar)
+11-20 07:55:18.429  4276  4332 I umbra   : 07:55:18 self-test: end after 2795 ms, 34 steps
+11-20 07:55:18.430  4276  4332 I umbra   : 07:55:18 last run: self-test saved to /data/user/0/org.umbra.client/files/last_selftest.txt
+11-20 07:55:18.430  4276  4332 I umbra   : 07:55:18 last run: LAST RUN SELFTEST PASS (0 bad of 4147200 px + 256 atlas texels, 2795 ms, offscreen, atlas from the jar)
+11-20 07:55:18.436  4276  4332 I umbra   : 07:55:18 hud: 14 rows, content ends at 457 px inside a 486 px panel, fits
