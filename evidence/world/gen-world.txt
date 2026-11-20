@@ -1,92 +1,92 @@
-server pid 2937, waiting up to 600s for it to finish generating
+server pid 2992, waiting up to 600s for it to finish generating
 == running /home/runner/work/Umbra-launcher-/Umbra-launcher-/tools/compare_with_server.sh while the server is still up
 == forcing the sample area to generate before anything is read
 compare: forceload -160 -160 175 31 (21 x 12 chunks) -> rcon: timed out
 compare: forceload -160 32 175 175 (21 x 9 chunks) -> Marked 252 chunks in minecraft:overworld from [-10, -10] to [10, 1] to be force loadedMarked 189 chunks in minecraft:overworld from [-10, 2] to [10, 10] to be force loaded
 compare: force-loaded the sample area in 2 strips of at most 256 chunks
 Saving the game (this may take a moment!)Saved the game
-compare: attempt 1: 441 chunks, 14140616 non-air blocks, the window is finished
+compare: attempt 1: 441 chunks, 14144790 non-air blocks, the window is finished
 Saving the game (this may take a moment!)Saved the game
-compare: attempt 2: 441 chunks, 14143039 non-air blocks, the window is finished
+compare: attempt 2: 441 chunks, 14147187 non-air blocks, the window is finished
 Saving the game (this may take a moment!)Saved the game
-compare: attempt 3: 441 chunks, 14143503 non-air blocks, the window is finished
+compare: attempt 3: 441 chunks, 14147685 non-air blocks, the window is finished
 Saving the game (this may take a moment!)Saved the game
-compare: attempt 4: 441 chunks, 14143690 non-air blocks, the window is finished
+compare: attempt 4: 441 chunks, 14147805 non-air blocks, the window is finished
 Saving the game (this may take a moment!)Saved the game
-compare: attempt 5: 441 chunks, 14143690 non-air blocks, the window is finished
+compare: attempt 5: 441 chunks, 14147805 non-air blocks, the window is finished
 Saving the game (this may take a moment!)Saved the game
-compare: attempt 6: 441 chunks, 14143690 non-air blocks, the window is finished
-compare: the save is settled - three readings in a row agree: 441 chunks, 14143690 non-air blocks
+compare: attempt 6: 441 chunks, 14147805 non-air blocks, the window is finished
+compare: the save is settled - three readings in a row agree: 441 chunks, 14147805 non-air blocks
 == reading the save with Umbra's loader
 worldload: region dir /home/runner/work/Umbra-launcher-/Umbra-launcher-/build/server/run/world/dimensions/minecraft/overworld/region
 
-worldload: chunks 794, non-air blocks 19951581, states 140, region files 4, read errors 0
+worldload: chunks 794, non-air blocks 19955871, states 140, region files 4, read errors 0
 
-worldload: detail lines for chunks within 10 of the origin: 441 chunks, 14143690 non-air blocks
+worldload: detail lines for chunks within 10 of the origin: 441 chunks, 14147805 non-air blocks
 
 worldload: 169 of 794 chunks are not `minecraft:full` yet (0 of them within 10 of the origin)
 
 worldload: PASS - every chunk in the save was read
 
-compare: at radius 6 worldload: detail lines for chunks within 6 of the origin: 169 chunks, 5520233 non-air blocks
-compare: detail lines for the grid: 14143690
+compare: at radius 6 worldload: detail lines for chunks within 6 of the origin: 169 chunks, 5519583 non-air blocks
+compare: detail lines for the grid: 14147805
 == asking the server about every claim
-probe: the dump has 14143690 blocks over 336 x and 336 z lines; asking about 168 of them
+probe: the dump has 14147805 blocks over 336 x and 336 z lines; asking about 151 of them
 probe: asking inside -160..120 -160..120 without loading anything here
 probe: scoreboard: Created new objective [umbra_probe]
 probe: control: minecraft:stone at -160 -64 -160 scores 0 (0 means the oracle can say no)
-probe: 168 confirmed, 0 denied, 0 errors -> /home/runner/work/Umbra-launcher-/Umbra-launcher-/build/server/run/server-blocks.txt
+probe: 151 confirmed, 0 denied, 0 errors -> /home/runner/work/Umbra-launcher-/Umbra-launcher-/build/server/run/server-blocks.txt
 compare: the server answered every claim
 world generated after 16s; asking the server to stop so it saves
 Stopping the server
 stop sent over rcon
 server exit status 0
 == last lines of the server's log
-[11:07:45] [Server thread/INFO]: Selecting global world spawn...
-[11:07:49] [Server thread/INFO]: Loading 0 persistent chunks...
-[11:07:49] [Server thread/INFO]: Preparing spawn area: 100%
-[11:07:49] [Server thread/INFO]: Time elapsed: 3393 ms
-[11:07:49] [Server thread/INFO]: Done (3.613s)! For help, type "help"
-[11:07:49] [Server thread/INFO]: Starting remote control listener
-[11:07:49] [Server thread/INFO]: Thread RCON Listener started
-[11:07:49] [Server thread/INFO]: RCON running on 0.0.0.0:25575
-[11:07:49] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
-[11:07:49] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
-[11:07:49] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
-[11:07:50] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
-[11:08:00] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
-[11:08:00] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 10203ms or 204 ticks behind
-[11:08:00] [RCON Client /127.0.0.1 #2/INFO]: Thread RCON Client /127.0.0.1 shutting down
-[11:08:04] [RCON Client /127.0.0.1 #3/INFO]: Thread RCON Client /127.0.0.1 shutting down
-[11:08:04] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
-[11:08:06] [RCON Client /127.0.0.1 #4/INFO]: Thread RCON Client /127.0.0.1 shutting down
-[11:08:25] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
-[11:08:25] [RCON Client /127.0.0.1 #5/INFO]: Thread RCON Client /127.0.0.1 shutting down
-[11:08:45] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
-[11:08:45] [RCON Client /127.0.0.1 #6/INFO]: Thread RCON Client /127.0.0.1 shutting down
-[11:08:59] [Server thread/INFO]: Server empty for 60 seconds, pausing
-[11:09:04] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
-[11:09:04] [RCON Client /127.0.0.1 #7/INFO]: Thread RCON Client /127.0.0.1 shutting down
-[11:09:23] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
-[11:09:23] [RCON Client /127.0.0.1 #8/INFO]: Thread RCON Client /127.0.0.1 shutting down
-[11:09:42] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
-[11:09:42] [RCON Client /127.0.0.1 #9/INFO]: Thread RCON Client /127.0.0.1 shutting down
-[11:10:34] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
-[11:10:34] [RCON Client /127.0.0.1 #10/INFO]: Thread RCON Client /127.0.0.1 shutting down
-[11:10:34] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
-[11:10:34] [RCON Client /127.0.0.1 #11/INFO]: Thread RCON Client /127.0.0.1 shutting down
-[11:10:34] [Server thread/INFO]: Stopping server
-[11:10:34] [Server thread/INFO]: Saving players
-[11:10:34] [Server thread/INFO]: Saving worlds
-[11:10:35] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
-[11:10:36] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
-[11:10:36] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
-[11:10:36] [Server thread/INFO]: Thread RCON Listener stopped
-region files written: 8
-world/dimensions/minecraft/overworld/poi/r.0.0.mca
-world/dimensions/minecraft/overworld/poi/r.-1.0.mca
-world/dimensions/minecraft/overworld/region/r.0.0.mca
+[11:36:36] [Server thread/INFO]: Selecting global world spawn...
+[11:36:39] [Server thread/INFO]: Loading 0 persistent chunks...
+[11:36:39] [Server thread/INFO]: Preparing spawn area: 100%
+[11:36:39] [Server thread/INFO]: Time elapsed: 3116 ms
+[11:36:39] [Server thread/INFO]: Done (3.315s)! For help, type "help"
+[11:36:39] [Server thread/INFO]: Starting remote control listener
+[11:36:39] [Server thread/INFO]: Thread RCON Listener started
+[11:36:39] [Server thread/INFO]: RCON running on 0.0.0.0:25575
+[11:36:39] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[11:36:39] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[11:36:39] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[11:36:41] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
+[11:36:51] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
+[11:36:51] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 10211ms or 204 ticks behind
+[11:36:51] [RCON Client /127.0.0.1 #2/INFO]: Thread RCON Client /127.0.0.1 shutting down
+[11:36:55] [RCON Client /127.0.0.1 #3/INFO]: Thread RCON Client /127.0.0.1 shutting down
+[11:36:55] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
+[11:36:57] [RCON Client /127.0.0.1 #4/INFO]: Thread RCON Client /127.0.0.1 shutting down
+[11:37:16] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
+[11:37:16] [RCON Client /127.0.0.1 #5/INFO]: Thread RCON Client /127.0.0.1 shutting down
+[11:37:36] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
+[11:37:36] [RCON Client /127.0.0.1 #6/INFO]: Thread RCON Client /127.0.0.1 shutting down
+[11:37:49] [Server thread/INFO]: Server empty for 60 seconds, pausing
+[11:37:56] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
+[11:37:56] [RCON Client /127.0.0.1 #7/INFO]: Thread RCON Client /127.0.0.1 shutting down
+[11:38:15] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
+[11:38:15] [RCON Client /127.0.0.1 #8/INFO]: Thread RCON Client /127.0.0.1 shutting down
+[11:38:34] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
+[11:38:34] [RCON Client /127.0.0.1 #9/INFO]: Thread RCON Client /127.0.0.1 shutting down
+[11:39:27] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
+[11:39:27] [RCON Client /127.0.0.1 #10/INFO]: Thread RCON Client /127.0.0.1 shutting down
+[11:39:27] [RCON Listener #1/INFO]: Thread RCON Client /127.0.0.1 started
+[11:39:27] [RCON Client /127.0.0.1 #11/INFO]: Thread RCON Client /127.0.0.1 shutting down
+[11:39:27] [Server thread/INFO]: Stopping server
+[11:39:27] [Server thread/INFO]: Saving players
+[11:39:27] [Server thread/INFO]: Saving worlds
+[11:39:27] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[11:39:28] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[11:39:28] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[11:39:28] [Server thread/INFO]: Thread RCON Listener stopped
+region files written: 9
+world/dimensions/minecraft/overworld/entities/r.0.-1.mca
+world/dimensions/minecraft/overworld/entities/r.-1.-1.mca
+world/dimensions/minecraft/overworld/entities/r.-1.0.mca
+world/dimensions/minecraft/overworld/region/r.0.-1.mca
 world/dimensions/minecraft/overworld/region/r.-1.-1.mca
-world/dimensions/minecraft/overworld/region/r.-1.0.mca
 13M	world
-PASS: the real server generated a world with 8 region file(s)
+PASS: the real server generated a world with 9 region file(s)
