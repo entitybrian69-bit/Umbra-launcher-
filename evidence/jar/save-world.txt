@@ -83,31 +83,34 @@ goose/core/raster.goose:326: warning: redundant `as f32`: a u8 converts to f32 i
 goose/core/raster.goose:327: warning: redundant `as f32`: a u8 converts to f32 implicitly here
             var sb = (tb as f32) * vb / 255.0;
                       ^~~~~~~~~
-goose/core/demo.goose:213: warning: redundant `as f32`: fx is already f32
+goose/core/demo.goose:178: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+        if t > 0.0 { return (y as f32) + t; }
+                             ^~~~~~~~
+goose/core/demo.goose:246: warning: redundant `as f32`: fx is already f32
     if fx < 0.0 && (fx as f32) != fx { x -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:214: warning: redundant `as f32`: fy is already f32
+goose/core/demo.goose:247: warning: redundant `as f32`: fy is already f32
     if fy < 0.0 && (fy as f32) != fy { y -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:215: warning: redundant `as f32`: fz is already f32
+goose/core/demo.goose:248: warning: redundant `as f32`: fz is already f32
     if fz < 0.0 && (fz as f32) != fz { z -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:220: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:253: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_x = if stepx == 0 { inf } else if stepx > 0 { (1.0 - (fx - (x as f32))) / nx } else { ((x as f32) - fx) / nx };
                                                                          ^~~~~~~~
-goose/core/demo.goose:220: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:253: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_x = if stepx == 0 { inf } else if stepx > 0 { (1.0 - (fx - (x as f32))) / nx } else { ((x as f32) - fx) / nx };
                                                                                                      ^~~~~~~~
-goose/core/demo.goose:221: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:254: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_y = if stepy == 0 { inf } else if stepy > 0 { (1.0 - (fy - (y as f32))) / ny } else { ((y as f32) - fy) / ny };
                                                                          ^~~~~~~~
-goose/core/demo.goose:221: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:254: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_y = if stepy == 0 { inf } else if stepy > 0 { (1.0 - (fy - (y as f32))) / ny } else { ((y as f32) - fy) / ny };
                                                                                                      ^~~~~~~~
-goose/core/demo.goose:222: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:255: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
                                                                          ^~~~~~~~
-goose/core/demo.goose:222: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:255: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
                                                                                                      ^~~~~~~~
 goose/core/atlas.goose:87: warning: redundant `as f32`: an i64 converts to f32 implicitly here
@@ -335,7 +338,7 @@ goose/core/region.goose:66: warning: redundant `as i64`: a u32 converts to i64 i
 goose/core/region.goose:142: warning: redundant `as u32`: a u16 converts to u32 implicitly here
     return s.blocks[i] as u32;
            ^~~~~~~~~~~~~~~~~~
-goose/core/region.goose:515: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+goose/core/region.goose:526: warning: redundant `as u32`: a u8 converts to u32 implicitly here
             put_be_u32(out, (offsets[i] << 8) | (counts[i] as u32));
                                                  ^~~~~~~~~~~~~~~~
 goose/core/mem.goose:26: warning: redundant `as u16`: a u8 converts to u16 implicitly here
