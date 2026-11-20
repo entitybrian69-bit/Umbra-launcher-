@@ -1,5 +1,40 @@
 # Decisions and their reasons
 
+## D-052. Air is air whatever its id
+
+`render_class` returned `RC_AIR` only for `id == 0`. `bs_intern("minecraft:air", "")` is 0
+— `bs_reset` seeds it, and every fixture in the repo stores air as an absent block — so the
+test looked correct and 671 checks, a green host suite and three device runs all agreed
+with it.
+
+A save's palette is interned as **(name, properties)**. An air entry that carries
+properties is a different id with the same name, so on a real world every air block
+answered `RC_OPAQUE`:
+
+- `block_top` returned 1.0 for air, so the spawn scan found a floor at the first y it
+  looked at — 320, the top of the world;
+- the mesher's `is_solid` agreed with it, so it culled nothing and drew a world of air.
+
+The phone said so in one line, which is the only reason this was found:
+
+```
+player: the floor at 8,8 is 320, and the column reads
+y319=minecraft:air(t1) y310=minecraft:air(t1) ... y63=minecraft:air(t1)
+```
+
+Air, and a solid top of 1.0, in the same breath. That line only existed because the two
+diagnostics before it were on the wrong path — the first printed nothing (the scan does not
+*fail*, it succeeds with a wrong answer), the second printed heights (which are identical
+for all three candidate faults) instead of names.
+
+The rule now: `air`, `cave_air` and `void_air` are air by **name**, after the id-0
+short-circuit rather than instead of it. `ws_air_with_properties_is_air_test` interns
+`("minecraft:air", "up=true")` and requires `RC_AIR`, `!is_solid`, and the same for the two
+cave spellings; with the name test removed it fails five checks.
+
+The general lesson, written down because it cost three device runs: a rule stated on an id
+is a rule about *one* interning of a block. The name is the block.
+
 ## D-051. One block reader, addressed by chunk coordinate
 
 `goose/main.goose` kept its own `demo_column_at` / `demo_block_at` from when `demo` was a

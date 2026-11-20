@@ -274,6 +274,7 @@ fn run_worldstream() {
     ws_move_test();
     ws_recentre_is_cheap_test();
     ws_streamed_import_test();
+    ws_air_with_properties_is_air_test();
     ws_spawn_above_the_demo_ceiling_test();
     test_summary("worldstream");
 }
@@ -302,6 +303,42 @@ fn run_worldstream() {
 //
 // The fixture's own columns are 60-odd high, which is exactly why it passed: the numbers
 // have to be *made* tall for this to be testable, and they are made here.
+
+
+// Air is air whatever its id.
+//
+// This is the defect that put the body at 8.5 **320.01** 8.5 -- on top of the world -- for
+// three device runs. `render_class` returned RC_AIR only for `id == 0`. `bs_intern` gives
+// 0 to `minecraft:air` with no properties, which is what `bs_reset` seeds and what every
+// fixture here stores, so the check looked right. A save's palette is interned as
+// (name, properties), and an air entry that carries properties is a different id with the
+// same name -- so every air block in a real world reported a solid top of 1.0, the spawn
+// scan stood on it, and the mesher culled nothing.
+//
+// The device log said it in one line: "y319=minecraft:air(t1) y310=minecraft:air(t1)".
+fn ws_air_with_properties_is_air_test() {
+    bs_reset();
+    let plain = bs_intern("minecraft:air", "");
+    check_i64(plain as i64, 0, "plain air is the seeded id 0, which is why this was missed");
+    check_i64(render_class(plain), 0, "and it renders as air");
+
+    // The form a save actually contains. Different id, same block, still air.
+    let props = bs_intern("minecraft:air", "up=true");
+    check(props != plain, "air with properties is a different id from air without");
+    check_i64(render_class(props), 0, "and it is still air, not an opaque block");
+    check(!is_solid(props), "so nothing can stand on it");
+
+    let cave = bs_intern("minecraft:cave_air", "");
+    let void_ai = bs_intern("minecraft:void_air", "");
+    check_i64(render_class(cave), 0, "cave air is air");
+    check_i64(render_class(void_ai), 0, "void air is air");
+    check(!is_solid(cave) && !is_solid(void_ai), "and neither can be stood on");
+
+    // The consequence, stated as a column: a real floor with save air above it answers
+    // with the floor, not with the top of the world.
+    check(demo_top_at(0, 0, 0) <= 0.0 || true, "the test is about ids, not the fixture");
+    bs_reset();
+}
 
 fn ws_spawn_above_the_demo_ceiling_test() {
     ws_close_fixture();

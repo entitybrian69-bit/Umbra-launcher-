@@ -37,6 +37,21 @@ fn render_class(id: u32) -> i64 {
     let name = bs_name(id);
     if name.len == 0 { return RC_OPAQUE; }
     let path = bs_path(name);
+    // Air is air whatever its id, and a save's air is not id 0. `bs_intern` returns 0 for
+    // `minecraft:air` with no properties, which is what `bs_reset` seeds and what every
+    // fixture in this repo stores -- but a save's palette is interned as (name, props),
+    // and an air entry that carries properties is a *different* id with the same name.
+    //
+    // This is what put the body at the top of the world on the phone. The log said it
+    // outright and I had to be told twice by it (run 44717278485):
+    //   player: the floor at 8,8 is 320, and the column reads
+    //   y319=minecraft:air(t1) y310=minecraft:air(t1) ... y63=minecraft:air(t1)
+    // Every block in the column is named air and every one of them reports a solid top of
+    // 1.0, because `id == 0` was the only test for air. The spawn scan stood on it, the
+    // body walked on top of the world, and the mesher culled nothing.
+    if eq_bytes(path, "air") || eq_bytes(path, "cave_air") || eq_bytes(path, "void_air") {
+        return RC_AIR;
+    }
     // Water and glass are translucent; leaves and plants are cutout.
     if eq_bytes(path, "water") || eq_bytes(path, "glass") || eq_bytes(path, "ice") ||
        eq_bytes(path, "lava") {
