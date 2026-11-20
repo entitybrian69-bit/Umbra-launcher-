@@ -1314,15 +1314,22 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     # Point the body at a heading and hold: four holds of 1.5 s is up to a few blocks each,
     # so the heading is tried more than once and the loop stops as soon as the app
     # re-centres. The walk is the same gesture the player phase uses.
+    # Deliberately *not* re-aiming between holds. The first version turned a quarter screen
+    # before every hold "so a full block cannot stop it", which at this drag scale is about
+    # 90 degrees: the body walked a 6-block circle around where it spawned, eight times, and
+    # never got 16 blocks away (runs 44724553259 and 44728545328). A heading that is stuck
+    # is a different phase's problem; this one is about distance, so it walks one way.
     RECENTRED=0
-    for try in 1 2 3 4 5 6 7 8; do
-        adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 + P_WIDTH / 4 )) \
-            "$P_SCENE_Y" 300 > /dev/null 2>&1 || true
+    for try in 1 2 3 4 5 6 7 8 9 10; do
         adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 )) "$P_SCENE_Y" 1500 \
             > /dev/null 2>&1 || true
         sleep 1
         N="$(adb logcat -d -s umbra:V 2>/dev/null | grep -c 'stream: centre chunk')"
         if [ "${N:-0}" -gt "${BASE:-0}" ]; then RECENTRED=1; break; fi
+        # Say how far the body has got, so a failed phase reports the distance instead of
+        # only the last position.
+        P2="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'player: at ' | tail -1 | sed 's/.*player: at //' | sed 's/,.*//')"
+        say "stream-recentre: hold $try, body at ${P2:-?} (spawn 8.50 8.50)"
     done
     if [ "$RECENTRED" != 1 ]; then
         POS="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'player: at ' | tail -1 | sed 's/.*umbra *: //')"
