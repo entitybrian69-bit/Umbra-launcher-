@@ -1332,7 +1332,11 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     # Resident must still be the window's own count, not the union of every window walked.
     # Radius 1 is 9 positions; a save that holds them all is 9 columns, and a stream that
     # only ever appended would be at 18 by the second window.
-    RESN="$(printf '%s\n' "$RES" | sed -n 's/.*window complete, \([0-9]*\) column(s).*/\1/p')"
+    # Read the count right after "window complete, ", and stop at the first non-digit. The
+    # greedy `.*` this could have used takes the LAST count on the line, which here is
+    # "<n> slice(s)" territory -- the same mistake that read "0 chunk(s)" off a 25-chunk
+    # world in run 44295360944, and it would pass this phase on a stream that never evicted.
+    RESN="$(printf '%s\n' "$RES" | sed -n 's/.*window complete, \([0-9][0-9]*\).*/\1/p')"
     case "${RESN:-}" in
         ''|*[!0-9]*) say "stream-recentre: the resident count is not readable, so the eviction is not checked" ;;
         *)

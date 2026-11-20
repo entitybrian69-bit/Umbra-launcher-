@@ -274,6 +274,7 @@ fn run_worldstream() {
     ws_move_test();
     ws_recentre_is_cheap_test();
     ws_streamed_import_test();
+    ws_spawn_above_the_demo_ceiling_test();
     test_summary("worldstream");
 }
 
@@ -288,6 +289,57 @@ fn run_worldstream() {
 //   * `resident` is what the stream then parsed (the window's own count, or less where
 //     the save runs out);
 //   * `demo.len` is what the mesher walks, which must be the same as `resident`.
+
+// The spawn scan starts at the top of the world, not at the top of the demo scene.
+//
+// This is the defect run 44697024729 found and no test did. `world_spawn` scanned down
+// from a hard-coded 120 -- the demo scene's ceiling -- so a column whose surface was
+// above 120 answered with the first solid block *below* 120, which is a floor inside the
+// terrain. The body was placed at 121 with rock in every direction: "no open cell within
+// 6 blocks of 8,8; standing on the middle at floor 121.00, which may be walled in", then
+// eight holds of 0.00 blocks. A real save's build limit is 319, so this was not a corner
+// case, it was the top 200 blocks of every world.
+//
+// The fixture's own columns are 60-odd high, which is exactly why it passed: the numbers
+// have to be *made* tall for this to be testable, and they are made here.
+fn ws_spawn_above_the_demo_ceiling_test() {
+    ws_close_fixture();
+    bs_reset();
+    demo = [];
+    ws_set_stream_mode(true);
+    wl_set_radius(1);
+    let regions = wl_import_begin(WS_ZIP);
+    var i: i64 = 0;
+    while i < wl_count_entries() {
+        wl_import_file(i);
+        i += 1;
+    }
+    check(wl_import_end() == 1, "the fixture opens for the tall column");
+
+    // A column built by hand on top of an opened one: solid from y 40 to 199, air above.
+    // `chunk_set_block` is the same writer the reader uses, so this is a real column and
+    // not a second representation of one.
+    let ci = ws_column_of(0, 0);
+    check(ci >= 0, "the tall column is in the window");
+    var y: i32 = 40;
+    while y < 200 {
+        chunk_set_block(demo[ci], 8, y, 8, 1);
+        y += 1;
+    }
+    // The top block is 199, so the surface is y 200.
+    check(chunk_block(demo[ci], 8, 199, 8) != 0, "the tall column's top block is where it was written");
+    check((demo_floor_at(8, 8) - 200.0) < 0.01 && (200.0 - demo_floor_at(8, 8)) < 0.01, "and the spawn is the surface above it, not one inside it");
+
+    // The failure, stated as the app saw it: a floor of 121 would mean the scan stopped
+    // 79 blocks below the top of this column. Anything at or below 199 is that bug.
+    let spawn = demo_floor_at(8, 8);
+    check(spawn > 199.0, "the spawn is above the column's top block, not inside the terrain");
+
+    ws_close_fixture();
+    ws_set_stream_mode(false);
+    wl_set_radius(4);
+}
+
 fn ws_streamed_import_test() {
     ws_close_fixture();
     bs_reset();

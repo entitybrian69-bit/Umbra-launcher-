@@ -1,5 +1,42 @@
 # Decisions and their reasons
 
+## D-050. The spawn scan starts at the top of the world, not at the demo scene's ceiling
+
+`umbra_world_spawn` scans down from a y and returns the first block that can be stood on.
+It scanned from **120**, the demo scene's height, because that was the only world it had
+ever been asked about. A save is 384 blocks tall and the streamed window is the save's own
+terrain, so a column whose surface is above 120 answered with the first solid block
+*below* 120 -- a floor **inside** the ground. The body was placed at 121 with rock in every
+direction and could not move.
+
+Found by the `stream-recentre` device phase on its first run (44697024729), which cut the
+radius to 1 to make a walk cross a window and then could not walk at all:
+
+```
+player: no open cell within 6 blocks of 8,8; standing on the middle at floor 121.00, which may be walled in
+player: at 8.50 121.01 8.50 ... 8 holds, 0.00 blocks
+```
+
+The radius-4 default had never hit it: at the save's origin the terrain is below 120, so
+the bug needed a column *above* 120 to show. It would have hit every mountainous spawn in
+a real world.
+
+Two things came out of it:
+
+1. The scan moved into `core.demo` as `demo_floor_at`, so a test can call the thing the
+   app calls. It was inside the export in `main`, where no test could reach it -- which is
+   why 657 checks and a working phone run had never asked the question.
+2. `chunk_set_block` returned silently for a section the save had not written. That is
+   right for "this section is air" and wrong for "write a block here": a placement in the
+   top of the world did nothing, and the first draft of the test built its tall column
+   into nothing and then *agreed with the bug*. It now materialises the section, which is
+   all air, so no block that was not asked for changes.
+
+The test (`ws_spawn_above_the_demo_ceiling_test`) writes a column solid to y 199 and
+requires the floor at 200. Restoring `319` → `120` fails it with two checks; that is the
+proof it tests the bug and not the fix.
+
+
 Newest first. Each entry says what was decided, why, and what it costs.
 
 ## D-049 The resident set is a radius the save is streamed into, not a window read once

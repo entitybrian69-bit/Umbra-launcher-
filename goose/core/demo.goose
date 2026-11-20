@@ -160,6 +160,39 @@ fn demo_column_of(wx: i32, wz: i32) -> i64 {
     return -1;
 }
 
+// The floor height at a column: the first y, from the top of the world down, whose block
+// can be stood on.
+//
+// The start is y 319, the top of the world, and that is the whole point of this function
+// existing here rather than in the app. It used to start at 120 -- the demo scene's
+// ceiling -- and a column whose surface was above 120 therefore answered with the first
+// solid block *below* 120, which is a floor inside the terrain. The body spawned at 121
+// with rock in every direction and could not move (run 44697024729, "no open cell within
+// 6 blocks of 8,8; standing on the middle at floor 121.00"). A save is 384 blocks tall,
+// so starting at the demo's height is not a shortcut, it is a wrong answer for the top
+// 200 blocks of every world.
+fn demo_floor_at(wx: i32, wz: i32) -> f32 {
+    var y: i32 = 319;
+    while y > -64 {
+        let t = demo_top_at(wx, y, wz);
+        if t > 0.0 { return (y as f32) + t; }
+        y -= 1;
+    }
+    return 64.0;
+}
+
+// Is this cell something a body can stand on? -1 if not, the height of its box if so.
+// Separated from the export in main because two callers ask it: the spawn scan here and
+// the player's physics, and a rule stated twice is a rule that will disagree with itself.
+fn demo_top_at(wx: i32, wy: i32, wz: i32) -> f32 {
+    let id = demo_block_at(wx, wy, wz);
+    if id == 0 { return -1.0; }
+    let rc = render_class(id);
+    if rc == RC_CROSS { return -1.0; }
+    if rc == RC_TRANSLUCENT { return -1.0; }   // water is swimmable, not walked on
+    return 1.0;
+}
+
 fn demo_block_at(wx: i32, wy: i32, wz: i32) -> u32 {
     let i = demo_column_of(wx, wz);
     if i < 0 { return 0; }

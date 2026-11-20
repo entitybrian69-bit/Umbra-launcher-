@@ -966,14 +966,11 @@ export "umbra_block_fluid" fn block_fluid_export(wx: i64, wy: i64, wz: i64) -> i
 
 // The floor height at a column of the world: the first y, from the top down, whose
 // block can be stood on. The C spawn code asks for this instead of guessing.
+// The scan itself is `demo_floor_at` in core.demo, where the tests can call it: the rule
+// it carries (start at the top of the world, not the top of the demo scene) is the one
+// run 44697024729 broke, and a rule inside an export is a rule no test can reach.
 export "umbra_world_spawn" fn world_spawn_export(wx: i64, wz: i64) -> f32 {
-    var y: i64 = 120;
-    while y > -64 {
-        let t = block_top_export(wx, y, wz);
-        if t > 0.0 { return (y as f32) + t; }
-        y -= 1;
-    }
-    return 64.0;
+    return demo_floor_at((wx as i32), (wz as i32));
 }
 
 // The demo scene's extent, kept because the name is in older callers, answered from the

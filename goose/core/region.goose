@@ -162,7 +162,18 @@ fn chunk_set_block(c: ChunkColumn&, x: i32, y: i32, z: i32, id: u32) {
     if y < -64 || y > 319 { return; }
     let idx = (y + 64) / 16;
     if idx < 0 { return; }
-    if !c.sections[idx].present { return; }
+    // A section the save did not write is air, and a write into air has to *make* the
+    // section rather than be dropped. It used to return here, which was silently wrong in
+    // both directions: a placement in the top of the world (above the last section the
+    // save wrote) did nothing at all, and a test that wrote a tall column to exercise the
+    // spawn scan built nothing and then agreed with the bug it was written to catch.
+    // `section_new` is all air, so materialising it changes no block that was not asked
+    // for.
+    if !c.sections[idx].present {
+        c.sections[idx] = section_new();
+        c.sections[idx].present = true;
+        c.sections[idx].y = (y + 64) / 16 * 16 - 64;
+    }
     let i = ((y & 15) * 256 + z * 16 + x) as i64;
     // Write through the column's storage, not a copy of the section.
     c.sections[idx].blocks[i] = id as u16;
