@@ -25,13 +25,13 @@ goose/test/worldstream_test.goose:256: warning: redundant `as i64`: demo.len is 
 goose/test/worldstream_test.goose:259: warning: redundant `as i64`: demo.len is already i64
     check_i64(demo.len as i64, before, "recentring on the same window parses nothing");
               ^~~~~~~~~~~~~~~
-goose/test/worldstream_test.goose:360: warning: redundant `as i64`: demo.len is already i64
+goose/test/worldstream_test.goose:361: warning: redundant `as i64`: demo.len is already i64
     check(demo.len as i64 == 0, "so the world is not built twice");
           ^~~~~~~~~~~~~~~
-goose/test/worldstream_test.goose:366: warning: redundant `as i64`: demo.len is already i64
+goose/test/worldstream_test.goose:367: warning: redundant `as i64`: demo.len is already i64
     check_i64(demo.len as i64, 16, "and the mesher walks exactly those");
               ^~~~~~~~~~~~~~~
-goose/test/worldstream_test.goose:379: warning: redundant `as i64`: demo.len is already i64
+goose/test/worldstream_test.goose:380: warning: redundant `as i64`: demo.len is already i64
     check_i64(demo.len as i64, 16, "and the world is not duplicated by a second fill");
               ^~~~~~~~~~~~~~~
 goose/core/worldstream.goose:179: warning: redundant `as i64`: bytes.len is already i64
@@ -643,7 +643,7 @@ PASS models (447 checks)
 PASS modelstore (497 checks)
 PASS raster (507 checks)
 PASS worldzip (602 checks)
-  ws: 2 slices for 16 chunks, worst 172 us
+  ws: 2 slices for 16 chunks, worst 162 us
 
 PASS worldstream (662 checks)
 all modules passed
