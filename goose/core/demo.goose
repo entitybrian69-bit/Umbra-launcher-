@@ -188,6 +188,11 @@ fn demo_top_at(wx: i32, wy: i32, wz: i32) -> f32 {
     let id = demo_block_at(wx, wy, wz);
     if id == 0 { return -1.0; }
     let rc = render_class(id);
+    // RC_AIR, not only id 0: a save's air is interned with its properties and so is a
+    // different id with the same name (D-052). Asking `id == 0` and then falling through
+    // to `return 1.0` gave every air block in a real world a solid top of 1.0 -- the body
+    // stood on the top of the world at y 320 and the mesher culled nothing.
+    if rc == RC_AIR { return -1.0; }
     if rc == RC_CROSS { return -1.0; }
     if rc == RC_TRANSLUCENT { return -1.0; }   // water is swimmable, not walked on
     return 1.0;

@@ -938,21 +938,25 @@ export "umbra_atlas_named" fn atlas_named(name: const u8[:]) -> i64 {
 // a working device run never asked the question.
 
 
+// The collision height of one cell, or -1 if nothing can be stood on it. Delegated to
+// core.demo's `demo_top_at` so the export and the spawn scan cannot disagree -- and the
+// `id == 0` test that used to be here was one of the two halves of run 44720740141: air
+// with properties is not id 0, `render_class` says RC_AIR, and this function then fell
+// through to `return 1.0` anyway because it never asked about RC_AIR.
 export "umbra_block_top" fn block_top_export(wx: i64, wy: i64, wz: i64) -> f32 {
-    let id = demo_block_at((wx as i32), (wy as i32), (wz as i32));
-    if id == 0 { return -1.0; }
-    let rc = render_class(id);
-    if rc == RC_CROSS { return -1.0; }
-    if rc == RC_TRANSLUCENT { return -1.0; }   // water is swimmable, not walked on
-    if model_bound && id == model_block {
-        // A bound model's collision is its box: the demo slab is half a block.
-        var lo: f32[3] = [0.0, 0.0, 0.0];
-        var hi: f32[3] = [0.0, 0.0, 0.0];
-        mdl_elem_box(0, lo, hi);
-        return hi[1];
+    if model_bound {
+        let id = demo_block_at((wx as i32), (wy as i32), (wz as i32));
+        if id != 0 && id == model_block {
+            // A bound model's collision is its box: the demo slab is half a block.
+            var lo: f32[3] = [0.0, 0.0, 0.0];
+            var hi: f32[3] = [0.0, 0.0, 0.0];
+            mdl_elem_box(0, lo, hi);
+            return hi[1];
+        }
     }
-    return 1.0;
+    return demo_top_at((wx as i32), (wy as i32), (wz as i32));
 }
+
 
 // Is this cell a fluid? A separate question from "how tall is its box", because a
 // fluid has no box: the body passes through water and swims in it, and answering -1

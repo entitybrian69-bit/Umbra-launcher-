@@ -317,7 +317,16 @@ fn run_worldstream() {
 //
 // The device log said it in one line: "y319=minecraft:air(t1) y310=minecraft:air(t1)".
 fn ws_air_with_properties_is_air_test() {
+    ws_close_fixture();
     bs_reset();
+    demo = [];
+    let regions_air = wl_import_begin(WS_ZIP);
+    var ia: i64 = 0;
+    while ia < wl_count_entries() {
+        wl_import_file(ia);
+        ia += 1;
+    }
+    check(wl_import_end() == 1, "the fixture opens for the air test");
     let plain = bs_intern("minecraft:air", "");
     check_i64(plain as i64, 0, "plain air is the seeded id 0, which is why this was missed");
     check_i64(render_class(plain), 0, "and it renders as air");
@@ -334,9 +343,23 @@ fn ws_air_with_properties_is_air_test() {
     check_i64(render_class(void_ai), 0, "void air is air");
     check(!is_solid(cave) && !is_solid(void_ai), "and neither can be stood on");
 
-    // The consequence, stated as a column: a real floor with save air above it answers
-    // with the floor, not with the top of the world.
-    check(demo_top_at(0, 0, 0) <= 0.0 || true, "the test is about ids, not the fixture");
+    // The half that failed twice: `render_class` saying RC_AIR is not enough, because the
+    // two collision readers each had their own `id == 0` test and fell through to a solid
+    // top. Both are checked here through the function that answers physics and the spawn
+    // scan, not through `render_class`.
+    let ci = ws_column_of(0, 0);
+    check(ci >= 0, "the column is in the window");
+    chunk_set_block(demo[ci], 8, 59, 8, bs_intern("minecraft:stone", ""));
+    var y: i32 = 60;
+    while y < 319 {
+        chunk_set_block(demo[ci], 8, y, 8, props);
+        y += 1;
+    }
+    check(demo_top_at(8, 59, 8) > 0.0, "the stone under the air is a floor");
+    check(demo_top_at(8, 60, 8) <= 0.0, "the air above it is not, through the collision reader");
+    check((demo_floor_at(8, 8) - 60.0) < 0.01 && (60.0 - demo_floor_at(8, 8)) < 0.01,
+          "so the spawn scan finds the floor at 60, not at the top of the world");
+    ws_close_fixture();
     bs_reset();
 }
 
