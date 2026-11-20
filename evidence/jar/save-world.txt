@@ -86,31 +86,31 @@ goose/core/raster.goose:327: warning: redundant `as f32`: a u8 converts to f32 i
 goose/core/demo.goose:178: warning: redundant `as f32`: an i32 converts to f32 implicitly here
         if t > 0.0 { return (y as f32) + t; }
                              ^~~~~~~~
-goose/core/demo.goose:246: warning: redundant `as f32`: fx is already f32
+goose/core/demo.goose:251: warning: redundant `as f32`: fx is already f32
     if fx < 0.0 && (fx as f32) != fx { x -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:247: warning: redundant `as f32`: fy is already f32
+goose/core/demo.goose:252: warning: redundant `as f32`: fy is already f32
     if fy < 0.0 && (fy as f32) != fy { y -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:248: warning: redundant `as f32`: fz is already f32
+goose/core/demo.goose:253: warning: redundant `as f32`: fz is already f32
     if fz < 0.0 && (fz as f32) != fz { z -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:253: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:258: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_x = if stepx == 0 { inf } else if stepx > 0 { (1.0 - (fx - (x as f32))) / nx } else { ((x as f32) - fx) / nx };
                                                                          ^~~~~~~~
-goose/core/demo.goose:253: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:258: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_x = if stepx == 0 { inf } else if stepx > 0 { (1.0 - (fx - (x as f32))) / nx } else { ((x as f32) - fx) / nx };
                                                                                                      ^~~~~~~~
-goose/core/demo.goose:254: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:259: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_y = if stepy == 0 { inf } else if stepy > 0 { (1.0 - (fy - (y as f32))) / ny } else { ((y as f32) - fy) / ny };
                                                                          ^~~~~~~~
-goose/core/demo.goose:254: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:259: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_y = if stepy == 0 { inf } else if stepy > 0 { (1.0 - (fy - (y as f32))) / ny } else { ((y as f32) - fy) / ny };
                                                                                                      ^~~~~~~~
-goose/core/demo.goose:255: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:260: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
                                                                          ^~~~~~~~
-goose/core/demo.goose:255: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:260: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
                                                                                                      ^~~~~~~~
 goose/core/atlas.goose:87: warning: redundant `as f32`: an i64 converts to f32 implicitly here
