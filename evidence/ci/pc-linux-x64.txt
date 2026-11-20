@@ -16,9 +16,63 @@ export fn umbra_mesh_worst_unit_ms() -> f32 { return (dm_worst_unit_us as f32) /
 goose/main.goose:830: warning: redundant `as i64`: data.len is already i64
     jar_bytes = data.len as i64;
                 ^~~~~~~~~~~~~~~
-goose/main.goose:1125: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/main.goose:1091: warning: redundant `as i32`: h.x is already i32
+        if !demo_set_block((h.x as i32), (h.y as i32), (h.z as i32), 0) {
+                            ^~~~~~~~~~
+goose/main.goose:1091: warning: redundant `as i32`: h.y is already i32
+        if !demo_set_block((h.x as i32), (h.y as i32), (h.z as i32), 0) {
+                                          ^~~~~~~~~~
+goose/main.goose:1091: warning: redundant `as i32`: h.z is already i32
+        if !demo_set_block((h.x as i32), (h.y as i32), (h.z as i32), 0) {
+                                                        ^~~~~~~~~~
+goose/main.goose:1108: warning: redundant `as i32`: cell[0] is already i32
+    if !demo_is_air(demo_block_at((cell[0] as i32), (cell[1] as i32), (cell[2] as i32))) {
+                                   ^~~~~~~~~~~~~~
+goose/main.goose:1108: warning: redundant `as i32`: cell[1] is already i32
+    if !demo_is_air(demo_block_at((cell[0] as i32), (cell[1] as i32), (cell[2] as i32))) {
+                                                     ^~~~~~~~~~~~~~
+goose/main.goose:1108: warning: redundant `as i32`: cell[2] is already i32
+    if !demo_is_air(demo_block_at((cell[0] as i32), (cell[1] as i32), (cell[2] as i32))) {
+                                                                       ^~~~~~~~~~~~~~
+goose/main.goose:1113: warning: redundant `as i32`: cell[0] is already i32
+    if !demo_set_block((cell[0] as i32), (cell[1] as i32), (cell[2] as i32), id) {
+                        ^~~~~~~~~~~~~~
+goose/main.goose:1113: warning: redundant `as i32`: cell[1] is already i32
+    if !demo_set_block((cell[0] as i32), (cell[1] as i32), (cell[2] as i32), id) {
+                                          ^~~~~~~~~~~~~~
+goose/main.goose:1113: warning: redundant `as i32`: cell[2] is already i32
+    if !demo_set_block((cell[0] as i32), (cell[1] as i32), (cell[2] as i32), id) {
+                                                            ^~~~~~~~~~~~~~
+goose/main.goose:1129: warning: redundant `as i64`: an i32 converts to i64 implicitly here
     return (h.y as i64) * 1000000 + (h.z as i64) * 1000 + (h.x as i64);
                                                            ^~~~~~~~~~
+goose/main.goose:1133: warning: redundant `as i32`: x is already i32
+    return bs_name(demo_block_at((x as i32), (y as i32), (z as i32)))
+                                  ^~~~~~~~
+goose/main.goose:1133: warning: redundant `as i32`: y is already i32
+    return bs_name(demo_block_at((x as i32), (y as i32), (z as i32)))
+                                              ^~~~~~~~
+goose/main.goose:1133: warning: redundant `as i32`: z is already i32
+    return bs_name(demo_block_at((x as i32), (y as i32), (z as i32)))
+                                                          ^~~~~~~~
+goose/main.goose:1138: warning: redundant `as i32`: x is already i32
+    return if demo_set_block((x as i32), (y as i32), (z as i32), id) { 1 } else { 0 }
+                              ^~~~~~~~
+goose/main.goose:1138: warning: redundant `as i32`: y is already i32
+    return if demo_set_block((x as i32), (y as i32), (z as i32), id) { 1 } else { 0 }
+                                          ^~~~~~~~
+goose/main.goose:1138: warning: redundant `as i32`: z is already i32
+    return if demo_set_block((x as i32), (y as i32), (z as i32), id) { 1 } else { 0 }
+                                                      ^~~~~~~~
+goose/main.goose:1211: warning: redundant `as i32`: x is already i32
+    if !demo_set_block((x as i32), (y as i32), (z as i32), id) { return 0; }
+                        ^~~~~~~~
+goose/main.goose:1211: warning: redundant `as i32`: y is already i32
+    if !demo_set_block((x as i32), (y as i32), (z as i32), id) { return 0; }
+                                    ^~~~~~~~
+goose/main.goose:1211: warning: redundant `as i32`: z is already i32
+    if !demo_set_block((x as i32), (y as i32), (z as i32), id) { return 0; }
+                                                ^~~~~~~~
 goose/core/gamefiles.goose:89: warning: redundant `as i64`: json_str(json_get(c, "time")).len is already i64
             um_lockbytes = json_str(json_get(c, "time")).len as i64;
                            ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -389,16 +443,16 @@ demo: the middle of the world is 24,24 and its floor is 66.00
 demo: a body at the corner 24.0,24.0 would overlap 1 solid cell(s) at foot height
 demo: this is the spawn that failed on the device (44241902430)
 demo: spawning at 24.5,24.5 in cell 24,24 (floor 66.00)
-progress: worst 937 permille; units 10369, total 10369
-sliced mesh: 13 calls, worst call 20.13 ms, worst unit 0.46 ms
+progress: worst 895 permille; units 10369, total 10369
+sliced mesh: 15 calls, worst call 20.39 ms, worst unit 0.57 ms
 ranges: 27 slots for 9 columns
 ranges: 247116 + 12690 + 6414 = 266220 indices used of 580000 in the arena
 edit 0: 1 columns, 1153 units of work, is_edit 1
-edit 0: 5 calls, worst call 6.09 ms, worst slice 0.45 ms
+edit 0: 6 calls, worst call 6.15 ms, worst slice 0.51 ms
 edit 1: 1 columns, 1153 units of work, is_edit 1
-edit 1: 5 calls, worst call 6.13 ms, worst slice 0.45 ms
+edit 1: 6 calls, worst call 6.25 ms, worst slice 0.52 ms
 edit 2: 2 columns, 2305 units of work, is_edit 1
-edit 2: 9 calls, worst call 6.13 ms, worst slice 0.45 ms
+edit 2: 11 calls, worst call 6.15 ms, worst slice 0.52 ms
 edit: patched geometry 1409d6e1c0ba34c9 (266220 indices), rebuilt 1409d6e1c0ba34c9 (266220)
 layout: phone scale 2.64, desktop scale 1.00
 layout: button 0 21,1006 737x53; button 2 1528,1006
@@ -434,13 +488,14 @@ world: floor at 24,24 is 66.00
 world: slab at 12,64,21 with a half-block collision top
 water: 386 fluid cells, 22287 solid, 367 air-or-other near the surface
 edits: the last line is "26 65 24 minecraft:stone"
-world: opened 4 chunk(s) from 1 region file(s): 24673 non-air blocks, 53 states, 0 errors, 0 not full, 0 left out, in 5.1 ms
+world: opened 4 chunk(s) from 1 region file(s): 24673 non-air blocks, 53 states, 0 errors, 0 not full, 0 left out, in 5.9 ms
 world: bounds x 0.0..32.0 z 0.0..32.0
 world: the topmost block at 1,1 is y 61
 world: the block at 1,61,1 is minecraft:grass_block
+world: the floors at 1,17 and 17,17 are 64.00 and 62.00
 world: meshed 41092 vertices in 2 calls, x 0.0..32.0, 0 outside the save's bounds
 stream: radius 2 -> 16 column(s) resident of 25 asked for, 0 evicted, 9 missing, 0 error(s)
-stream: centre 0.01 ms, fill 0.00 ms over 1 slice(s), worst slice 0.00 ms, 0.1 MB of region files
-stream: meshed 64768 vertex(es) of 16 column(s) in 5 call(s), 93.7 ms
+stream: centre 0.01 ms, fill 0.01 ms over 1 slice(s), worst slice 0.01 ms, 0.1 MB of region files
+stream: meshed 64768 vertex(es) of 16 column(s) in 6 call(s), 114.8 ms
 stream: 64768 vertex(es) drawn, 0 outside x -32..32 z -32..32
-PASS: 337 checks, 0 failures
+PASS: 340 checks, 0 failures
