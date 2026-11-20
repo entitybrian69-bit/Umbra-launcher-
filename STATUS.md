@@ -118,7 +118,7 @@ run `44688168842`:
 | non-air blocks in it | 2 668 206 | **34 249 656** |
 | save the phone is given | 1.9 MB | **11.6 MB** |
 | chunks the phone opens | 25 | **81** (radius 4, the default) |
-| vertices drawn | 583 096 | **1 900 884** over 243 ranges |
+| vertices drawn | 583 096 | **1 891 572** over 243 ranges |
 | read time | 811.9 ms | **2 553 ms**, 81 chunks parsed by the stream, 0 missing |
 
 The window the phone opens is the setting, not the save: radius 4 is 81 chunks, and the
@@ -131,9 +131,10 @@ the default, is 91 MB, which is 1.9x what the app already uploaded for the demo 
 number that matters is that the phone *can* now walk in a world whose save is 14x bigger
 than the window it draws.
 
-**Frame budget.** The worst meshing call on the phone was **26.4 ms** (run `44694293223`),
-inside the 50 ms limit; that run's worst *unit* was 10.1 ms. The longest frame was 225.8 ms,
-at start-up, and zero frames went over 250 ms. The stream's slice is checked separately: the host suite
+**Frame budget.** The worst meshing call on the phone was **32.7 ms** (run `44732378536`,
+the start-up demo scene), inside the 50 ms limit; that run's worst *unit* was 13.3 ms and its
+longest frame 172.4 ms, with zero frames over 250 ms. The save's own 81-column mesh is
+`1891572 vertices drawn, passes 2627418/209940/0 over 243 ranges`. The stream's slice is checked separately: the host suite
 reports the worst slice as one chunk's parse (~0.3 ms) and the window fills in 1 to 2
 slices at radius 2 on the fixture (`stream: 2 slices for 16 chunks, worst 355 us`).
 
@@ -142,17 +143,40 @@ gate's zip as `umbra-sample-world.zip` and pins its digest into `goose/core/samp
 the app downloads it on a first run, checks the digest, and only then opens it. The legal
 question is stated in `D-048` and is not settled.
 
-**What is proved, and by what.** The phone's streamed path, run `44694293223`:
-`world: opened: 81 chunk(s) from 4 region file(s), radius 4, non-air blocks 2606919,
+**The window follows the body, on the device.** Run `44732378536`, phase
+`stream-recentre`:
+
+```
+stream: centre chunk 0,0 radius 0 (1 chunks), 0 evicted, 1 to parse
+hold 1, body at 8.50 49.00 6.08      (spawn 8.50 8.50)
+hold 2, body at 8.50 46.00 3.63
+hold 3, body at 8.50 44.92 1.49
+stream: centre chunk 0,0 radius 0 (1 chunks), 1 evicted, 1 to parse
+stream: window complete, 1 column(s) resident of 1 asked for
+```
+
+The body walked out of a radius-0 window, the stream re-centred and **evicted one column
+and parsed one**, and the resident count stayed at the window's own size instead of growing.
+That is the mechanism step 1 rests on: without it the window is a fixed box and the world
+ends at its edge. The phase cuts the radius to 0 through `radius.txt` because at radius 4
+the stride is 64 blocks and no 1.5-second hold crosses it; the phase is about the
+mechanism, and `D-049` has the radius table.
+
+**What the phone's own log says.** Run `44732378536`:
+`world: opened: 81 chunk(s) from 4 region file(s), radius 4, non-air blocks 2606408,
 read errors 0, 81 chunk(s) parsed by the stream, missing from the save 0, 19.6 MB of
-region files, 2553.0 ms` -- the import wrote no chunk (`deferred`), the stream parsed
-exactly the 81 the window asked for, no position was missing, and the same line was read
-back by the smoke test's own parser (`world: the phone read 81 chunk(s), 2606919 non-air
-block(s), 0 read error(s)`). The mesh is 243 ranges for 81 columns, which is three passes
-per column, as the slot table promises. What is not yet proved on a device is a
-*re-centre*: walking far enough to evict a column, watch it leave the mesh and come back.
-The host suite proves the eviction and the re-add (`ws_move_test`), and the device run only
-walks a few blocks. That is the next device check, and it is named here rather than assumed.
+region files, 2549.5 ms` -- the import wrote no chunk (`deferred`), the stream parsed
+exactly the 81 the window asked for, no position was missing, and the smoke test read the
+same line back with its own parser (`world: the phone read 81 chunk(s), 2606408 non-air
+block(s), 0 read error(s)`). The mesh is 243 ranges for 81 columns, three passes per column,
+as the slot table promises.
+
+**What is not proved, and is named rather than assumed.** All of the above is at radius 4
+over 81 columns. The re-centre is proved at radius 0 over 1 column. Nobody has yet watched
+a radius-4 window (81 columns, 91 MB of columns, 1.9 M vertices) move: the eviction is
+proved, the geometry it re-uploads at that size is not, and the worst meshing call is the
+demo scene's, not the streamed world's. That is the next device measurement, and the honest
+statement of step 1's edge.
 
 ## Where the sample world comes from, and how big it is (2026-11-14)
 
