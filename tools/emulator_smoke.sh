@@ -1279,9 +1279,12 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     sleep 1
     adb shell "cp /data/local/tmp/umbra-world.zip '$FILES_W/world.zip'" > /dev/null 2>&1 || true
     adb logcat -c > /dev/null 2>&1 || true
-    # Radius 1 for this phase: 16 blocks of stride is a walk, 64 is not. The app reads this
-    # file once, at start-up, before it opens the world.
-    adb shell "echo 1 > '$FILES_W/radius.txt'" > /dev/null 2>&1 \
+    # Radius 0 for this phase, so the stride is ONE chunk (16 blocks): the walk below covers
+    # about six blocks per hold and the phase gets eight holds, so 16 is reachable and 32
+    # (radius 1) is not. Run 44724553259 walked 8.50,8.50 -> 14.39,7.92 and never
+    # re-centred, which was the phase asking for more distance than a 1.5-second hold gives.
+    # The app reads this file once, at start-up, before it opens the world.
+    adb shell "echo 0 > '$FILES_W/radius.txt'" > /dev/null 2>&1 \
         || die "stream-recentre: could not put radius.txt in the app's directory"
     R="$(adb shell "cat '$FILES_W/radius.txt'" 2>/dev/null | tr -d '\r\n')"
     say "stream-recentre: the app's radius file says '${R:-nothing}'"
@@ -1330,8 +1333,9 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     RES="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'stream: window complete' | tail -1 | sed 's/.*umbra *: //')"
     say "stream-recentre: $RES"
     # Resident must still be the window's own count, not the union of every window walked.
-    # Radius 1 is 9 positions; a save that holds them all is 9 columns, and a stream that
-    # only ever appended would be at 18 by the second window.
+    # This is what makes the phase about the stream and not only about the position: a
+    # stream that appended instead of evicting would grow without bound. Checked against
+    # the window's own asked-for count, which is radius-derived.
     # Read the count right after "window complete, ", and stop at the first non-digit. The
     # greedy `.*` this could have used takes the LAST count on the line, which here is
     # "<n> slice(s)" territory -- the same mistake that read "0 chunk(s)" off a 25-chunk
@@ -1340,10 +1344,11 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     case "${RESN:-}" in
         ''|*[!0-9]*) say "stream-recentre: the resident count is not readable, so the eviction is not checked" ;;
         *)
-            if [ "$RESN" -gt 9 ]; then
-                die "stream-recentre: the window holds $RESN columns after moving, and radius 1 is at most 9 -- the stream appended instead of evicting"
+            ASKED="$(printf '%s\n' "$RES" | sed -n 's/.*resident of \([0-9][0-9]*\) asked for.*/\1/p')"
+            if [ -n "${ASKED:-}" ] && [ "${RESN:-0}" -gt "${ASKED:-0}" ]; then
+                die "stream-recentre: the window holds $RESN columns after moving and asked for $ASKED -- the stream appended instead of evicting"
             fi
-            say "stream-recentre: $RESN column(s) resident after the move, which is the window's own count (radius 1 is at most 9)"
+            say "stream-recentre: $RESN column(s) resident of ${ASKED:-?} asked for after the move -- the window evicted rather than grew"
             ;;
     esac
     LIVE="$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')"
