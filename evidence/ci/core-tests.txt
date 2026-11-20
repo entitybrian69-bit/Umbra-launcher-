@@ -25,6 +25,15 @@ goose/test/worldstream_test.goose:256: warning: redundant `as i64`: demo.len is 
 goose/test/worldstream_test.goose:259: warning: redundant `as i64`: demo.len is already i64
     check_i64(demo.len as i64, before, "recentring on the same window parses nothing");
               ^~~~~~~~~~~~~~~
+goose/test/worldstream_test.goose:308: warning: redundant `as i64`: demo.len is already i64
+    check(demo.len as i64 == 0, "so the world is not built twice");
+          ^~~~~~~~~~~~~~~
+goose/test/worldstream_test.goose:314: warning: redundant `as i64`: demo.len is already i64
+    check_i64(demo.len as i64, 16, "and the mesher walks exactly those");
+              ^~~~~~~~~~~~~~~
+goose/test/worldstream_test.goose:327: warning: redundant `as i64`: demo.len is already i64
+    check_i64(demo.len as i64, 16, "and the world is not duplicated by a second fill");
+              ^~~~~~~~~~~~~~~
 goose/core/worldstream.goose:179: warning: redundant `as i64`: bytes.len is already i64
     let view = sref_of(ws_archive[..], off, bytes.len as i64);
                                             ^~~~~~~~~~~~~~~~
@@ -46,7 +55,7 @@ goose/core/worldstream.goose:414: warning: redundant `as i64`: an i32 converts t
 goose/core/worldstream.goose:414: warning: redundant `as i64`: an i32 converts to i64 implicitly here
         if (demo[i].x as i64) == cx && (demo[i].z as i64) == cz { return i }
                                         ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:425: warning: redundant `as i64`: demo.len is already i64
+goose/core/worldstream.goose:456: warning: redundant `as i64`: demo.len is already i64
     ws_stats.resident = demo.len as i64;
                         ^~~~~~~~~~~~~~~
 goose/core/demo.goose:213: warning: redundant `as f32`: fx is already f32
@@ -304,25 +313,25 @@ goose/test/worldzip_test.goose:179: warning: redundant `as i64`: wl_verdict() is
 goose/test/worldzip_test.goose:181: warning: redundant `as i64`: demo.len is already i64
     check_i64(demo.len as i64, 0, "and no columns");
               ^~~~~~~~~~~~~~~
-goose/core/worldload_in.goose:330: warning: redundant `as i64`: cx is already i64
+goose/core/worldload_in.goose:336: warning: redundant `as i64`: cx is already i64
             let wx = rx * 32 + (cx as i64);
                                 ^~~~~~~~~
-goose/core/worldload_in.goose:331: warning: redundant `as i64`: cz is already i64
+goose/core/worldload_in.goose:337: warning: redundant `as i64`: cz is already i64
             let wz = rz * 32 + (cz as i64);
                                 ^~~~~~~~~
-goose/core/worldload_in.goose:376: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/core/worldload_in.goose:391: warning: redundant `as i64`: an i32 converts to i64 implicitly here
             if n > 0 { wl_res.states += n as i64; }
                                         ^~~~~~~~
-goose/core/worldload_in.goose:483: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/worldload_in.goose:554: warning: redundant `as f32`: an i32 converts to f32 implicitly here
 fn wl_min_block_x() -> f32 { return (wl_min_x as f32) * 16.0; }
                                      ^~~~~~~~~~~~~~~
-goose/core/worldload_in.goose:484: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/worldload_in.goose:555: warning: redundant `as f32`: an i32 converts to f32 implicitly here
 fn wl_max_block_x() -> f32 { return ((wl_max_x as f32) + 1.0) * 16.0; }
                                       ^~~~~~~~~~~~~~~
-goose/core/worldload_in.goose:485: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/worldload_in.goose:556: warning: redundant `as f32`: an i32 converts to f32 implicitly here
 fn wl_min_block_z() -> f32 { return (wl_min_z as f32) * 16.0; }
                                      ^~~~~~~~~~~~~~~
-goose/core/worldload_in.goose:486: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/worldload_in.goose:557: warning: redundant `as f32`: an i32 converts to f32 implicitly here
 fn wl_max_block_z() -> f32 { return ((wl_max_z as f32) + 1.0) * 16.0; }
                                       ^~~~~~~~~~~~~~~
 goose/core/raster.goose:64: warning: redundant `as f32`: (((f[0] * f[0]) + (f[1] * f[1])) + (f[2] * f[2])) is already f32
@@ -631,8 +640,8 @@ PASS models (447 checks)
 PASS modelstore (497 checks)
 PASS raster (507 checks)
 PASS worldzip (602 checks)
-  ws: 2 slices for 16 chunks, worst 220 us
+  ws: 2 slices for 16 chunks, worst 183 us
 
-PASS worldstream (643 checks)
+PASS worldstream (657 checks)
 all modules passed
 c-host: goose_exit returned 0
