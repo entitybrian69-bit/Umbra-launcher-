@@ -1,78 +1,54 @@
-goose/test/worldzip_test.goose:58: warning: redundant `as i64`: a u32 converts to i64 implicitly here
-    check_i64(demo_block_at(-1, 0, -1) as i64, stone as i64, "the block at -1,-1 is its 15,15");
-              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/test/worldzip_test.goose:58: warning: redundant `as i64`: a u32 converts to i64 implicitly here
-    check_i64(demo_block_at(-1, 0, -1) as i64, stone as i64, "the block at -1,-1 is its 15,15");
-                                               ^~~~~~~~~~~~
-goose/test/worldzip_test.goose:59: warning: redundant `as i64`: a u32 converts to i64 implicitly here
-    check_i64(demo_block_at(-16, 0, -16) as i64, stone as i64, "and its 0,0 is at -16,-16");
-              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/test/worldzip_test.goose:59: warning: redundant `as i64`: a u32 converts to i64 implicitly here
-    check_i64(demo_block_at(-16, 0, -16) as i64, stone as i64, "and its 0,0 is at -16,-16");
-                                                 ^~~~~~~~~~~~
-goose/test/worldzip_test.goose:61: warning: redundant `as i64`: a u32 converts to i64 implicitly here
-    check_i64(demo_block_at(-2, 0, -3) as i64, stone as i64, "and read back");
-              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/test/worldzip_test.goose:61: warning: redundant `as i64`: a u32 converts to i64 implicitly here
-    check_i64(demo_block_at(-2, 0, -3) as i64, stone as i64, "and read back");
-                                               ^~~~~~~~~~~~
-goose/test/worldzip_test.goose:86: warning: redundant `as i64`: wl_count_files() is already i64
-    check_i64(wl_count_files() as i64, regions, "every region file was read");
-              ^~~~~~~~~~~~~~~~~~~~~~~
-goose/test/worldzip_test.goose:87: warning: redundant `as i64`: wl_count_chunks() is already i64
-    check_i64(wl_count_chunks() as i64, 4, "four chunks, as the fixture's save has");
-              ^~~~~~~~~~~~~~~~~~~~~~~~
-goose/test/worldzip_test.goose:91: warning: redundant `as i64`: demo.len is already i64
-    check(demo.len as i64 == wl_count_chunks(), "one column per chunk");
-          ^~~~~~~~~~~~~~~
-goose/test/worldzip_test.goose:179: warning: redundant `as i64`: wl_verdict() is already i64
-    check_i64(wl_verdict() as i64, 0, "and it is not a world");
-              ^~~~~~~~~~~~~~~~~~~
-goose/test/worldzip_test.goose:181: warning: redundant `as i64`: demo.len is already i64
-    check_i64(demo.len as i64, 0, "and no columns");
+goose/test/worldstream_test.goose:52: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+        if chunk_block(demo[i], 8, y, 8) != 0 { return y as i64; }
+                                                       ^~~~~~~~
+goose/test/worldstream_test.goose:113: warning: redundant `as i64`: demo.len is already i64
+    check_i64(demo.len as i64, resident, "every resident chunk is a column the mesher can walk");
               ^~~~~~~~~~~~~~~
-goose/core/worldload_in.goose:283: warning: redundant `as i64`: cx is already i64
-            let wx = rx * 32 + (cx as i64);
-                                ^~~~~~~~~
-goose/core/worldload_in.goose:284: warning: redundant `as i64`: cz is already i64
-            let wz = rz * 32 + (cz as i64);
-                                ^~~~~~~~~
-goose/core/worldload_in.goose:326: warning: redundant `as i64`: an i32 converts to i64 implicitly here
-            if n > 0 { wl_res.states += n as i64; }
-                                        ^~~~~~~~
-goose/core/worldload_in.goose:429: warning: redundant `as f32`: an i32 converts to f32 implicitly here
-fn wl_min_block_x() -> f32 { return (wl_min_x as f32) * 16.0; }
-                                     ^~~~~~~~~~~~~~~
-goose/core/worldload_in.goose:430: warning: redundant `as f32`: an i32 converts to f32 implicitly here
-fn wl_max_block_x() -> f32 { return ((wl_max_x as f32) + 1.0) * 16.0; }
-                                      ^~~~~~~~~~~~~~~
-goose/core/worldload_in.goose:431: warning: redundant `as f32`: an i32 converts to f32 implicitly here
-fn wl_min_block_z() -> f32 { return (wl_min_z as f32) * 16.0; }
-                                     ^~~~~~~~~~~~~~~
-goose/core/worldload_in.goose:432: warning: redundant `as f32`: an i32 converts to f32 implicitly here
-fn wl_max_block_z() -> f32 { return ((wl_max_z as f32) + 1.0) * 16.0; }
-                                      ^~~~~~~~~~~~~~~
-goose/core/inflate.goose:84: warning: redundant `as i64`: a u32 converts to i64 implicitly here
-        code |= (bits(r, 1) as i64);
-                 ^~~~~~~~~~~~~~~~~
-goose/core/inflate.goose:150: warning: redundant `as i64`: a u32 converts to i64 implicitly here
-                let len = length_base[li] + (bits(r, length_extra[li]) as i64);
-                                             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/core/inflate.goose:157: warning: redundant `as i64`: a u32 converts to i64 implicitly here
-                let d = dist_base[dsym] + (bits(r, dist_extra[dsym]) as i64);
-                                           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/core/inflate.goose:301: warning: redundant `as u32`: a u8 converts to u32 implicitly here
-    let hdr = (cmf as u32) * 256 + (flg as u32);
-                                    ^~~~~~~~~~
-goose/core/inflate.goose:303: warning: redundant `as u64`: a u32 converts to u64 implicitly here
-        format(err, "zlib: bad header check 0x", u64_to_hex(hdr as u64, 4));
-                                                            ^~~~~~~~~~
-goose/core/inflate.goose:316: warning: redundant `as u64`: a u32 converts to u64 implicitly here
-        format(err, "zlib: adler32 mismatch: stream says 0x", u64_to_hex(want as u64, 8),
-                                                                         ^~~~~~~~~~~
-goose/core/inflate.goose:317: warning: redundant `as u64`: a u32 converts to u64 implicitly here
-               ", data is 0x", u64_to_hex(got as u64, 8));
-                                          ^~~~~~~~~~
+goose/test/worldstream_test.goose:148: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+    check_i64(demo_block_at(8, 76, 8) as i64, 0, "and the air above it is air");
+              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/test/worldstream_test.goose:166: warning: redundant `as i64`: demo.len is already i64
+    check_i64(demo.len as i64, 9, "and nine columns are resident");
+              ^~~~~~~~~~~~~~~
+goose/test/worldstream_test.goose:176: warning: redundant `as i64`: demo.len is already i64
+    check_i64(demo.len as i64, 1, "one column resident");
+              ^~~~~~~~~~~~~~~
+goose/test/worldstream_test.goose:224: warning: redundant `as i64`: demo.len is already i64
+    check_i64(demo.len as i64, 9, "nine chunks around the origin");
+              ^~~~~~~~~~~~~~~
+goose/test/worldstream_test.goose:243: warning: redundant `as i64`: demo.len is already i64
+    check(demo.len as i64 <= 9, "the resident set never exceeds the window's own count");
+          ^~~~~~~~~~~~~~~
+goose/test/worldstream_test.goose:256: warning: redundant `as i64`: demo.len is already i64
+    let before = demo.len as i64;
+                 ^~~~~~~~~~~~~~~
+goose/test/worldstream_test.goose:259: warning: redundant `as i64`: demo.len is already i64
+    check_i64(demo.len as i64, before, "recentring on the same window parses nothing");
+              ^~~~~~~~~~~~~~~
+goose/core/worldstream.goose:179: warning: redundant `as i64`: bytes.len is already i64
+    let view = sref_of(ws_archive[..], off, bytes.len as i64);
+                                            ^~~~~~~~~~~~~~~~
+goose/core/worldstream.goose:256: warning: redundant `as i64`: demo.len is already i64
+    ws_stats.resident = demo.len as i64;
+                        ^~~~~~~~~~~~~~~
+goose/core/worldstream.goose:266: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+        let dx = (demo[i].x as i64) - cx;
+                  ^~~~~~~~~~~~~~~~
+goose/core/worldstream.goose:267: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+        let dz = (demo[i].z as i64) - cz;
+                  ^~~~~~~~~~~~~~~~
+goose/core/worldstream.goose:376: warning: redundant `as i64`: demo.len is already i64
+                ws_stats.resident = demo.len as i64;
+                                    ^~~~~~~~~~~~~~~
+goose/core/worldstream.goose:414: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+        if (demo[i].x as i64) == cx && (demo[i].z as i64) == cz { return i }
+            ^~~~~~~~~~~~~~~~
+goose/core/worldstream.goose:414: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+        if (demo[i].x as i64) == cx && (demo[i].z as i64) == cz { return i }
+                                        ^~~~~~~~~~~~~~~~
+goose/core/worldstream.goose:425: warning: redundant `as i64`: demo.len is already i64
+    ws_stats.resident = demo.len as i64;
+                        ^~~~~~~~~~~~~~~
 goose/core/demo.goose:213: warning: redundant `as f32`: fx is already f32
     if fx < 0.0 && (fx as f32) != fx { x -= 1; }
                     ^~~~~~~~~
@@ -253,6 +229,27 @@ goose/core/region.goose:142: warning: redundant `as u32`: a u16 converts to u32 
 goose/core/region.goose:515: warning: redundant `as u32`: a u8 converts to u32 implicitly here
             put_be_u32(out, (offsets[i] << 8) | (counts[i] as u32));
                                                  ^~~~~~~~~~~~~~~~
+goose/core/inflate.goose:84: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+        code |= (bits(r, 1) as i64);
+                 ^~~~~~~~~~~~~~~~~
+goose/core/inflate.goose:150: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+                let len = length_base[li] + (bits(r, length_extra[li]) as i64);
+                                             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/inflate.goose:157: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+                let d = dist_base[dsym] + (bits(r, dist_extra[dsym]) as i64);
+                                           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/core/inflate.goose:301: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+    let hdr = (cmf as u32) * 256 + (flg as u32);
+                                    ^~~~~~~~~~
+goose/core/inflate.goose:303: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+        format(err, "zlib: bad header check 0x", u64_to_hex(hdr as u64, 4));
+                                                            ^~~~~~~~~~
+goose/core/inflate.goose:316: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+        format(err, "zlib: adler32 mismatch: stream says 0x", u64_to_hex(want as u64, 8),
+                                                                         ^~~~~~~~~~~
+goose/core/inflate.goose:317: warning: redundant `as u64`: a u32 converts to u64 implicitly here
+               ", data is 0x", u64_to_hex(got as u64, 8));
+                                          ^~~~~~~~~~
 goose/core/mem.goose:26: warning: redundant `as u16`: a u8 converts to u16 implicitly here
     return (b[off] as u16 << 8) | (b[off + 1] as u16);
                                    ^~~~~~~~~~~~~~~~~
@@ -274,6 +271,60 @@ goose/core/mem.goose:115: warning: redundant `as u32`: a u8 converts to u32 impl
 goose/core/mem.goose:125: warning: redundant `as u32`: a u8 converts to u32 implicitly here
         a = (a + (x as u32)) % 65521;
                   ^~~~~~~~
+goose/test/worldzip_test.goose:58: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+    check_i64(demo_block_at(-1, 0, -1) as i64, stone as i64, "the block at -1,-1 is its 15,15");
+              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/test/worldzip_test.goose:58: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+    check_i64(demo_block_at(-1, 0, -1) as i64, stone as i64, "the block at -1,-1 is its 15,15");
+                                               ^~~~~~~~~~~~
+goose/test/worldzip_test.goose:59: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+    check_i64(demo_block_at(-16, 0, -16) as i64, stone as i64, "and its 0,0 is at -16,-16");
+              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/test/worldzip_test.goose:59: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+    check_i64(demo_block_at(-16, 0, -16) as i64, stone as i64, "and its 0,0 is at -16,-16");
+                                                 ^~~~~~~~~~~~
+goose/test/worldzip_test.goose:61: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+    check_i64(demo_block_at(-2, 0, -3) as i64, stone as i64, "and read back");
+              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+goose/test/worldzip_test.goose:61: warning: redundant `as i64`: a u32 converts to i64 implicitly here
+    check_i64(demo_block_at(-2, 0, -3) as i64, stone as i64, "and read back");
+                                               ^~~~~~~~~~~~
+goose/test/worldzip_test.goose:86: warning: redundant `as i64`: wl_count_files() is already i64
+    check_i64(wl_count_files() as i64, regions, "every region file was read");
+              ^~~~~~~~~~~~~~~~~~~~~~~
+goose/test/worldzip_test.goose:87: warning: redundant `as i64`: wl_count_chunks() is already i64
+    check_i64(wl_count_chunks() as i64, 4, "four chunks, as the fixture's save has");
+              ^~~~~~~~~~~~~~~~~~~~~~~~
+goose/test/worldzip_test.goose:91: warning: redundant `as i64`: demo.len is already i64
+    check(demo.len as i64 == wl_count_chunks(), "one column per chunk");
+          ^~~~~~~~~~~~~~~
+goose/test/worldzip_test.goose:179: warning: redundant `as i64`: wl_verdict() is already i64
+    check_i64(wl_verdict() as i64, 0, "and it is not a world");
+              ^~~~~~~~~~~~~~~~~~~
+goose/test/worldzip_test.goose:181: warning: redundant `as i64`: demo.len is already i64
+    check_i64(demo.len as i64, 0, "and no columns");
+              ^~~~~~~~~~~~~~~
+goose/core/worldload_in.goose:330: warning: redundant `as i64`: cx is already i64
+            let wx = rx * 32 + (cx as i64);
+                                ^~~~~~~~~
+goose/core/worldload_in.goose:331: warning: redundant `as i64`: cz is already i64
+            let wz = rz * 32 + (cz as i64);
+                                ^~~~~~~~~
+goose/core/worldload_in.goose:376: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+            if n > 0 { wl_res.states += n as i64; }
+                                        ^~~~~~~~
+goose/core/worldload_in.goose:483: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+fn wl_min_block_x() -> f32 { return (wl_min_x as f32) * 16.0; }
+                                     ^~~~~~~~~~~~~~~
+goose/core/worldload_in.goose:484: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+fn wl_max_block_x() -> f32 { return ((wl_max_x as f32) + 1.0) * 16.0; }
+                                      ^~~~~~~~~~~~~~~
+goose/core/worldload_in.goose:485: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+fn wl_min_block_z() -> f32 { return (wl_min_z as f32) * 16.0; }
+                                     ^~~~~~~~~~~~~~~
+goose/core/worldload_in.goose:486: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+fn wl_max_block_z() -> f32 { return ((wl_max_z as f32) + 1.0) * 16.0; }
+                                      ^~~~~~~~~~~~~~~
 goose/core/raster.goose:64: warning: redundant `as f32`: (((f[0] * f[0]) + (f[1] * f[1])) + (f[2] * f[2])) is already f32
     let fl = (f[0] * f[0] + f[1] * f[1] + f[2] * f[2]) as f32;
               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -579,6 +630,9 @@ PASS atlas (425 checks)
 PASS models (447 checks)
 PASS modelstore (497 checks)
 PASS raster (507 checks)
-PASS worldzip (592 checks)
+PASS worldzip (602 checks)
+  ws: 2 slices for 16 chunks, worst 220 us
+
+PASS worldstream (643 checks)
 all modules passed
 c-host: goose_exit returned 0
