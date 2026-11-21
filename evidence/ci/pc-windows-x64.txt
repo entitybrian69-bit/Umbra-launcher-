@@ -16,61 +16,64 @@ export fn umbra_mesh_worst_unit_ms() -> f32 { return (dm_worst_unit_us as f32) /
 goose/main.goose:857: warning: redundant `as i64`: data.len is already i64
     jar_bytes = data.len as i64;
                 ^~~~~~~~~~~~~~~
-goose/main.goose:1177: warning: redundant `as i32`: h.x is already i32
+goose/main.goose:1249: warning: redundant `as i64`: i is already i64
+        if n.len == name.len && eq_bytes(n, name) { return i as i64 }
+                                                           ^~~~~~~~
+goose/main.goose:1383: warning: redundant `as i32`: h.x is already i32
         if !demo_set_block((h.x as i32), (h.y as i32), (h.z as i32), 0) {
                             ^~~~~~~~~~
-goose/main.goose:1177: warning: redundant `as i32`: h.y is already i32
+goose/main.goose:1383: warning: redundant `as i32`: h.y is already i32
         if !demo_set_block((h.x as i32), (h.y as i32), (h.z as i32), 0) {
                                           ^~~~~~~~~~
-goose/main.goose:1177: warning: redundant `as i32`: h.z is already i32
+goose/main.goose:1383: warning: redundant `as i32`: h.z is already i32
         if !demo_set_block((h.x as i32), (h.y as i32), (h.z as i32), 0) {
                                                         ^~~~~~~~~~
-goose/main.goose:1194: warning: redundant `as i32`: cell[0] is already i32
+goose/main.goose:1400: warning: redundant `as i32`: cell[0] is already i32
     if !demo_is_air(demo_block_at((cell[0] as i32), (cell[1] as i32), (cell[2] as i32))) {
                                    ^~~~~~~~~~~~~~
-goose/main.goose:1194: warning: redundant `as i32`: cell[1] is already i32
+goose/main.goose:1400: warning: redundant `as i32`: cell[1] is already i32
     if !demo_is_air(demo_block_at((cell[0] as i32), (cell[1] as i32), (cell[2] as i32))) {
                                                      ^~~~~~~~~~~~~~
-goose/main.goose:1194: warning: redundant `as i32`: cell[2] is already i32
+goose/main.goose:1400: warning: redundant `as i32`: cell[2] is already i32
     if !demo_is_air(demo_block_at((cell[0] as i32), (cell[1] as i32), (cell[2] as i32))) {
                                                                        ^~~~~~~~~~~~~~
-goose/main.goose:1199: warning: redundant `as i32`: cell[0] is already i32
+goose/main.goose:1405: warning: redundant `as i32`: cell[0] is already i32
     if !demo_set_block((cell[0] as i32), (cell[1] as i32), (cell[2] as i32), id) {
                         ^~~~~~~~~~~~~~
-goose/main.goose:1199: warning: redundant `as i32`: cell[1] is already i32
+goose/main.goose:1405: warning: redundant `as i32`: cell[1] is already i32
     if !demo_set_block((cell[0] as i32), (cell[1] as i32), (cell[2] as i32), id) {
                                           ^~~~~~~~~~~~~~
-goose/main.goose:1199: warning: redundant `as i32`: cell[2] is already i32
+goose/main.goose:1405: warning: redundant `as i32`: cell[2] is already i32
     if !demo_set_block((cell[0] as i32), (cell[1] as i32), (cell[2] as i32), id) {
                                                             ^~~~~~~~~~~~~~
-goose/main.goose:1215: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/main.goose:1421: warning: redundant `as i64`: an i32 converts to i64 implicitly here
     return (h.y as i64) * 1000000 + (h.z as i64) * 1000 + (h.x as i64);
                                                            ^~~~~~~~~~
-goose/main.goose:1219: warning: redundant `as i32`: x is already i32
+goose/main.goose:1425: warning: redundant `as i32`: x is already i32
     return bs_name(demo_block_at((x as i32), (y as i32), (z as i32)))
                                   ^~~~~~~~
-goose/main.goose:1219: warning: redundant `as i32`: y is already i32
+goose/main.goose:1425: warning: redundant `as i32`: y is already i32
     return bs_name(demo_block_at((x as i32), (y as i32), (z as i32)))
                                               ^~~~~~~~
-goose/main.goose:1219: warning: redundant `as i32`: z is already i32
+goose/main.goose:1425: warning: redundant `as i32`: z is already i32
     return bs_name(demo_block_at((x as i32), (y as i32), (z as i32)))
                                                           ^~~~~~~~
-goose/main.goose:1224: warning: redundant `as i32`: x is already i32
+goose/main.goose:1430: warning: redundant `as i32`: x is already i32
     return if demo_set_block((x as i32), (y as i32), (z as i32), id) { 1 } else { 0 }
                               ^~~~~~~~
-goose/main.goose:1224: warning: redundant `as i32`: y is already i32
+goose/main.goose:1430: warning: redundant `as i32`: y is already i32
     return if demo_set_block((x as i32), (y as i32), (z as i32), id) { 1 } else { 0 }
                                           ^~~~~~~~
-goose/main.goose:1224: warning: redundant `as i32`: z is already i32
+goose/main.goose:1430: warning: redundant `as i32`: z is already i32
     return if demo_set_block((x as i32), (y as i32), (z as i32), id) { 1 } else { 0 }
                                                       ^~~~~~~~
-goose/main.goose:1321: warning: redundant `as i32`: x is already i32
+goose/main.goose:1527: warning: redundant `as i32`: x is already i32
     if !demo_set_block((x as i32), (y as i32), (z as i32), id) { return 0; }
                         ^~~~~~~~
-goose/main.goose:1321: warning: redundant `as i32`: y is already i32
+goose/main.goose:1527: warning: redundant `as i32`: y is already i32
     if !demo_set_block((x as i32), (y as i32), (z as i32), id) { return 0; }
                                     ^~~~~~~~
-goose/main.goose:1321: warning: redundant `as i32`: z is already i32
+goose/main.goose:1527: warning: redundant `as i32`: z is already i32
     if !demo_set_block((x as i32), (y as i32), (z as i32), id) { return 0; }
                                                 ^~~~~~~~
 goose/core/gamefiles.goose:89: warning: redundant `as i64`: json_str(json_get(c, "time")).len is already i64
@@ -115,30 +118,42 @@ goose/core/sha1.goose:155: warning: redundant `as i64`: want.len is already i64
 goose/core/sampleworld.goose:132: warning: redundant `as i64`: bytes.len is already i64
     if bytes.len as i64 != UM_WORLD_BYTES { return 0; }
        ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:182: warning: redundant `as i64`: bytes.len is already i64
+goose/core/worldstream.goose:183: warning: redundant `as i64`: bytes.len is already i64
     let view = sref_of(ws_archive[..], off, bytes.len as i64);
                                             ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:259: warning: redundant `as i64`: demo.len is already i64
+goose/core/worldstream.goose:261: warning: redundant `as i64`: demo.len is already i64
     ws_stats.resident = demo.len as i64;
                         ^~~~~~~~~~~~~~~
-goose/core/worldstream.goose:269: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/core/worldstream.goose:271: warning: redundant `as i64`: an i32 converts to i64 implicitly here
         let dx = (demo[i].x as i64) - cx;
                   ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:270: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/core/worldstream.goose:272: warning: redundant `as i64`: an i32 converts to i64 implicitly here
         let dz = (demo[i].z as i64) - cz;
                   ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:379: warning: redundant `as i64`: demo.len is already i64
+goose/core/worldstream.goose:381: warning: redundant `as i64`: demo.len is already i64
                 ws_stats.resident = demo.len as i64;
                                     ^~~~~~~~~~~~~~~
-goose/core/worldstream.goose:417: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/core/worldstream.goose:419: warning: redundant `as i64`: an i32 converts to i64 implicitly here
         if (demo[i].x as i64) == cx && (demo[i].z as i64) == cz { return i }
             ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:417: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/core/worldstream.goose:419: warning: redundant `as i64`: an i32 converts to i64 implicitly here
         if (demo[i].x as i64) == cx && (demo[i].z as i64) == cz { return i }
                                         ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:459: warning: redundant `as i64`: demo.len is already i64
+goose/core/worldstream.goose:461: warning: redundant `as i64`: demo.len is already i64
     ws_stats.resident = demo.len as i64;
                         ^~~~~~~~~~~~~~~
+goose/core/worldstream.goose:512: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+fn ws_extent_min_block_x() -> f32 { return (ws_ext_min_cx as f32) * 16.0; }
+                                            ^~~~~~~~~~~~~~~~~~~~
+goose/core/worldstream.goose:513: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+fn ws_extent_max_block_x() -> f32 { return ((ws_ext_max_cx as f32) + 1.0) * 16.0; }
+                                             ^~~~~~~~~~~~~~~~~~~~
+goose/core/worldstream.goose:514: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+fn ws_extent_min_block_z() -> f32 { return (ws_ext_min_cz as f32) * 16.0; }
+                                            ^~~~~~~~~~~~~~~~~~~~
+goose/core/worldstream.goose:515: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+fn ws_extent_max_block_z() -> f32 { return ((ws_ext_max_cz as f32) + 1.0) * 16.0; }
+                                             ^~~~~~~~~~~~~~~~~~~~
 goose/core/worldload_in.goose:336: warning: redundant `as i64`: cx is already i64
             let wx = rx * 32 + (cx as i64);
                                 ^~~~~~~~~
@@ -447,16 +462,16 @@ demo: the middle of the world is 24,24 and its floor is 66.00
 demo: a body at the corner 24.0,24.0 would overlap 1 solid cell(s) at foot height
 demo: this is the spawn that failed on the device (44241902430)
 demo: spawning at 24.5,24.5 in cell 24,24 (floor 66.00)
-progress: worst 966 permille; units 10369, total 10369
-sliced mesh: 80 calls, worst call 31.66 ms, worst unit 20.07 ms
+progress: worst 935 permille; units 10369, total 10369
+sliced mesh: 70 calls, worst call 26.99 ms, worst unit 10.53 ms
 ranges: 27 slots for 9 columns
 ranges: 247116 + 12690 + 6414 = 266220 indices used of 580000 in the arena
 edit 0: 1 columns, 1153 units of work, is_edit 1
-edit 0: 25 calls, worst call 7.01 ms, worst slice 2.42 ms
+edit 0: 23 calls, worst call 7.18 ms, worst slice 2.29 ms
 edit 1: 1 columns, 1153 units of work, is_edit 1
-edit 1: 26 calls, worst call 6.69 ms, worst slice 2.48 ms
+edit 1: 22 calls, worst call 6.79 ms, worst slice 2.14 ms
 edit 2: 2 columns, 2305 units of work, is_edit 1
-edit 2: 49 calls, worst call 7.83 ms, worst slice 3.22 ms
+edit 2: 44 calls, worst call 7.34 ms, worst slice 2.32 ms
 edit: patched geometry 1409d6e1c0ba34c9 (266220 indices), rebuilt 1409d6e1c0ba34c9 (266220)
 layout: phone scale 2.64, desktop scale 1.00
 layout: button 0 21,1006 737x53; button 2 1528,1006
@@ -491,20 +506,21 @@ vsync: uncapped requested
 world: floor at 24,24 is 66.00
 world: slab at 12,64,21 with a half-block collision top
 water: 386 fluid cells, 22287 solid, 367 air-or-other near the surface
+hotbar: 9 placeable block(s) from 9 state(s), hand of 5
 edits: the last line is "26 65 24 minecraft:stone"
-world: opened 4 chunk(s) from 1 region file(s): 24673 non-air blocks, 53 states, 0 errors, 0 not full, 0 left out, in 23.3 ms
+world: opened 4 chunk(s) from 1 region file(s): 24673 non-air blocks, 53 states, 0 errors, 0 not full, 0 left out, in 21.8 ms
 world: bounds x 0.0..32.0 z 0.0..32.0
 world: the topmost block at 1,1 is y 61
 world: the block at 1,61,1 is minecraft:grass_block
 world: the floors at 1,17 and 17,17 are 64.00 and 62.00
-world: meshed 41092 vertices in 8 calls, x 0.0..32.0, 0 outside the save's bounds
+world: meshed 41092 vertices in 7 calls, x 0.0..32.0, 0 outside the save's bounds
 stream: radius 2 -> 16 column(s) resident of 25 asked for, 0 evicted, 9 missing, 0 error(s)
-stream: centre 0.02 ms, fill 0.01 ms over 1 slice(s), worst slice 0.01 ms, 0.1 MB of region files
-stream: meshed 64768 vertex(es) of 16 column(s) in 27 call(s), 531.3 ms
+stream: centre 0.02 ms, fill 0.00 ms over 1 slice(s), worst slice 0.00 ms, 0.1 MB of region files
+stream: meshed 64768 vertex(es) of 16 column(s) in 24 call(s), 470.8 ms
 light: 43 section(s) of the window were read with sky/block light
 light: 25032 of 480000 vertex colour(s) differ when the save's light is ignored (25032 darker, 0 brighter), mean green 0.902 -> 0.905
 stream: 64768 vertex(es) drawn, 0 outside x -32..32 z -32..32
-edge: the loaded world is x -32..32, z -32..32, wall on
-edge: walked at the wall for 4 s: x 29.50 -> 31.70 (the edge is 32), y 73.00, 0 frame(s) outside
-edge: on flat ground at 73.0: x 29.50 -> 31.70 (the wall is at 32), reached the last blocks
-PASS: 391 checks, 0 failures
+edge: the loaded world is x -512..512, z -512..512, wall on
+edge: the parsed window is x -32..32, z -32..32 inside the save's x -512..512
+edge: walked east from the parsed edge at 73.0 for 4 s: x 29.50 -> 31.70 (the parsed edge is 32), y 73.00 (lowest 73.00), 0 frame(s) outside
+PASS: 447 checks, 0 failures
