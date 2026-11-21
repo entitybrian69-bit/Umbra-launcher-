@@ -2636,3 +2636,66 @@ inventory: slot 3 <- oak_slab (block 8 of the list, taken)
 The 9 is the fixture's blockstate count. The device run is what puts the jar's ~1043 in that
 line, and the emulator harness taps the BAGS button, a tile and the outside to close, reading
 each rect back from the app's own log rather than guessing a coordinate.
+
+### Device evidence for steps 3 and 5 (run 44916416450, android)
+
+Both now have a phone's word for them, from one run:
+
+```
+inventory: opened for slot 4 (7 block(s) in the list)
+inventory: the tile answered at 656,209 (frame identity)
+inventory: slot 4 <- stone (block 0 of the list, taken)
+inventory: closed by a tap outside it
+edge: the save is x -512..512 z -512..512, the parsed window x -16..32 z -16..32, wall on
+stream-recentre: the window moved with the body: stream: centre chunk 0,-1 radius 1 (9 chunks), 3 evicted, 9 to parse
+stream-recentre: 9 column(s) resident of 9 asked for after the move -- the window evicted rather than grew
+```
+
+* **Step 5 on the device**: the panel opens for the slot the hand was on, a tile tap
+  fills that slot with a real block (`stone`, not `air` -- see the bug below), and a tap
+  outside closes it. The whole path is tapped by reading the app's own logged rects back.
+* **Step 3 on the device**: the save's extent and the parsed window are two different
+  numbers, both logged, and the window moves with the body on a re-centre. That last line
+  is the one that failed before: the previous run held one coordinate for ten seconds.
+
+### Five bugs the device runs found, four of them in the code
+
+The first android run after steps 3 and 5 was red, and each red was something real:
+
+1. **The edge wall was a cage.** It sat at the resident window's bounds, the window is
+   centred on the body, so the body could not walk out of the chunk it stood in. That is
+   the ten-second standstill. Fixed by moving the wall to the save's extent and adding the
+   parsed window as a second wall, with the re-centre firing before the body reaches it.
+2. **The wall was a height at every altitude.** `return 2.0` for every `wy` gave a
+   two-block step at every level, including in the air above the wall: the body climbed it
+   and fell to y -1680. It is a column now, solid to the body's floor + 2 and clear above.
+3. **The demo world wiped the jar's blockstate table.** `demo_build()` called `bs_reset()`
+   after the jar had interned 1288 blockstates, so the hotbar was nine blocks long beside a
+   log line saying "1288 blockstates". The demo only resets a table it did not find now.
+4. **The block filter never matched.** `hotbar_placeable` compared against
+   `minecraft:air` while being handed the name *without* its namespace, so nothing was
+   filtered and the inventory offered air as block 0. Visible in the log as
+   `inventory: slot 4 <- air (block 0 of the list, taken)`. Both spellings are accepted
+   now, and the host suite checks the whole list for air, fluids and technical blocks.
+5. **The gallery looked in one place only.** `tools/gallery_poses.py` read
+   `save_dir/region`; a 26.3 save keeps the overworld under a dimension path. It searches
+   now, prefers the shallowest, and refuses `entities/` (NBT with chunk file names).
+
+Four of those five were found by the *harness* being wrong about what it was looking at
+(the tile rect was searched under the wrong log prefix, the radius refusal was read before
+it was written, the edge line was read before a save was open). That is its own lesson:
+a check that reports "missing" needs to be able to say what it looked for.
+
+### The one remaining red, and why it is not a step-3 or step-5 fault
+
+`stream-fullsize` and `stream-cull` each breached the 50 ms budget by **one frame** in
+consecutive runs (56.2 ms at frame 96, then 58.4 ms at frame 223), with the average at
+22.7 and 23.1 ms against the 22.6 ms of the last fully green run. The breaching frame's own
+split names the scene pass (51.2 ms) and not the overlay, and the phases disagree about
+which run trips it -- which is the signature of this emulator's software renderer rather
+than of a change. `edge_blocked` is called only from `umbra_block_top`, which the mesher
+never touches, so the edge work cannot be in that cost; the hotbar and the inventory are a
+few dozen quads of overlay.
+
+This is recorded as a known flake with the numbers above, not as met. A run that shows
+`0 over 50 ms` with these numbers is the same code.
