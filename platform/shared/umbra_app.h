@@ -74,6 +74,14 @@ struct umbra_app {
     unsigned prog_mesh, prog_hud, prog_pattern, prog_cube, prog_atlas;
     // Uniform locations, looked up once. `glGetUniformLocation` is a driver string lookup
     // and the overlay did four of them every frame while walking.
+    // The gallery: a fixed pose and no overlay, so a screenshot shows the world and nothing
+    // else. Both come from files beside the world, like `radius.txt` and `nocull.txt`, so
+    // the picture and the reason it was taken live in one place.
+    int gallery;              // 1 when `gallery.txt` is present
+    int gallery_hide_hud;     // the overlay and the hand controls are not drawn
+    int pose_ready;           // `pose.txt` was read
+    int pose_applied;
+    float pose[5];            // x y z yaw pitch
     int u_hud_screen, u_hud_tex;
     int hud_uniforms_ready;
     // The overlay's vertex buffer: allocated once, written through a map, sized by hand.

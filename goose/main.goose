@@ -970,7 +970,62 @@ export "umbra_atlas_named" fn atlas_named(name: const u8[:]) -> i64 {
 // `id == 0` test that used to be here was one of the two halves of run 44720740141: air
 // with properties is not id 0, `render_class` says RC_AIR, and this function then fell
 // through to `return 1.0` anyway because it never asked about RC_AIR.
+// The edge of the loaded world, as an invisible wall.
+//
+// Outside the loaded columns every cell reads as air, so a body that walks off the window
+// does not stop -- it falls, past the bottom of the world, for ever (the mesher has nothing
+// to draw there either, so the screen is sky). The game's answer is a world border; this
+// project's world is a radius around the player, which moves, so the border is the *loaded
+// bounds* and it is checked where collision is read rather than in the walk code: every
+// movement path (walk, step-up, jump, swim, a step-up onto a block) asks this function, so
+// there is no path around it.
+//
+// It is deliberately one call with four comparisons: this runs for every collision query of
+// every substep of every frame, and the whole point of the streaming work is that a frame
+// has CPU left over. `mb` is 1 for the four walls and 0 for the floor and the roof, because
+// the world's own floor is a real block (bedrock) and a body that is *inside* the window
+// must not be blocked by it.
+var eg_hits: i64 = 0;      // how many queries the wall answered, for the log and the tests
+var eg_on: bool = true;
+
+fn edge_blocked(wx: i64, wy: i64, wz: i64) -> bool {
+    if !eg_on { return false; }
+    // Only a save has loaded bounds that are not the whole world; the demo scene is an
+    // island whose edge is already a fall, and it is not the owner's world.
+    if wl_is_open() == 0 { return false; }
+    // The wall is the outer face of the outermost loaded column, so a body can stand on the
+    // last block and not on the air beside it.
+    let min_x = wl_min_block_x() as i64;
+    let max_x = wl_max_block_x() as i64;
+    let min_z = wl_min_block_z() as i64;
+    let max_z = wl_max_block_z() as i64;
+    if wx < min_x || wx >= max_x || wz < min_z || wz >= max_z {
+        eg_hits += 1;
+        return true;
+    }
+    return false;
+}
+
+// How many collision queries the edge answered, and the four bounds themselves. One number
+// that says the wall is where the world ends, and is not the middle of it.
+export fn umbra_edge_hits() -> i64 { return eg_hits; }
+export fn umbra_edge_on() -> i64 { if eg_on { return 1; } return 0 }
+export fn umbra_edge_x0() -> f32 { return wl_min_block_x() }
+export fn umbra_edge_x1() -> f32 { return wl_max_block_x() }
+export fn umbra_edge_z0() -> f32 { return wl_min_block_z() }
+export fn umbra_edge_z1() -> f32 { return wl_max_block_z() }
+
 export "umbra_block_top" fn block_top_export(wx: i64, wy: i64, wz: i64) -> f32 {
+    // The wall first: it is the answer for every cell outside the window, whatever the
+    // column lookup would have said.
+    //
+    // Two blocks tall, not one. A one-block wall is exactly a step, and the walk code
+    // climbs steps by design -- the body walked into the wall, found the lift clear, rose
+    // onto the wall and stood on top of it at the window's edge, one block from a fall
+    // (the host check that walks at the wall for four seconds found this: it stopped at
+    // x 29.5 with the wall at 32). A wall has to be taller than anything that can be
+    // stepped over, and the step is one block.
+    if edge_blocked(wx, wy, wz) { return 2.0; }
     if model_bound {
         let id = demo_block_at((wx as i32), (wy as i32), (wz as i32));
         if id != 0 && id == model_block {

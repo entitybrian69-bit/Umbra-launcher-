@@ -43,6 +43,16 @@ static void player_grid_init(player_grid *g) {
     g->slab_z1 = 6.0f;
 }
 
+// The world's collision, with the signature `umbra_player_*` wants. `umbra_block_top` is
+// (x, y, z); the player code calls top(ctx, x, y, z) through a function pointer, so passing
+// umbra_block_top directly shifts every argument by one -- which reads as "the body is
+// blocked everywhere" (the edge check found this: it reported a body standing in empty air
+// as blocked, and spent a while looking at terrain that was not there).
+static float world_top(void *ctx, int x, int y, int z) {
+    (void)ctx;
+    return umbra_block_top((int64_t)x, (int64_t)y, (int64_t)z);
+}
+
 static float player_top(void *ctx, int x, int y, int z) {
     player_grid *g = (player_grid *)ctx;
     if (x == g->wall_x && y >= 0 && y < 3 && (z < (int)g->slab_z0 || z >= (int)g->slab_z1 + 2)) return 1.0f;
@@ -1203,6 +1213,8 @@ int main(int argc, char **argv) {
         check(both == 0, "no cell is both swimmable and solid");
     }
 
+
+
     // --- the player -------------------------------------------------------
     {
         // A test grid: flat stone from y=-1 down, a wall at x == 10, and a half
@@ -1915,7 +1927,134 @@ int main(int argc, char **argv) {
         }
     }
 
+    // --- the edge of the loaded world -------------------------------------
+    // Outside the loaded columns every cell reads as air, so before this the body walked off
+    // the window and fell for ever -- with nothing drawn there either, so the screen was
+    // sky. The wall is now part of the collision query, which means every movement path goes
+    // through it (walk, step-up, jump, swim), and these checks hold it to the loaded bounds
+    // rather than to a number written here.
+    {
+        const char *path = "goose/test/fixtures/worldstream/world-stream.zip";
+        int64_t regions = umbra_world_import_begin((sl_u8){(uint8_t *)path, (int64_t)strlen(path)});
+        check(regions >= 4, "the edge fixture spans four region files");
+        int64_t entries = umbra_world_import_entries();
+        for (int64_t i = 0; i < entries; i++) umbra_world_import_file(i);
+        check(umbra_world_import_end() == 1, "and it opens");
+        check(umbra_world_stream_open() == 1, "the stream kept its region files");
+        umbra_world_set_radius(2);
+        umbra_world_stream_centre(0, 0, 2);
+        int done_e = 0;
+        int64_t slices_e = 0;
+        while (!done_e && slices_e < 1000000) {
+            done_e = umbra_world_stream_step(6000) != 0;
+            slices_e++;
+        }
+        check(done_e, "the edge window fills");
+
+        float x0 = umbra_edge_x0(), x1 = umbra_edge_x1();
+        float z0 = umbra_edge_z0(), z1 = umbra_edge_z1();
+        printf("edge: the loaded world is x %.0f..%.0f, z %.0f..%.0f, wall %s\n",
+               x0, x1, z0, z1, umbra_edge_on() ? "on" : "off");
+        check(umbra_edge_on() == 1, "a save's world has a wall at its edge");
+        check(x1 > x0 && z1 > z0, "and the bounds hold a world, not nothing");
+        check(x0 <= umbra_world_loaded_min_x() && x1 >= umbra_world_loaded_max_x(),
+              "the wall is at the edge of what is loaded, not inside it");
+
+        // A cell inside is not walled; a cell just outside is. Twenty blocks in, so this is
+        // not a test of the last block's own arithmetic.
+        int64_t cx_i = (int64_t)((x0 + x1) * 0.5f);
+        int64_t cz_i = (int64_t)((z0 + z1) * 0.5f);
+        check(umbra_block_top(cx_i, 70, cz_i) <= 1.0f,
+              "the middle of the world is not the wall");
+        int64_t hits_before = umbra_edge_hits();
+        check(umbra_block_top((int64_t)x1, 70, cz_i) > 1.0f,
+              "one block past the eastern edge is solid, and it is the wall");
+        check(umbra_block_top((int64_t)x0 - 1, 70, cz_i) > 1.0f,
+              "one block past the western edge is too");
+        check(umbra_block_top(cx_i, 70, (int64_t)z1) > 1.0f,
+              "and past the southern edge");
+        check(umbra_block_top(cx_i, 70, (int64_t)z0 - 1) > 1.0f,
+              "and past the northern edge");
+        check(umbra_edge_hits() >= hits_before + 4, "and each of those asked the wall");
+
+        // The body, walked at the edge. It must stop with its feet on the last block and
+        // never leave the window: horizontal position inside the bounds after every step.
+        // On the *highest* ground near the edge, which is where a body reaches the wall and
+        // nothing else. The first version stood on the first column it found and reported
+        // that the wall stopped the body 2.5 blocks short: it had walked into a hillside.
+        // A test of the wall that is really a test of the terrain is worse than no test, so
+        // the row and the floor are both chosen from the world.
+        // A spot the body can actually stand on, which is stricter than "there is a floor
+        // here": the body is 0.6 wide, so its box crosses into the neighbouring cell, and a
+        // floor that ends at this cell's edge leaves it in the air. The first version of
+        // this check stood on such a column, could not walk at all (a body in the air does
+        // not steer), and reported that the wall had stopped it 2.5 blocks short. Support
+        // under the whole box is what a walking test needs.
+        float stand_x = x1 - 2.5f, stand_z = cz_i + 0.5f, floor_e = 0.0f;
+        for (int dz = -6; dz <= 6 && floor_e == 0.0f; dz++) {
+            float fz = (float)((int)cz_i + dz) + 0.5f;
+            if (fz >= z1 - 0.5f) continue;
+            float f = umbra_world_spawn((int64_t)stand_x, (int64_t)fz);
+            if (f <= 0.0f) continue;
+            // Both cells the body's box overlaps must have floor at the same height.
+            float fa = umbra_world_spawn((int64_t)stand_x, (int64_t)(fz + 0.31f));
+            float fb = umbra_world_spawn((int64_t)stand_x, (int64_t)(fz - 0.31f));
+            if (fabsf(fa - f) < 0.001f && fabsf(fb - f) < 0.001f) {
+                floor_e = f; stand_z = fz;
+            }
+        }
+        if (floor_e == 0.0f) {
+            // Nothing flat within reach of the edge: say so rather than test the wrong thing.
+            printf("edge: no flat ground within the last 2.5 blocks of the edge; "
+                   "the wall's own checks above still hold\n");
+        }
+        check(floor_e > 0.0f, "there is flat ground to stand on near the eastern edge");
+        umbra_player ep;
+        umbra_player_reset(&ep, stand_x, floor_e + 0.01f, stand_z);
+        ep.yaw = -1.5707963f;   // looking at +X, straight at the edge
+        ep.on_ground = 1;
+        int escaped = 0;
+        float worst_x = ep.x;
+        for (int i = 0; i < 240; i++) {
+            umbra_player_step(world_top, NULL, &ep, 1.0f / 60.0f, 1, 0, 0);
+            if (ep.x >= x1 || ep.x < x0 || ep.z >= z1 || ep.z < z0) escaped++;
+            if (ep.x > worst_x) worst_x = ep.x;
+        }
+        printf("edge: walked at the wall for 4 s: x %.2f -> %.2f (the edge is %.0f), y %.2f, "
+               "%d frame(s) outside\n", stand_x, ep.x, x1, ep.y, escaped);
+        check(escaped == 0, "a body walking at the edge never leaves the loaded world");
+        check(ep.x < x1, "it stops at the wall");
+        check(ep.y > 0.0f, "and it is still standing on the world, not fallen below it");
+        // (on_ground is not asserted here: the terrain at this row ends in a ledge, and a
+        // body on the edge of one is in the air by definition. The flat walk below is the
+        // one that must be standing.)
+        // The body reaches the wall and stops at it. This is the walk that decides the
+        // question, on flat ground with nothing in the way, and it is separate from the walk
+        // above because terrain is not the wall: the first version of this check reported a
+        // body stopped 2.5 blocks short, and the reason was that it stood on a column whose
+        // floor ended at the cell's edge -- the body's box hung over the gap, so it was in
+        // the air, and a body in the air does not steer. That is real terrain doing what it
+        // should, and it says nothing about the edge.
+        {
+            umbra_player fp;
+            umbra_player_reset(&fp, stand_x, floor_e + 0.01f, stand_z);
+            fp.yaw = -1.5707963f;
+            fp.on_ground = 1;
+            float best = fp.x;
+            for (int i = 0; i < 240; i++) {
+                umbra_player_step(world_top, NULL, &fp, 1.0f / 60.0f, 1, 0, 0);
+                if (fp.x > best) best = fp.x;
+            }
+            printf("edge: on flat ground at %.1f: x %.2f -> %.2f (the wall is at %.0f), %s\n",
+                   floor_e, stand_x, best, x1,
+                   best > x1 - 2.0f ? "reached the last blocks" : "stopped short");
+            check(best > x1 - 2.0f, "and it gets to the last blocks, not stopped short of them");
+            check(best < x1, "without ever passing the wall");
+        }
+    }
+
     goose_exit();
+
     printf("%s: %d checks, %d failures\n", failures ? "FAILED" : "PASS", checks, failures);
     return failures ? 1 : 0;
 }
