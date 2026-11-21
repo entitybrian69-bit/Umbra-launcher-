@@ -10,6 +10,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include "umbra_ustat.h"
+#include "umbra_cull.h"
 #ifdef _WIN32
 #include <direct.h>
 #define umbra_mkdir(p) _mkdir(p)
@@ -209,9 +210,100 @@ int main(int argc, char **argv) {
         check(sorted[0] == 1000 + 3000 - UMBRA_USTAT_CAP, "as does the oldest one still in it");
     }
 
+    // 0b. The frustum test, before it is trusted to skip 200 draw calls. A cull that
+    //     rejects a box the camera can see is a hole in the world, which is worse than
+    //     the frames it saves -- so the boxes whose answer is known by hand are checked.
+    {
+        // An identity view, and a perspective 90 degrees wide on a 1:1 screen: x_clip = x,
+        // y_clip = y, w_clip = -z. So a point at z = -5 is in front and visible when
+        // |x| < 5, and anything at z > 0 is behind the camera.
+        //
+        // Written out rather than taken from the app's matrix code: this tests the test.
+        // A near plane at 0.1 and a far plane at 100, which is the shape the app uses:
+        // z_clip = 1.02*z + 0.202, w_clip = -z, so a point at z = -10 has ndc z = 0.98.
+        // (The sign of the z column is the half of the projection that decides whether
+        // "near" is the front; getting it backwards makes every in-front box look far
+        // away, which is how this table got its first two answers wrong.)
+        const float k = 1.0f;
+        const float zs = (100.0f + 0.1f) / (100.0f - 0.1f);
+        const float zt = 2.0f * 100.0f * 0.1f / (100.0f - 0.1f);
+        // Column by column, on its own line, because the layout is the whole trick: GL is
+        // column-major, so m[col*4+row]. Written as one 16-element literal the first time
+        // and the z column landed in the wrong slots, which is a mistake that looks like a
+        // broken cull.
+        float vp[16];
+        for (int i = 0; i < 16; i++) vp[i] = 0.0f;
+        vp[0 * 4 + 0] = k;      // column 0: x_clip = x
+        vp[1 * 4 + 1] = k;      // column 1: y_clip = y
+        vp[2 * 4 + 2] = zs;     // column 2: z_clip = zs*z + zt
+        vp[2 * 4 + 3] = -1.0f;  // column 2, row 3: w_clip = -z
+        vp[3 * 4 + 2] = zt;     // column 3, row 2
+        umbra_frustum f;
+        umbra_frustum_from_vp(&f, vp);
+        // Directly in front: kept.
+        check(umbra_frustum_box(&f, -1, -1, -10, 1, 1, -2, 0.0f) == 1,
+              "a box in front of the camera is drawn");
+        // Directly behind: rejected. This is the whole point -- half a room is behind you.
+        check(umbra_frustum_box(&f, -1, -1, 2, 1, 1, 10, 0.0f) == 0,
+              "a box behind the camera is culled");
+        // Far off to the side, outside the 90 degree cone at its own z: rejected.
+        check(umbra_frustum_box(&f, 20, -1, -10, 22, 1, -2, 0.0f) == 0,
+              "a box outside the field of view to the side is culled");
+        // Straddling the camera: kept, because part of it is on screen. A test that
+        // rejected this would punch a hole at the player's feet.
+        check(umbra_frustum_box(&f, -1, -1, -10, 1, 1, 10, 0.0f) == 1,
+              "a box that straddles the camera is drawn");
+        // A box the pad grows into view: the pad is why an exact box at the edge is safe.
+        check(umbra_frustum_box(&f, -11, -1, -1, -9, 1, 1, 0.0f) == 0,
+              "a box just outside is culled without a pad");
+        check(umbra_frustum_box(&f, -11, -1, -1, -9, 1, 1, 4.0f) == 1,
+              "and kept when the pad reaches the view");
+        // Disabled means draw everything: the "before" of the measurement.
+        f.enabled = 0;
+        check(umbra_frustum_box(&f, -1, -1, 2, 1, 1, 10, 0.0f) == 1,
+              "with culling off nothing is rejected");
+        printf("cull: 7 box tests against a hand-written frustum\n");
+    }
+
     // 1. The demo world builds and meshes with real geometry.
     umbra_demo_build(20261114);
     umbra_demo_mesh();
+    // 0c. The boxes the cull uses are the geometry's own extent, not the column's chunk
+    //     square: a column whose drawn geometry is a pond floor must have a box around the
+    //     pond, or the cull keeps it for every view above the pond.
+    {
+        int slots_checked = 0, bad = 0;
+        int64_t vlen2 = 0;
+        const uint8_t *verts2 = umbra_verts_ptr(&vlen2);
+        for (int i = 0; i < (int)umbra_range_slots() && slots_checked < 24; i++) {
+            int64_t n = umbra_range_vertex_len(i);
+            if (n <= 0) continue;
+            slots_checked++;
+            float x0 = umbra_range_box(i, 0), y0 = umbra_range_box(i, 1), z0 = umbra_range_box(i, 2);
+            float x1 = umbra_range_box(i, 3), y1 = umbra_range_box(i, 4), z1 = umbra_range_box(i, 5);
+            if (x1 <= x0 || y1 <= y0 || z1 <= z0) { bad++; continue; }
+            // Every vertex the slot draws has to be inside its own box. Sampling the ends
+            // of the slot is enough to catch a box built from the wrong column, which is
+            // the failure that would cull the world while claiming to draw it.
+            int64_t off = umbra_range_vertex(i);
+            for (int k = 0; k < 3; k++) {
+                int64_t vi = off + (k == 0 ? 0 : (k == 1 ? n / 2 : n - 1));
+                const float *v = (const float *)(verts2 + (size_t)vi * sizeof(umbra_vertex));
+                if (v[0] < x0 - 0.01f || v[0] > x1 + 0.01f || v[1] < y0 - 0.01f ||
+                    v[1] > y1 + 0.01f || v[2] < z0 - 0.01f || v[2] > z1 + 0.01f) { bad++; break; }
+            }
+        }
+        printf("cull: %d slot(s) have a box that holds their own vertices\n", slots_checked);
+        check(slots_checked > 0 && bad == 0, "every slot's box contains the vertices it draws");
+        // And the boxes are not all the same: a column's box is its own geometry's extent.
+        int differing = 0;
+        for (int i = 0; i < (int)umbra_range_slots(); i++) {
+            if (umbra_range_vertex_len(i) > 0 && umbra_range_box(i, 3) != umbra_range_box(i, 0)) differing++;
+        }
+        check(differing > 0, "and the boxes differ between slots, so they are geometry and not a constant");
+    }
+
+
     const uint8_t *verts = umbra_verts_ptr(&vlen);
     const uint8_t *indices = umbra_indices_ptr(&ilen);
     printf("mesh: %llu vertex bytes, %llu index bytes\n", (unsigned long long)vlen,

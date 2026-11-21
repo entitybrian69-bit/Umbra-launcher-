@@ -1408,6 +1408,8 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     [ "${FS_BYTES:-0}" -gt 1000000 ] || die "stream-fullsize: world.zip is ${FS_BYTES:-0} bytes, so the save the run was given is not there any more ('${BEFORE:-nothing}' before, '${AFTER:-nothing}' after, directory '${USER_OF:-missing}')"
     # The default radius: this phase must measure the window the app ships with.
     adb shell "rm -f '$FILES_W/radius.txt'" > /dev/null 2>&1 || true
+    # Culling on: this phase measures the shipped configuration.
+    adb shell "rm -f '$FILES_W/nocull.txt'" > /dev/null 2>&1 || true
     FS_R="$(adb shell "cat '$FILES_W/radius.txt' 2>/dev/null" | tr -d '\r\n')"
     [ -z "$FS_R" ] || die "stream-fullsize: radius.txt still says '$FS_R', so this phase would measure a window that is not the shipped default"
     adb logcat -c > /dev/null 2>&1 || true
@@ -1463,6 +1465,73 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     LIVE="$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')"
     [ -n "$LIVE" ] || die "stream-fullsize: the app died while walking the full-size window"
     note "stream-fullsize: radius-4 window walked on the device -- $REPORT"
+fi
+
+# ---- 10b-2. culling: the same walk, twice, with the cull off and on ------------------
+# Step 2's "before and after on the same world and the same emulator run". The switch is a
+# file beside the save (`nocull.txt`), not a build flag, so both halves are the same APK,
+# the same save, the same device and the same 45-second walk -- only the draw loop differs.
+#
+# Both halves walk from the spawn, so the world under the walker is the same distance
+# either way. The comparison is draw calls and frame times; the app measures both.
+if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
+    section "stream-cull"
+    # The shipped radius, and no leftovers from the previous phases: both halves of this
+    # comparison have to be the same window or the numbers are about two worlds.
+    adb shell "rm -f '$FILES_W/radius.txt'" > /dev/null 2>&1 || true
+    walk_once() {
+        # $1 = "off" or "on" (the cull), $2 = the label for the log
+        if [ "$1" = "off" ]; then
+            adb shell "echo 1 > '$FILES_W/nocull.txt'" > /dev/null 2>&1
+        else
+            adb shell "rm -f '$FILES_W/nocull.txt'" > /dev/null 2>&1
+        fi
+        adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
+        for _i in 1 2 3 4 5 6 7 8 9 10; do
+            [ -z "$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')" ] && break
+            sleep 1
+        done
+        adb shell "cp /data/local/tmp/umbra-world.zip '$FILES_W/world.zip'" > /dev/null 2>&1 || true
+        adb logcat -c > /dev/null 2>&1 || true
+        launch_app "stream-cull-$2-launch.log" > /dev/null 2>&1 || die "stream-cull: the app would not start for the $1 half"
+        DEADLINE=$((SECONDS + 300))
+        while [ $SECONDS -lt $DEADLINE ]; do
+            adb logcat -d -s umbra:V 2>/dev/null | grep -q "mesh: .* vertices drawn" && break
+            sleep 3
+        done
+        adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 )) "$P_SCENE_Y" 45000 \
+            > /dev/null 2>&1 || say "stream-cull: the $1 hold failed"
+        sleep 2
+        adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "walk: .* frame(s) avg " | sed 's/.*umbra *: //'
+    }
+    CULL_OFF="$(walk_once off off)"
+    say "stream-cull: culling OFF -- ${CULL_OFF:-no measurement}"
+    CULL_ON="$(walk_once on on)"
+    say "stream-cull: culling ON  -- ${CULL_ON:-no measurement}"
+    [ -n "$CULL_ON" ] || die "stream-cull: the cull-on half produced no measurement"
+    [ -n "$CULL_OFF" ] || die "stream-cull: the cull-off half produced no measurement"
+    DRAW_OFF="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'walk: drawing' | sed 's/.*umbra *: //')"
+    say "stream-cull: $DRAW_OFF"
+    # The comparison, computed here so the run's own summary carries the answer.
+    AVG_OFF="$(printf '%s' "$CULL_OFF" | sed -n 's/.*avg \([0-9.]*\) ms.*/\1/p')"
+    AVG_ON="$(printf '%s' "$CULL_ON" | sed -n 's/.*avg \([0-9.]*\) ms.*/\1/p')"
+    P1_OFF="$(printf '%s' "$CULL_OFF" | sed -n 's/.*1% low \([0-9.]*\).*/\1/p')"
+    P1_ON="$(printf '%s' "$CULL_ON" | sed -n 's/.*1% low \([0-9.]*\).*/\1/p')"
+    if [ -n "${AVG_OFF:-}" ] && [ -n "${AVG_ON:-}" ]; then
+        say "stream-cull: average frame $(awk -v a="$AVG_OFF" -v b="$AVG_ON" \
+            'BEGIN { printf "%.1f ms -> %.1f ms (%.0f%% %s)", a, b, (b-a)/a*100, (b<a?"faster":"slower") }')"
+        say "stream-cull: 1% low $(awk -v a="$P1_OFF" -v b="$P1_ON" \
+            'BEGIN { printf "%.1f ms -> %.1f ms", a, b }') (the worst 1% of walking frames)"
+    fi
+    case "$CULL_ON" in
+        *"OVER BUDGET"*) die "stream-cull: a frame broke the 50 ms CPU budget with culling on: $CULL_ON" ;;
+        *) say "stream-cull: no frame broke the 50 ms CPU budget with culling on" ;;
+    esac
+    # And the cull has to have rejected something, or this measured nothing.
+    REJ="$(printf '%s' "$DRAW_OFF" | sed -n 's/.*of \([0-9]*\) in.*/\1/p')"
+    DREW="$(printf '%s' "$DRAW_OFF" | sed -n 's/.*drawing \([0-9]*\) range(s).*/\1/p')"
+    say "stream-cull: the cull drew ${DREW:-?} of ${REJ:-?} range(s) in its last frame"
+    [ "${REJ:-0}" -gt "${DREW:-0}" ] || die "stream-cull: the cull rejected nothing ($DREW of $REJ), so this comparison means nothing"
 fi
 
 # ---- 10b. the world button: a save on the phone, no jar, one tap ------------------

@@ -1324,9 +1324,11 @@ static void walk_report_end(umbra_app *app, const char *why) {
               (long long)umbra_world_stream_resident(), (long long)app->walk_recentres,
               (long long)app->walk_uploads, app->walk_upload_us / 1000.0,
               app->walk_upload_worst_us / 1000.0);
-    umbra_log(app, "walk: drawing %d vertices over %d range(s) in %d draw call(s) per frame, "
+    umbra_log(app, "walk: drawing %d range(s) of %d in %d draw call(s) per frame "
+                   "(frustum culling %s: %lld box(es) rejected, last frame), "
                    "%lld column(s) of world resident",
-              app->vert_count, (int)umbra_range_slots(), app->draw_calls,
+              app->cull.ranges_drawn, app->cull.ranges_total, app->draw_calls,
+              app->cull_on ? "on" : "off", (long long)app->cull.boxes_rejected,
               (long long)umbra_world_stream_resident());
 }
 
@@ -1559,6 +1561,20 @@ int umbra_app_init(umbra_app *app) {
         // from them as they walk. Set here, before any world is opened, because it is a
         // decision about who reads the save and it has to be made before the first chunk.
         umbra_world_set_stream_mode(1);
+        // Culling is on unless `nocull.txt` is beside the save. That file exists for one
+        // reason: step 2 has to report a before and an after *on the same world in the
+        // same run*, and a build flag would make those two different builds. With the file
+        // present every range is drawn, which is the "before".
+        {
+            char ncp[560];
+            snprintf(ncp, sizeof ncp, "%s/nocull.txt", files);
+            FILE *nf = fopen(ncp, "rb");
+            app->cull_on = nf ? 0 : 1;
+            if (nf) fclose(nf);
+            umbra_log(app, "cull: frustum culling %s (%s)",
+                      app->cull_on ? "on" : "off for measurement",
+                      app->cull_on ? "one box per (pass, column)" : "nocull.txt is present");
+        }
         // A test can ask for a particular render distance by leaving `radius.txt` beside
         // the save. This is the *only* way the radius is set from outside, and it exists
         // because the device walk is 1.5-second holds: at radius 4 the stride is 64
@@ -2662,6 +2678,11 @@ static void draw_scene(umbra_app *app) {
             vp[1 + 4 * col] += shift * vp[3 + 4 * col];
         }
     }
+    // The culling planes come from the matrix the world is actually drawn with -- after
+    // the HUD band's shift, which moves clip-space y -- so a column that the band's shift
+    // pushed off the bottom of the screen is culled and not drawn behind the overlay.
+    umbra_frustum_from_vp(&app->frustum, vp);
+    app->frustum.enabled = app->cull_on;
     glUseProgram(app->prog_mesh);
     glUniformMatrix4fv(glGetUniformLocation(app->prog_mesh, "u_viewproj"), 1, GL_FALSE, vp);
     if (app->player_on) {
@@ -2680,6 +2701,9 @@ static void draw_scene(umbra_app *app) {
     // PASS_OPAQUE and PASS_CUTOUT draw with depth writing on; PASS_TRANSLUCENT
     // blends with depth writes off, which is the vanilla order.
     app->draw_calls = 0;
+    app->cull.ranges_total = 0;
+    app->cull.ranges_drawn = 0;
+    app->cull.boxes_rejected = 0;
     int slots = (int)umbra_range_slots();
     for (int pass = PASS_OPAQUE; pass <= PASS_TRANSLUCENT; pass++) {
         int b = pass - PASS_OPAQUE;
@@ -2712,9 +2736,23 @@ static void draw_scene(umbra_app *app) {
             if ((int)umbra_range_batch(i) != b) continue;
             int64_t len = umbra_range_index_len(i);
             if (len <= 0) continue;
+            app->cull.ranges_total++;
+            // One range per (pass, column), so this is one box per column per pass, and
+            // the box is the geometry's own extent (Goose records it where it writes the
+            // vertices). The pad is a block: a mesher vertex is a corner of a face, and a
+            // face that straddles the plane has its corners inside the box, so the box is
+            // exact -- the pad is for the camera being framed a frame behind the boxes.
+            if (!umbra_frustum_box(&app->frustum,
+                                   umbra_range_box(i, 0), umbra_range_box(i, 1),
+                                   umbra_range_box(i, 2), umbra_range_box(i, 3),
+                                   umbra_range_box(i, 4), umbra_range_box(i, 5), 0.5f)) {
+                app->cull.boxes_rejected++;
+                continue;
+            }
             glDrawElements(GL_TRIANGLES, (GLsizei)len, GL_UNSIGNED_INT,
                            (void *)(uintptr_t)(umbra_range_index(i) * 4));
             app->draw_calls++;
+            app->cull.ranges_drawn++;
         }
         if (pass == PASS_TRANSLUCENT) {
             glDepthMask(GL_TRUE);

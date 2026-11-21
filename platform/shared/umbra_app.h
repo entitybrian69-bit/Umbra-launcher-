@@ -17,6 +17,7 @@
 #include "umbra_vertex.h"
 #include "umbra_player.h"
 #include "umbra_ustat.h"
+#include "umbra_cull.h"
 
 typedef enum {
     UMBRA_SCREEN_HOME = 0,
@@ -284,6 +285,13 @@ struct umbra_app {
     // work, and reports. `cpu_us` is the frame's own CPU time -- everything up to the swap
     // -- because the 50 ms budget is about CPU work, not about the display's vsync.
     umbra_ustat cpu;
+    // Frustum culling: the planes are rebuilt each frame from the view-projection the
+    // world is drawn with, and the counters say what the test saved. Culling can be turned
+    // off with UMBRA_CULL=0 in radius.txt's neighbour file, which is how the before/after
+    // is measured on the same world in the same run.
+    umbra_frustum frustum;
+    umbra_cull_stats cull;
+    int cull_on;               // 0 = draw every range, the "before" of the measurement
     int walk_report;           // the walking phase is on: report when it ends
     long long walk_frames;
     long long walk_start_resident;   // the window's size when the walk began
