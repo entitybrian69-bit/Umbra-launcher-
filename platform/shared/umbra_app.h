@@ -16,6 +16,7 @@
 
 #include "umbra_vertex.h"
 #include "umbra_player.h"
+#include "umbra_ustat.h"
 
 typedef enum {
     UMBRA_SCREEN_HOME = 0,
@@ -279,6 +280,17 @@ struct umbra_app {
     int64_t frames_drawn;
     int64_t long_frames;       // frames over 250 ms, i.e. visible stalls
     int64_t selftest_us;
+    // Step 1's measurement: a windowed CPU-time ledger the walking phase resets, does its
+    // work, and reports. `cpu_us` is the frame's own CPU time -- everything up to the swap
+    // -- because the 50 ms budget is about CPU work, not about the display's vsync.
+    umbra_ustat cpu;
+    int walk_report;           // the walking phase is on: report when it ends
+    long long walk_frames;
+    long long walk_start_resident;   // the window's size when the walk began
+    int64_t walk_upload_us;    // GPU upload time accumulated during the walk
+    int64_t walk_upload_worst_us;
+    long long walk_uploads;    // how many whole-buffer uploads the walk paid for
+    long long walk_recentres;  // how many times the window moved under the walker
     int32_t hud_logged_width;  // the width the HUD layout was last logged at
     int32_t draw_calls;        // batches actually drawn in the last frame
     int32_t last_run_lines;    // lines in last_run_text, 0 when there is none

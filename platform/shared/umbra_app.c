@@ -1005,6 +1005,13 @@ static void finish_scene(umbra_app *app) {
     int64_t up_t0 = umbra_now_us();
     upload_mesh(app);
     app->upload_us = umbra_now_us() - up_t0;
+    // Which is the number a walking player feels: a re-centre re-uploads the whole arena,
+    // so the upload's cost is not a start-up curiosity but a per-window event.
+    if (app->walk_report) {
+        app->walk_uploads++;
+        app->walk_upload_us += app->upload_us;
+        if (app->upload_us > app->walk_upload_worst_us) app->walk_upload_worst_us = app->upload_us;
+    }
     umbra_log(app, "upload: %.1f MB of vertices and %.1f MB of indices in %.1f ms "
                    "(%.0f MB/s)",
               app->uploaded_vlen / 1048576.0, app->uploaded_ilen / 1048576.0,
@@ -1279,6 +1286,50 @@ static void stream_start(umbra_app *app, int cx, int cz, int radius) {
               (long long)gone, (long long)umbra_world_stream_pending());
 }
 
+// The CPU budget one frame must stay inside. 50 ms is 20 fps: a frame that costs more
+// than this is a frame a person can see arrive, which is the bar step 1 is held to.
+#define UMBRA_CPU_BUDGET_MS 50
+
+// The walking measurement, started and ended from the outside (a stage tap in the smoke
+// test, or the host's own walk). Everything it reports is computed from what the app did
+// while it was on: the CPU-time ledger, the window's size, and the uploads a re-centre
+// cost.
+static void walk_report_begin(umbra_app *app) {
+    umbra_ustat_reset(&app->cpu, UMBRA_CPU_BUDGET_MS);
+    app->walk_frames = 0;
+    app->walk_upload_us = 0;
+    app->walk_upload_worst_us = 0;
+    app->walk_uploads = 0;
+    app->walk_recentres = 0;
+    app->walk_start_resident = umbra_world_stream_resident();
+    app->walk_report = 1;
+    umbra_log(app, "walk: measuring the full-size window -- %lld column(s) resident, "
+                   "radius %lld, budget %d ms of CPU per frame",
+              (long long)app->walk_start_resident, (long long)umbra_world_radius_setting(),
+              UMBRA_CPU_BUDGET_MS);
+}
+
+static void walk_report_end(umbra_app *app, const char *why) {
+    if (!app->walk_report) return;
+    app->walk_report = 0;
+    char line[512];
+    umbra_ustat_text(&app->cpu, "walk", line, sizeof line);
+    umbra_log(app, "%s", line);
+    // The window, as the walk left it, and what moving it cost.
+    umbra_log(app, "walk: stopped (%s) after %lld frame(s); window %lld -> %lld column(s) "
+                   "resident, %lld re-centre(s), %lld upload(s) totalling %.1f ms "
+                   "(worst %.1f ms)",
+              why, (long long)app->walk_frames,
+              (long long)app->walk_start_resident,
+              (long long)umbra_world_stream_resident(), (long long)app->walk_recentres,
+              (long long)app->walk_uploads, app->walk_upload_us / 1000.0,
+              app->walk_upload_worst_us / 1000.0);
+    umbra_log(app, "walk: drawing %d vertices over %d range(s) in %d draw call(s) per frame, "
+                   "%lld column(s) of world resident",
+              app->vert_count, (int)umbra_range_slots(), app->draw_calls,
+              (long long)umbra_world_stream_resident());
+}
+
 // Re-centre the window on the chunk the player is standing in -- but only once they are
 // a whole chunk away from the middle of the window they already have.
 //
@@ -1311,6 +1362,7 @@ static void stream_maybe_recentre(umbra_app *app) {
         cz >= app->stream_cz - app->stream_radius && cz <= app->stream_cz + app->stream_radius) {
         return;
     }
+    if (app->walk_report) app->walk_recentres++;
     stream_start(app, cx, cz, app->stream_radius);
 }
 
@@ -2448,6 +2500,9 @@ static void player_update(umbra_app *app) {
         app->move_fwd = 1;
         app->touch_walk_id = app->touch_look_id;
         umbra_log(app, "player: holding, walking forward");
+        // The measurement's start: from the first step of a held finger, so the frames in
+        // the ledger are walking frames and not the ones spent standing still.
+        if (!app->walk_report) walk_report_begin(app);
     }
     umbra_player_world world;
     world.top = app_block_top;
@@ -3072,6 +3127,14 @@ static void world_report(umbra_app *app, const char *when, int64_t took_us) {
 // from the new bounds -- a save is nowhere near 0..48, so every number that was folded in
 // from the demo world's shape has to come from the world that is actually loaded.
 static void rebuild_world(umbra_app *app) {
+    // A window that moved under a walking body must not throw the body away. This is a
+    // re-centre, not an open: the player is mid-stride, the terrain under them is in the
+    // new window too (the stride is a radius of chunks, and the window still reaches a
+    // radius behind them), and dropping `player_on` would put them back on the overview
+    // camera and the loading screen for every step they walk past a chunk boundary --
+    // a person who walked 64 blocks would be thrown out of first person once, and on the
+    // phone that is a visible jump in the view and a tap to get back in.
+    int walking = app->player_on && app->stream_state == 2 && app->world_state == 2;
     umbra_demo_mesh_begin();
     app->mesh_state = 1;
     app->mesh_progress = 0;
@@ -3079,11 +3142,13 @@ static void rebuild_world(umbra_app *app) {
     app->mesh_worst_call_us = 0;
     app->mesh_total_us = 0;
     app->first_draw_timed = 0;
-    app->player_on = 0;
+    if (!walking) app->player_on = 0;
     app->mesh_uploaded = 0;
-    umbra_app_set_screen(app, UMBRA_SCREEN_LOADING);
-    umbra_log(app, "world: meshing %lld column(s) of the opened world, sliced as before",
-              (long long)umbra_world_columns());
+    // Nor does a re-centre need the loading screen: the mesh builds in slices behind the
+    // frame that is already being drawn, and the log line below says it happened.
+    if (!walking) umbra_app_set_screen(app, UMBRA_SCREEN_LOADING);
+    umbra_log(app, "world: meshing %lld column(s) of the opened world, sliced as before%s",
+              (long long)umbra_world_columns(), walking ? " (the window moved; the body stays)" : "");
 }
 
 // Open one archive, from a path. Returns 1 when a world is open and the mesh has begun.
@@ -3697,6 +3762,19 @@ void umbra_app_frame(umbra_app *app) {
         app->edit_applied_us = 0;
     }
 
+    // The frame's own CPU time: from the start of this function to here, which is
+    // everything the app did to produce the frame and nothing of the vsync wait that
+    // follows the swap. The 50 ms budget is about CPU work, so this is the number it is
+    // held to -- `frame_us` (start-to-start) includes the display and cannot answer it.
+    int64_t cpu_us = umbra_now_us() - t0;
+    if (app->walk_report) {
+        app->walk_frames++;
+        if (umbra_ustat_add(&app->cpu, cpu_us)) {
+            umbra_log(app, "walk: frame %lld took %.1f ms of CPU, over the %d ms budget",
+                      (long long)app->walk_frames, cpu_us / 1000.0, UMBRA_CPU_BUDGET_MS);
+        }
+    }
+
     if (app->benching) {
         umbra_bench_add(app->frame_us);
         double elapsed = (umbra_now_us() / 1000000.0) - app->bench_start_time;
@@ -3746,6 +3824,10 @@ void umbra_app_touch_id(umbra_app *app, int32_t id, int32_t x, int32_t y, int32_
         if (app->touch_look_id == id) {
             app->touch_look_id = -1;
             app->move_fwd = 0;
+            // The measurement's end. A finger lifted after walking is exactly the end of
+            // "the player walked", so the report is written here rather than on a timer:
+            // a timer would either cut a walk short or include the idle frames after it.
+            if (app->walk_report) walk_report_end(app, "the walking finger lifted");
             // A short press that never moved the head is a tap, and a tap in first
             // person is a jump. A long one was already walking.
             int64_t held = umbra_now_us() - app->touch_down_us;

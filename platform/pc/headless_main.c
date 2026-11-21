@@ -9,6 +9,7 @@
 #include <math.h>
 #include <time.h>
 #include <stdlib.h>
+#include "umbra_ustat.h"
 #ifdef _WIN32
 #include <direct.h>
 #define umbra_mkdir(p) _mkdir(p)
@@ -166,6 +167,47 @@ int main(int argc, char **argv) {
     const char *version = slice_text(version_bytes, vlen);
     printf("core version: %s\n", version);
     check(vlen > 0, "version string is non-empty");
+
+    // 0. The measurement itself, before it is used to judge anything. A ledger that
+    //    reports a wrong worst frame or misses a budget breach would make step 1's
+    //    central claim ("no frame over ~50 ms") unfalsifiable, so its arithmetic is
+    //    checked against frames whose answers are known by hand.
+    {
+        umbra_ustat u;
+        umbra_ustat_reset(&u, 50);
+        // Five frames: four at 10 ms and one at 80 ms. avg 24, median 10, 1% low 80
+        // (the slowest 1% of five frames is one frame), worst 80, one over budget.
+        int64_t frames[5] = {10000, 10000, 10000, 10000, 80000};
+        int over = 0;
+        for (int i = 0; i < 5; i++) over += umbra_ustat_add(&u, frames[i]);
+        check(over == 1, "the ledger counts the frame that broke the budget, and only it");
+        check(u.over_budget == 1, "and keeps the count");
+        check(u.worst_us == 80000 && u.worst_at_frame == 4, "the worst frame is the 80 ms one, at its index");
+        int64_t sorted[UMBRA_USTAT_CAP], live = 0;
+        umbra_ustat_sorted(&u, sorted, &live);
+        check(live == 5 && sorted[0] == 10000 && sorted[4] == 80000, "the sort orders the ring");
+        check(u.total_us / u.n == 24000, "the average is the total over the frames");
+        char line[512];
+        umbra_ustat_text(&u, "test", line, sizeof line);
+        printf("ustat: %s\n", line);
+        check(strstr(line, "avg 24.0 ms") != NULL, "the report says the average in ms");
+        check(strstr(line, "worst 80.0") != NULL, "and the worst");
+        check(strstr(line, "OVER BUDGET") != NULL, "and that the budget was broken");
+        // Under budget: no verdict, and the counter stays at zero.
+        umbra_ustat_reset(&u, 50);
+        for (int i = 0; i < 3; i++) umbra_ustat_add(&u, 5000);
+        umbra_ustat_text(&u, "test", line, sizeof line);
+        check(u.over_budget == 0 && strstr(line, "OVER BUDGET") == NULL,
+              "a run under budget reports no breach");
+        // The ring wraps: 3000 frames in a 2048 ring must keep the last 2048 and count all
+        // 3000, or a long walk would report only its beginning.
+        umbra_ustat_reset(&u, 50);
+        for (int i = 0; i < 3000; i++) umbra_ustat_add(&u, 1000 + i);
+        umbra_ustat_sorted(&u, sorted, &live);
+        check(u.n == 3000 && live == UMBRA_USTAT_CAP, "a full ring keeps its capacity and counts every frame");
+        check(sorted[live - 1] == 1000 + 2999, "and the newest frame survives the wrap");
+        check(sorted[0] == 1000 + 3000 - UMBRA_USTAT_CAP, "as does the oldest one still in it");
+    }
 
     // 1. The demo world builds and meshes with real geometry.
     umbra_demo_build(20261114);

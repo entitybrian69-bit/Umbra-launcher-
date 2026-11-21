@@ -1364,6 +1364,80 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     note "stream-recentre: the window followed the body on the device ($MOVED)"
 fi
 
+# ---- 10b-1. the full-size window, walking: measured ----------------------------------
+# Step 1's own question, asked at full size. The window the app opens is radius 4 (81
+# columns); this walks that window across the world and reports what the walk cost --
+# chunks resident, vertices, draw calls, upload time, and the frame times (avg, 1% low,
+# worst) over the frames where the body was actually walking.
+#
+# The measurement is done in the app, not here: the smoke test cannot see a frame. The app
+# holds a windowed CPU-time ledger (`platform/shared/umbra_ustat.h`), resets it when a held
+# finger starts walking, and writes the report when the finger lifts. What this phase does
+# is (a) make the body walk far enough to cross a window, (b) require the report, and
+# (c) fail the run if any frame broke the 50 ms CPU budget in a way the app did not fix.
+#
+# Distance, worked out rather than guessed: walking is 4.317 blocks/s and the physics
+# clamps a frame's dt to 0.25 s, so at this emulator's ~12 fps a wall second is ~4.3 blocks
+# however slow the frames get. Radius 4 means a stride of 4 chunks = 64 blocks, so the hold
+# has to be ~20 s to cross one window and ~40 s to cross two. It is 45 s.
+if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
+    section "stream-fullsize"
+    adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
+    sleep 1
+    adb shell "cp /data/local/tmp/umbra-world.zip '$FILES_W/world.zip'" > /dev/null 2>&1 || true
+    # The default radius: this phase must measure the window the app ships with.
+    adb shell "rm -f '$FILES_W/radius.txt'" > /dev/null 2>&1 || true
+    adb logcat -c > /dev/null 2>&1 || true
+    LAUNCH="$(launch_app stream-fullsize-launch.log)" || die "stream-fullsize: the app would not start: $LAUNCH"
+    say "stream-fullsize: $LAUNCH"
+    OPENED=0
+    DEADLINE=$((SECONDS + 300))
+    while [ $SECONDS -lt $DEADLINE ]; do
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "stream: window complete"; then OPENED=1; break; fi
+        sleep 3
+    done
+    [ "$OPENED" = 1 ] || die "stream-fullsize: the world never finished its first window: $(adb logcat -d -s umbra:V 2>/dev/null | grep -E 'stream:|world: ' | tail -3 | tr '\n' '|')"
+    OPEN_LINE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'world: opened:' | sed 's/.*umbra *: //')"
+    say "stream-fullsize: $OPEN_LINE"
+    FS_CHUNKS="$(printf '%s\n' "${OPEN_LINE#*opened: }" | sed 's/ .*//')"
+    [ "${FS_CHUNKS:-0}" -ge 50 ] || die "stream-fullsize: the window is ${FS_CHUNKS:-0} chunks, and this phase is about the full-size window (radius 4 is 81)"
+    # Wait for the mesh: a world still meshing refuses input.
+    MESHED=0
+    DEADLINE=$((SECONDS + 300))
+    while [ $SECONDS -lt $DEADLINE ]; do
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "mesh: .* vertices drawn"; then MESHED=1; break; fi
+        sleep 3
+    done
+    [ "$MESHED" = 1 ] || die "stream-fullsize: the full-size window never meshed"
+    say "stream-fullsize: the window is meshed, drawing $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'mesh: .* vertices drawn' | sed 's/.*umbra *: //')"
+    POS0="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'player: at ' | tail -1 | sed 's/.*player: at //' | sed 's/,.*//')"
+    say "stream-fullsize: walking from ${POS0:-?} for 45 s at radius 4; the app measures the frames"
+    adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 )) "$P_SCENE_Y" 45000 \
+        > /dev/null 2>&1 || say "stream-fullsize: the 45 s hold failed"
+    sleep 2
+    REPORT="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'walk: .* frame(s) avg ' | sed 's/.*umbra *: //')"
+    [ -n "$REPORT" ] || die "stream-fullsize: the app reported no walk measurement; it reports when a held finger starts walking and stops when it lifts: $(adb logcat -d -s umbra:V 2>/dev/null | grep -E 'walk:|player: at ' | tail -3 | tr '\n' '|')"
+    say "stream-fullsize: $REPORT"
+    WITHIN="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'walk: stopped' | sed 's/.*umbra *: //')"
+    [ -n "$WITHIN" ] && say "stream-fullsize: $WITHIN"
+    DRAW="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'walk: drawing' | sed 's/.*umbra *: //')"
+    [ -n "$DRAW" ] && say "stream-fullsize: $DRAW"
+    POS1="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'player: at ' | tail -1 | sed 's/.*player: at //' | sed 's/,.*//')"
+    say "stream-fullsize: walked to ${POS1:-?}"
+    case "$REPORT" in
+        *"OVER BUDGET"*)
+            # The acceptance rule: no frame may block over ~50 ms of CPU work. A breach is
+            # a failure of step 1, said with the number that broke it.
+            die "stream-fullsize: a frame broke the 50 ms CPU budget while walking at full size: $REPORT" ;;
+        *) say "stream-fullsize: no frame broke the 50 ms CPU budget, over $(printf '%s' "$REPORT" | sed -n 's/.*: \([0-9]*\) frame(s).*/\1/p') walking frame(s)" ;;
+    esac
+    REC="$(printf '%s\n' "$WITHIN" | sed -n 's/.*, \([0-9]*\) re-centre(s).*/\1/p')"
+    say "stream-fullsize: the window moved $REC time(s) while walking"
+    LIVE="$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')"
+    [ -n "$LIVE" ] || die "stream-fullsize: the app died while walking the full-size window"
+    note "stream-fullsize: radius-4 window walked on the device -- $REPORT"
+fi
+
 # ---- 10b. the world button: a save on the phone, no jar, one tap ------------------
 # The "world" phase above proves the *import*: adb puts the archive in the app's own
 # directory and the app opens it at start-up. That is not the owner's situation in one
