@@ -1579,8 +1579,14 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         local cull
         cull="$(app_log "$pid" | grep -m1 'cull: frustum culling')"
         say "stream-cull: the $1 half: $cull"
-        # A quoted pattern in `case` matches the whole string, not a prefix -- the on half's
-        # line ends with "(one box per (pass, column))", so it needs the glob after "on".
+        # Match inside the line, never from its start. The app's own lines begin with its
+        # timestamp, so an anchored pattern like `"cull: frustum culling on"*` cannot match
+        # -- it failed two runs running (44868771074 and 44873074289) on the very line it
+        # was looking for, which is the third variant of this mistake in this phase.
+        case "$cull" in
+            *"cull: frustum culling"*) : ;;
+            *) die "stream-cull: the $1 half's cull line could not be read: $cull" ;;
+        esac
         if [ "$1" = "off" ]; then
             case "$cull" in
                 *"culling off for measurement"*) : ;;
@@ -1589,7 +1595,7 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         else
             case "$cull" in
                 *"culling off"*) die "stream-cull: the on half is drawing without the cull: $cull" ;;
-                "cull: frustum culling on"*) : ;;
+                *"frustum culling on"*) : ;;
                 *) die "stream-cull: the on half did not say the cull was on: $cull" ;;
             esac
         fi
