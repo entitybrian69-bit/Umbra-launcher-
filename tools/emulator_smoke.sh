@@ -1652,6 +1652,50 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     [ "${REJ:-0}" -gt "${DREW:-0}" ] || die "stream-cull: the cull rejected nothing ($DREW of $REJ), so this comparison means nothing"
 fi
 
+# ---- 10a-3. where a walking frame's time actually goes ---------------------------
+# `stream-fullsize` measures the shipped configuration, where a frame that breaks the budget
+# prints a split of its time. Without `walkfinish.txt` that split is enqueue time -- the
+# flush of the whole draw lands in one pass -- so it answers "which pass did GL stall in"
+# and not "which pass cost the pixels". This phase walks once with the finish on and reports
+# the split, which is the measurement that decides whether to cut geometry or cut overdraw.
+#
+# Its frame times are *not* comparable with the shipped walk's and the phase says so: a
+# glFinish per pass serialises the frame deliberately.
+if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
+    section "stream-where"
+    adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
+    for _i in 1 2 3 4 5 6 7 8 9 10; do
+        [ -z "$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')" ] && break
+        sleep 1
+    done
+    adb shell "rm -f '$FILES_W/radius.txt' '$FILES_W/nocull.txt'" > /dev/null 2>&1 || true
+    adb shell "echo 1 > '$FILES_W/walkfinish.txt'" > /dev/null 2>&1
+    adb shell "cp /data/local/tmp/umbra-world.zip $FILES_W/world.zip" > /dev/null 2>&1 || true
+    WHERE_LAUNCH="$(launch_app stream-where-launch.log)" \
+        || die "stream-where: the app would not start"
+    say "stream-where: $WHERE_LAUNCH"
+    WHERE_PID="$(launched_pid)" || die "stream-where: the launch produced no process"
+    wait_for_app_line "$WHERE_PID" 'each pass ends in glFinish' 120 "the finish-mode line" \
+        || die "stream-where: walkfinish.txt was there and the app did not say so"
+    say "stream-where: $(app_log "$WHERE_PID" | grep -m1 'each pass ends in glFinish')"
+    wait_for_app_line "$WHERE_PID" 'mesh: .* vertices drawn' 300 "the mesh" \
+        || die "stream-where: the window never meshed"
+    adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 )) "$P_SCENE_Y" 45000 \
+        > /dev/null 2>&1 || say "stream-where: the hold failed"
+    wait_for_app_line "$WHERE_PID" 'walk: .* frame\(s\) avg ' 30 "the walk report" \
+        || die "stream-where: no walk measurement"
+    say "stream-where: $(app_log "$WHERE_PID" | grep -m1 'walk: .* frame(s) avg ')"
+    say "stream-where: these frame times are serialised on purpose and are not the shipped ones"
+    WORST_LINE="$(app_log "$WHERE_PID" | grep -m1 'walk: the worst over-budget frame')"
+    say "stream-where: ${WORST_LINE:-no frame broke the budget even serialised}"
+    # The whole draw, serialised: the one number this phase exists to produce.
+    DRAW_LINE="$(app_log "$WHERE_PID" | grep -m1 'walk: drawing')"
+    say "stream-where: $DRAW_LINE"
+    adb shell "rm -f '$FILES_W/walkfinish.txt'" > /dev/null 2>&1 || true
+    LIVE="$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')"
+    [ -n "$LIVE" ] || die "stream-where: the app died"
+fi
+
 # ---- 10b. the world button: a save on the phone, no jar, one tap ------------------
 # The "world" phase above proves the *import*: adb puts the archive in the app's own
 # directory and the app opens it at start-up. That is not the owner's situation in one
