@@ -1393,10 +1393,19 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         [ -z "$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')" ] && break
         sleep 1
     done
-    adb shell "cp /data/local/tmp/umbra-world.zip '$FILES_W/world.zip'" > /dev/null 2>&1 || true
+    # What is on the phone *before* the copy, so a save that is already gone is not
+    # confused with the copy failing.
+    BEFORE="$(adb shell "ls -l '$FILES_W/world.zip' 2>&1" | tr -s ' ' | cut -c1-110)"
+    say "stream-fullsize: before the copy: ${BEFORE:-nothing}"
+    USER_OF="$(adb shell "ls -ld '$FILES_W' 2>&1" | tr -s ' ' | cut -c1-90)"
+    say "stream-fullsize: the app's directory: ${USER_OF:-missing}"
+    say "stream-fullsize: the push: $(adb shell "cp /data/local/tmp/umbra-world.zip '$FILES_W/world.zip' 2>&1" | tr -d '\r\n')"
+    AFTER="$(adb shell "ls -l '$FILES_W/world.zip' 2>&1" | tr -s ' ' | cut -c1-110)"
+    say "stream-fullsize: after the copy: ${AFTER:-nothing}"
+    say "stream-fullsize: the archive in /data/local/tmp: $(adb shell "ls -l /data/local/tmp/umbra-world.zip 2>&1" | tr -s ' ' | cut -c1-110)"
     FS_BYTES="$(adb shell stat -c %s '$FILES_W/world.zip' 2>/dev/null | tr -d '\r\n')"
     say "stream-fullsize: the save on the phone is ${FS_BYTES:-?} bytes (the run's own world.zip is $(stat -c %s "${WORLD_ZIP:-/dev/null}" 2>/dev/null || echo ?) bytes)"
-    [ "${FS_BYTES:-0}" -gt 1000000 ] || die "stream-fullsize: world.zip is ${FS_BYTES:-0} bytes, so the save the run was given is not there any more"
+    [ "${FS_BYTES:-0}" -gt 1000000 ] || die "stream-fullsize: world.zip is ${FS_BYTES:-0} bytes, so the save the run was given is not there any more ('${BEFORE:-nothing}' before, '${AFTER:-nothing}' after, directory '${USER_OF:-missing}')"
     # The default radius: this phase must measure the window the app ships with.
     adb shell "rm -f '$FILES_W/radius.txt'" > /dev/null 2>&1 || true
     FS_R="$(adb shell "cat '$FILES_W/radius.txt' 2>/dev/null" | tr -d '\r\n')"
