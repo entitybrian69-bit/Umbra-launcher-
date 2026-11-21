@@ -439,6 +439,32 @@ jobs:
       - name: Screenshot gate (fresh, non-blank, similar to the reference)
         run: python3 tools/check_screenshot.py shot1.png shot2.png --reference docs/reference/emulator_home.png
 
+      # Step 4 of the owner's plan asks for the look -- biome tints, stored light, face
+      # shading, sky and fog, translucent water -- and requires a score rather than a claim.
+      # The capture is the phone's own screenshot of the world phase, so the number
+      # describes the phone and not a host renderer that happens to share the mesher.
+      #
+      # The crops are the overlay, not framing. The panel is a black band across the top of
+      # the app (up to 45% of the height by umbra_hud.h's own limit) and the buttons a row
+      # along the bottom; the reference is a bare frame of the world with neither. Scoring
+      # the panel against sky measured the HUD and reported 48.12 where the world is 34.
+      # `shot-world.png` is written by the world phase; without it the step says so instead
+      # of scoring whatever png happens to be lying around.
+      - name: Look score (the phone's world frame against the reference)
+        if: always()
+        run: |
+          mkdir -p evidence/ci
+          if [ ! -f shot-world.png ]; then
+            echo "look: no shot-world.png in this run -- the world phase did not take a picture"
+            echo "SKIPPED: no world screenshot in this run" > evidence/ci/look-score.txt
+            exit 1
+          fi
+          python3 tools/look_score.py shot-world.png \
+            --reference docs/reference/real_world.png \
+            --crop-top-frac 0.45 --crop-bottom-frac 0.0814 \
+            2>&1 | tee evidence/ci/look-score.txt
+          cp -f shot-world.png evidence/ci/shot-world.png || true
+
       # Evidence has to travel back through git: job logs and artifact
       # downloads are both unavailable to the environment that drives this
       # project, and a screenshot nobody can look at proves nothing.

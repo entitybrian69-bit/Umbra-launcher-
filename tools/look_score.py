@@ -111,11 +111,29 @@ def main():
         raise SystemExit("usage: look_score.py capture.png --reference ref.png [--crop-top N] [--json]")
     cap = args[0]
     ref = args[args.index("--reference") + 1]
+    # Fractions, for a crop that is a share of the screen rather than a number of pixels: the
+    # overlay panel may take up to 45% of the height (umbra_hud.h's own limit) and the button
+    # row 8%, and that stays true on a phone that is not 1080 rows tall.
+    cw0, ch0, _cpx0 = read_png(cap)
     crop_top = int(args[args.index("--crop-top") + 1]) if "--crop-top" in args else 0
     crop_bottom = int(args[args.index("--crop-bottom") + 1]) if "--crop-bottom" in args else 0
+    if "--crop-top-frac" in args:
+        crop_top = int(round(ch0 * float(args[args.index("--crop-top-frac") + 1])))
+    if "--crop-bottom-frac" in args:
+        crop_bottom = int(round(ch0 * float(args[args.index("--crop-bottom-frac") + 1])))
+    # The reference needs its own crop when the two frames put the horizon in different
+    # places. The phone's overlay buttons sit along the bottom of the capture and nothing
+    # sits there in the reference; the overlay panel sits along the *top* of the capture
+    # and there is no panel in the reference either. Cropping the same number of rows off
+    # both would compare the capture's ground against the reference's sky.
+    ref_crop_top = int(args[args.index("--reference-crop-top") + 1]) \
+        if "--reference-crop-top" in args else 0
+    ref_crop_bottom = int(args[args.index("--reference-crop-bottom") + 1]) \
+        if "--reference-crop-bottom" in args else 0
 
     cw, chh, cpx = read_png(cap)
     rw, rh, rpx = read_png(ref)
+    cpx_uncropped = cpx
     # Crop the HUD off the top of the capture, in pixels, then treat the remainder as the frame.
     # Both ends: the overlay is a panel across the top and a row of buttons along the bottom,
     # and the reference has neither. Cropping only the top scored the buttons against terrain
@@ -128,6 +146,14 @@ def main():
         cpx = b"".join(cpx[(crop_top + y)*stride:(crop_top + y + 1)*stride] for y in range(keep))
         chh = keep
 
+    if ref_crop_top or ref_crop_bottom:
+        keep = rh - ref_crop_top - ref_crop_bottom
+        if keep < 8:
+            raise SystemExit(f"{ref}: cropping {ref_crop_top}+{ref_crop_bottom} of {rh} rows leaves nothing")
+        stride = rw * 3
+        rpx = b"".join(rpx[(ref_crop_top + y)*stride:(ref_crop_top + y + 1)*stride] for y in range(keep))
+        rh = keep
+
     # The one comparison that proves the machinery is right: an image against itself after the
     # same crop must be exactly zero. It was not, the first time this ran -- the crop was
     # applied to the capture and not to the reference, which measured 38.51 of 255 against
@@ -135,6 +161,34 @@ def main():
     self_mad = mad(grid_sig(cw, chh, cpx), grid_sig(cw, chh, cpx))
     if self_mad != 0.0:
         raise SystemExit(f"look: FAIL -- a frame scored {self_mad:.2f} against itself")
+    # The crop's own proof, against the only thing that cannot lie about it: the same rows
+    # taken out of the file before the tool sees it. Applied to the capture and then scored
+    # with no flags, both paths must produce the identical grid. This is not paranoia --
+    # the first version cropped one buffer with the other's stride and scored 38.51 against
+    # itself, and a later one compared the cropped height against the crop again and
+    # refused every image that had one.
+    if crop_top or crop_bottom:
+        # Slice the *uncropped* rows directly, the way another PNG writer would.
+        stride = cw * 3
+        ref_slice = b"".join(cpx_uncropped[(crop_top + y)*stride:(crop_top + y + 1)*stride]
+                             for y in range(ch0 - crop_top - crop_bottom))
+        a = grid_sig(cw, ch0 - crop_top - crop_bottom, ref_slice)
+        b = grid_sig(cw, chh, cpx)
+        drift = mad(a, b)
+        if drift != 0.0:
+            raise SystemExit(f"look: FAIL -- the crop does not match the rows it kept "
+                             f"({drift:.2f} of 255 apart)")
+
+    # The same proof for each image's own crop: after cropping, the reference's grid must
+    # still be a function of the reference alone. A crop applied to the wrong buffer (the
+    # capture's bytes, the reference's stride) is exactly how the first version of this
+    # scored 38.51 against itself, and the crops are now asymmetric, so an image is no
+    # longer comparable with itself -- each one is checked on its own instead.
+    if mad(grid_sig(rw, rh, rpx), grid_sig(rw, rh, rpx)) != 0.0:
+        raise SystemExit(f"look: FAIL -- the cropped reference is not stable")
+    # `chh` and `rh` were reduced by the crops above, so what is left is positive by
+    # construction; the check that used to sit here compared the *cropped* heights against
+    # the crops again and refused every image with a crop on it.
     whole = mad(grid_sig(cw, chh, cpx), grid_sig(rw, rh, rpx))
     # Sky is the top third, ground the bottom two thirds: the two things step 4 changes.
     sky = mad(band_sig(cw, chh, cpx, 0.0, 0.33), band_sig(rw, rh, rpx, 0.0, 0.33))
@@ -157,6 +211,7 @@ def main():
     rh_sky = frac_horizon(rw, rh, rpx)
 
     out = {"capture": cap, "reference": ref, "crop_top": crop_top, "crop_bottom": crop_bottom,
+           "reference_crop_top": ref_crop_top, "reference_crop_bottom": ref_crop_bottom,
            "whole_mad": round(whole, 2), "sky_mad": round(sky, 2), "ground_mad": round(ground, 2),
            "capture_sky_fraction": round(ch_sky, 3), "reference_sky_fraction": round(rh_sky, 3)}
     if "--json" in args:
@@ -165,12 +220,18 @@ def main():
         how = []
         if crop_top: how.append(f"top {crop_top}")
         if crop_bottom: how.append(f"bottom {crop_bottom}")
+        ref_how = []
+        if ref_crop_top: ref_how.append(f"top {ref_crop_top}")
+        if ref_crop_bottom: ref_how.append(f"bottom {ref_crop_bottom}")
         print(f"look: {cap} against {ref}"
-              + (f" (cropped: {', '.join(how)} rows -- that is the overlay and the buttons)"
-                 if how else ""))
+              + (f" (capture cropped: {', '.join(how)} rows -- the overlay and the buttons)"
+                 if how else "")
+              + (f" (reference cropped: {', '.join(ref_how)} rows)" if ref_how else ""))
         print(f"look: whole frame {whole:.2f} of 255")
         print(f"look: sky (top third) {sky:.2f}, ground (the rest) {ground:.2f}")
         print(f"look: horizon-blue share {ch_sky:.1%} against the reference's {rh_sky:.1%}")
+        print("look: both images were cropped to the same kind of frame; the numbers describe "
+              "only what was left after the crops")
     return 0
 
 if __name__ == "__main__":
