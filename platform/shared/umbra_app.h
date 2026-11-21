@@ -270,10 +270,13 @@ struct umbra_app {
     int64_t last_pump_us;
     int64_t last_act_us;
     int64_t last_hud_us;
+    int64_t last_log_us;     // the position line, which runs after the draw, kept apart
+                             // from `last_draw_us` so a log write is never charged to the mesher
     int64_t last_draw_breach_us;   // the scene draw of the worst over-budget walking frame
     int64_t last_pump_breach_us;
     int64_t last_act_breach_us;
     int64_t last_hud_breach_us;
+    int64_t last_log_breach_us;
     long long last_breach_frame;
     // The brief's question (d), as one number: from the edit being applied to the first
     // swap that presents the changed geometry. The four parts are kept apart because they

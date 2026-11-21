@@ -1320,6 +1320,7 @@ static void walk_report_begin(umbra_app *app) {
     app->last_pump_breach_us = 0;
     app->last_act_breach_us = 0;
     app->last_hud_breach_us = 0;
+    app->last_log_breach_us = 0;
     app->walk_start_resident = umbra_world_stream_resident();
     app->walk_report = 1;
     umbra_log(app, "walk: measuring the full-size window -- %lld column(s) resident, "
@@ -1354,11 +1355,12 @@ static void walk_report_end(umbra_app *app, const char *why) {
     // frame broke the budget, so its absence means "nothing broke it".
     if (app->last_breach_frame > 0) {
         umbra_log(app, "walk: the worst over-budget frame was %lld, and its CPU went: pumps "
-                       "%.1f ms, body %.1f, scene %.1f, overlay %.1f (the rest is the frame's "
-                       "own bookkeeping)",
+                       "%.1f ms, body %.1f, scene %.1f, log %.1f, overlay %.1f (the rest is "
+                       "the frame's own bookkeeping)",
                   (long long)app->last_breach_frame,
                   app->last_pump_breach_us / 1000.0, app->last_act_breach_us / 1000.0,
-                  app->last_draw_breach_us / 1000.0, app->last_hud_breach_us / 1000.0);
+                  app->last_draw_breach_us / 1000.0, app->last_log_breach_us / 1000.0,
+                  app->last_hud_breach_us / 1000.0);
     }
 }
 
@@ -2589,19 +2591,35 @@ static void player_update(umbra_app *app) {
     // cheap when the answer is no (two comparisons), and it is called every frame because
     // the alternative -- centring on a border chunk -- re-meshes the world every step.
     stream_maybe_recentre(app);
-    // Once every two seconds, so a phone log says where the body is and whether it
-    // is standing, without the log costing anything.
+}
+
+// Where the body is, once every two seconds, so a phone log says where it is and whether it
+// is standing.
+//
+// This used to live at the end of `player_update`, under a comment saying the log cost
+// nothing. It does not: `player_update` runs inside the span that times the scene draw, and
+// one `__android_log_write` is a lock, a format and a write to the log daemon. Both runs that
+// hold step 1's budget to the phone put their single over-budget walking frame at ~2 s after
+// the hold started -- frames 78 and 88 of 1036 and 1029 at 24 ms each -- and the walk's own
+// split for it read pumps 0.0, body 0.0, scene 47.6, overlay 2.5. 47.6 ms of "scene" on a
+// frame whose three pass timers add up to a quarter of that is not a drawing frame; it is
+// this line, charged to the drawer. Run `44891876990` failed its gate on it: 50.2 ms worst,
+// one frame over, and the second identical walk of the same build measured 49.4.
+//
+// It is called after the scene has been drawn and timed, so a log write can no longer be
+// mistaken for geometry.
+static void player_log_position(umbra_app *app) {
+    if (!app->player_on) return;
     int64_t now = umbra_now_us();
-    if (app->player_logged_us == 0 || now - app->player_logged_us > 2000000) {
-        app->player_logged_us = now;
-        umbra_log(app, "player: at %.2f %.2f %.2f, yaw %.2f pitch %.2f, %s, %lld steps up%s",
-                  app->player.x, app->player.y, app->player.z, app->player.yaw,
-                  app->player.pitch,
-                  app->player.in_water ? "swimming"
-                                       : (app->player.on_ground ? "on ground" : "in the air"),
-                  (long long)app->player.stepped,
-                  app->player.sneaking ? ", sneaking" : "");
-    }
+    if (app->player_logged_us != 0 && now - app->player_logged_us <= 2000000) return;
+    app->player_logged_us = now;
+    umbra_log(app, "player: at %.2f %.2f %.2f, yaw %.2f pitch %.2f, %s, %lld steps up%s",
+              app->player.x, app->player.y, app->player.z, app->player.yaw,
+              app->player.pitch,
+              app->player.in_water ? "swimming"
+                                   : (app->player.on_ground ? "on ground" : "in the air"),
+              (long long)app->player.stepped,
+              app->player.sneaking ? ", sneaking" : "");
 }
 
 // The block under the crosshair: what the ray from the eye hits, and what the two
@@ -3884,6 +3902,11 @@ void umbra_app_frame(umbra_app *app) {
         draw_scene(app);
         app->last_draw_us = umbra_now_us() - first_t0;
         gpu_timer_end(app);
+        // After the draw, so its cost lands in the frame's own ledger and not inside
+        // `last_draw_us`: the sweep says how much of an over-budget frame is not a drawing.
+        int64_t log_t0 = umbra_now_us();
+        player_log_position(app);
+        app->last_log_us = umbra_now_us() - log_t0;
         // The first frame that draws a freshly uploaded 25 MB buffer is the one that
         // can stall, because the driver may not have the data on the GPU yet. It is
         // timed, once, so a "long frame" in the log can be attributed instead of
@@ -3945,11 +3968,13 @@ void umbra_app_frame(umbra_app *app) {
                       hud_us / 1000.0, (int)app->draw_calls,
                       (int)app->cull.ranges_drawn, (int)app->cull.ranges_total);
             if (cpu_us > app->last_draw_breach_us + app->last_pump_breach_us +
-                          app->last_act_breach_us + app->last_hud_breach_us) {
+                          app->last_act_breach_us + app->last_hud_breach_us +
+                          app->last_log_breach_us) {
                 app->last_draw_breach_us = app->last_draw_us;
                 app->last_pump_breach_us = pump_us;
                 app->last_act_breach_us = act_us;
                 app->last_hud_breach_us = hud_us;
+                app->last_log_breach_us = app->last_log_us;
                 app->last_breach_frame = app->walk_frames;
             }
         }
