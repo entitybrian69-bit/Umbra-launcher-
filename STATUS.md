@@ -2344,3 +2344,43 @@ That check compares the four exports against the vertices the mesher actually pr
 not against a second copy of `48.0` -- the constant had already been copied once, which is
 how the two answers drifted. The emulator now also says where the body spawned when a hold
 does not move it, so the next time this fails the log names the pit.
+
+## Step 1 and 2 measured: a full-size window, walked, with the cull on (run 44861154896)
+
+The first honest numbers for the owner's steps 1 and 2 come from one 45 s walk of a radius-4
+window on the emulator, and they are the ones a later run must reproduce:
+
+```
+world: opened: 81 chunk(s) from 4 region file(s), radius 4, non-air blocks 2606774,
+       read errors 0, 81 chunk(s) parsed by the stream, missing from the save 0,
+       19.6 MB of region files, 1868.6 ms
+mesh: 1898004 vertices drawn, passes 2629098/217908/0 over 243 ranges
+walk: 940 frame(s) avg 25.4 ms (39 fps), median 25.5, 1% low 42.3 (23 fps),
+      worst 48.3 at frame 298, 0 over 50 ms
+walk: stopped ... window 81 -> 81 column(s) resident, 0 re-centre(s)
+walk: drawing 38 range(s) of 132 in 38 draw call(s) per frame
+      (frustum culling on: 94 box(es) rejected, last frame), 81 column(s) of world resident
+```
+
+* **Step 1's acceptance rule holds on the device**: the worst walking frame is 48.3 ms of
+  CPU-time ledger and *nothing* crossed the 50 ms budget in 940 frames. The 1% low is 42.3 ms,
+  so even the bad frames are inside it.
+* **The window stayed full size**: 81 columns resident at the start and at the end, no
+  re-centre at all -- the 45 s hold covers 194 blocks and one radius-4 stride is 64, so
+  walking did not leave the window it opened with. Resident columns are 24 MB of region data
+  and 1.9 M vertices, and it holds at 39 fps.
+* **Step 2's cull is doing the work it was built for**: 38 ranges drawn of 132, 94 boxes
+  rejected, one draw call per range. The earlier no-cull frame time on this emulator was
+  ~50 ms average for the same kind of window; the walk here averages 25.4 ms.
+
+Two things this run did **not** prove, and both are now failures rather than footnotes:
+
+1. The phase measured this walk **second**. Its first walk in the same log ran at radius 0
+   with one column resident: the previous phase's app was still alive when the phase deleted
+   `radius.txt`, and the dying app wrote the value back. The knobs are now deleted only after
+   `pidof` is empty, and `stream-fullsize` refuses to report unless the stop line says
+   `8x column(s) resident`.
+2. The before/after pair of step 2 (cull off, then on, same walk) is phase `stream-cull` and
+   it had not run yet at this commit. The 25.4 ms above is a with-the-cull number; the
+   paired comparison is the next run's job, and `stream-cull` dies if the cull rejected
+   nothing, so it cannot pass by comparing a build to itself.
