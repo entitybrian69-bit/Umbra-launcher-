@@ -72,6 +72,14 @@ struct umbra_app {
 
     // GL objects
     unsigned prog_mesh, prog_hud, prog_pattern, prog_cube, prog_atlas;
+    // Uniform locations, looked up once. `glGetUniformLocation` is a driver string lookup
+    // and the overlay did four of them every frame while walking.
+    int u_hud_screen, u_hud_tex;
+    int hud_uniforms_ready;
+    // The overlay's vertex buffer: allocated once, written through a map, sized by hand.
+    // `glBufferData` on a buffer the last frame's draw may still read is a synchronous
+    // reallocate on GLES, and the overlay was doing one every frame.
+    long hud_alloc;
     unsigned vao_mesh, vbo_mesh, ibo_mesh;
     unsigned vao_hud, vbo_hud, ibo_hud;
     unsigned vao_cube, vbo_cube, ibo_cube;

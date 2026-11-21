@@ -539,12 +539,43 @@ static void hud_flush(umbra_app *app) {
     // reallocated and re-uploaded for every frame of the game even though the pattern only
     // changes when the quad count does. The overlay measured 13.9 ms of a 50 ms walking frame
     // with the split in run 44883705686; the geometry it draws is one panel and some text.
-    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)g_hud_count * (GLsizeiptr)sizeof(hud_vert),
-                 g_hud_verts, GL_STREAM_DRAW);
-    glUniform2f(glGetUniformLocation(app->prog_hud, "u_screen"), (float)app->width, (float)app->height);
+    // The buffer is allocated once and written through a map, not respecified every frame.
+    // `glBufferData` on a buffer the previous frame's draw may still be reading is a
+    // synchronous reallocate on GLES: the driver waits for the GPU and hands back a new
+    // allocation. Done 60 times a second it is how the overlay came to be charged 13.9 ms
+    // of a walking frame (run 44883705686) and then 21.1 ms (run 44898492576) for one panel
+    // and some text, with the average and the 1% low swinging between runs of one build.
+    {
+        long want = (long)g_hud_count * (long)sizeof(hud_vert);
+        if (want > app->hud_alloc) {
+            long grown = (want + 65535) & ~65535L;   // 64 KB steps, not every other frame
+            glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)grown, NULL, GL_STREAM_DRAW);
+            app->hud_alloc = grown;
+        }
+        unsigned char *map = (unsigned char *)glMapBufferRange(
+            GL_ARRAY_BUFFER, 0, (GLsizeiptr)want,
+            GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_BUFFER_BIT);
+        if (map) {
+            memcpy(map, g_hud_verts, (size_t)want);
+            glUnmapBuffer(GL_ARRAY_BUFFER);
+        } else {
+            // A map that fails is not a reason to draw nothing.
+            glBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)want, g_hud_verts);
+        }
+    }
+    // Looked up once and kept: `glGetUniformLocation` is a driver string lookup, and this
+    // was doing two of them every frame. The cached value is initialised to -1 by
+    // create_programs (the struct is memset to zero, and location 0 is a real uniform, so
+    // zero is the wrong sentinel); `hud_uniforms_ready` says whether it has happened.
+    if (!app->hud_uniforms_ready) {
+        app->u_hud_screen = glGetUniformLocation(app->prog_hud, "u_screen");
+        app->u_hud_tex = glGetUniformLocation(app->prog_hud, "u_tex");
+        app->hud_uniforms_ready = 1;
+    }
+    glUniform2f(app->u_hud_screen, (float)app->width, (float)app->height);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, app->tex_font);
-    glUniform1i(glGetUniformLocation(app->prog_hud, "u_tex"), 0);
+    glUniform1i(app->u_hud_tex, 0);
     // Quad indices: two triangles per quad.
     static unsigned *indices = NULL;
     static int cap = 0;
