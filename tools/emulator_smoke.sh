@@ -1375,8 +1375,22 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     # The refusal is evidence in itself: radius.txt says 0 and the app must say it refused
     # it rather than building a cage. Then the file is rewritten to 1 and the app relaunched,
     # so the walk below is on a window it can actually move.
-    if adb logcat -d -s umbra:V 2>/dev/null | grep -q "is refused: a window of 1 chunk(s) walls the body in"; then
-        say "stream-recentre: radius 0 was refused, as it should be"
+    #
+    # Waited for, not read at once: the radius file is read and applied in `open_world_screen`,
+    # which runs when the app decides which world to open -- after the launch's own log lines
+    # and after the load. Reading it immediately raced that, and run 44906898674 reported
+    # "took radius 0 without refusing it" while the log, four lines later, had the refusal.
+    REFUSED=0
+    DEADLINE=$((SECONDS + 60))
+    while [ $SECONDS -lt $DEADLINE ]; do
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "stream: radius refused"; then
+            REFUSED=1
+            break
+        fi
+        sleep 2
+    done
+    if [ "$REFUSED" = 1 ]; then
+        say "stream-recentre: $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "is refused:" | sed 's/.*umbra *: //')"
     else
         err "stream-recentre: the app took radius 0 without refusing it"
     fi
@@ -1397,14 +1411,9 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         sleep 3
     done
     [ "$OPENED" = 1 ] || die "stream-recentre: the world never finished its first window: $(adb logcat -d -s umbra:V 2>/dev/null | grep -E 'stream:|world: ' | tail -3 | tr '\n' '|')"
-    # Two centres before any walking: the import fills the window around the save's
-    # origin, and `player_spawn` then moves it to the body (a save's spawn is near 0,0 but
-    # the body is placed at the middle of the loaded bounds, which is a different chunk).
-    # So the count to beat is whatever it is *before* the walk, not one.
-    BASE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -c 'stream: centre chunk')"
-    say "stream-recentre: ${BASE:-0} centre(s) before walking, last: $(adb logcat -d -s umbra:V 2>/dev/null | grep 'stream: centre chunk' | tail -1 | sed 's/.*umbra *: //')"
-    # The edge (step 3): the save's extent and the parsed window are two different walls,
-    # and the log has to say both or a report cannot tell which one a body stopped at.
+    # Step 3's wall, now that a save is open and the app has said where its edges are. The
+    # two are different numbers -- the save's extent and the parsed window inside it -- and
+    # a report with only one of them cannot say which wall a body stopped at.
     EDGE_LINE="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'edge: the save is' | tail -1 | sed 's/.*umbra *: //')"
     if [ -n "$EDGE_LINE" ]; then
         say "edge: $EDGE_LINE"
@@ -1416,15 +1425,23 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
             if [ "$PX0" -lt "$SX0" ] || [ "$PX1" -gt "$SX1" ]; then
                 die "edge: the parsed window ($PX0..$PX1) is not inside the save ($SX0..$SX1)"
             fi
-            if [ "$PX1" -ge "$SX1" ] && [ "$PX0" -le "$SX0" ]; then
+            if [ "$PX0" -le "$SX0" ] && [ "$PX1" -ge "$SX1" ]; then
                 say "edge: the parsed window covers the save, so the two walls are one here"
             else
                 say "edge: the parsed window ($PX0..$PX1) is inside the save ($SX0..$SX1), which is the wall the body hits first"
             fi
+        else
+            err "edge: the app's edge line does not parse: $EDGE_LINE"
         fi
     else
         err "edge: the app never logged where the edge is (step 3's wall has no device evidence)"
     fi
+    # Two centres before any walking: the import fills the window around the save's
+    # origin, and `player_spawn` then moves it to the body (a save's spawn is near 0,0 but
+    # the body is placed at the middle of the loaded bounds, which is a different chunk).
+    # So the count to beat is whatever it is *before* the walk, not one.
+    BASE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -c 'stream: centre chunk')"
+    say "stream-recentre: ${BASE:-0} centre(s) before walking, last: $(adb logcat -d -s umbra:V 2>/dev/null | grep 'stream: centre chunk' | tail -1 | sed 's/.*umbra *: //')"
     # Wait for the mesh, then walk. A world that is still meshing refuses input.
     WAITED=0
     DEADLINE=$((SECONDS + 240))

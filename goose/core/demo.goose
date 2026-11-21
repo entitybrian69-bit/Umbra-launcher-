@@ -32,7 +32,13 @@ var demo: ChunkColumn[>..] = [];
 let DEMO_SLAB_MODEL = "{\"textures\":{\"bottom\":\"minecraft:block/oak_planks\",\"top\":\"minecraft:block/oak_planks\",\"side\":\"minecraft:block/oak_planks\"},\"elements\":[{\"from\":[0,0,0],\"to\":[16,8,16],\"faces\":{\"down\":{\"texture\":\"#bottom\",\"cullface\":\"down\"},\"up\":{\"texture\":\"#top\"},\"north\":{\"texture\":\"#side\"},\"south\":{\"texture\":\"#side\"},\"west\":{\"texture\":\"#side\"},\"east\":{\"texture\":\"#side\"}}}]}";
 
 fn demo_build(seed: i64) {
-    bs_reset();
+    // The demo world interns its own nine blocks -- but only when there is no jar's table
+    // to keep. `bs_reset()` here wiped the 1288 blockstates the loaded jar had just
+    // interned, and the hotbar, which is built from that table, came back nine blocks long
+    // on a phone with the game's files: the device log said "9 block(s) in the list" beside
+    // "1288 blockstates" from the jar, in the same run. The demo scene is a fallback for a
+    // build with no jar, not a replacement for one.
+    if bs_defs.len <= 1 { bs_reset(); }
     let stone = bs_intern("minecraft:stone", "");
     let dirt = bs_intern("minecraft:dirt", "");
     let grass = bs_intern("minecraft:grass_block", "snowy=false");

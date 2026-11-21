@@ -1743,6 +1743,7 @@ int umbra_app_init(umbra_app *app) {
                                        "a window of %d chunk(s) walls the body in and cannot "
                                        "re-centre; 1 is used instead", want,
                                    want * 2 + 1);
+                        umbra_log(app, "stream: radius refused");
                         want = 1;
                     }
                     int64_t used = umbra_world_set_radius((int64_t)want);
@@ -2646,16 +2647,6 @@ static void player_spawn(umbra_app *app) {
     // which is the only place the app learns where the body's feet are before the first
     // frame; `player_update` keeps it current as the body walks between heights.
     umbra_edge_ground((int64_t)floorf(app->player.y));
-    // Where the edge is, said once per spawn: the save's extent and the parsed window
-    // inside it. The two are different numbers and a report that has only one of them
-    // cannot say which wall the body hit.
-    if (app->player_on && umbra_edge_on() == 1) {
-        umbra_log(app, "edge: the save is x %.0f..%.0f z %.0f..%.0f, the parsed window "
-                       "x %.0f..%.0f z %.0f..%.0f, wall on",
-                  umbra_edge_x0(), umbra_edge_x1(), umbra_edge_z0(), umbra_edge_z1(),
-                  umbra_edge_parsed_x0(), umbra_edge_parsed_x1(),
-                  umbra_edge_parsed_z0(), umbra_edge_parsed_z1());
-    }
     // The window follows the body, and it starts where the body starts. Centring here, on
     // the spawn the app just chose, is what makes a save whose origin is not its spawn
     // work: `wl_import_end_streamed` filled the window around the save's *origin* (0,0),
@@ -3179,25 +3170,6 @@ static void draw_hands(umbra_app *app) {
 static void draw_inventory(umbra_app *app) {
     if (!app->inv_open) return;
     if (app->mesh_state == 1) return;
-    // The panel's rects are logged the way the hand controls' are -- once, and again on
-    // a new page or a new screen size -- so the automated run taps the first tile by
-    // reading its rect back instead of guessing where a fifth of the way in lands.
-    if (app->inv_logged_width != app->width || app->inv_logged_page != app->inv_page) {
-        app->inv_logged_width = app->width;
-        app->inv_logged_page = app->inv_page;
-        umbra_rect pn = umbra_hud_inv_panel(app->width, app->height, app->insets);
-        umbra_log(app, "hud: inventory panel at %d,%d size %dx%d on %dx%d",
-                  (int)pn.x, (int)pn.y, (int)pn.w, (int)pn.h, app->width, app->height);
-        umbra_rect t0 = umbra_hud_inv_tile(0, app->width, app->height, app->insets);
-        umbra_log(app, "hud: inventory tile 0 at %d,%d size %dx%d on %dx%d",
-                  (int)t0.x, (int)t0.y, (int)t0.w, (int)t0.h, app->width, app->height);
-        for (int b = 0; b < 2; b++) {
-            umbra_rect q = umbra_hud_inv_page_button(b, app->width, app->height, app->insets);
-            umbra_log(app, "hud: inventory page %s at %d,%d size %dx%d on %dx%d",
-                      b == 0 ? "back" : "more", (int)q.x, (int)q.y, (int)q.w, (int)q.h,
-                      app->width, app->height);
-        }
-    }
     int64_t total = umbra_hotbar_total();
     int pages = umbra_hud_inv_pages(total);
     if (app->inv_page >= pages) app->inv_page = pages - 1;
@@ -3686,6 +3658,18 @@ static int world_open_path(umbra_app *app, const char *path, const char *how) {
     }
     umbra_log(app, "world: the phone is drawing a world the game generated -- the columns are "
                    "the save's, the blocks are the save's, and the jar's models drew them");
+    // Where the edge is, now that a save is open: the save's extent and the parsed window
+    // inside it. Logged here rather than at spawn, because at spawn there may be no save
+    // yet -- the demo scene has no wall, and a line about an edge that is not there is a
+    // line a report has to explain away. The two numbers are different and a report with
+    // only one cannot say which wall a body stopped at.
+    if (umbra_edge_on() == 1) {
+        umbra_log(app, "edge: the save is x %.0f..%.0f z %.0f..%.0f, the parsed window "
+                       "x %.0f..%.0f z %.0f..%.0f, wall on",
+                  umbra_edge_x0(), umbra_edge_x1(), umbra_edge_z0(), umbra_edge_z1(),
+                  umbra_edge_parsed_x0(), umbra_edge_parsed_x1(),
+                  umbra_edge_parsed_z0(), umbra_edge_parsed_z1());
+    }
     rebuild_world(app);
     return 1;
 }
@@ -4501,8 +4485,29 @@ void umbra_app_touch_id(umbra_app *app, int32_t id, int32_t x, int32_t y, int32_
                 app->inv_open = 1;
                 app->inv_page = 0;
                 app->inv_slot = app->hotbar_sel;
-                // Log the panel's rects again for this open: the run taps them back.
-                app->inv_logged_width = -1;
+                // Log the panel's rects here rather than from the draw, which is where they
+                // were first written and which the device run showed the harness could not
+                // see: the panel opened, the log had its "opened" line, and the rects were
+                // never printed. The tap knows all four from the same functions the draw
+                // uses, and it runs whether or not a frame is drawn in between -- the
+                // automated run taps them back, so they have to exist when it asks.
+                {
+                    umbra_rect pn = umbra_hud_inv_panel(app->width, app->height, app->insets);
+                    umbra_log(app, "hud: inventory panel at %d,%d size %dx%d on %dx%d",
+                              (int)pn.x, (int)pn.y, (int)pn.w, (int)pn.h, app->width,
+                              app->height);
+                    umbra_rect t0 = umbra_hud_inv_tile(0, app->width, app->height, app->insets);
+                    umbra_log(app, "hud: inventory tile 0 at %d,%d size %dx%d on %dx%d",
+                              (int)t0.x, (int)t0.y, (int)t0.w, (int)t0.h, app->width,
+                              app->height);
+                    for (int b = 0; b < 2; b++) {
+                        umbra_rect q = umbra_hud_inv_page_button(b, app->width, app->height,
+                                                                 app->insets);
+                        umbra_log(app, "hud: inventory page %s at %d,%d size %dx%d on %dx%d",
+                                  b == 0 ? "back" : "more", (int)q.x, (int)q.y, (int)q.w,
+                                  (int)q.h, app->width, app->height);
+                    }
+                }
                 app->tap_used = 1;
                 umbra_log(app, "inventory: opened for slot %d (%lld block(s) in the list)",
                           app->inv_slot, (long long)umbra_hotbar_total());

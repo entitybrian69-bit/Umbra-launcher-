@@ -1425,6 +1425,35 @@ int main(int argc, char **argv) {
                (long long)umbra_hotbar_count());
         check(total >= 5, "the blockstates give the hand a real list to draw from");
         check(umbra_hotbar_count() <= total, "and the hand does not hold more than the list");
+        // The bug the device run found: the demo world called `bs_reset()`, which wiped the
+        // jar's 1288 blockstates *after* the jar had loaded them, and the hand came back
+        // nine blocks long beside a log line saying "1288 blockstates" from the jar. The fix
+        // is that the demo only resets a table it did not find; the guard is that building
+        // the demo world does not shrink the list under a loaded jar.
+        {
+            // Interning extra states first is what makes this the device's case rather
+            // than the fixture's: with nine states a wipe costs nothing visible, and with a
+            // thousand it is the whole hotbar.
+            for (int i = 0; i < 40; i++) {
+                char nm[48];
+                snprintf(nm, sizeof nm, "minecraft:test_block_%d", i);
+                umbra_set_block(0, 100 + i, 0, (sl_u8){(uint8_t *)nm, (int64_t)strlen(nm)});
+            }
+            int64_t before_total = umbra_hotbar_total();
+            int64_t before_states = umbra_state_count();
+            printf("hotbar: %lld state(s) before the demo build\n", (long long)before_states);
+            umbra_demo_build(20261114);
+            int64_t after_states = umbra_state_count();
+            int64_t after_total = umbra_hotbar_total();
+            printf("hotbar: a demo build over a loaded table: %lld -> %lld state(s), "
+                   "%lld -> %lld block(s)\n", (long long)before_states,
+                   (long long)after_states, (long long)before_total,
+                   (long long)after_total);
+            check(after_states >= before_states,
+                  "building the demo world does not wipe a loaded blockstate table");
+            check(after_total >= before_total,
+                  "and the hotbar keeps the list it was built from");
+        }
 
         // Every slot on a page names something, and no slot names air: the list is the
         // placeable set, and a hotbar that offers air is a hotbar that places nothing.

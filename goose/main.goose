@@ -685,7 +685,13 @@ export "umbra_bench_summary" fn bench_summary_export(label: const u8[:], device:
     return bench_text;
 }
 
-export "umbra_demo_build" fn demo_build_export(seed: i64) { demo_build(seed) }
+export "umbra_demo_build" fn demo_build_export(seed: i64) {
+    // The demo world may have re-interned the blockstate table (see its own comment), and
+    // the hotbar is built from that table: rebuild it, so a hand seeded before the world
+    // exists is not a hand of ids that no longer mean anything.
+    demo_build(seed);
+    hotbar_build_all();
+}
 export "umbra_demo_mesh" fn demo_mesh_export() { demo_mesh(); serialize_mesh() }
 
 // The sliced path: begin, step with a budget until it returns 1, then finish.
