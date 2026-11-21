@@ -305,6 +305,13 @@ struct umbra_app {
     umbra_frustum frustum;
     umbra_cull_stats cull;
     int cull_on;               // 0 = draw every range, the "before" of the measurement
+    // Per-pass draw time, recorded only on a walking frame that broke the budget. The scene
+    // draw is 20 of a 52 ms frame and the three passes are where that can go: opaque is the
+    // terrain, translucent is water, and a 43 ms scene on a 2.6 M-triangle window means the
+    // software rasteriser is filling pixels rather than the app blocking. Saying which pass
+    // costs the most is what decides whether to cut geometry or stop blending water.
+    int64_t last_pass_us[3];
+    int order_overflowed;      // logged once: too many opaque ranges for the draw order
     int walk_report;           // the walking phase is on: report when it ends
     long long walk_frames;
     long long walk_start_resident;   // the window's size when the walk began

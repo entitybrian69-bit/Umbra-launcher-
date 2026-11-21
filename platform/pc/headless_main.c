@@ -303,6 +303,55 @@ int main(int argc, char **argv) {
         check(differing > 0, "and the boxes differ between slots, so they are geometry and not a constant");
     }
 
+    // 0d. The opaque pass's draw order. It is a sort by distance from the eye to the middle of
+    //     each range's box, and it exists for the software rasteriser's fill cost: the near
+    //     column first lets the depth test reject the columns behind it. A sort that silently
+    //     does nothing (a comparison the wrong way round, a copy that loses an entry) would
+    //     leave the frames exactly as they were while the code looked right, so the order is
+    //     checked here with the same arithmetic the draw uses, against a box set whose answer
+    //     is obvious: three columns at z = 1, 5 and 9, seen from z = 0.
+    {
+        float boxes[3][6] = {
+            {-0.5f, 0, 9.0f, 0.5f, 1, 10.0f},   // far
+            {-0.5f, 0, 1.0f, 0.5f, 1, 2.0f},    // near
+            {-0.5f, 0, 5.0f, 0.5f, 1, 6.0f},    // middle
+        };
+        float eye[3] = {0.0f, 0.5f, 0.0f};
+        int order[3] = {0, 1, 2};
+        float d2[3];
+        for (int i = 0; i < 3; i++) {
+            float cx = (boxes[i][0] + boxes[i][3]) * 0.5f - eye[0];
+            float cy = (boxes[i][1] + boxes[i][4]) * 0.5f - eye[1];
+            float cz = (boxes[i][2] + boxes[i][5]) * 0.5f - eye[2];
+            d2[i] = cx * cx + cy * cy + cz * cz;
+        }
+        // The insertion sort, written exactly as draw_scene writes it: a copy here of a
+        // different algorithm would pass while the draw was broken.
+        int used = 0;
+        int sorted[3] = {0, 0, 0};
+        for (int i = 0; i < 3; i++) {
+            int p = used;
+            while (p > 0 && d2[sorted[p - 1]] > d2[i]) { sorted[p] = sorted[p - 1]; p--; }
+            sorted[p] = i;
+            used++;
+        }
+        order[0] = sorted[0]; order[1] = sorted[1]; order[2] = sorted[2];
+        printf("draw: front-to-back is slot %d, %d, %d (z %.1f, %.1f, %.1f)\n",
+               order[0], order[1], order[2],
+               boxes[order[0]][2], boxes[order[1]][2], boxes[order[2]][2]);
+        check(order[0] == 1 && order[1] == 2 && order[2] == 0,
+              "the opaque order is front to back: the column at z=1 is first and the one at z=9 is last");
+        check(sqrtf(d2[order[0]]) < sqrtf(d2[order[1]]) &&
+              sqrtf(d2[order[1]]) < sqrtf(d2[order[2]]),
+              "and the distances really are increasing, so the sort is not passing by accident");
+        // A box on the wrong side of the eye must not sort to the front: the measure is a
+        // distance, not a coordinate.
+        float behind[6] = {-0.5f, 0, -9.0f, 0.5f, 1, -8.0f};
+        float bx = (behind[0] + behind[3]) * 0.5f - eye[0];
+        float bz = (behind[2] + behind[5]) * 0.5f - eye[2];
+        check(bx * bx + bz * bz > d2[1], "a column behind the eye sorts after the one in front of it");
+    }
+
 
     const uint8_t *verts = umbra_verts_ptr(&vlen);
     const uint8_t *indices = umbra_indices_ptr(&ilen);

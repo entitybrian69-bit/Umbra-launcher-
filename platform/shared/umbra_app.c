@@ -2646,8 +2646,15 @@ static void player_act(umbra_app *app) {
 
 // --- frame --------------------------------------------------------------
 
+// One visible range in the opaque pass's draw order. The array is on the stack and sized for
+// more ranges than a radius-4 window has (243 ranges is the whole window, and only the visible
+// ones are sorted), so the order is never silently partial.
+#define UMBRA_DRAW_ORDER_MAX 256
+typedef struct { int slot; float d2; } umbra_draw_item;
+
 static void draw_scene(umbra_app *app) {
     float proj[16], view[16], vp[16];
+    umbra_draw_item draw_order[UMBRA_DRAW_ORDER_MAX];
     // The home view is a fixed three-quarter view, framed from the mesh extent
     // and not from a hand-tuned number: the screenshot gate compares one run
     // with the next, so the scene must not drift while it is being captured.
@@ -2721,9 +2728,14 @@ static void draw_scene(umbra_app *app) {
     app->cull.ranges_drawn = 0;
     app->cull.boxes_rejected = 0;
     int slots = (int)umbra_range_slots();
+    // The three passes are timed separately: the scene draw is the largest part of an
+    // over-budget walking frame, and "which pass" is the question that decides whether to
+    // cut geometry or stop blending water. Four clock reads per frame, ~100 ns.
+    int64_t pass_us[3] = {0, 0, 0};
     for (int pass = PASS_OPAQUE; pass <= PASS_TRANSLUCENT; pass++) {
         int b = pass - PASS_OPAQUE;
         if (app->batch_count[b] <= 0) continue;
+        int64_t pass_t0 = umbra_now_us();
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, app->atlas_tex);
         glUniform1i(glGetUniformLocation(app->prog_mesh, "u_atlas"), 0);
@@ -2748,7 +2760,52 @@ static void draw_scene(umbra_app *app) {
         }
         // One range per column: an edit rewrites one of these and nothing else, so the
         // draw call count changes with the world but never with the edit.
-        for (int i = 0; i < slots; i++) {
+        //
+        // Opaque ranges go front to back. On a software rasteriser the fill cost is the
+        // whole frame, and drawing the near column first lets the depth test throw away the
+        // fragments of every column behind it -- the same triangles, fewer shaded pixels.
+        // The other two passes keep the world's order: cutout is two-sided foliage and
+        // translucent blends, so for neither of them does "nearer first" save a fragment.
+        //
+        // The order is computed with an insertion sort over the visible ranges by the squared
+        // distance from the eye to the middle of the range's own box, which is already the box
+        // the cull tests. A radius-4 window is 81 columns, so one pass has at most 81 ranges
+        // and UMBRA_DRAW_ORDER_MAX is 256: if the cap were ever reached the loop would stop
+        // adding and `order_used` would be less than the range count, which is checked below
+        // and reported rather than silently drawing a partial world.
+        int order_used = 0;
+        if (pass == PASS_OPAQUE) {
+            for (int i = 0; i < slots && order_used < UMBRA_DRAW_ORDER_MAX; i++) {
+                if ((int)umbra_range_batch(i) != b) continue;
+                if (umbra_range_index_len(i) <= 0) continue;
+                umbra_draw_item e;
+                e.slot = i;
+                float cx = (umbra_range_box(i, 0) + umbra_range_box(i, 3)) * 0.5f - eye[0];
+                float cy = (umbra_range_box(i, 1) + umbra_range_box(i, 4)) * 0.5f - eye[1];
+                float cz = (umbra_range_box(i, 2) + umbra_range_box(i, 5)) * 0.5f - eye[2];
+                e.d2 = cx * cx + cy * cy + cz * cz;
+                int p = order_used;
+                while (p > 0 && draw_order[p - 1].d2 > e.d2) {
+                    draw_order[p] = draw_order[p - 1];
+                    p--;
+                }
+                draw_order[p] = e;
+                order_used++;
+            }
+        }
+        if (pass == PASS_OPAQUE) {
+            int opaque_ranges = 0;
+            for (int i = 0; i < slots; i++) {
+                if ((int)umbra_range_batch(i) == b && umbra_range_index_len(i) > 0) opaque_ranges++;
+            }
+            if (opaque_ranges != order_used && !app->order_overflowed) {
+                app->order_overflowed = 1;
+                umbra_log(app, "draw: %d opaque range(s) but room to order %d -- the rest are "
+                               "drawn in slot order", opaque_ranges, order_used);
+            }
+        }
+        for (int k = 0; k < (pass == PASS_OPAQUE ? order_used : slots); k++) {
+            int i = (pass == PASS_OPAQUE) ? draw_order[k].slot : k;
             if ((int)umbra_range_batch(i) != b) continue;
             int64_t len = umbra_range_index_len(i);
             if (len <= 0) continue;
@@ -2774,6 +2831,12 @@ static void draw_scene(umbra_app *app) {
             glDepthMask(GL_TRUE);
             glDisable(GL_BLEND);
         }
+        pass_us[b] = umbra_now_us() - pass_t0;
+    }
+    if (app->walk_report) {
+        app->last_pass_us[0] = pass_us[0];
+        app->last_pass_us[1] = pass_us[1];
+        app->last_pass_us[2] = pass_us[2];
     }
     glDisable(GL_CULL_FACE);
 }
@@ -3836,10 +3899,12 @@ void umbra_app_frame(umbra_app *app) {
             // streams, the body, or the overlay, and they are kept so the end-of-walk
             // report can repeat the worst one's split rather than only its duration.
             umbra_log(app, "walk: frame %lld took %.1f ms of CPU, over the %d ms budget "
-                           "(pumps %.1f, body %.1f, scene %.1f, overlay %.1f; %d draw call(s), "
-                           "%d of %d ranges)",
+                           "(pumps %.1f, body %.1f, scene %.1f [opaque %.1f, cutout %.1f, "
+                           "water %.1f], overlay %.1f; %d draw call(s), %d of %d ranges)",
                       (long long)app->walk_frames, cpu_us / 1000.0, UMBRA_CPU_BUDGET_MS,
                       pump_us / 1000.0, act_us / 1000.0, app->last_draw_us / 1000.0,
+                      app->last_pass_us[0] / 1000.0, app->last_pass_us[1] / 1000.0,
+                      app->last_pass_us[2] / 1000.0,
                       hud_us / 1000.0, (int)app->draw_calls,
                       (int)app->cull.ranges_drawn, (int)app->cull.ranges_total);
             if (cpu_us > app->last_draw_breach_us + app->last_pump_breach_us +
