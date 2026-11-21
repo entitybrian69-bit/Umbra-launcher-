@@ -1417,21 +1417,37 @@ static void stream_maybe_recentre(umbra_app *app) {
     // is standing in.
     int cx = (int)floorf(app->player.x / 16.0f);
     int cz = (int)floorf(app->player.z / 16.0f);
-    // The stride: re-centre when the body is one chunk short of the window's edge.
+    // The stride, and the bug it took three runs to see.
     //
-    // A stride of one chunk (the obvious version) re-centres on every chunk crossing,
-    // which at walking speed is once a second, and every recentre evicts, plans, parses
-    // and re-meshes the whole window. Keeping a chunk of slack costs the same order of
-    // re-centres as a whole radius -- after one recentre the body is at the middle again,
-    // so it walks `radius - 1` chunks before the next -- and it is not optional: the ring
-    // of resident chunks is what the body is standing on. A body that crosses into a chunk
-    // that is inside the window's *box* but has not been parsed yet is standing on air, and
-    // the run that put the edge wall at the window's edge showed exactly that once the wall
-    // moved out to the save's edge: the body walked past the resident ring and fell to
-    // y -119.99.
-    int margin = app->stream_radius > 1 ? app->stream_radius - 1 : 1;
-    if (cx >= app->stream_cx - margin && cx <= app->stream_cx + margin &&
-        cz >= app->stream_cz - margin && cz <= app->stream_cz + margin) {
+    // The rule used to be "the body is more than `radius` chunks from the centre", and it
+    // read well; it was wrong twice over.
+    //
+    // The first version put the edge wall at the resident window's bounds, and the window
+    // is centred on the body, so the wall travelled with the body and there was no way out
+    // of the ring it stood in: ten seconds of held finger at one coordinate (run
+    // 44902159615).
+    //
+    // The second version moved the wall out to the save's extent, which is right, and then
+    // the body walked out of the parsed ring into cells nothing had read, where every block
+    // is air, and fell to y -72. The host check caught that in one run.
+    //
+    // So the wall is *two* walls -- the save's edge, which never moves, and the parsed
+    // window's edge, which does -- and the re-centre has to fire before the body reaches
+    // the second one. That is what this is now: ask the parsed bounds themselves where
+    // their outermost chunks are, and re-centre when the body's chunk is one of them. Not
+    // arithmetic on `radius`, because the resident set is not always a full ring: the
+    // streaming fixture is missing chunks, and its parsed bounds are -2..1 in x rather
+    // than the -2..2 the radius would suggest. A rule derived from the bounds is a rule
+    // about the terrain that actually loaded.
+    //
+    // It keeps a chunk of slack by construction: the body is re-centred the moment it steps
+    // into the outer chunk, so there is always at least one parsed chunk beyond it.
+    int lo_x = (int)floorf(umbra_world_loaded_min_x() / 16.0f);
+    int hi_x = (int)floorf((umbra_world_loaded_max_x() - 1.0f) / 16.0f);
+    int lo_z = (int)floorf(umbra_world_loaded_min_z() / 16.0f);
+    int hi_z = (int)floorf((umbra_world_loaded_max_z() - 1.0f) / 16.0f);
+    if (cx > lo_x && cx < hi_x && cz > lo_z && cz < hi_z) {
+        // Strictly inside the parsed window, with a chunk to spare on every side.
         return;
     }
     if (app->walk_report) app->walk_recentres++;
@@ -1717,6 +1733,18 @@ int umbra_app_init(umbra_app *app) {
                 char line[32];
                 if (fgets(line, (int)sizeof line, rf)) {
                     int want = atoi(line);
+                    // A radius of 0 is one chunk, and one chunk is a walled cell: the body
+                    // can be blocked at its edge and no recentre can fire, because the only
+                    // chunk it could walk into is the one it is in. Refused here with the
+                    // reason in the log rather than silently turned into a cage -- the
+                    // device run that set 0 for a one-chunk stride is what found this.
+                    if (want < 1) {
+                        umbra_log(app, "stream: radius %d asked for in radius.txt is refused: "
+                                       "a window of %d chunk(s) walls the body in and cannot "
+                                       "re-centre; 1 is used instead", want,
+                                   want * 2 + 1);
+                        want = 1;
+                    }
                     int64_t used = umbra_world_set_radius((int64_t)want);
                     umbra_log(app, "stream: radius %d asked for in radius.txt, %lld used "
                                    "(max %lld)", want, (long long)used,
@@ -2614,6 +2642,10 @@ static void player_spawn(umbra_app *app) {
     umbra_log(app, "player: spawned at %.2f %.2f %.2f (floor %.2f), eye %.2f",
               app->player.x, app->player.y, app->player.z, y,
               app->player.y + UMBRA_PLAYER_EYE);
+    // The wall's column is built from the ground the body walks on. Set here, at spawn,
+    // which is the only place the app learns where the body's feet are before the first
+    // frame; `player_update` keeps it current as the body walks between heights.
+    umbra_edge_ground((int64_t)floorf(app->player.y));
     // Where the edge is, said once per spawn: the save's extent and the parsed window
     // inside it. The two are different numbers and a report that has only one of them
     // cannot say which wall the body hit.
@@ -2677,6 +2709,16 @@ static void player_update(umbra_app *app) {
     if (app->player.in_water != was_water) {
         umbra_log(app, app->player.in_water ? "player: entered water, swimming"
                                             : "player: out of the water");
+    }
+    // The wall's column follows the body's floor. Only when it moves a whole block, and
+    // only when the body is on the ground: a body in the air is not standing on anything,
+    // and a wall built from a mid-jump height would have a gap under it.
+    if (app->player.on_ground) {
+        int64_t gy = (int64_t)floorf(app->player.y);
+        if (gy != app->edge_ground) {
+            app->edge_ground = gy;
+            umbra_edge_ground(gy);
+        }
     }
     // Has the player walked far enough from the middle of the window that a chunk at its
     // edge should be dropped and one ahead of them parsed? `stream_maybe_recentre` is

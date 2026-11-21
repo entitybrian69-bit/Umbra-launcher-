@@ -1362,11 +1362,33 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     # (radius 1) is not. Run 44724553259 walked 8.50,8.50 -> 14.39,7.92 and never
     # re-centred, which was the phase asking for more distance than a 1.5-second hold gives.
     # The app reads this file once, at start-up, before it opens the world.
+    # Radius 1, not 0. A radius of 0 is a single chunk, and a single chunk is a cage: the
+    # wall is at the chunk's edge, so the body cannot reach the chunk that would re-centre
+    # the window. That is what run 44902159615 asked for, and the body stood at one
+    # coordinate for ten seconds. Radius 1 is two chunks across, which is the smallest
+    # window a walk can demonstrate a re-centre in; the app refuses 0 now and says why.
     adb shell "echo 0 > '$FILES_W/radius.txt'" > /dev/null 2>&1 \
         || die "stream-recentre: could not put radius.txt in the app's directory"
     R="$(adb shell "cat '$FILES_W/radius.txt'" 2>/dev/null | tr -d '\r\n')"
     say "stream-recentre: the app's radius file says '${R:-nothing}'"
     LAUNCH="$(launch_app stream-recentre-launch.log)" || die "stream-recentre: the app would not start: $LAUNCH"
+    # The refusal is evidence in itself: radius.txt says 0 and the app must say it refused
+    # it rather than building a cage. Then the file is rewritten to 1 and the app relaunched,
+    # so the walk below is on a window it can actually move.
+    if adb logcat -d -s umbra:V 2>/dev/null | grep -q "is refused: a window of 1 chunk(s) walls the body in"; then
+        say "stream-recentre: radius 0 was refused, as it should be"
+    else
+        err "stream-recentre: the app took radius 0 without refusing it"
+    fi
+    adb shell "echo 1 > '$FILES_W/radius.txt'" > /dev/null 2>&1 \
+        || die "stream-recentre: could not set radius.txt to 1"
+    # The log is cumulative across a relaunch, so the first run's "window complete" and
+    # "centre chunk" lines would satisfy every wait below without the second run doing
+    # anything. Cleared here, with the same guard the other phases use.
+    adb logcat -c > /dev/null 2>&1 || true
+    adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
+    sleep 2
+    LAUNCH="$(launch_app stream-recentre-launch2.log)" || die "stream-recentre: the app would not restart: $LAUNCH"
     say "stream-recentre: $LAUNCH"
     OPENED=0
     DEADLINE=$((SECONDS + 240))

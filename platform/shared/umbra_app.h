@@ -136,6 +136,7 @@ struct umbra_app {
     // A tile tap that has been asked for but not yet applied: the same rule as
     // `act_wanted`, the write happens between frames and not inside event dispatch.
     int inv_wanted_all;         // index into the whole list, or -1
+    int64_t edge_ground;        // the floor the edge wall's column is built from
     int inv_logged_width;       // the width the panel's rects were last logged at
     int inv_logged_page;
     int act_wanted;
