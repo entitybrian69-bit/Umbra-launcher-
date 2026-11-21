@@ -2345,7 +2345,37 @@ not against a second copy of `48.0` -- the constant had already been copied once
 how the two answers drifted. The emulator now also says where the body spawned when a hold
 does not move it, so the next time this fails the log names the pit.
 
-## Step 1 and 2 measured: a full-size window, walked, with the cull on (run 44861154896)
+## Step 1 measured and passing: a full-size window, walked, with the cull on (run 44866373257)
+
+The phase that verifies step 1 now passes end to end on the device, at the window the save
+opens with, and it is the committed gate: `stream-fullsize` fails the run if the window is
+not full size, if any frame breaks the budget, or if the app is not alive at the end.
+
+```
+stream-fullsize: world: opened: 81 chunk(s) from 4 region file(s), radius 4,
+                 non-air blocks 2606693, read errors 0, missing from the save 0,
+                 19.6 MB of region files, 2553.1 ms
+stream-fullsize: mesh: 1896240 vertices drawn, passes 2629542/214818/0 over 243 ranges
+stream-fullsize: walk: 1071 frame(s) avg 21.7 ms (46 fps), median 21.9, 1% low 39.1 (25 fps),
+                 worst 43.1 at frame 21, 0 over 50 ms
+stream-fullsize: walk: stopped ...; window 81 -> 81 column(s) resident, 0 re-centre(s)
+stream-fullsize: walk: drawing 38 range(s) of 132 in 38 draw call(s) per frame
+                 (frustum culling on: 94 box(es) rejected, last frame)
+stream-fullsize: the window stayed full-size through the walk (81 column(s) resident)
+stream-fullsize: no frame broke the 50 ms CPU budget, over 1071 walking frame(s)
+```
+
+An earlier run of the same phase (`44861154896`) reported 940 frames at avg 25.4 ms, 1% low
+42.3, worst 48.3, also nothing over budget. **Both runs pass step 1; the second is the one
+whose harness refuses to accept a partial window**, so 21.7 ms is the number to quote.
+
+## Step 2's before/after, as built (first attempt failed on its own assertions)
+
+`stream-cull` walks the same spawn twice in one run -- with `nocull.txt` and without -- and
+requires both halves to say radius 4, the off half to say "culling off for measurement", the
+on half to say "culling on", and the cull to have drawn fewer ranges than it was given.
+
+## Earlier: the first full-size walk (run 44861154896)
 
 The first honest numbers for the owner's steps 1 and 2 come from one 45 s walk of a radius-4
 window on the emulator, and they are the ones a later run must reproduce:

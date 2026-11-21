@@ -1476,7 +1476,7 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     wait_for_app_line "$FS_PID" 'mesh: .* vertices drawn' 300 "the mesh" \
         || die "stream-fullsize: the full-size window never meshed"
     say "stream-fullsize: the window is meshed, drawing $(app_log "$FS_PID" | grep -m1 'mesh: .* vertices drawn')"
-    POS0="$(app_log "$FS_PID" | grep 'player: at ' | tail -1 | sed 's/,.*//')"
+    POS0="$(app_log "$FS_PID" | grep 'player: at ' | tail -1 | sed 's/.*player: at //; s/,.*//')"
     say "stream-fullsize: walking from ${POS0:-?} for 45 s at radius 4; the app measures the frames"
     adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 )) "$P_SCENE_Y" 45000 \
         > /dev/null 2>&1 || say "stream-fullsize: the 45 s hold failed"
@@ -1488,7 +1488,7 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     [ -n "$WITHIN" ] && say "stream-fullsize: $WITHIN"
     DRAW="$(app_log "$FS_PID" | grep -m1 'walk: drawing')"
     [ -n "$DRAW" ] && say "stream-fullsize: $DRAW"
-    POS1="$(app_log "$FS_PID" | grep 'player: at ' | tail -1 | sed 's/,.*//')"
+    POS1="$(app_log "$FS_PID" | grep 'player: at ' | tail -1 | sed 's/.*player: at //; s/,.*//')"
     say "stream-fullsize: walked to ${POS1:-?}"
     # The whole point of the phase is the *full-size* window, and run 44861154896 walked 45 s
     # at radius 0, reported "1 over 50 ms" on a world of one column, and passed everything
@@ -1565,15 +1565,26 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
             *"radius 4"*) : ;;
             *) die "stream-cull: the $1 half opened at a window that is not radius 4: $line" ;;
         esac
-        # And the switch has to be in the state this half is named for.
+        # And the switch has to be in the state this half is named for. That is the app's
+        # own `cull:` line, which is written where the switch is read -- not the `stream:`
+        # line above, which says the window and not the cull.
+        wait_for_app_line "$pid" 'cull: frustum culling' 60 "the cull state, $1 half" \
+            || die "stream-cull: the $1 half never said whether the cull was on"
+        local cull
+        cull="$(app_log "$pid" | grep -m1 'cull: frustum culling')"
+        say "stream-cull: the $1 half: $cull"
         if [ "$1" = "off" ]; then
-            case "$line" in
+            case "$cull" in
                 *"culling off for measurement"*) : ;;
-                *) die "stream-cull: the off half is not actually drawing without the cull: $line" ;;
+                *) die "stream-cull: the off half is not actually drawing without the cull: $cull" ;;
+            esac
+        else
+            case "$cull" in
+                *"culling off"*) die "stream-cull: the on half is drawing without the cull: $cull" ;;
+                "cull: frustum culling on"*) : ;;
+                *) die "stream-cull: the on half did not say the cull was on: $cull" ;;
             esac
         fi
-        wait_for_app_line "$pid" 'cull: frustum culling' 60 "the cull state, $1 half" || true
-        say "stream-cull: the $1 half: $(app_log "$pid" | grep -m1 'cull: frustum culling')"
         wait_for_app_line "$pid" 'mesh: .* vertices drawn' 300 "the mesh, $1 half" \
             || die "stream-cull: the $1 half never meshed"
         adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 )) "$P_SCENE_Y" 45000 \
