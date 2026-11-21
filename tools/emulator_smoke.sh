@@ -1393,6 +1393,9 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         [ -z "$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')" ] && break
         sleep 1
     done
+    # The knobs are removed after the app is gone, not before: an app that is still alive
+    # rewrites radius.txt on its way out (see the cull phase below).
+    adb shell "rm -f '$FILES_W/radius.txt' '$FILES_W/nocull.txt'" > /dev/null 2>&1 || true
     # What is on the phone *before* the copy, so a save that is already gone is not
     # confused with the copy failing.
     BEFORE="$(adb shell "ls -l $FILES_W/world.zip 2>&1" | tr -s ' ' | cut -c1-110)"
@@ -1412,10 +1415,8 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     case "${FS_BYTES:-}" in ''|*[!0-9]*) FS_BYTES=0 ;; esac
     say "stream-fullsize: the save on the phone is ${FS_BYTES:-?} bytes (the run's own world.zip is $(stat -c %s "${WORLD_ZIP:-/dev/null}" 2>/dev/null || echo ?) bytes)"
     [ "${FS_BYTES:-0}" -gt 1000000 ] || die "stream-fullsize: world.zip is ${FS_BYTES:-0} bytes, so the save the run was given is not there any more ('${BEFORE:-nothing}' before, '${AFTER:-nothing}' after, directory '${USER_OF:-missing}')"
-    # The default radius: this phase must measure the window the app ships with.
-    adb shell "rm -f '$FILES_W/radius.txt'" > /dev/null 2>&1 || true
-    # Culling on: this phase measures the shipped configuration.
-    adb shell "rm -f '$FILES_W/nocull.txt'" > /dev/null 2>&1 || true
+    # The default radius: this phase must measure the window the app ships with. (Both
+    # knobs were removed above, before the copy and after the previous app was stopped.)
     FS_R="$(adb shell "cat '$FILES_W/radius.txt' 2>/dev/null" | tr -d '\r\n')"
     [ -z "$FS_R" ] || die "stream-fullsize: radius.txt still says '$FS_R', so this phase would measure a window that is not the shipped default"
     adb logcat -c > /dev/null 2>&1 || true
@@ -1459,6 +1460,15 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     [ -n "$DRAW" ] && say "stream-fullsize: $DRAW"
     POS1="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'player: at ' | tail -1 | sed 's/.*player: at //' | sed 's/,.*//')"
     say "stream-fullsize: walked to ${POS1:-?}"
+    # The whole point of the phase is the *full-size* window, and run 44861154896 walked 45 s
+    # at radius 0, reported "1 over 50 ms" on a world of one column, and passed everything
+    # else. The stop line says how many columns were resident at the end; insist on it.
+    RESIDENT="$(printf '%s\n' "$WITHIN" | sed -n 's/.*window [0-9]* -> \([0-9]*\) column.*/\1/p')"
+    case "${RESIDENT:-}" in
+        '') say "stream-fullsize: the stop report did not say how many columns stayed resident" ;;
+        8[01]) say "stream-fullsize: the window stayed full-size through the walk ($RESIDENT column(s) resident)" ;;
+        *) die "stream-fullsize: the walk was on '${RESIDENT}' column(s), not the 81 the save opened with -- the phase would have reported a frame time for a window it is not about ($WITHIN)" ;;
+    esac
     case "$REPORT" in
         *"OVER BUDGET"*)
             # The acceptance rule: no frame may block over ~50 ms of CPU work. A breach is
@@ -1484,6 +1494,17 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     section "stream-cull"
     # The shipped radius, and no leftovers from the previous phases: both halves of this
     # comparison have to be the same window or the numbers are about two worlds.
+    #
+    # The app is stopped *before* the files are touched. Run 44861154896 measured its first
+    # walk at radius 0 and 1 column because this ran in the other order: the re-centre
+    # phase's app was still alive, the delete removed a file that app had open, and its
+    # shutdown put the value back. A phase that edits a file the previous app is still
+    # writing has not measured anything.
+    adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
+    for _i in 1 2 3 4 5 6 7 8 9 10; do
+        [ -z "$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')" ] && break
+        sleep 1
+    done
     adb shell "rm -f '$FILES_W/radius.txt'" > /dev/null 2>&1 || true
     walk_once() {
         # $1 = "off" or "on" (the cull), $2 = the label for the log
@@ -1500,6 +1521,14 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         adb shell "cp /data/local/tmp/umbra-world.zip $FILES_W/world.zip" > /dev/null 2>&1 || true
         adb logcat -c > /dev/null 2>&1 || true
         launch_app "stream-cull-$2-launch.log" > /dev/null 2>&1 || die "stream-cull: the app would not start for the $1 half"
+        sleep 2
+        CULL_R="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'stream: the world is streamed' | sed 's/.*umbra *: //')"
+        say "stream-cull: the $1 half: ${CULL_R:-no stream line}"
+        case "$CULL_R" in
+            *"radius 4"*) : ;;
+            "") say "stream-cull: the $1 half did not say its radius" ;;
+            *) die "stream-cull: the $1 half opened at a radius that is not 4: $CULL_R" ;;
+        esac
         DEADLINE=$((SECONDS + 300))
         while [ $SECONDS -lt $DEADLINE ]; do
             adb logcat -d -s umbra:V 2>/dev/null | grep -q "mesh: .* vertices drawn" && break
