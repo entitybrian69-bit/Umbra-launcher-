@@ -73,34 +73,34 @@ fn ws_extent_min_block_z() -> f32 { return (ws_ext_min_cz as f32) * 16.0; }
 goose/core/worldstream.goose:515: warning: redundant `as f32`: an i64 converts to f32 implicitly here
 fn ws_extent_max_block_z() -> f32 { return ((ws_ext_max_cz as f32) + 1.0) * 16.0; }
                                              ^~~~~~~~~~~~~~~~~~~~
-goose/core/demo.goose:178: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:184: warning: redundant `as f32`: an i32 converts to f32 implicitly here
         if t > 0.0 { return (y as f32) + t; }
                              ^~~~~~~~
-goose/core/demo.goose:251: warning: redundant `as f32`: fx is already f32
+goose/core/demo.goose:257: warning: redundant `as f32`: fx is already f32
     if fx < 0.0 && (fx as f32) != fx { x -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:252: warning: redundant `as f32`: fy is already f32
+goose/core/demo.goose:258: warning: redundant `as f32`: fy is already f32
     if fy < 0.0 && (fy as f32) != fy { y -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:253: warning: redundant `as f32`: fz is already f32
+goose/core/demo.goose:259: warning: redundant `as f32`: fz is already f32
     if fz < 0.0 && (fz as f32) != fz { z -= 1; }
                     ^~~~~~~~~
-goose/core/demo.goose:258: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:264: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_x = if stepx == 0 { inf } else if stepx > 0 { (1.0 - (fx - (x as f32))) / nx } else { ((x as f32) - fx) / nx };
                                                                          ^~~~~~~~
-goose/core/demo.goose:258: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:264: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_x = if stepx == 0 { inf } else if stepx > 0 { (1.0 - (fx - (x as f32))) / nx } else { ((x as f32) - fx) / nx };
                                                                                                      ^~~~~~~~
-goose/core/demo.goose:259: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:265: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_y = if stepy == 0 { inf } else if stepy > 0 { (1.0 - (fy - (y as f32))) / ny } else { ((y as f32) - fy) / ny };
                                                                          ^~~~~~~~
-goose/core/demo.goose:259: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:265: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_y = if stepy == 0 { inf } else if stepy > 0 { (1.0 - (fy - (y as f32))) / ny } else { ((y as f32) - fy) / ny };
                                                                                                      ^~~~~~~~
-goose/core/demo.goose:260: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:266: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
                                                                          ^~~~~~~~
-goose/core/demo.goose:260: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/demo.goose:266: warning: redundant `as f32`: an i32 converts to f32 implicitly here
     var tmax_z = if stepz == 0 { inf } else if stepz > 0 { (1.0 - (fz - (z as f32))) / nz } else { ((z as f32) - fz) / nz };
                                                                                                      ^~~~~~~~
 goose/core/modelstore.goose:52: warning: redundant `as i64`: path.len is already i64
@@ -676,7 +676,7 @@ PASS models (455 checks)
 PASS modelstore (505 checks)
 PASS raster (515 checks)
 PASS worldzip (610 checks)
-  ws: 2 slices for 16 chunks, worst 265 us
+  ws: 2 slices for 16 chunks, worst 203 us
 
 PASS worldstream (683 checks)
 all modules passed
