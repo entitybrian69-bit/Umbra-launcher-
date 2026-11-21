@@ -2345,6 +2345,29 @@ not against a second copy of `48.0` -- the constant had already been copied once
 how the two answers drifted. The emulator now also says where the body spawned when a hold
 does not move it, so the next time this fails the log names the pit.
 
+## 0.3.9-pre: published, verified, and it is the culled window (2026-11-14)
+
+Tag `v0.3.9-pre` at `2946f199`, release run `44889003059`, every job `success`.
+
+**The published bytes, re-downloaded from their public URLs:**
+
+| asset | size | sha256 | result |
+|---|---|---|---|
+| `umbra-0.3.9-pre-arm64.apk` | 858 647 | `4da06599…` | http 200, matches |
+| `umbra-0.3.9-pre-linux-x64` | 330 232 | `11a73eca…` | http 200, matches, **passed its self-test** |
+| `umbra-0.3.9-pre-windows-x64.exe` | 422 235 | `41c202fe…` | http 200, matches, **ran under wine and passed its self-test** |
+| `world.zip` | 5 907 100 | in `SHA256SUMS` | the sample world, as a release asset (D-048) |
+
+`RESULT: PASS - 3 assets re-downloaded ... and every sha256 matched`. A tag is not a release
+until the bytes at the public URL hash to what was built, and a hash is not a working binary
+until it runs; both are recorded here and neither is inferred from the other.
+
+**What 0.3.9 changes:** per-range frustum culling against the geometry's own bounding box, a
+front-to-back opaque draw order, one HUD buffer upload per frame instead of two (plus a cached
+index buffer), and the measurement knobs the device phases use. The device evidence for all of
+it is the section above: the same walk on the same world, 51.7 ms average with the cull off
+and 22.8 ms with it on, and no frame over the 50 ms budget where 68% of them were.
+
 ## Steps 1 and 2 are met on the device, in one run (44886351992, all five workflows success)
 
 One emulator run, one save, one spawn, one 45 s hold -- twice, differing by `nocull.txt` on
