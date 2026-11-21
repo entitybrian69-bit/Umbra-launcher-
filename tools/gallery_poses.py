@@ -138,9 +138,13 @@ def pick(name, cols, centre):
                 return (px + 0.5, v + 1.01, pz + 0.5, 1.6, -0.12, "a column with water")
         return None
     if name == "cave":
+        # y 12 is under the terrain, so the shot has to look *down* at the stone and up at
+        # the roof, not at the sky: a positive pitch from inside the ground is a picture of
+        # a hole with daylight in it. -0.05 is level, which at this depth is a wall of
+        # stone and the shadow the brief's "cave/dark interior" asks for.
         for (px, pz), v in by_near:
             if v > 20:
-                return (px + 0.5, 12.01, pz + 0.5, 2.4, 0.55, "under the terrain")
+                return (px + 0.5, 12.01, pz + 0.5, 2.4, -0.05, "under the terrain")
         return None
     if name == "sky":
         (px, pz), top = max(land, key=lambda kv: kv[1])

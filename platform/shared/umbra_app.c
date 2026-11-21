@@ -3925,6 +3925,27 @@ static void draw_gamefiles(umbra_app *app) {
     hud_flush(app);
 }
 
+// The gallery's pose, applied to the body's eye once the world has meshed and the body
+// exists, so the shot is the pose's view and not the spawn's.
+//
+// This used to live at the end of `draw_hud`, which is exactly the function gallery mode
+// skips -- `gallery_hide_hud` is set, and `draw_hud` is not called. So the app read pose.txt,
+// logged "pose.txt read", and then never posed: run 44922668931 waited 300 s for a line that
+// could not be written. It is its own function now, called every frame from the same place
+// as the drawing but outside the HUD's own condition.
+static void gallery_apply_pose(umbra_app *app) {
+    if (!app->gallery || !app->pose_ready || app->pose_applied) return;
+    if (app->mesh_state != 0 || !app->player_on) return;
+    app->player.x = app->pose[0];
+    app->player.y = app->pose[1];
+    app->player.z = app->pose[2];
+    app->player.yaw = app->pose[3];
+    app->player.pitch = app->pose[4];
+    app->pose_applied = 1;
+    umbra_log(app, "gallery: posed at %.2f %.2f %.2f, yaw %.2f pitch %.2f",
+              app->pose[0], app->pose[1], app->pose[2], app->pose[3], app->pose[4]);
+}
+
 static void draw_hud(umbra_app *app) {
     hud_begin();
     float s = hud_scale(app);
@@ -4087,18 +4108,6 @@ static void draw_hud(umbra_app *app) {
                       hud_rows(app), content_bottom, panel_h);
         }
     }
-    // The gallery's pose is applied here, after the world has meshed and the body exists,
-    // so the eye is the pose's and not the spawn's.
-    if (app->gallery && app->pose_ready && !app->pose_applied && app->mesh_state == 0 && app->player_on) {
-        app->player.x = app->pose[0];
-        app->player.y = app->pose[1];
-        app->player.z = app->pose[2];
-        app->player.yaw = app->pose[3];
-        app->player.pitch = app->pose[4];
-        app->pose_applied = 1;
-        umbra_log(app, "gallery: posed at %.2f %.2f %.2f, yaw %.2f pitch %.2f",
-                  app->pose[0], app->pose[1], app->pose[2], app->pose[3], app->pose[4]);
-    }
     if (!app->gallery_hide_hud) {
         draw_hands(app);
         draw_inventory(app);
@@ -4214,6 +4223,9 @@ void umbra_app_frame(umbra_app *app) {
                       app->vert_count, app->draw_calls);
         }
     }
+    // Before the HUD and outside its condition: the pose is the point of the gallery and the
+    // HUD is the thing the gallery hides.
+    gallery_apply_pose(app);
     int64_t hud_t0 = umbra_now_us();
     if (!app->gallery_hide_hud) draw_hud(app);
     int64_t hud_us = umbra_now_us() - hud_t0;
