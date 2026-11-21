@@ -1,5 +1,41 @@
 # Decisions and their reasons
 
+## D-053. Cull by the geometry's own box, and switch it with a file so the before and the after are the same walk
+
+Step 2 of the owner's plan asks for a before and an after "on the same world and same
+emulator run". Two ways to satisfy that:
+
+* build two APKs and run the workflow twice -- then the numbers differ by whatever else
+  changed between the commits, and the emulator's own variance is invisible;
+* build one APK with a **switch on the device** -- `nocull.txt` next to the save -- and walk
+  the same spawn twice inside one phase.
+
+The second is chosen. `stream-cull` removes the file, force-stops, walks 45 s, puts the file
+back, force-stops, and walks the same 45 s again; the world is re-copied from the same zip
+each half, so the two halves differ in one bit on disk. A build flag would also have made
+the shipped binary's performance a claim about a build nobody runs.
+
+**The box is the geometry's, not the column's.** `sl_bb` holds six floats per (pass, column)
+taken where the vertices are written -- the min and max of the positions actually drawn. A
+column whose only solid blocks are a pond floor has a box around the pond; culling it by its
+full 384-block height would keep it in the draw for every camera above the pond, which is the
+common case in the world the owner plays.
+
+**The test is the positive-vertex one**: for each of six planes, reject only when all eight
+corners are on the outside of that one plane. It is exact for a box and a convex frustum, and
+it cannot reject a box that is partly visible. The pad of 0.5 blocks covers a column whose
+drawn vertices sit exactly on a plane.
+
+**The planes come from the matrix the world is drawn with**, rebuilt after the HUD band's y
+shift, because that shift is part of the projection the vertices go through. Building them
+from an earlier matrix would cull against a camera that is 1.5 % off and, at the edge of the
+window, reject the wrong column -- the kind of bug that looks like a physics problem.
+
+**What was found by doing it:** the first extraction walked columns of the matrix instead of
+rows (`m[c*4+r]` where it needed `m[r*4+c]`), which culls boxes that are in front of the
+camera; the seven host checks -- written against a hand-computed projection, not the app's --
+caught all three variants of that bug. No device run was spent on any of them.
+
 ## D-052. Air is air whatever its id
 
 `render_class` returned `RC_AIR` only for `id == 0`. `bs_intern("minecraft:air", "")` is 0
