@@ -1,9 +1,8 @@
 host: x86_64
 compiler: cc (Ubuntu 15.2.0-16ubuntu1) 15.2.0
-run: 44736379311
-commit: 497b0516c6f29f22013596f9fdc76819b5a9c810
+run: 44851884781
+commit: f4513a0f1519a98ede92348d5a9974257f31c52f
 
-PASS zip (148 checks)
 png: 10 images decoded to their expected RGBA, 4 broken refused
 PASS png (164 checks)
 nbt: parsed and rewrote level.dat byte for byte, 4 broken files refused
@@ -19,10 +18,11 @@ PASS models (447 checks)
 PASS modelstore (497 checks)
 PASS raster (507 checks)
 PASS worldzip (602 checks)
-FAIL: and does it in more than one call, so no single frame carries it all
-  ws: 1 slices for 16 chunks, worst 98 us
+  ws: 2 slices for 16 chunks, worst 168 us
 
-FAILED worldstream (1/675 checks failed)
+PASS worldstream (675 checks)
+all modules passed
+c-host: goose_exit returned 0
 
 jr: grass colormap 256x256, 262144 bytes, sampled at 51,174
 jr: grass tint 51,174,128 from the jar's colormap
