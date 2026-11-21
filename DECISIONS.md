@@ -36,19 +36,19 @@ rows (`m[c*4+r]` where it needed `m[r*4+c]`), which culls boxes that are in fron
 camera; the seven host checks -- written against a hand-computed projection, not the app's --
 caught all three variants of that bug. No device run was spent on any of them.
 
-**What it is worth, measured (run 44875469819, one save, one spawn, two 45 s walks):**
+**What it is worth, measured (run 44886351992, one save, one spawn, two 45 s walks):**
 
 | | culling OFF | culling ON |
 |---|---|---|
 | ranges / draw calls per frame | 132 / 132 | 38 / 38 |
-| average frame | 52.2 ms (19 fps) | 22.1 ms (45 fps) |
-| 1% low | 65.7 ms | 38.7 ms |
-| worst | 73.6 ms | 44.9 ms |
-| frames over 50 ms | 503 of 700 | 0 of 1056 |
+| average frame | 51.7 ms (19 fps) | 22.8 ms (43 fps) |
+| 1% low | 63.1 ms | 37.2 ms |
+| worst | 66.1 ms | 41.3 ms |
+| frames over 50 ms | 484 of 713 | 0 of 1100 |
 
-The two halves ran minutes apart on the same emulator, and the same phase on a run 40 minutes
-earlier gave 56.6 ms for the off half and 49.8 ms for another -- so the machine varies by
-~13% and the *pair* is the result, not either number alone. The claim this decision rests on
+The two halves ran minutes apart on the same emulator, and the same phase on three other runs
+gave 49.8, 52.2 and 56.6 ms for the off half -- so the machine varies by ~13% and the *pair*
+is the result, not either number alone. The claim this decision rests on
 is the direction and the size (2.4x on the average, all breaches removed), and the pair keeps
 the emulator's variance out of it by construction.
 
