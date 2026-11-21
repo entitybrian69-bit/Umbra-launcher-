@@ -89,7 +89,10 @@ var ws_col: ChunkColumn = ChunkColumn { x: 0, z: 0, present: false, data_version
                                        sections: [Section { y: 0, present: false, bits: 0,
                                                             palette_len: 0, palette: [0; 1024],
                                                             blocks: [0; 4096], biomes_len: 0,
-                                                            biomes: [0; 64] }; 24],
+                                                            biomes: [0; 64],
+                                                            sky_light: [0; 4096],
+                                                            block_light: [0; 4096],
+                                                            light_read: false }; 24],
                                        section_lo: 24, section_hi: -1 };
 
 var ws_regions: WsRegion[>..] = [];

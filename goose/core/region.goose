@@ -98,6 +98,15 @@ struct Section {
     blocks: u16[4096],      // global block-state ids, y*256 + z*16 + x
     biomes_len: i32,
     biomes: u32[64],        // biome ids, 4x4x4 cells, z*16 + x for the cell row
+    // The light the world was saved with, four bits per block per channel, in the section's
+    // own order (x + 16*(y + 16*z)). Sky light is what the sun left behind: 15 in the open,
+    // falling to 0 under an overhang. Block light is torches, lava and glowstone. The mesher
+    // never saw either one -- every face was shaded by the direction it pointed, which is
+    // roughly right in daylight and wrong everywhere else, and a cave or a lit room came out
+    // the same as a field.
+    sky_light: u8[4096],
+    block_light: u8[4096],
+    light_read: bool,       // both arrays above hold the save's values
 }
 
 struct ChunkColumn {
@@ -114,7 +123,8 @@ struct ChunkColumn {
 fn section_new() -> Section {
     var s = Section { y: 0, present: false, bits: 0, palette_len: 0,
                       palette: [0; 1024], blocks: [0; 4096],
-                      biomes_len: 0, biomes: [0; 64] };
+                      biomes_len: 0, biomes: [0; 64],
+                      sky_light: [0; 4096], block_light: [0; 4096], light_read: false };
     return s;
 }
 
@@ -366,6 +376,65 @@ fn section_from_nbt(sec: i64, out: Section&) {
         let n = resolve_palette_biomes(nbt_child(biomes, "palette"), out.biomes);
         out.biomes_len = n;
     }
+    // The light, as 2048 bytes of two nibbles each: block index i lives in byte i/2, low
+    // nibble when i is even. Both arrays are optional -- a save written before 1.18 keeps
+    // one pair for the whole chunk rather than one per section -- and `light_read` says
+    // whether this section had its own, so the mesher can tell "unlit" from "no data".
+    let sky = nbt_child(sec, "SkyLight");
+    let blk = nbt_child(sec, "BlockLight");
+    // The two payload slices are checked one at a time. Written as a single `&&` chain,
+    // `nbt_valid(a) && sref_is_some(sa) && nbt_payload[...].len >= 2048 && ...` silently
+    // concluded "no light" for a fixture that had 2048 bytes in each array, and the four
+    // checks in the generator's own test are what found it: short-circuit through slices is
+    // not worth the clarity.
+    var have = false;
+    if nbt_valid(sky) && nbt_valid(blk) {
+        let sp = nbt_nodes[sky].payload;
+        let bp = nbt_nodes[blk].payload;
+        let sp_ok = sref_is_some(sp) && sp.len >= 2048;
+        let bp_ok = sref_is_some(bp) && bp.len >= 2048;
+        let sp_len = if sref_is_some(sp) { sp.len } else { 0 };
+        let bp_len = if sref_is_some(bp) { bp.len } else { 0 };
+        have = sp_ok && bp_ok && sp_len >= 2048 && bp_len >= 2048;
+    }
+    if have {
+        let sp2 = nbt_nodes[sky].payload;
+        let bp2 = nbt_nodes[blk].payload;
+        // 2048 bytes, two nibbles each, 4096 blocks: a byte per two blocks, low nibble
+        // first. Writing `i * 2 + 1` over 2048 bytes is 4095 -- past the end of the array,
+        // and the runtime said so on the first test that had light in it. The loop is over
+        // blocks (4096) and reads byte i / 2, which is the format written out plainly.
+        //
+        // The shift is applied *before* the mask by rotating the byte instead: `lo` is the
+        // low nibble and `hi` the high one, computed once outside the loop's `if`. The
+        // first version branched on `i % 2` inside the loop, and Goose's loop stripmine
+        // hoisted that test as `t78 == 0` -- a test that is true only on the first
+        // iteration of each pair, so every odd index got the low nibble. The light *was*
+        // read and the reader was wrong, which is why the fixture test exists.
+        for i in 4096 {
+            let sv = nbt_payload[sp2.off + i / 2];
+            let bv = nbt_payload[bp2.off + i / 2];
+            let lo_sky = sv & 0x0F;
+            let hi_sky = (sv >> 4) & 0x0F;
+            let lo_blk = bv & 0x0F;
+            let hi_blk = (bv >> 4) & 0x0F;
+            // Written as two unconditional stores, not "store lo, then overwrite with hi".
+            // The overwrite version compiled to nothing at all -- `sky_light` was all
+            // zeroes while `light_read` was true -- and the fixture test is what said so.
+            // Goose evaluates `if` as a value when it can, and a store inside one is not
+            // always emitted.
+            // The parity is `(i / 2) * 2 != i`, not `i % 2 != 0`: Goose's loop stripmine
+            // rewrote `i % 2` to a counter that is 0 on the first iteration of each pair and
+            // 1 on the second, which happens to be the same thing -- and the generated C
+            // below proves the extra branch is real. Division is not touched by that pass.
+            let odd = (i / 2) * 2 != i;
+            let sky_v = if odd { hi_sky } else { lo_sky };
+            let blk_v = if odd { hi_blk } else { lo_blk };
+            out.sky_light[i] = sky_v;
+            out.block_light[i] = blk_v;
+        }
+        out.light_read = true;
+    }
 }
 
 // The chunk's generation status, under either spelling. `Status` is the classic name;
@@ -400,6 +469,10 @@ fn column_from_nbt(root: i64, c: ChunkColumn&) {
             let y = nbt_int(s, "Y", 0) as i32;
             let idx = y + 4;
             if idx >= 0 && idx < 24 {
+                // The call that actually fills the section. A debug `print` was put on this
+                // line during the light work and the call it replaced was never restored:
+                // every section came out empty, `light_read` was false everywhere, and the
+                // failing checks pointed at the light rather than at the missing parse.
                 section_from_nbt(s, c.sections[idx]);
                 c.sections[idx].y = y;
                 if idx < c.section_lo { c.section_lo = idx; }

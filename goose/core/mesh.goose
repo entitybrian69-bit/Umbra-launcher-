@@ -173,10 +173,13 @@ fn corner_ao(side1: bool, side2: bool, corner: bool) -> f32 {
 }
 
 fn push_quad(x0: f32, y0: f32, z0: f32, face: i64, u0: f32, v0: f32, u1: f32, v1: f32,
-             tint: f32[3], ao: f32[4]) {
+             tint: f32[3], ao: f32[4], sky_light: f32) {
     let base = mesh_verts.len as u32;
-    // Vanilla face shading: top full, bottom darkest, sides in between.
-    let light = if face == 1 { 1.0 } else if face == 0 { 0.5 } else if face == 2 || face == 3 { 0.8 } else { 0.6 };
+    // Vanilla face shading: top full, bottom darkest, sides in between. Multiplied by the
+    // light the save holds in front of the face, so a cave is darker than a field and a
+    // torchlights what it burns next to.
+    let facing = if face == 1 { 1.0 } else if face == 0 { 0.5 } else if face == 2 || face == 3 { 0.8 } else { 0.6 };
+    let light = facing * sky_light;
     for c in 4 {
         let ao_v = ao[c];
         let shade = light * ao_v;
@@ -270,6 +273,13 @@ fn mesh_set_tile(path_index: i64, slot: i64) {
     while mesh_tile_slot.len <= path_index { mesh_tile_slot.push(-1); }
     mesh_tile_slot[path_index] = slot;
 }
+
+// Off for the host test that holds the light path to its own absence. Vanilla has no such
+// switch; this one exists because "the colours changed" is only meaningful against the same
+// geometry with the light ignored, and two builds are not the same process.
+var mesh_light_on: bool = true;
+
+fn mesh_set_light(on: bool) { mesh_light_on = on; }
 
 fn mesh_set_tints(grass: f32[3], foliage: f32[3], water: f32[3]) {
     for k in 3 {
@@ -374,9 +384,23 @@ fn push_model_face(c: ChunkColumn&, bx: i32, by: i32, bz: i32, fi: i64, rule: i6
     let u0 = msf_uv[fi * 4 + 0]; let v0 = msf_uv[fi * 4 + 1];
     let u1 = msf_uv[fi * 4 + 2]; let v1 = msf_uv[fi * 4 + 3];
     let face_rot = msf_rot[fi];
+    // The neighbour this face looks at, in world coordinates, rotated with the model: the
+    // open block whose light the face gets.
+    let fnw = mesh_rot_vec([face_normal(face, 0), face_normal(face, 1), face_normal(face, 2)],
+                           xrot, yrot);
+    let nx_lit = bx + (fnw[0] as i32);
+    let ny_lit = by + (fnw[1] as i32);
+    let nz_lit = bz + (fnw[2] as i32);
     var tint: f32[3] = [1.0, 1.0, 1.0];
     if msf_tint[fi] >= 0 { tint = mesh_tint_of(msf_tint[fi]); }
-    let light = if msf_shade[fi] == 0 { 1.0 } else if face == 1 { 1.0 } else if face == 0 { 0.5 } else if face == 2 || face == 3 { 0.8 } else { 0.6 };
+    let facing = if msf_shade[fi] == 0 { 1.0 } else if face == 1 { 1.0 } else if face == 0 { 0.5 } else if face == 2 || face == 3 { 0.8 } else { 0.6 };
+    // And the save's own light, the same way the cube path takes it: from the open block in
+    // front of the face, which is the block the model's face is exposed to. Without this the
+    // real world -- every block drawn from the jar's models, which on a 26.3 save is all of
+    // them -- was lit entirely by the direction each face pointed, and reading the light
+    // arrays changed a picture that the phone never draws.
+    let lit = if mesh_light_on { light_at(c, nx_lit, ny_lit, nz_lit) } else { 1.0 };
+    let light = facing * lit;
     let norm = mesh_rot_vec([face_normal(face, 0), face_normal(face, 1), face_normal(face, 2)], xrot, yrot);
     let base = mesh_verts.len as u32;
     for corner in 4 {
@@ -607,6 +631,49 @@ fn solid_at(c: ChunkColumn&, x: i32, y: i32, z: i32) -> bool {
     return is_solid(neighbour(c, x, y, z));
 }
 
+// The light the save holds for a block position, as one number in 0..1.
+//
+// `neighbour` reaches into the adjacent column for the block faces at a chunk's edge, and the
+// light has to do the same or a face on a border is lit by the column it is in rather than by
+// the block it is next to -- the same class of seam the mesh had before the neighbour fix, and
+// just as invisible in a screenshot of the middle of a chunk.
+//
+// Vanilla's rule is that the light of the *open* side lights the face: a face is drawn where a
+// solid block meets air, so the air block in front of it is what the save has a value for.
+// Sky light takes a small share even in daylight, because a face at the bottom of a shaft is
+// not lit like a face in a field, and that is the whole point of reading it.
+// One section's light for a local position, as 0..1. Split out from `light_at` because a face
+// at a chunk border is lit by the *adjacent* column, and Goose has no reference local to
+// rebind -- the first version of this wrote `var col: ChunkColumn& = c` and the compiler said
+// so, in three errors that all pointed at the line after it.
+fn section_light(sec: Section&, lx: i32, y: i32, lz: i32) -> f32 {
+    if !sec.light_read { return 1.0; }
+    let li = lx + 16 * ((y + 64) % 16 + 16 * lz);
+    let sky = sec.sky_light[li] as f32 / 15.0;
+    let blk = sec.block_light[li] as f32 / 15.0;
+    let emissive = if blk > sky { blk } else { sky };
+    // 0.35..1.0, not 0..1: a face in full dark is still a face, and vanilla's own floor is
+    // about a third of full brightness. The sky share is 45% of the total because that is
+    // how much of a daylight face the sun accounts for against the sky's ambient.
+    return 0.35 + 0.65 * (0.55 + 0.45 * emissive);
+}
+
+fn light_at(c: ChunkColumn&, x: i32, y: i32, z: i32) -> f32 {
+    if y < -64 || y > 319 { return 1.0; }
+    let si = (y + 64) / 16;
+    if si < 0 || si >= 24 { return 1.0; }
+    if x >= 0 && x <= 15 && z >= 0 && z <= 15 {
+        let got = section_light(c.sections[si], x, y, z);
+        return got;
+    }
+    let dx = if x < 0 { -1 } else if x > 15 { 1 } else { 0 };
+    let dz = if z < 0 { -1 } else if z > 15 { 1 } else { 0 };
+    let i = mesh_world_column((c.x + dx) as i32, (c.z + dz) as i32);
+    if i < 0 { return 1.0; }
+    let got2 = section_light(demo[i].sections[si], (x - dx * 16) as i32, y, (z - dz * 16) as i32);
+    return got2;
+}
+
 // Mesh every present section of a column into the shared arenas, tagging each
 // triangle with its batch (0 opaque, 1 cutout, 2 translucent). The batches are
 // emitted in order so the renderer can draw each with one call.
@@ -749,7 +816,9 @@ fn mesh_section_class_layers(c: ChunkColumn&, sy: i32, want: i64, ly_from: i32, 
             // inside the tile's gutter, so no bilinear sample can reach a
             // neighbour tile even at a glancing angle.
             let uv = tex_uv(tex_face_slot(path, face));
-            push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
+            // The light in front of this face: the open block, not the solid one behind it.
+            let lit = if mesh_light_on { light_at(c, nx, ny, nz) } else { 1.0 };
+            push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao, lit);
         }
     }
 }

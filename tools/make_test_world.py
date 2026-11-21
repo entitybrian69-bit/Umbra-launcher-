@@ -134,9 +134,14 @@ def set_palette_style(style: str) -> None:
     PALETTE_STYLE = style
 
 
-def section(y: int, fill: str, extra: dict) -> bytes:
+def section(y: int, fill: str, extra: dict, light=None) -> bytes:
     """One 16^3 section: `fill` for everything, with `extra` overriding cells. The
-    palette is written in the order the states are first seen, like the game does."""
+    palette is written in the order the states are first seen, like the game does.
+
+    `light` is an optional `(sky, block)` pair of 2048-byte arrays. A save always has them
+    -- two cells per byte, low nibble first -- and until this parameter existed no fixture
+    in the repository did, so nothing below the streaming layer could test the light path.
+    """
     palette = []
     cells = [None] * 4096
 
@@ -157,6 +162,12 @@ def section(y: int, fill: str, extra: dict) -> bytes:
     entry = [
         tag(1, "Y", t_byte(y)),
     ]
+    if light is not None:
+        # A TAG_Byte_Array's payload is a big-endian int32 length followed by the bytes;
+        # writing the bytes alone puts the array's first four cells where the length
+        # belongs and no reader accepts it.
+        entry.append(tag(7, "SkyLight", struct.pack(">i", len(light[0])) + light[0]))
+        entry.append(tag(7, "BlockLight", struct.pack(">i", len(light[1])) + light[1]))
     bare = PALETTE_STYLE == "string" and not any(s.get("Properties") for s in palette)
     if PALETTE_STYLE == "id":
         # What a 26.3 save actually holds inside a compound palette: a state with

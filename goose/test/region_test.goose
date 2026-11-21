@@ -82,6 +82,34 @@ fn run_region() {
     chunk_set_block(c, 3, 63, 3, stone);
     check_block(c, 3, 63, 3, "minecraft:stone");
 
+    // The light the save holds. The fixture's generator writes open sky above world y 63 and
+    // a falloff below it, plus one torch at local (5,5,5) of the section holding y = 64. A
+    // reader that ignored both arrays would pass every other check in this file, which is
+    // what it did until this check existed.
+    //
+    // The sections are indexed by (world y + 64) / 16, and the fixture's own NBT starts at
+    // Y = -4, so index 0 is world y -64..-48 and index 8 is world y 64..79. The first
+    // version of this test said 4 for the surface and read the light of y 0..15, which has
+    // none -- the reader was right and the arithmetic in the check was wrong.
+    check(c.sections[8].light_read, "the surface section carries the save's light");
+    // y = 64 is local row 0 of section 8; (2,64,2) is open air under the sky.
+    let open_i = 2 + 16 * (0 + 16 * 2);
+    check_i64(c.sections[8].sky_light[open_i] as i64, 15, "open sky at y 64 is full sky light");
+    check_i64(c.sections[8].block_light[open_i] as i64, 0, "and no block light away from the torch");
+    let torch_i = 5 + 16 * (5 + 16 * 5);
+    check_i64(c.sections[8].block_light[torch_i] as i64, 14, "the torch's block light is in the section");
+    check(c.sections[0].light_read, "a deep section carries light too");
+    check_i64(c.sections[0].sky_light[0] as i64, 0, "the bottom of the world has no sky light");
+    // The nibble order. Section 7 holds world y 48..63 (Y = 3, and the array index is
+    // Y + 4), so world y 56 is its local y 8 and the generator's falloff gives it
+    // 15 - (63 - 56) = 8. Local (0, 8, 0) and (1, 8, 0) share a byte, so they are the pair
+    // that tells the two nibble orders apart -- and the falloff is what makes them differ
+    // from the 15 above them, which would have hidden a swapped nibble.
+    let fall_i_even = 0 + 16 * (8 + 16 * 0);
+    let fall_i_odd = 1 + 16 * (8 + 16 * 0);
+    check_i64(c.sections[7].sky_light[fall_i_even] as i64, 8, "sky light falls off with depth, low nibble first");
+    check_i64(c.sections[7].sky_light[fall_i_odd] as i64, 8, "and the next index reads the high nibble");
+
     // A second column loads independently.
     var c2 = column_new();
     check(load_chunk(data, 1, 0, c2), "chunk 1,0 loads");

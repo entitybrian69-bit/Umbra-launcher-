@@ -74,8 +74,37 @@ def chunk_nbt(cx: int, cz: int, height: int) -> bytes:
             extra[(x, wy - y * 16, z)] = state
         if not extra:
             continue
-        sections.append(make_test_world.section(y, "minecraft:air", extra))
+        sections.append(make_test_world.section(y, "minecraft:air", extra,
+                                                light=section_light(y, height)))
     return make_test_world.chunk(cx, cz, 4189, sections)
+
+
+def section_light(y: int, height: int) -> tuple:
+    """SkyLight and BlockLight for one section, as a save writes them.
+
+    Every section of a real save carries both arrays, 2048 bytes each packing two cells per
+    byte, and the engine reads them: a fixture without them is a world the game itself
+    would never write, and it made the light path untestable at the streaming layer (0 of
+    16 columns had light, so switching the path off changed nothing and the check could not
+    fail). The falloff follows the same rule as `tools/gen_region_fixtures.py`: full sky at
+    and above the surface, one less per block down for seven blocks, then dark. One torch
+    cell in every chunk's top section, so the block-light array is not all zeroes.
+    """
+    sky = bytearray(2048)
+    blk = bytearray(2048)
+    for i in range(4096):
+        # The wire order is x + 16*(y + 16*z): y is in the middle, not the low 8 bits.
+        lx = i % 16
+        lz = (i // 16) % 16
+        ly = i // 256
+        wy = y * 16 + ly
+        d = height - wy
+        v = 15 if d <= 0 else (max(0, 15 - d) if d <= 7 else 0)
+        if v:
+            sky[i // 2] |= (v & 0xF) << (0 if i % 2 == 0 else 4)
+        if lx == 5 and ly == 5 and lz == 5 and y == 4:
+            blk[i // 2] |= 14 << (0 if i % 2 == 0 else 4)
+    return bytes(sky), bytes(blk)
 
 
 def main() -> None:

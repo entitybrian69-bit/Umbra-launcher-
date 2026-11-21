@@ -352,7 +352,6 @@ int main(int argc, char **argv) {
         check(bx * bx + bz * bz > d2[1], "a column behind the eye sorts after the one in front of it");
     }
 
-
     const uint8_t *verts = umbra_verts_ptr(&vlen);
     const uint8_t *indices = umbra_indices_ptr(&ilen);
     printf("mesh: %llu vertex bytes, %llu index bytes\n", (unsigned long long)vlen,
@@ -1809,6 +1808,87 @@ int main(int argc, char **argv) {
                (long long)calls, mesh_us / 1000.0);
         check(done, "the streamed window meshes");
         check(umbra_used_vertices() > 1000, "and it is a world's geometry");
+        // The save's own light reaches the vertex colours -- measured against the same
+        // geometry with the light switched off, in this process.
+        //
+        // This is the window that has light: it was read from a region file that carries
+        // SkyLight and BlockLight arrays, 2048 bytes each per section. (The demo scene above
+        // does not, and a check written against it proved nothing -- the light path changed
+        // none of its 480000 vertices, which was correct behaviour and a useless test. So is
+        // a check against a save with no light arrays; the fixture generator had to start
+        // writing them first, and `umbra_light_sections` is the number that says it did.)
+        {
+            const int64_t lit_sections = umbra_light_sections();
+            check(lit_sections > 0, "the streamed save carries per-section light arrays");
+            printf("light: %lld section(s) of the window were read with sky/block light\n",
+                   (long long)lit_sections);
+
+            static float lit_g[1 << 22];
+            int64_t vlen_lit = 0;
+            const umbra_vertex *lv = (const umbra_vertex *)umbra_verts_ptr(&vlen_lit);
+            int64_t vc_lit = vlen_lit / (int64_t)sizeof(umbra_vertex);
+            int64_t cap = vc_lit < (int64_t)(sizeof lit_g / sizeof lit_g[0])
+                        ? vc_lit : (int64_t)(sizeof lit_g / sizeof lit_g[0]);
+            double lit_sum = 0.0;
+            for (int64_t i = 0; i < cap; i++) { lit_g[i] = lv[i].g; lit_sum += lv[i].g; }
+
+            umbra_set_light(0);
+            umbra_demo_mesh_begin();
+            done = 0;
+            int64_t calls2 = 0;
+            while (!done && calls2 < 2000000) { done = umbra_demo_mesh_step(20000) != 0; calls2++; }
+            umbra_demo_mesh_finish();
+            int64_t vlen_dark = 0;
+            const umbra_vertex *dv = (const umbra_vertex *)umbra_verts_ptr(&vlen_dark);
+            int64_t vc_dark = vlen_dark / (int64_t)sizeof(umbra_vertex);
+            umbra_set_light(1);
+
+            int differed = 0, darker = 0, brighter = 0, compared = 0;
+            double dark_sum = 0.0;
+            int64_t n = vc_lit < vc_dark ? vc_lit : vc_dark;
+            for (int64_t i = 0; i < n; i++) {
+                compared++;
+                dark_sum += dv[i].g;
+                float dl = lit_g[i] - dv[i].g;
+                if (dl > 0.002f || dl < -0.002f) differed++;
+                if (dl > 0.002f) brighter++;
+                if (dl < -0.002f) darker++;
+            }
+            double lit_mean = compared ? lit_sum / compared : 0.0;
+            double dark_mean = compared ? dark_sum / compared : 0.0;
+            printf("light: %lld of %lld vertex colour(s) differ when the save's light is ignored "
+                   "(%d darker, %d brighter), mean green %.3f -> %.3f\n",
+                   (long long)differed, (long long)compared, darker, brighter,
+                   lit_mean, dark_mean);
+            check(compared == vc_lit && vc_lit == vc_dark,
+                  "meshing the same world with and without its light makes the same vertices");
+            check(darker > 0, "faces the save left in shadow come out darker");
+            // Light only ever attenuates: every factor is at most 1, so no vertex may come
+            // out brighter with the save's light than without it. A brightening is a formula
+            // bug (a doubled falloff, a light value used as a multiplier) and not a taste.
+            check(brighter == 0, "and no face comes out brighter than the unlit shade");
+            check(lit_mean < dark_mean, "so the window is darker with its own light");
+            check(differed > compared / 100, "the light reaches a real share of the vertices");
+
+            // Remesh with the light on, so everything after this sees the shipped mesh.
+            umbra_demo_mesh_begin();
+            done = 0;
+            int64_t calls3 = 0;
+            while (!done && calls3 < 2000000) { done = umbra_demo_mesh_step(20000) != 0; calls3++; }
+            umbra_demo_mesh_finish();
+        }
+        check(done, "the streamed window meshes");
+        check(umbra_used_vertices() > 1000, "and it is a world's geometry");
+        // The save's own light reaches the vertex colours -- measured against the same
+        // geometry with the light switched off, in this process.
+        //
+        // This is the window that has light: it was read from a region file that carries
+        // SkyLight and BlockLight arrays. The demo scene above does not, and a check written
+        // against it proved nothing -- the light path changed none of its 480000 vertices,
+        // which was the correct behaviour and a useless test. Measuring here, twice, with
+        // the switch between the meshes, is what says the light is in the geometry rather
+        // than in a function that is never called.
+
         // Every vertex is inside the window's own bounds: a column meshed at the wrong
         // place is the failure a bigger window makes easier to miss.
         {

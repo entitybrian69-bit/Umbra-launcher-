@@ -1183,6 +1183,21 @@ export fn umbra_used_vertices() -> i64 {
     for i in sl_v_len.len { total += sl_v_len[i]; }
     return total
 }
+// How many of the resident columns were read with light, and how many sections they hold
+// with the flag set. One number that says whether the import kept the arrays.
+export fn umbra_light_sections() -> i64 {
+    var n: i64 = 0;
+    for i in demo.len {
+        for k in demo[i].sections.len {
+            if demo[i].sections[k].light_read { n += 1; }
+        }
+    }
+    return n
+}
+
+// The light switch, for the host check that measures the light path against its own absence.
+export fn umbra_set_light(on: i64) { mesh_set_light(on != 0); }
+
 export fn umbra_range_batch(sid: i64) -> i64 {
     if sid < 0 || sid >= sl_batch.len { return 0; }
     return sl_batch[sid]

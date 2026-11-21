@@ -16,6 +16,7 @@ def string(n, v): return tag(8, n, s(v))
 def list_(n, elem, items): return tag(9, n, bytes([elem]) + struct.pack(">i", len(items)) + b"".join(items))
 def compound(n, children): return tag(10, n, b"".join(children) + b"\x00")
 def payload_compound(children): return b"".join(children) + b"\x00"  # a list element: no name
+def byte_array(n, vals): return tag(7, n, struct.pack(">i", len(vals)) + bytes(vals))
 def long_array(n, vals): return tag(12, n, struct.pack(">i", len(vals)) + b"".join(struct.pack(">q", (v & 0xFFFFFFFFFFFFFFFF) - (1 << 64) if v & 0x8000000000000000 else (v & 0xFFFFFFFFFFFFFFFF)) for v in vals))
 
 STATES = [
@@ -50,6 +51,48 @@ def pack(indices, bits):
             words[li + 1] |= v >> (64 - shift)
     return words
 
+# The light a section is saved with, and why the fixtures carry it.
+#
+# Until this was added, no fixture in the repo had a SkyLight or a BlockLight array, so the
+# reader could have ignored both and every test would have passed -- which is exactly what it
+# did: the mesher shaded every face by the direction it pointed and never read the save's
+# light at all. A world with no light saved must still look as it did, and a world with light
+# saved must look like the light, so the fixtures now carry both:
+#
+#   * the top of every section is open sky (15) and it falls off going down through the rock,
+#     so a face at the surface and a face in a tunnel are different brightnesses;
+#   * one block position in each surface section has BlockLight 14, which is what a torch looks
+#     like in the data, so "the save's own light reaches the vertex colours" is testable.
+def light_bytes(y, ids_by_pos):
+    """SkyLight/BlockLight for one section: open sky above the ground, dark rock below.
+
+    `i` is the section's own block index, and the format defines it as x + 16*(y + 16*z) --
+    **y in the middle**. Written here first as y*256 + z*16 + x, which is the *palette data*
+    order the block array uses, so one level of sky light ended up on a horizontal slab and
+    the section above it read as dark. The two orders are different and both are in this file.
+    """
+    sky = [0] * 2048
+    blk = [0] * 2048
+    for i in range(4096):
+        yy = (i // 16) % 16
+        # `y` is the section's Y as the file stores it, which is a *world* section coordinate
+        # (-4..19), not an index into an array. `chunk()` uses the same arithmetic for the
+        # blocks (`sy * 16 + yy`), so the light lands on the blocks it describes.
+        world_y = y * 16 + yy
+        # Open sky above the surface, and a falloff of one level per block for the seven
+        # blocks below it (15 at 63, 8 at 56), then nothing. A step function would have
+        # been enough to prove the array is read; a gradient is what can prove the *nibble
+        # order*, because the two blocks that share a byte then hold different values.
+        d = 63 - world_y
+        v = 15 if d <= 0 else (max(0, 15 - d) if d <= 7 else 0)
+        sky[i // 2] |= (v if i % 2 == 0 else v << 4)
+    # A torch: BlockLight 14 at local (5, 5, 5) of the section Y = 4, which holds world
+    # y 64..79 -- the surface.
+    if y == 4:
+        ti = 5 + 16 * (5 + 16 * 5)
+        blk[ti // 2] |= (14 << 4) if ti % 2 else 14
+    return bytes(sky), bytes(blk)
+
 def section(y, ids_by_pos, palette_ids, blocks):
     """Build one section's NBT from a 16x16x16 array of palette indices."""
     used = sorted(set(ids_by_pos))
@@ -65,8 +108,10 @@ def section(y, ids_by_pos, palette_ids, blocks):
         list_("palette", 8, [s("minecraft:plains"), s("minecraft:forest")]),
         long_array("data", pack([(i % 2) for i in range(64)], 1)),
     ])
+    sky, blk = light_bytes(y, ids_by_pos)
     return payload_compound([
         byte("Y", y), bs, biomes,
+        byte_array("SkyLight", sky), byte_array("BlockLight", blk),
         byte("TisRO", 0), byte("TisLight", 0),
     ])
 
