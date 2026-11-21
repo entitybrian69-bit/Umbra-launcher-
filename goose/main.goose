@@ -996,15 +996,46 @@ fn edge_blocked(wx: i64, wy: i64, wz: i64) -> bool {
     // Only a save has loaded bounds that are not the whole world; the demo scene is an
     // island whose edge is already a fall, and it is not the owner's world.
     if wl_is_open() == 0 { return false; }
-    // The wall is the outer face of the outermost loaded column, so a body can stand on the
-    // last block and not on the air beside it.
-    let min_x = wl_min_block_x() as i64;
-    let max_x = wl_max_block_x() as i64;
-    let min_z = wl_min_block_z() as i64;
-    let max_z = wl_max_block_z() as i64;
+    // The wall is the outer face of the save's outermost column, so a body can stand on
+    // the last block and not on the air beside it.
+    //
+    // The save's extent, not the loaded window's. Those were the same thing until streaming
+    // existed, and using the window's bounds made a cage: the window is centred on the body,
+    // so its edge travels with the body, and the body could never walk the chunk-and-a-half
+    // that streaming re-centres on. The device run caught it -- ten seconds of held finger
+    // and the same coordinate -- and the fix is to ask the archive where its regions are.
+    // `wl_*` is still the fallback for a save with no streamed archive (a tool that opens a
+    // whole save in memory).
+    var min_x = wl_min_block_x() as i64;
+    var max_x = wl_max_block_x() as i64;
+    var min_z = wl_min_block_z() as i64;
+    var max_z = wl_max_block_z() as i64;
+    if ws_extent_known() {
+        min_x = ws_extent_min_block_x() as i64;
+        max_x = ws_extent_max_block_x() as i64;
+        min_z = ws_extent_min_block_z() as i64;
+        max_z = ws_extent_max_block_z() as i64;
+    }
     if wx < min_x || wx >= max_x || wz < min_z || wz >= max_z {
         eg_hits += 1;
         return true;
+    }
+    // And the parsed part of it. This is the half the device run taught: the save's edge
+    // is 512 blocks out and the resident ring is a radius around the body, so with only the
+    // save's edge for a wall the body walked out of the ring into cells nothing had parsed,
+    // where every block is air -- and fell to the bottom of the world. The ring's edge
+    // moves as the body walks, which is exactly what streaming is for: the body stops at it,
+    // the recentre notices, and the ring moves on. A cell that is inside the window's box
+    // but not parsed yet is not somewhere to stand.
+    if ws_is_open() != 0 {
+        let lx0 = wl_min_block_x() as i64;
+        let lx1 = wl_max_block_x() as i64;
+        let lz0 = wl_min_block_z() as i64;
+        let lz1 = wl_max_block_z() as i64;
+        if wx < lx0 || wx >= lx1 || wz < lz0 || wz >= lz1 {
+            eg_hits += 1;
+            return true;
+        }
     }
     return false;
 }
@@ -1013,13 +1044,33 @@ fn edge_blocked(wx: i64, wy: i64, wz: i64) -> bool {
 // that says the wall is where the world ends, and is not the middle of it.
 export fn umbra_edge_hits() -> i64 { return eg_hits; }
 export fn umbra_edge_on() -> i64 { if eg_on { return 1; } return 0 }
-export fn umbra_edge_x0() -> f32 { return wl_min_block_x() }
-export fn umbra_edge_x1() -> f32 { return wl_max_block_x() }
-export fn umbra_edge_z0() -> f32 { return wl_min_block_z() }
-export fn umbra_edge_z1() -> f32 { return wl_max_block_z() }
+// Where the wall actually is, taken from the same two pairs `edge_blocked` uses: the
+// save's extent, and the parsed window inside it. The first pair is the world's edge; the
+// second is the edge of what has been read, which is a wall for a body and a rope for the
+// stream.
+export fn umbra_edge_parsed_x0() -> f32 { return wl_min_block_x() }
+export fn umbra_edge_parsed_x1() -> f32 { return wl_max_block_x() }
+export fn umbra_edge_parsed_z0() -> f32 { return wl_min_block_z() }
+export fn umbra_edge_parsed_z1() -> f32 { return wl_max_block_z() }
+export fn umbra_edge_x0() -> f32 {
+    if ws_extent_known() { return ws_extent_min_block_x() }
+    return wl_min_block_x()
+}
+export fn umbra_edge_x1() -> f32 {
+    if ws_extent_known() { return ws_extent_max_block_x() }
+    return wl_max_block_x()
+}
+export fn umbra_edge_z0() -> f32 {
+    if ws_extent_known() { return ws_extent_min_block_z() }
+    return wl_min_block_z()
+}
+export fn umbra_edge_z1() -> f32 {
+    if ws_extent_known() { return ws_extent_max_block_z() }
+    return wl_max_block_z()
+}
 
 export "umbra_block_top" fn block_top_export(wx: i64, wy: i64, wz: i64) -> f32 {
-    // The wall first: it is the answer for every cell outside the window, whatever the
+    // The wall first: it is the answer for every cell outside the world, whatever the
     // column lookup would have said.
     //
     // Two blocks tall, not one. A one-block wall is exactly a step, and the walk code

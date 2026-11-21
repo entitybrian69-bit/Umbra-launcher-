@@ -136,6 +136,7 @@ fn ws_reset() {
     ws_regions = [];
     ws_archive = [];
     ws_open = false;
+    ws_extent_reset();
     ws_todo_x = [];
     ws_todo_z = [];
     ws_todo_at = 0;
@@ -181,6 +182,7 @@ fn ws_note_region(rx: i64, rz: i64, bytes: const u8[:]) {
     for b in bytes { ws_archive.push(b); }
     let view = sref_of(ws_archive[..], off, bytes.len as i64);
     ws_regions.push(WsRegion { rx: rx, rz: rz, bytes: view });
+    ws_extent_note(rx, rz);
 }
 
 // Which region file holds chunk (cx, cz), or -1. A region file is 32x32 chunks and its
@@ -461,6 +463,56 @@ fn ws_resident_sync() {
 }
 
 fn ws_regions_count() -> i64 { return ws_regions.len }
+
+// --- the save's own extent, and why it is not the loaded window's ----------
+//
+// The window is a radius around the player: it moves. The *save* does not. These four
+// numbers are the block bounds of every region file the archive held, computed once when
+// the regions are noted, so a caller can ask "is this cell inside the world the owner
+// imported" without confusing it with "is this cell in the part I happen to have parsed
+// right now".
+//
+// The bug that made the distinction necessary: step 3 put the body's edge wall at the
+// *window's* bounds, and the window is centred on the body, so the body could never walk
+// out of the window it was standing in. Streaming then never re-centred -- it re-centres
+// when the body crosses a chunk line -- and the device run failed with a body at the same
+// coordinate for ten seconds. A wall at the edge of the save is the thing step 3 was
+// asked for; a wall at the edge of the window is a cage.
+var ws_have_extent: bool = false;
+var ws_ext_min_cx: i64 = 0;
+var ws_ext_max_cx: i64 = 0;
+var ws_ext_min_cz: i64 = 0;
+var ws_ext_max_cz: i64 = 0;
+
+fn ws_extent_reset() {
+    ws_have_extent = false;
+    ws_ext_min_cx = 0; ws_ext_max_cx = 0;
+    ws_ext_min_cz = 0; ws_ext_max_cz = 0;
+}
+
+fn ws_extent_note(rx: i64, rz: i64) {
+    // A region is 32x32 chunks, so region rx covers chunks rx*32 .. rx*32+31.
+    let lo_x = rx * 32;
+    let hi_x = rx * 32 + 31;
+    let lo_z = rz * 32;
+    let hi_z = rz * 32 + 31;
+    if !ws_have_extent {
+        ws_ext_min_cx = lo_x; ws_ext_max_cx = hi_x;
+        ws_ext_min_cz = lo_z; ws_ext_max_cz = hi_z;
+        ws_have_extent = true;
+        return;
+    }
+    if lo_x < ws_ext_min_cx { ws_ext_min_cx = lo_x; }
+    if hi_x > ws_ext_max_cx { ws_ext_max_cx = hi_x; }
+    if lo_z < ws_ext_min_cz { ws_ext_min_cz = lo_z; }
+    if hi_z > ws_ext_max_cz { ws_ext_max_cz = hi_z; }
+}
+
+fn ws_extent_known() -> bool { return ws_have_extent }
+fn ws_extent_min_block_x() -> f32 { return (ws_ext_min_cx as f32) * 16.0; }
+fn ws_extent_max_block_x() -> f32 { return ((ws_ext_max_cx as f32) + 1.0) * 16.0; }
+fn ws_extent_min_block_z() -> f32 { return (ws_ext_min_cz as f32) * 16.0; }
+fn ws_extent_max_block_z() -> f32 { return ((ws_ext_max_cz as f32) + 1.0) * 16.0; }
 fn ws_bytes_held() -> i64 { return ws_archive.len }
 fn ws_pending() -> i64 {
     if !ws_scan_active { return 0; }

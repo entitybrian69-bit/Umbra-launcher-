@@ -1417,14 +1417,21 @@ static void stream_maybe_recentre(umbra_app *app) {
     // is standing in.
     int cx = (int)floorf(app->player.x / 16.0f);
     int cz = (int)floorf(app->player.z / 16.0f);
-    // The stride, and the whole point of this function: only re-centre when the body is a
-    // whole *radius* of chunks away from the middle of the window it has. A stride of one
-    // chunk (the obvious version) re-centres on every chunk crossing, which at walking
-    // speed is once a second -- and every recentre evicts, plans, parses and re-meshes the
-    // whole world. With this stride a radius-4 window is rebuilt when the player has walked
-    // 64 blocks, and the window always extends at least `radius` chunks ahead of them.
-    if (cx >= app->stream_cx - app->stream_radius && cx <= app->stream_cx + app->stream_radius &&
-        cz >= app->stream_cz - app->stream_radius && cz <= app->stream_cz + app->stream_radius) {
+    // The stride: re-centre when the body is one chunk short of the window's edge.
+    //
+    // A stride of one chunk (the obvious version) re-centres on every chunk crossing,
+    // which at walking speed is once a second, and every recentre evicts, plans, parses
+    // and re-meshes the whole window. Keeping a chunk of slack costs the same order of
+    // re-centres as a whole radius -- after one recentre the body is at the middle again,
+    // so it walks `radius - 1` chunks before the next -- and it is not optional: the ring
+    // of resident chunks is what the body is standing on. A body that crosses into a chunk
+    // that is inside the window's *box* but has not been parsed yet is standing on air, and
+    // the run that put the edge wall at the window's edge showed exactly that once the wall
+    // moved out to the save's edge: the body walked past the resident ring and fell to
+    // y -119.99.
+    int margin = app->stream_radius > 1 ? app->stream_radius - 1 : 1;
+    if (cx >= app->stream_cx - margin && cx <= app->stream_cx + margin &&
+        cz >= app->stream_cz - margin && cz <= app->stream_cz + margin) {
         return;
     }
     if (app->walk_report) app->walk_recentres++;
@@ -2607,6 +2614,16 @@ static void player_spawn(umbra_app *app) {
     umbra_log(app, "player: spawned at %.2f %.2f %.2f (floor %.2f), eye %.2f",
               app->player.x, app->player.y, app->player.z, y,
               app->player.y + UMBRA_PLAYER_EYE);
+    // Where the edge is, said once per spawn: the save's extent and the parsed window
+    // inside it. The two are different numbers and a report that has only one of them
+    // cannot say which wall the body hit.
+    if (app->player_on && umbra_edge_on() == 1) {
+        umbra_log(app, "edge: the save is x %.0f..%.0f z %.0f..%.0f, the parsed window "
+                       "x %.0f..%.0f z %.0f..%.0f, wall on",
+                  umbra_edge_x0(), umbra_edge_x1(), umbra_edge_z0(), umbra_edge_z1(),
+                  umbra_edge_parsed_x0(), umbra_edge_parsed_x1(),
+                  umbra_edge_parsed_z0(), umbra_edge_parsed_z1());
+    }
     // The window follows the body, and it starts where the body starts. Centring here, on
     // the spawn the app just chose, is what makes a save whose origin is not its spawn
     // work: `wl_import_end_streamed` filled the window around the save's *origin* (0,0),

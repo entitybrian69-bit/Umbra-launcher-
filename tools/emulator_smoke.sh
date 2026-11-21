@@ -1381,6 +1381,28 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     # So the count to beat is whatever it is *before* the walk, not one.
     BASE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -c 'stream: centre chunk')"
     say "stream-recentre: ${BASE:-0} centre(s) before walking, last: $(adb logcat -d -s umbra:V 2>/dev/null | grep 'stream: centre chunk' | tail -1 | sed 's/.*umbra *: //')"
+    # The edge (step 3): the save's extent and the parsed window are two different walls,
+    # and the log has to say both or a report cannot tell which one a body stopped at.
+    EDGE_LINE="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'edge: the save is' | tail -1 | sed 's/.*umbra *: //')"
+    if [ -n "$EDGE_LINE" ]; then
+        say "edge: $EDGE_LINE"
+        EDGE_SAVE="$(printf '%s' "$EDGE_LINE" | sed -n 's/.*the save is x \([-0-9]*\)\.\.\([-0-9]*\).*/\1 \2/p')"
+        EDGE_PARSED="$(printf '%s' "$EDGE_LINE" | sed -n 's/.*parsed window x \([-0-9]*\)\.\.\([-0-9]*\).*/\1 \2/p')"
+        if [ -n "$EDGE_SAVE" ] && [ -n "$EDGE_PARSED" ]; then
+            set -- $EDGE_SAVE; SX0="$1"; SX1="$2"
+            set -- $EDGE_PARSED; PX0="$1"; PX1="$2"
+            if [ "$PX0" -lt "$SX0" ] || [ "$PX1" -gt "$SX1" ]; then
+                die "edge: the parsed window ($PX0..$PX1) is not inside the save ($SX0..$SX1)"
+            fi
+            if [ "$PX1" -ge "$SX1" ] && [ "$PX0" -le "$SX0" ]; then
+                say "edge: the parsed window covers the save, so the two walls are one here"
+            else
+                say "edge: the parsed window ($PX0..$PX1) is inside the save ($SX0..$SX1), which is the wall the body hits first"
+            fi
+        fi
+    else
+        err "edge: the app never logged where the edge is (step 3's wall has no device evidence)"
+    fi
     # Wait for the mesh, then walk. A world that is still meshing refuses input.
     WAITED=0
     DEADLINE=$((SECONDS + 240))
@@ -1413,6 +1435,9 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         POS="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'player: at ' | tail -1 | sed 's/.*umbra *: //')"
         die "stream-recentre: the body walked and the window never moved with it (last position: ${POS:-none}); a fixed window is what this phase exists to catch"
     fi
+    # The edge line says where the walls were when the body spawned: a recentre that
+    # happened after that is the window moving, which is the whole point of the phase.
+    say "stream-recentre: the edge at spawn: $(adb logcat -d -s umbra:V 2>/dev/null | grep 'edge: the save is' | tail -1 | sed 's/.*umbra *: //' | cut -c1-160)"
     MOVED="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'stream: centre chunk' | tail -1 | sed 's/.*umbra *: //')"
     say "stream-recentre: the window moved with the body: $MOVED"
     RES="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'stream: window complete' | tail -1 | sed 's/.*umbra *: //')"
