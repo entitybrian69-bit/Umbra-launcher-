@@ -831,8 +831,16 @@ done
 # pixels, and the surface is the landscape window while `input tap` speaks in the
 # panel's own portrait pixels. Which rotation maps one to the other is not guessed: the
 # first tap is tried in all four, and the one the app answers is kept.
-hand_rect() {
-    adb logcat -d -s umbra:V 2>/dev/null | grep "hud: hand $1 at " | tail -1 \
+hand_rect() {   # $1 = a control name, as the app logs it: "hotbar 0", "inventory tile 0"
+    # The hand controls log as "hud: hand <name> at ...", the inventory's parts as
+    # "hud: inventory <part> at ...". The first version prefixed "hud: hand " for both,
+    # so a lookup for the tile matched nothing and the tap reported an empty rect -- which
+    # read like the app had not logged it.
+    case "$1" in
+        inventory*) PREFIX="hud: " ;;
+        *)          PREFIX="hud: hand " ;;
+    esac
+    adb logcat -d -s umbra:V 2>/dev/null | grep "${PREFIX}$1 at " | tail -1 \
         | sed 's/.* at //' | sed 's/ on .*//'
 }
 hand_centre() {   # $1 = rect "x,y size WxH" -> "cx cy"
@@ -901,10 +909,20 @@ TILE_HIT=0
 TILE_RECT="$(hand_rect "inventory tile 0")"
 if [ -n "$TILE_RECT" ]; then
     set -- $(hand_centre "$TILE_RECT")
-    set -- $(hand_tap_xy "${HAND_MODE:-identity}" "$1" "$2")
-    adb shell input tap "$1" "$2" > /dev/null 2>&1 || true
-    sleep 1
-    adb logcat -d -s umbra:V 2>/dev/null | grep -q "inventory: slot .* <- " && TILE_HIT=1
+    TILE_X="$1"; TILE_Y="$2"
+    # All four frames, stopping at the one the app answers: the panel's rects are in the
+    # surface's pixels and `input tap` is in the panel's, exactly like the hotbar's, and the
+    # rotation the hotbar settled on is a property of this emulator rather than a guarantee.
+    for frame in "${HAND_MODE:-identity}" identity rot90 rot180 rot270; do
+        set -- $(hand_tap_xy "$frame" "$TILE_X" "$TILE_Y")
+        adb shell input tap "$1" "$2" > /dev/null 2>&1 || true
+        sleep 1
+        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "inventory: slot .* <- "; then
+            TILE_HIT=1
+            say "inventory: the tile answered at $1,$2 (frame $frame)"
+            break
+        fi
+    done
 fi
 if [ "$TILE_HIT" = 1 ]; then
     say "inventory: $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "inventory: slot .* <- " \
