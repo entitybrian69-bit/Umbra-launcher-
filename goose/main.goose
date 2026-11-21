@@ -66,6 +66,11 @@ var sl_v_len: i64[>..] = [];   // slot -> vertices used
 var sl_i_off: i64[>..] = [];   // slot -> first index in world_indices
 var sl_i_cap: i64[>..] = [];
 var sl_i_len: i64[>..] = [];
+// The slot's own box, in world coordinates, for the renderer's culling test. Only the
+// *drawn* extent is recorded: culling the full 384-block column would keep a column whose
+// geometry is a pond floor at y 60 while the camera looks at y 200, which is most of the
+// win. Six numbers per slot, in the order the C side reads them.
+var sl_bb: f32[>..] = [];       // slot -> x0,y0,z0,x1,y1,z1
 
 // What changed since the last upload: slot ids. `dm_moved` means the arena itself
 // changed length, so every byte has to go up again.
@@ -143,6 +148,7 @@ fn dm_slot_table() {
     sl_i_off = [];
     sl_i_cap = [];
     sl_i_len = [];
+    sl_bb = [];
     for b in 3 {
         for c in demo.len {
             sl_col.push(c);
@@ -153,6 +159,8 @@ fn dm_slot_table() {
             sl_i_off.push(-1);
             sl_i_cap.push(0);
             sl_i_len.push(0);
+            sl_bb.push(0.0); sl_bb.push(0.0); sl_bb.push(0.0);
+            sl_bb.push(0.0); sl_bb.push(0.0); sl_bb.push(0.0);
         }
     }
 }
@@ -345,16 +353,35 @@ fn demo_place_column(b: i64, c: i64) {
     let vbase = sl_v_off[sid];
     // Vertices, in the order they first appear in this slice, moved to the column's
     // world position in x and z (y is the block's own height and is not offset).
+    //
+    // The box is taken here, from the vertices, rather than derived from the chunk
+    // position: the number that decides whether to draw is where the geometry *is*.
+    var x0: f32 = 1e30; var y0: f32 = 1e30; var z0: f32 = 1e30;
+    var x1: f32 = -1e30; var y1: f32 = -1e30; var z1: f32 = -1e30;
     for k in mesh_verts.len {
         let local = dm_remap[k];
         if local == 4294967295 { continue; }
         let src = mesh_verts[k];
+        let wx = src.x + ox;
+        let wz = src.z + oz;
+        if wx < x0 { x0 = wx; }
+        if wx > x1 { x1 = wx; }
+        if src.y < y0 { y0 = src.y; }
+        if src.y > y1 { y1 = src.y; }
+        if wz < z0 { z0 = wz; }
+        if wz > z1 { z1 = wz; }
         world_verts[vbase + (local as i64)] = Vertex {
-            x: src.x + ox, y: src.y, z: src.z + oz,
+            x: wx, y: src.y, z: wz,
             nx: src.nx, ny: src.ny, nz: src.nz,
             u: src.u, v: src.v, r: src.r, g: src.g, b: src.b, ao: src.ao,
         };
     }
+    // An empty slice has no box. Zeroes rather than an inverted box, so a log of the table
+    // does not read as a 1e30-wide column.
+    if x1 < x0 { x0 = 0.0; y0 = 0.0; z0 = 0.0; x1 = 0.0; y1 = 0.0; z1 = 0.0; }
+    let bb = sid * 6;
+    sl_bb[bb] = x0; sl_bb[bb + 1] = y0; sl_bb[bb + 2] = z0;
+    sl_bb[bb + 3] = x1; sl_bb[bb + 4] = y1; sl_bb[bb + 5] = z1;
     // Indices, absolute.
     let ibase = sl_i_off[sid];
     for k in count {
@@ -1175,6 +1202,15 @@ export fn umbra_range_index(sid: i64) -> i64 {
 export fn umbra_range_index_len(sid: i64) -> i64 {
     if sid < 0 || sid >= sl_i_len.len { return 0; }
     return sl_i_len[sid]
+}
+
+// The slot's drawn extent in world coordinates, x0,y0,z0,x1,y1,z1 in `which`. The renderer
+// culls a slot by this box; one draw range per (pass, column) already exists, so culling is
+// a test before a draw call and changes neither the range table nor the upload path.
+export fn umbra_range_box(sid: i64, which: i64) -> f32 {
+    let bb = sid * 6;
+    if sid < 0 || which < 0 || which > 5 || bb + 5 >= sl_bb.len { return 0.0; }
+    return sl_bb[bb + which]
 }
 
 // Slots rewritten since the last upload. `umbra_mesh_moved` means the arena itself
