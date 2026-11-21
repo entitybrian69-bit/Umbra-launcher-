@@ -50,6 +50,12 @@ guard gallery       bash tools/test_gallery_poses.sh
 #                   is the emulator's tail or a step-1 regression is a rule, and the rule is
 #                   a function, so it is tested against every reading on file.
 guard budget        bash tools/test_budget_rule.sh
+#   budget_phases  - run 44948979735 died on a 2-frame breach -- the number the retry exists
+#                    for -- because `$OVERS` was assigned inside the retry branch and read in
+#                    the message that opened it. `set -u` made that a dead script, `bash -n`
+#                    cannot see it, and the summary ended mid-phase. This runs both phases
+#                    against stubs, so every branch is executed rather than parsed.
+guard budget_phases bash tools/test_budget_phases.sh
 
 #   c_compiles    - platform/shared/umbra_app.c is one file with two platform branches
 #                   behind #ifdef __ANDROID__, and only one of them is compiled by any

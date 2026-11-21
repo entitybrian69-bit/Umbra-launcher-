@@ -2772,3 +2772,26 @@ the true reason.
 `tools/test_gallery_poses.sh` (in `check_guards.sh`) proves the poses land on the ground
 the oracle sees and that the gate rejects a flat frame, a null frame, a duplicate and a
 wrong-size shot -- in two seconds, on the host, instead of forty minutes on the emulator.
+
+### The retry that could not speak (run 44948979735)
+
+The rule was right and the script using it was wrong: run 44948979735 walked
+`809 frame(s) avg 29.7 ms, worst 51.6 at frame 717, 2 over 50 ms` -- the exact number the
+retry exists for -- and died with `OVERS: unbound variable`. `$OVERS` was assigned inside
+the retry branch and read in the message that opens it; `set -u` turned that into a dead
+phase, and because `say`/`err` are the only things that write `summary.txt`, the summary
+ended mid-phase with no failure line at all. The job log was the only place the word
+"unbound" appeared.
+
+Two things came out of it, both in `check_guards.sh`:
+
+* `tools/test_budget_phases.sh` extracts both budget blocks **from `emulator_smoke.sh`
+  itself** by counting `case`/`esac` nesting, runs them against stubbed
+  `say`/`note`/`die`/`recount` with the four readings that reach each branch (2 over then
+  clean, 2 over twice, 40 over, clean), and fails on any unbound variable. Reverting the fix
+  reproduces `OVERS: unbound variable` on three of the five cases; the fix passes all five.
+* `budget_rule.sh`'s readers take `${1-}`, so a report that says nothing about a count reads
+  as 0 rather than as an unset variable.
+
+`bash -n` cannot see this class and neither can a test of `budget_verdict`: the bug was in
+how the phases *used* the verdict.

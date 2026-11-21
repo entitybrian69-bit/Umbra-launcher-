@@ -1648,6 +1648,7 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     # is not a step-1 pass either: the honest rule is that a *repeated* breach is the
     # failure, and the log keeps both walks so the number is never averaged away.
     VERDICT="$(budget_verdict "$REPORT")"
+    OVERS="$(over_count "$REPORT")"
     case "$REPORT" in
         *"OVER BUDGET"*)
             [ -n "$SPLIT" ] && say "stream-fullsize: $SPLIT"
@@ -1814,6 +1815,7 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     case "$CULL_ON" in
         *"OVER BUDGET"*)
             ON_VERDICT="$(budget_verdict "$CULL_ON")"
+            ON_OVERS="$(over_count "$CULL_ON")"
             ON_FIRST="$CULL_ON"
             if [ "$ON_VERDICT" = retry ]; then
                 say "stream-cull: $(over_count "$CULL_ON") frame(s) over with culling on; walking once more before calling it a regression"

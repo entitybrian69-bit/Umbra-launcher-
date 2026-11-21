@@ -1,37 +1,33 @@
 == forcing the sample area to generate before anything is read
-compare: forceload -160 -160 175 31 (21 x 12 chunks) -> Marked 252 chunks in minecraft:overworld from [-10, -10] to [10, 1] to be force loaded
-compare: forceload -160 32 175 175 (21 x 9 chunks) -> Marked 189 chunks in minecraft:overworld from [-10, 2] to [10, 10] to be force loaded
+compare: forceload -160 -160 175 31 (21 x 12 chunks) -> rcon: timed out
+compare: forceload -160 32 175 175 (21 x 9 chunks) -> Marked 252 chunks in minecraft:overworld from [-10, -10] to [10, 1] to be force loadedMarked 189 chunks in minecraft:overworld from [-10, 2] to [10, 10] to be force loaded
 compare: force-loaded the sample area in 2 strips of at most 256 chunks
 Saving the game (this may take a moment!)Saved the game
-compare: attempt 1: 441 chunks, 14141634 non-air blocks, the window is finished
+compare: attempt 1: 441 chunks, 14145354 non-air blocks, the window is finished
 Saving the game (this may take a moment!)Saved the game
-compare: attempt 2: 441 chunks, 14144273 non-air blocks, the window is finished
+compare: attempt 2: 441 chunks, 14148006 non-air blocks, the window is finished
 Saving the game (this may take a moment!)Saved the game
-compare: attempt 3: 441 chunks, 14144985 non-air blocks, the window is finished
+compare: attempt 3: 441 chunks, 14148196 non-air blocks, the window is finished
 Saving the game (this may take a moment!)Saved the game
-compare: attempt 4: 441 chunks, 14145245 non-air blocks, the window is finished
+compare: attempt 4: 441 chunks, 14148196 non-air blocks, the window is finished
 Saving the game (this may take a moment!)Saved the game
-compare: attempt 5: 441 chunks, 14145275 non-air blocks, the window is finished
-Saving the game (this may take a moment!)Saved the game
-compare: attempt 6: 441 chunks, 14145275 non-air blocks, the window is finished
-Saving the game (this may take a moment!)Saved the game
-compare: attempt 7: 441 chunks, 14145275 non-air blocks, the window is finished
-compare: the save is settled - three readings in a row agree: 441 chunks, 14145275 non-air blocks
+compare: attempt 5: 441 chunks, 14148196 non-air blocks, the window is finished
+compare: the save is settled - three readings in a row agree: 441 chunks, 14148196 non-air blocks
 == reading the save with Umbra's loader
 worldload: region dir /home/runner/work/Umbra-launcher-/Umbra-launcher-/build/server/run/world/dimensions/minecraft/overworld/region
 
-worldload: chunks 794, non-air blocks 19952112, states 140, region files 4, read errors 0
+worldload: chunks 794, non-air blocks 19956542, states 142, region files 4, read errors 0
 
-worldload: detail lines for chunks within 10 of the origin: 441 chunks, 14145275 non-air blocks
+worldload: detail lines for chunks within 10 of the origin: 441 chunks, 14148196 non-air blocks
 
 worldload: 169 of 794 chunks are not `minecraft:full` yet (0 of them within 10 of the origin)
 
 worldload: PASS - every chunk in the save was read
 
-compare: at radius 6 worldload: detail lines for chunks within 6 of the origin: 169 chunks, 5520498 non-air blocks
-compare: detail lines for the grid: 14145275
+compare: at radius 6 worldload: detail lines for chunks within 6 of the origin: 169 chunks, 5520373 non-air blocks
+compare: detail lines for the grid: 14148196
 == asking the server about every claim
-probe: the dump has 14145275 blocks over 336 x and 336 z lines; asking about 168 of them
+probe: the dump has 14148196 blocks over 336 x and 336 z lines; asking about 168 of them
 probe: asking inside -160..120 -160..120 without loading anything here
 probe: scoreboard: Created new objective [umbra_probe]
 probe: control: minecraft:stone at -160 -64 -160 scores 0 (0 means the oracle can say no)

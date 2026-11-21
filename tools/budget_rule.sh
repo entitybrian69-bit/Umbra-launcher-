@@ -23,8 +23,11 @@
 # `budget_verdict` prints one of: clean | retry | tail | regression | unparseable.
 NOISE_FRAMES=2
 
-over_count() { printf '%s' "$1" | sed -n 's/.*, \([0-9]*\) over 50 ms.*/\1/p'; }
-worst_ms()   { printf '%s' "$1" | sed -n 's/.*worst \([0-9.]*\) at frame.*/\1/p'; }
+# Every reader of a report goes through these, and a report that says nothing about a count
+# reads as 0 rather than as an unset variable: `set -u` turned "no count here" into a dead
+# script once (run 44948979735), which is a crash dressed as a verdict.
+over_count() { printf '%s' "${1-}" | sed -n 's/.*, \([0-9]*\) over 50 ms.*/\1/p'; }
+worst_ms()   { printf '%s' "${1-}" | sed -n 's/.*worst \([0-9.]*\) at frame.*/\1/p'; }
 
 within_noise() {
     case "${1:-}" in
