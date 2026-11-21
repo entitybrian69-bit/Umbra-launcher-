@@ -1896,6 +1896,12 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     POSE_COUNT="$(wc -l < gallery-poses.txt 2>/dev/null || echo 0)"
     [ "${POSE_COUNT:-0}" -gt 0 ] || die "gallery: gallery-poses.txt is empty"
     say "gallery: $POSE_COUNT pose(s): $(tr '\n' ' ' < gallery-poses.txt)"
+    # One picture per pose the tool found is the contract: a pose it declined to place is a
+    # save without that feature (a world with no water has no shoreline), and six files
+    # silently becoming five is how the gallery stops being a gallery.
+    [ "${POSE_COUNT:-0}" -ge 6 ] \
+        || die "gallery: this save yielded only $POSE_COUNT of the six poses, so the gallery would be incomplete: $(grep -h 'nothing for it' gallery-poses.log | tr '\n' '|')"
+    GAL_PREV=""
     while read -r pose px py pz pyaw ppitch; do
         [ -n "${pose:-}" ] || continue
         adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
@@ -1928,8 +1934,25 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         adb exec-out screencap -p > "gallery/shot-$pose.png" 2>/dev/null \
             || die "gallery: screencap failed for $pose"
         SZ="$(stat -c%s "gallery/shot-$pose.png" 2>/dev/null || echo 0)"
-        [ "${SZ:-0}" -gt 20000 ] || die "gallery: shot-$pose.png is ${SZ:-0} bytes, which is not a picture"
-        say "gallery: shot-$pose.png is $SZ bytes"
+        # Not a byte count: a picture that is mostly one colour -- a camera in the sky --
+        # compresses to a few kilobytes and a *blank* frame is exactly what must fail. The
+        # PNG is decoded, must be the surface the app drew on, must not be one flat colour,
+        # and must differ from every picture already taken this run, or six poses could be
+        # one pose photographed six times. Run 44938399066 failed the byte count at 14 581
+        # bytes and the file was a valid sky shot; the sky was the mistake, not the size.
+        #
+        # The size comes from the app, so a shot is compared against the surface the app
+        # says it drew on rather than against a number this script remembers.
+        GAL_SURF="$(app_log "$GAL_PID" | sed -n 's/.*gallery: no overlay on \([0-9]*x[0-9]*\).*/\1/p' | head -1)"
+        GAL_SURF="${GAL_SURF%%$'\n'*}"
+        GAL_ARGS=(--size "${GAL_SURF:-1920x1080}")
+        for prev in ${GAL_PREV:-}; do GAL_ARGS+=(--differs-from "gallery/shot-$prev.png"); done
+        if ! python3 tools/check_gallery_shot.py "gallery/shot-$pose.png" "${GAL_ARGS[@]}" \
+                2>&1 | tee "gallery/check-$pose.log"; then
+            die "gallery: shot-$pose.png $(tail -1 "gallery/check-$pose.log")"
+        fi
+        GAL_PREV="${GAL_PREV:+$GAL_PREV }$pose"
+        say "gallery: shot-$pose.png is $SZ bytes, $(tail -1 "gallery/check-$pose.log")"
     done < gallery-poses.txt
     adb shell "rm -f '$FILES_W/gallery.txt' '$FILES_W/pose.txt'" > /dev/null 2>&1 || true
     note "gallery: $POSE_COUNT fixed-pose screenshot(s) taken with the overlay hidden"

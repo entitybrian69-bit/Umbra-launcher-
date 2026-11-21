@@ -41,6 +41,10 @@ guard smoke_syntax  bash -n tools/emulator_smoke.sh
 #                   the right pid. The check is now a function, and this tests it.
 guard crash_ours    bash tools/test_crash_ours.sh
 guard evidence_syn  bash -n tools/commit_evidence.sh
+#   gallery       - run 44938399066 posed the gallery at y 320 in a world whose ground stops at
+#                   y 91 (a section index read as a height) and then failed a byte-count gate
+#                   that called a valid sky shot "not a picture". Both are host-checkable.
+guard gallery       bash tools/test_gallery_poses.sh
 
 #   c_compiles    - platform/shared/umbra_app.c is one file with two platform branches
 #                   behind #ifdef __ANDROID__, and only one of them is compiled by any
