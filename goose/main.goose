@@ -990,6 +990,10 @@ export "umbra_atlas_named" fn atlas_named(name: const u8[:]) -> i64 {
 // must not be blocked by it.
 var eg_hits: i64 = 0;      // how many queries the wall answered, for the log and the tests
 var eg_on: bool = true;
+// The block level the wall is built up from: the body's own floor, plus room. The app sets
+// this when it spawns or stands the body (`umbra_edge_ground`), and the default is the sea
+// level of the demo scene so a caller that never sets it still gets a wall.
+var eg_ground: i64 = 62;
 
 fn edge_blocked(wx: i64, wy: i64, wz: i64) -> bool {
     if !eg_on { return false; }
@@ -1043,6 +1047,13 @@ fn edge_blocked(wx: i64, wy: i64, wz: i64) -> bool {
 // How many collision queries the edge answered, and the four bounds themselves. One number
 // that says the wall is where the world ends, and is not the middle of it.
 export fn umbra_edge_hits() -> i64 { return eg_hits; }
+// Tell the wall where the body's feet are: the column is built from the bottom of the world
+// up to two blocks above this, so it is a wall at every altitude the body can be at and air
+// above it.
+export fn umbra_edge_ground(y: i64) -> i64 {
+    eg_ground = y;
+    return eg_ground
+}
 export fn umbra_edge_on() -> i64 { if eg_on { return 1; } return 0 }
 // Where the wall actually is, taken from the same two pairs `edge_blocked` uses: the
 // save's extent, and the parsed window inside it. The first pair is the world's edge; the
@@ -1079,7 +1090,45 @@ export "umbra_block_top" fn block_top_export(wx: i64, wy: i64, wz: i64) -> f32 {
     // (the host check that walks at the wall for four seconds found this: it stopped at
     // x 29.5 with the wall at 32). A wall has to be taller than anything that can be
     // stepped over, and the step is one block.
-    if edge_blocked(wx, wy, wz) { return 2.0; }
+    //
+    // And it is a *column*, not a slab repeated at every height. `top` is a height from the
+    // cell's own floor, so returning 2.0 for every `wy` gave the body a 2-block step at
+    // every altitude -- including the empty air above the wall, which it climbed, and the
+    // cell it was standing in, which became a step up. The cage test caught this after the
+    // earlier fixes: the body walked to x 31.69 beside the wall and fell to y -1680,
+    // because it had climbed onto the wall's top and walked off the far side.
+    //
+    // So: solid from the bottom of the world up to `wall_top`, and air above it. The top is
+    // the ground the body walks on there, plus the wall's two blocks, so a body that has
+    // climbed a hill at the edge still cannot step over.
+    if edge_blocked(wx, wy, wz) {
+        // The wall is solid from the bottom of the world up to two blocks above the ground
+        // the body walks on, and air above that. Three earlier versions, all wrong, and the
+        // collision tests below caught each:
+        //
+        //   * `return 2.0` for every `wy`: a 2-block step at every altitude, which the body
+        //     climbed and then walked off the far side (fell to y -1680).
+        //   * Solid only up to `eg_ground + 1` with the default ground: air at y 70, so the
+        //     wall was not there at all for a probe above the default.
+        //   * Solid at *every* `wy <= eg_ground + 1`: the ground the body stands on is at
+        //     `wy == eg_ground` and that cell returned 2.0, so the wall's own foot was a
+        //     wall and the body could not approach it.
+        //
+        // What a border has to be: solid from the world's floor to `ground + 2`, and clear
+        // above, so there is no cell inside the body's reach that is not wall, and no cell
+        // the body is standing in that is.
+        // `eg_ground` is the cell the body's feet occupy -- `floor(player.y)`, where the
+        // floor the body stands on is the cell *below* that. So the wall fills from the
+        // bottom of the world to `eg_ground` inclusive, plus two more, and is clear above.
+        // The earlier version made `wy == eg_ground` air, which put the wall's foot one
+        // block under the floor: the body's own level read as clear, and the wall was a
+        // step it could walk into the side of at the wrong height.
+        let bottom = -64;
+        let top = eg_ground + 2;
+        if wy < bottom { return 2.0; }
+        if wy > top { return -1.0; }
+        return 2.0;
+    }
     if model_bound {
         let id = demo_block_at((wx as i32), (wy as i32), (wz as i32));
         if id != 0 && id == model_block {

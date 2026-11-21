@@ -2550,3 +2550,89 @@ Two things this run did **not** prove, and both are now failures rather than foo
    it had not run yet at this commit. The 25.4 ms above is a with-the-cull number; the
    paired comparison is the next run's job, and `stream-cull` dies if the cull rejected
    nothing, so it cannot pass by comparing a build to itself.
+
+## Steps 3, 4 and 5: the edge, the owner's own world, and a real block list (2026-11-14)
+
+Three of the owner's steps landed together. Each is in the commit log with its own
+reasoning; this section is what a person can check.
+
+### Step 3 -- the world has an edge, and the body stops at it
+
+The wall is checked in *collision* rather than in the walk code, so every movement path
+(walk, step-up, jump, swim) goes through it and there is no route around. It took four
+attempts to get right, and each failure is worth recording because each one looked like the
+previous one's fix:
+
+| attempt | what was wrong | how it showed |
+|---|---|---|
+| 1 | a one-block wall | a step is 1.01 blocks, so the body *climbed* it |
+| 2 | wall at the resident window's bounds | the window is centred on the body, so the body could never leave it |
+| 3 | wall at the save's extent, `return 2.0` for every height | a 2-block step at *every* altitude: the body climbed it and fell to y -1680 |
+| 4 | a column: solid to `ground + 2`, clear above | and the ground under the body has to be the level its feet are on |
+
+There are **two** walls and both are needed, which is the fact that took two runs to
+understand. The save's extent (from the region files' 32x32 footprints) is the world's edge
+and never moves. The *parsed window's* edge moves as the stream re-centres, and a body that
+crosses it is standing on air. So a body is blocked by whichever is nearer, and the re-centre
+fires when the body's chunk is one of the outermost parsed chunks -- keeping a chunk of
+parsed terrain beyond the wall at all times.
+
+A radius of 0 is refused as a setting. A one-chunk window is a cage whatever the stride is:
+the body is blocked at the edge and the only chunk it could walk into is the one it is in.
+The device harness had asked for 0 to make the stride one chunk, and that is exactly the run
+that failed with a body at one coordinate for ten seconds.
+
+Host evidence, from the stream fixture:
+
+```
+edge: the loaded world is x -512..512, z -512..512, wall on
+edge: the parsed window is x -32..32, z -32..32 inside the save's x -512..512
+edge: walked east from the parsed edge at 73.0 for 4 s: x 29.50 -> 31.70
+      (the parsed edge is 32), y 73.00 (lowest 73.00), 0 frame(s) outside
+edge: the wall's column at x 512 z 0: top(73) 2.00, top(74) 2.00, top(90) -1.00
+```
+
+### Step 4 -- the owner's own world, by folder as well as by zip
+
+`UmbraNet.pickFolderWorldAndZip` opens the tree picker, walks at most two levels looking for a
+child named `region`, and writes `region/r.x.z.mca` entries into the caller's `.part` path, so
+the existing importer is still the only thing that reads a world and it still validates first
+(CRC and structure before a chunk is parsed). It is written against `DocumentsContract` and
+`Cursor` and not androidx, because the app has no Gradle `dependencies` block at all and adding
+one for a directory listing is not worth it.
+
+The app tries the folder picker first and falls back to the zip picker, except when the user
+cancelled -- a cancel must not open a second dialog. Device verification is still unconfirmed:
+the folder picker needs a real documents-provider tree, which the emulator harness does not
+have, so this is host-checked only (`check_c.sh` compiles both branches) and is on the list
+below rather than claimed.
+
+### Step 5 -- the hotbar is the jar's block list, and a panel to reach the rest
+
+The hotbar was five blocks spelled out in the source. It is now seeded from the blockstates
+the loaded jar names -- every state the game ships, filtered by name to the ones that can be
+placed -- and the other nine hundred are reachable through an inventory panel: a paged 4x4
+grid over the world, opened from a BAGS button, showing `7-22 of 1043 for slot 3`.
+
+The bug this work found is the one worth keeping: the first version made the hand *and* the
+browser one list, so picking a block and then turning a page to look for another silently
+threw the first away. **A hand is not a cursor.** `hb_all` is the whole list the panel pages
+through; `hb_ids` is the hand, and only a tile tap writes to it. There is a host check that
+turns a page away and back and reads the slot again.
+
+Two layout faults were caught by the host suite before the device saw them: a fixed 560-pixel
+panel width left the panel under a fifth of a 1080-wide screen, and centring the panel put its
+last row of tiles on top of BREAK so one tap meant two things. The panel is anchored under the
+status bar now, and the layout check asserts that no tile's centre is a hit on any hand
+control.
+
+Host evidence:
+
+```
+hotbar: 9 placeable block(s) from 9 state(s), hand of 5
+inventory: slot 3 <- oak_slab (block 8 of the list, taken)
+```
+
+The 9 is the fixture's blockstate count. The device run is what puts the jar's ~1043 in that
+line, and the emulator harness taps the BAGS button, a tile and the outside to close, reading
+each rect back from the app's own log rather than guessing a coordinate.

@@ -37,30 +37,42 @@ goose/test/worldstream_test.goose:427: warning: redundant `as i64`: demo.len is 
 goose/test/worldstream_test.goose:440: warning: redundant `as i64`: demo.len is already i64
     check_i64(demo.len as i64, 16, "and the world is not duplicated by a second fill");
               ^~~~~~~~~~~~~~~
-goose/core/worldstream.goose:182: warning: redundant `as i64`: bytes.len is already i64
+goose/core/worldstream.goose:183: warning: redundant `as i64`: bytes.len is already i64
     let view = sref_of(ws_archive[..], off, bytes.len as i64);
                                             ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:259: warning: redundant `as i64`: demo.len is already i64
+goose/core/worldstream.goose:261: warning: redundant `as i64`: demo.len is already i64
     ws_stats.resident = demo.len as i64;
                         ^~~~~~~~~~~~~~~
-goose/core/worldstream.goose:269: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/core/worldstream.goose:271: warning: redundant `as i64`: an i32 converts to i64 implicitly here
         let dx = (demo[i].x as i64) - cx;
                   ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:270: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/core/worldstream.goose:272: warning: redundant `as i64`: an i32 converts to i64 implicitly here
         let dz = (demo[i].z as i64) - cz;
                   ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:379: warning: redundant `as i64`: demo.len is already i64
+goose/core/worldstream.goose:381: warning: redundant `as i64`: demo.len is already i64
                 ws_stats.resident = demo.len as i64;
                                     ^~~~~~~~~~~~~~~
-goose/core/worldstream.goose:417: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/core/worldstream.goose:419: warning: redundant `as i64`: an i32 converts to i64 implicitly here
         if (demo[i].x as i64) == cx && (demo[i].z as i64) == cz { return i }
             ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:417: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/core/worldstream.goose:419: warning: redundant `as i64`: an i32 converts to i64 implicitly here
         if (demo[i].x as i64) == cx && (demo[i].z as i64) == cz { return i }
                                         ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:459: warning: redundant `as i64`: demo.len is already i64
+goose/core/worldstream.goose:461: warning: redundant `as i64`: demo.len is already i64
     ws_stats.resident = demo.len as i64;
                         ^~~~~~~~~~~~~~~
+goose/core/worldstream.goose:512: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+fn ws_extent_min_block_x() -> f32 { return (ws_ext_min_cx as f32) * 16.0; }
+                                            ^~~~~~~~~~~~~~~~~~~~
+goose/core/worldstream.goose:513: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+fn ws_extent_max_block_x() -> f32 { return ((ws_ext_max_cx as f32) + 1.0) * 16.0; }
+                                             ^~~~~~~~~~~~~~~~~~~~
+goose/core/worldstream.goose:514: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+fn ws_extent_min_block_z() -> f32 { return (ws_ext_min_cz as f32) * 16.0; }
+                                            ^~~~~~~~~~~~~~~~~~~~
+goose/core/worldstream.goose:515: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+fn ws_extent_max_block_z() -> f32 { return ((ws_ext_max_cz as f32) + 1.0) * 16.0; }
+                                             ^~~~~~~~~~~~~~~~~~~~
 goose/core/demo.goose:178: warning: redundant `as f32`: an i32 converts to f32 implicitly here
         if t > 0.0 { return (y as f32) + t; }
                              ^~~~~~~~
@@ -664,7 +676,7 @@ PASS models (455 checks)
 PASS modelstore (505 checks)
 PASS raster (515 checks)
 PASS worldzip (610 checks)
-  ws: 2 slices for 16 chunks, worst 199 us
+  ws: 2 slices for 16 chunks, worst 265 us
 
 PASS worldstream (683 checks)
 all modules passed
