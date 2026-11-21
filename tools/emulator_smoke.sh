@@ -1573,6 +1573,8 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         local cull
         cull="$(app_log "$pid" | grep -m1 'cull: frustum culling')"
         say "stream-cull: the $1 half: $cull"
+        # A quoted pattern in `case` matches the whole string, not a prefix -- the on half's
+        # line ends with "(one box per (pass, column))", so it needs the glob after "on".
         if [ "$1" = "off" ]; then
             case "$cull" in
                 *"culling off for measurement"*) : ;;
@@ -1621,6 +1623,12 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         say "stream-cull: 1% low $(awk -v a="$P1_OFF" -v b="$P1_ON" \
             'BEGIN { printf "%.1f ms -> %.1f ms", a, b }') (the worst 1% of walking frames)"
     fi
+    # The off half breaking the budget is the *finding*, not a failure of the phase: it is
+    # the before. Only the shipped configuration has to hold the budget.
+    case "$CULL_OFF" in
+        *"OVER BUDGET"*) say "stream-cull: without the cull the budget is broken, as it was before step 2" ;;
+        *) say "stream-cull: without the cull the budget held too, so the walk did not put the window under pressure" ;;
+    esac
     case "$CULL_ON" in
         *"OVER BUDGET"*) die "stream-cull: a frame broke the 50 ms CPU budget with culling on: $CULL_ON" ;;
         *) say "stream-cull: no frame broke the 50 ms CPU budget with culling on" ;;
