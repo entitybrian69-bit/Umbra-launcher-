@@ -312,6 +312,7 @@ struct umbra_app {
     // costs the most is what decides whether to cut geometry or stop blending water.
     int64_t last_pass_us[3];
     int order_overflowed;      // logged once: too many opaque ranges for the draw order
+    int walk_finish;           // walkfinish.txt: glFinish per pass, so the split is raster time
     int walk_report;           // the walking phase is on: report when it ends
     long long walk_frames;
     long long walk_start_resident;   // the window's size when the walk began

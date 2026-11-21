@@ -1591,6 +1591,21 @@ int umbra_app_init(umbra_app *app) {
                       app->cull_on ? "on" : "off for measurement",
                       app->cull_on ? "one box per (pass, column)" : "nocull.txt is present");
         }
+        // And `walkfinish.txt` beside the save makes each pass end in glFinish, so the
+        // per-pass split reported for an over-budget frame is raster time rather than the
+        // time GLES spent filling its queue. It costs the frame's parallelism, so it is a
+        // measurement mode; the phase that uses it says so in its own output.
+        {
+            char wfp[560];
+            snprintf(wfp, sizeof wfp, "%s/walkfinish.txt", files);
+            FILE *wf = fopen(wfp, "rb");
+            app->walk_finish = wf ? 1 : 0;
+            if (wf) fclose(wf);
+            if (app->walk_finish) {
+                umbra_log(app, "walk: each pass ends in glFinish, so the frame is measured "
+                               "instead of pipelined (walkfinish.txt is present)");
+            }
+        }
         // A test can ask for a particular render distance by leaving `radius.txt` beside
         // the save. This is the *only* way the radius is set from outside, and it exists
         // because the device walk is 1.5-second holds: at radius 4 the stride is 64
@@ -2831,6 +2846,14 @@ static void draw_scene(umbra_app *app) {
             glDepthMask(GL_TRUE);
             glDisable(GL_BLEND);
         }
+        // Enqueue time is not raster time: GLES batches, so the flush of everything queued
+        // lands in whichever pass happens to fill the pipe. Measured honestly (run
+        // 44880890214) that read as "opaque 0.2 ms" for 2.6 M indices and "cutout 28.4 ms"
+        // for a tenth of the geometry, which is the queue, not the passes. With
+        // `walkfinish.txt` present each pass ends in glFinish, so these numbers are what the
+        // rasteriser actually spent -- at the cost of the frame's parallelism, which is why
+        // it is a measurement mode and not the shipped path.
+        if (app->walk_finish) glFinish();
         pass_us[b] = umbra_now_us() - pass_t0;
     }
     if (app->walk_report) {
