@@ -1700,6 +1700,16 @@ int umbra_app_init(umbra_app *app) {
             app->gallery_hide_hud = app->gallery;
             if (app->gallery) umbra_log(app, "gallery: gallery.txt is present; this run draws "
                                               "the world with no overlay and poses from pose.txt");
+            // `cave.txt` says this pose belongs under the ground, where the floor lookup
+            // would refuse to put it. It is a file and not a name because the app reads
+            // pose.txt as five numbers and knows nothing about which pose it is.
+            char cp[560];
+            snprintf(cp, sizeof cp, "%s/cave.txt", files);
+            FILE *cf = fopen(cp, "rb");
+            app->gallery_cave = cf ? 1 : 0;
+            if (cf) fclose(cf);
+            if (app->gallery_cave) umbra_log(app, "gallery: cave.txt is present; this pose keeps "
+                                                  "the tool's own height, because it is under the ground");
             char pp[560];
             snprintf(pp, sizeof pp, "%s/pose.txt", files);
             FILE *pf = fopen(pp, "rb");
@@ -3960,15 +3970,46 @@ static void gallery_apply_pose(umbra_app *app) {
     app->player.z = app->pose[2];
     app->player.yaw = app->pose[3];
     app->player.pitch = app->pose[4];
-    // The body is pinned every frame while the pose is in force, not set once: a re-mesh
-    // re-spawns the body from the world's bounds (`player_spawn` runs when a world is
-    // rebuilt), which would move the eye away from the pose between the shot being asked
-    // for and the shot being taken. Logged once, applied always.
+    // The height comes from the renderer, in the renderer's own units, not from the number
+    // the tool wrote -- except for `cave`, which is *under* the ground on purpose and so
+    // says so with `cave.txt`.
+    //
+    // Why: run 44945083074 posed at y 107.01 over a world whose mesh stops at y 91, and
+    // drew a frame 99.8% one colour. The tool read the save with a decoder that agrees
+    // block for block with `tools/world_oracle.py` on the host, so the disagreement is
+    // about the *save*, not about the arithmetic -- and a real 26.3 save has things my
+    // fixture does not. `umbra_world_spawn` is the function `player_spawn` uses for the
+    // same question, it walks `demo_top_at`, which is where the mesher's geometry comes
+    // from, and it cannot be right about the ground while the mesh is wrong. A pose that
+    // can be lifted some blocks and kept there is a camera in the air with the world under
+    // it; a pose that can be put *in* the sky is a picture of the sky, and run 44945083074
+    // is what that looks like.
+    if (app->gallery_cave) {
+        if (!app->pose_applied) {
+            app->pose_applied = 1;
+            umbra_log(app, "gallery: posed at %.2f %.2f %.2f, yaw %.2f pitch %.2f (under the "
+                           "ground, as cave.txt asks)", app->pose[0], app->pose[1],
+                      app->pose[2], app->pose[3], app->pose[4]);
+        }
+        return;
+    }
+    float floor_y = umbra_world_spawn((int64_t)floorf(app->pose[0]), (int64_t)floorf(app->pose[2]));
+    // `floor_y` is the top of the column, so the feet go just above it. The pose's own y
+    // only decides how far above that the camera sits -- and a clamp, not a replacement:
+    // the tool's `sky` pose asks for twelve blocks of height on purpose.
+    float lift = app->pose[1] - floor_y;
+    if (lift < 0.0f) lift = 0.0f;
+    if (lift > 24.0f) lift = 24.0f;
+    app->player.y = floor_y + 0.01f + lift;
     if (!app->pose_applied) {
         app->pose_applied = 1;
-        umbra_log(app, "gallery: posed at %.2f %.2f %.2f, yaw %.2f pitch %.2f",
-                  app->pose[0], app->pose[1], app->pose[2], app->pose[3], app->pose[4]);
+        umbra_log(app, "gallery: posed at %.2f %.2f %.2f, yaw %.2f pitch %.2f (the tool asked "
+                       "for y %.2f; the world's floor at %.0f,%.0f is %.2f, so the camera is "
+                       "%.2f above it)", app->pose[0], app->player.y, app->pose[2],
+                  app->pose[3], app->pose[4], app->pose[1], app->pose[0], app->pose[2],
+                  floor_y, lift);
     }
+    return;
 }
 
 static void draw_hud(umbra_app *app) {

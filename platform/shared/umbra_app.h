@@ -81,6 +81,7 @@ struct umbra_app {
     int gallery_hide_hud;     // the overlay and the hand controls are not drawn
     int pose_ready;           // `pose.txt` was read
     int pose_applied;
+    int gallery_cave;         // `cave.txt` is present: this pose is under the ground
     float pose[5];            // x y z yaw pitch
     int u_hud_screen, u_hud_tex;
     int hud_uniforms_ready;

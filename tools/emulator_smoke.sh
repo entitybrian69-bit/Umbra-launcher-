@@ -1932,12 +1932,25 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         done
         adb shell "printf '%s %s %s %s %s\n' '$px' '$py' '$pz' '$pyaw' '$ppitch' > '$FILES_W/pose.txt'" \
             > /dev/null 2>&1 || die "gallery: could not write pose.txt for $pose"
+        # The one pose that is *under* the ground on purpose: the app puts every other pose
+        # on the renderer's own floor and keeps the tool's height only as a lift, so the cave
+        # has to say so or the camera would be moved up onto the surface.
+        if [ "$pose" = "cave" ]; then
+            adb shell "echo cave > '$FILES_W/cave.txt'" > /dev/null 2>&1 \
+                || die "gallery: could not write cave.txt for the cave pose"
+        else
+            adb shell "rm -f '$FILES_W/cave.txt'" > /dev/null 2>&1 || true
+        fi
         adb logcat -c > /dev/null 2>&1 || true
         GAL_LAUNCH="$(launch_app "gallery-$pose-launch.log")" \
             || die "gallery: the app would not start for $pose"
         GAL_PID="$(launched_pid)" || die "gallery: no process for $pose"
         wait_for_app_line "$GAL_PID" 'gallery: posed at' 300 "the pose ($pose)" \
             || die "gallery: the app never posed for $pose: $(app_log "$GAL_PID" | grep -E 'gallery:' | tail -2 | tr '\n' '|')"
+        # The app's line, not the tool's: it says which y the camera actually took, the floor
+        # the renderer reported and the lift asked for. Run 44945083074's failure ("99.8% one
+        # colour") was 107.01 in a world that stops at 91, and only this line would have said
+        # so before the picture did.
         say "gallery: $pose $(app_log "$GAL_PID" | grep -m1 'gallery: posed at')"
         # The overlay has to be off, or the picture is of the overlay. Ask the app: in
         # gallery mode it says so once the surface size is known. The `hud: button` lines come
@@ -1975,7 +1988,7 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         GAL_PREV="${GAL_PREV:+$GAL_PREV }$pose"
         say "gallery: shot-$pose.png is $SZ bytes, $(tail -1 "gallery/check-$pose.log")"
     done < gallery-poses.txt
-    adb shell "rm -f '$FILES_W/gallery.txt' '$FILES_W/pose.txt'" > /dev/null 2>&1 || true
+    adb shell "rm -f '$FILES_W/gallery.txt' '$FILES_W/pose.txt' '$FILES_W/cave.txt'" > /dev/null 2>&1 || true
     note "gallery: $POSE_COUNT fixed-pose screenshot(s) taken with the overlay hidden"
 fi
 
