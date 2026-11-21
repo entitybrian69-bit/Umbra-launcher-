@@ -56,10 +56,10 @@ goose/core/region.goose:60: warning: redundant `as i64`: a u32 converts to i64 i
 goose/core/region.goose:66: warning: redundant `as i64`: a u32 converts to i64 implicitly here
     if id as i64 >= bs_defs.len { return bs_props[0..0]; }
        ^~~~~~~~~
-goose/core/region.goose:142: warning: redundant `as u32`: a u16 converts to u32 implicitly here
+goose/core/region.goose:152: warning: redundant `as u32`: a u16 converts to u32 implicitly here
     return s.blocks[i] as u32;
            ^~~~~~~~~~~~~~~~~~
-goose/core/region.goose:526: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+goose/core/region.goose:599: warning: redundant `as u32`: a u8 converts to u32 implicitly here
             put_be_u32(out, (offsets[i] << 8) | (counts[i] as u32));
                                                  ^~~~~~~~~~~~~~~~
 goose/core/inflate.goose:84: warning: redundant `as i64`: a u32 converts to i64 implicitly here
@@ -86,9 +86,9 @@ goose/core/inflate.goose:317: warning: redundant `as u64`: a u32 converts to u64
 == reading build/server/run/world with the loader the renderer uses
 worldload: region dir build/server/run/world/dimensions/minecraft/overworld/region
 
-worldload: chunks 2209, non-air blocks 26568620, states 141, region files 4, read errors 0
+worldload: chunks 2209, non-air blocks 26571149, states 141, region files 4, read errors 0
 
-worldload: detail lines for chunks within 10 of the origin: 441 chunks, 14144856 non-air blocks
+worldload: detail lines for chunks within 10 of the origin: 441 chunks, 14145796 non-air blocks
 
 worldload: 1584 of 2209 chunks are not `minecraft:full` yet (0 of them within 10 of the origin)
 
@@ -96,14 +96,14 @@ worldload: PASS - every chunk in the save was read
 
 == reading the same world with the independent reader
 oracle: region dir build/server/run/world/dimensions/minecraft/overworld/region
-oracle: chunks 2209, non-air blocks 26568620, states 141, region files 4
+oracle: chunks 2209, non-air blocks 26571149, states 141, region files 4
 oracle: wrote build/world-real/oracle.txt
 == comparing
-build/world-real/goose.txt: 2209 chunks, 26568620 blocks, 141 states
-build/world-real/oracle.txt: 2209 chunks, 26568620 blocks, 141 states
+build/world-real/goose.txt: 2209 chunks, 26571149 blocks, 141 states
+build/world-real/oracle.txt: 2209 chunks, 26571149 blocks, 141 states
 chunks that agree: 2209 of 2209 (100.00%)
-blocks in agreeing chunks: 26568620 of 26568620 (100.00% of every non-air block in the save)
+blocks in agreeing chunks: 26571149 of 26571149 (100.00% of every non-air block in the save)
 block states that agree: 141 of 141
-detail records that agree: 14144856 of 14144856 (100.00%), block by block
+detail records that agree: 14145796 of 14145796 (100.00%), block by block
 PASS: two independent readers agree on every block of all 2209 chunks
 PASS: the world the server generated is read the same way twice
