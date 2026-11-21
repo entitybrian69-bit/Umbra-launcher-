@@ -313,6 +313,7 @@ struct umbra_app {
     int64_t last_pass_us[3];
     int order_overflowed;      // logged once: too many opaque ranges for the draw order
     int walk_finish;           // walkfinish.txt: glFinish per pass, so the split is raster time
+    int hud_quads_uploaded;    // how many HUD quad indices the element buffer already holds
     int walk_report;           // the walking phase is on: report when it ends
     long long walk_frames;
     long long walk_start_resident;   // the window's size when the walk began

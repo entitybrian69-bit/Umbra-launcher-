@@ -533,8 +533,14 @@ static void hud_flush(umbra_app *app) {
     glUseProgram(app->prog_hud);
     glBindVertexArray(app->vao_hud);
     glBindBuffer(GL_ARRAY_BUFFER, app->vbo_hud);
-    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)g_hud_count * (GLsizeiptr)sizeof(hud_vert), NULL, GL_STREAM_DRAW);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, (GLsizeiptr)g_hud_count * (GLsizeiptr)sizeof(hud_vert), g_hud_verts);
+    // One upload per frame, not three. `glBufferData(..., NULL, STREAM_DRAW)` followed by a
+    // full `glBufferSubData` is two driver round trips to replace the whole buffer, and the
+    // index buffer was re-specified every frame as well -- 252 quads of triangles are
+    // reallocated and re-uploaded for every frame of the game even though the pattern only
+    // changes when the quad count does. The overlay measured 13.9 ms of a 50 ms walking frame
+    // with the split in run 44883705686; the geometry it draws is one panel and some text.
+    glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)g_hud_count * (GLsizeiptr)sizeof(hud_vert),
+                 g_hud_verts, GL_STREAM_DRAW);
     glUniform2f(glGetUniformLocation(app->prog_hud, "u_screen"), (float)app->width, (float)app->height);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, app->tex_font);
@@ -552,8 +558,16 @@ static void hud_flush(umbra_app *app) {
             indices[i * 6 + 3] = b; indices[i * 6 + 4] = b + 2; indices[i * 6 + 5] = b + 3;
         }
     }
+    // The quad indices only depend on how many quads there are, so they are uploaded when
+    // that grows and bound otherwise. A frame that draws fewer quads than the last one reuses
+    // the buffer's front, which is the same triangles in the same order.
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->ibo_hud);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)quads * 6 * (GLsizeiptr)sizeof(unsigned), indices, GL_STREAM_DRAW);
+    if (quads > app->hud_quads_uploaded) {
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+                     (GLsizeiptr)quads * 6 * (GLsizeiptr)sizeof(unsigned), indices,
+                     GL_STATIC_DRAW);
+        app->hud_quads_uploaded = quads;
+    }
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDisable(GL_DEPTH_TEST);
