@@ -1912,7 +1912,14 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         wait_for_app_line "$GAL_PID" 'gallery: posed at' 300 "the pose ($pose)" \
             || die "gallery: the app never posed for $pose: $(app_log "$GAL_PID" | grep -E 'gallery:' | tail -2 | tr '\n' '|')"
         say "gallery: $pose $(app_log "$GAL_PID" | grep -m1 'gallery: posed at')"
-        # The overlay has to be off, or the picture is of the overlay.
+        # The overlay has to be off, or the picture is of the overlay. Ask the app: in
+        # gallery mode it says so once the surface size is known. The `hud: button` lines come
+        # from the frame loop rather than from `draw_hud`, so their absence alone proved
+        # nothing -- run 44935969327 failed here with the pose drawn correctly and the overlay
+        # genuinely hidden, because the buttons had been logged anyway.
+        if ! app_log "$GAL_PID" | grep -q 'gallery: no overlay on'; then
+            die "gallery: the app never said the overlay was hidden for $pose: $(app_log \"$GAL_PID\" | grep -E 'gallery:|hud: button' | tail -3 | tr '\\n' '|')"
+        fi
         if app_log "$GAL_PID" | grep -q 'hud: button 0 at'; then
             die "gallery: the overlay logged a button layout for $pose, so it was not hidden"
         fi

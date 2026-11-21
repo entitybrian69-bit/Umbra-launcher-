@@ -4154,7 +4154,16 @@ void umbra_app_frame(umbra_app *app) {
         app->last_frame_time = (double)umbra_now_us();
         return;
     }
-    if (app->hud_logged_width != app->width) {
+    if (app->hud_logged_width != app->width && app->gallery_hide_hud) {
+        // The gallery draws no overlay, so there are no tap targets to describe -- and this
+        // loop runs from the frame, not from `draw_hud`, so without this branch it logged a
+        // button layout for a HUD that was never drawn (run 44935969327: the pose was
+        // correct and the buttons were real numbers for something absent). Say that
+        // instead: the harness reads "no overlay" as the proof, not the absence of a line.
+        umbra_log(app, "gallery: no overlay on %dx%d, so there is no button layout to log",
+                  app->width, app->height);
+        app->hud_logged_width = app->width;
+    } else if (app->hud_logged_width != app->width) {
         // Logged from the frame loop, when a real surface size is known: the
         // automated emulator run taps the self-test by reading these numbers
         // back, so a layout change cannot silently make it tap empty space.
