@@ -8,6 +8,15 @@
 #
 # Usage: tools/check_c.sh            # checks platform/shared/umbra_app.c
 set -euo pipefail
+# SIGPIPE, dealt with once instead of five times: every check below is `producer | grep -q
+# pattern`, and grep -q exits as soon as it matches. When the producer still has output to
+# write -- `sed -n '/start/,/end/p'` over a 5000-line file -- it dies of SIGPIPE, pipefail
+# sees 141, and the *check* reads as failed while its answer was "found it". That is a guard
+# that fails at random, and it was seen twice today, both times right after a build had
+# warmed the page cache and the producer outran grep. `grep -c` reads to the end of its
+# input and still exits 1 when there is no match, so it is the same check without the race.
+found()  { grep -c  -- "$1" > /dev/null; }
+foundE() { grep -cE -- "$1" > /dev/null; }
 CC="${CC:-cc}"
 INC="tools/localcheck/include"
 GEN="${GEN:-build/gen}"
@@ -47,7 +56,7 @@ $CC "${CFLAGS[@]}" -D__ANDROID__ -I"$INC" -I"$GEN" -Iplatform/shared -Iplatform/
 # The declared precision is now part of the contract, and it is checked here
 # because no compiler on a desktop GL driver would ever complain about it.
 if ! grep -A28 '^static const char .FS_PATTERN =' platform/shared/umbra_app.c 2>/dev/null \
-        | grep -q 'precision highp int;';
+        | found 'precision highp int;';
 then
     echo "check_c: FS_PATTERN no longer declares precision highp int (0.3.1 finding a)" >&2
     exit 1
@@ -56,7 +65,7 @@ echo "check_c: FS_PATTERN declares precision highp int"
 # Requirement (4): every device-specific check is logged, and a failure falls back.
 # The device checks were written, reviewed and never called for two commits --
 # nothing in a desktop build notices a missing call, so it is checked here.
-if ! sed -n '/^int umbra_app_init/,/^}/p' platform/shared/umbra_app.c | grep -q 'device_checks(app);';
+if ! sed -n '/^int umbra_app_init/,/^}/p' platform/shared/umbra_app.c | found 'device_checks(app);';
 then
     echo "check_c: umbra_app_init never calls device_checks (it did not, in 0.3.2)" >&2
     exit 1
@@ -71,11 +80,11 @@ INIT_BODY="$(sed -n '/^int umbra_app_init/,/^}/p' platform/shared/umbra_app.c)"
 BEFORE_MEMSET="$(printf '%s\n' "$INIT_BODY" | sed -n '1,/memset(app, 0, sizeof \*app);/p')"
 AFTER_MEMSET="$(printf '%s\n' "$INIT_BODY" | sed -n '/memset(app, 0, sizeof \*app);/,$p')"
 for field in files_dir download_fn pick_file_fn progress_fn net_ctx; do
-    if ! printf '%s\n' "$BEFORE_MEMSET" | grep -q "app->$field"; then
+    if ! printf '%s\n' "$BEFORE_MEMSET" | found "app->$field"; then
         echo "check_c: umbra_app_init does not save app->$field before its memset" >&2
         exit 1
     fi
-    if ! printf '%s\n' "$AFTER_MEMSET" | grep -qE "(app->$field =|memcpy\(app->$field,)"; then
+    if ! printf '%s\n' "$AFTER_MEMSET" | foundE "(app->$field =|memcpy\(app->$field,)"; then
         echo "check_c: umbra_app_init erases app->$field: it is not restored after the memset" >&2
         exit 1
     fi
@@ -86,11 +95,11 @@ echo "check_c: umbra_app_init keeps the platform's game-files hooks and files di
 # the thread the activity started, from android_main. The device said so the hard
 # way -- "no Java network class in this APK" after a tap that worked (run
 # 43951429395) -- and nothing in a desktop build can notice it, so it is checked.
-if ! grep -q 'net_init(state->activity);' platform/android/android_main.c; then
+if ! grep -c 'net_init(state->activity);' platform/android/android_main.c > /dev/null; then
     echo "check_c: android_main never looks up the Java bridge (JNI_OnLoad is not called by NativeActivity)" >&2
     exit 1
 fi
-if ! sed -n '/^static void net_init/,/^}/p' platform/android/android_main.c | grep -q 'loadClass'; then
+if ! sed -n '/^static void net_init/,/^}/p' platform/android/android_main.c | found 'loadClass'; then
     echo "check_c: net_init does not ask the activity's class loader for UmbraNet" >&2
     exit 1
 fi

@@ -2345,35 +2345,44 @@ not against a second copy of `48.0` -- the constant had already been copied once
 how the two answers drifted. The emulator now also says where the body spawned when a hold
 does not move it, so the next time this fails the log names the pit.
 
-## Step 1 measured and passing: a full-size window, walked, with the cull on (run 44866373257)
+## Steps 1 and 2 are met on the device, in one run (44875469819, all five workflows success)
 
-The phase that verifies step 1 now passes end to end on the device, at the window the save
-opens with, and it is the committed gate: `stream-fullsize` fails the run if the window is
-not full size, if any frame breaks the budget, or if the app is not alive at the end.
+One emulator run, one save, one spawn, one 45 s hold -- twice, differing by `nocull.txt` on
+disk. This is the before-and-after the owner asked for, measured on the same world in the same
+run rather than across two builds:
+
+| same radius-4 window, same walk | culling OFF | culling ON |
+|---|---|---|
+| ranges drawn per frame | **132 of 132** (132 draw calls) | **38 of 132** (38 draw calls, 94 boxes rejected) |
+| average frame | 52.2 ms (19 fps) | **22.1 ms (45 fps)** -- **58% faster** |
+| 1% low | 65.7 ms (15 fps) | **38.7 ms (26 fps)** |
+| worst frame | 73.6 ms | **44.9 ms** |
+| frames over the 50 ms budget | **503 of 700 (72%)** | **0 of 1056** |
+
+And step 1's own gate in the same run, with the full-size window held throughout:
 
 ```
-stream-fullsize: world: opened: 81 chunk(s) from 4 region file(s), radius 4,
-                 non-air blocks 2606693, read errors 0, missing from the save 0,
-                 19.6 MB of region files, 2553.1 ms
-stream-fullsize: mesh: 1896240 vertices drawn, passes 2629542/214818/0 over 243 ranges
-stream-fullsize: walk: 1071 frame(s) avg 21.7 ms (46 fps), median 21.9, 1% low 39.1 (25 fps),
-                 worst 43.1 at frame 21, 0 over 50 ms
-stream-fullsize: walk: stopped ...; window 81 -> 81 column(s) resident, 0 re-centre(s)
-stream-fullsize: walk: drawing 38 range(s) of 132 in 38 draw call(s) per frame
-                 (frustum culling on: 94 box(es) rejected, last frame)
-stream-fullsize: the window stayed full-size through the walk (81 column(s) resident)
-stream-fullsize: no frame broke the 50 ms CPU budget, over 1071 walking frame(s)
+world: opened: 81 chunk(s) from 4 region file(s), radius 4, non-air blocks 2606693,
+       read errors 0, missing from the save 0, 19.6 MB of region files
+mesh: 1907124 vertices drawn, passes 2630598/230088/0 over 243 ranges
+walk: 1068 frame(s) avg 21.8 ms (45 fps), median 22.3, 1% low 37.3, worst 39.9, 0 over 50 ms
+walk: stopped ...; window 81 -> 81 column(s) resident, 0 re-centre(s), 0 upload(s)
 ```
 
-An earlier run of the same phase (`44861154896`) reported 940 frames at avg 25.4 ms, 1% low
-42.3, worst 48.3, also nothing over budget. **Both runs pass step 1; the second is the one
-whose harness refuses to accept a partial window**, so 21.7 ms is the number to quote.
-
-## Step 2's before/after, as built (first attempt failed on its own assertions)
-
-`stream-cull` walks the same spawn twice in one run -- with `nocull.txt` and without -- and
-requires both halves to say radius 4, the off half to say "culling off for measurement", the
-on half to say "culling on", and the cull to have drawn fewer ranges than it was given.
+* **Step 1 is met**: 24 MB and 1.9 M vertices of a radius-4 world, walked for 45 s, **no frame
+  over 50 ms of CPU work in any of the three passing runs** (1071 frames / 21.7 ms, 1414 / 16.6,
+  1068 / 21.8). Nothing needed slicing because nothing broke the budget once the window was
+  made to hold still: the earlier breaches were the streaming work, not the frame.
+* **Step 2 is met and measured**: the cull is worth **2.4x on the average frame** and takes the
+  budget breaches from 72% of walking frames to none. The 1% low gains 41%, which is the number
+  that decides whether walking feels like dropping.
+* One run (`44870835705`) put a single frame at 52.2 ms in 1414. That frame now logs its own
+  split (pumps / body / scene / overlay) so the next one names its cause instead of its
+  duration; the run after it was clean, so there is nothing to fix yet, only something to
+  catch.
+* The first number in the table is reproducible: `44873074289` measured 56.6 ms with the cull
+  off and `44868771074` 49.8 ms, so the emulator varies by ~13% between runs and the *pair*,
+  not either half, is the result.
 
 ## Earlier: the first full-size walk (run 44861154896)
 

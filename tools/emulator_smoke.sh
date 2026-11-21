@@ -1631,7 +1631,7 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     P1_ON="$(printf '%s' "$CULL_ON" | sed -n 's/.*1% low \([0-9.]*\).*/\1/p')"
     if [ -n "${AVG_OFF:-}" ] && [ -n "${AVG_ON:-}" ]; then
         say "stream-cull: average frame $(awk -v a="$AVG_OFF" -v b="$AVG_ON" \
-            'BEGIN { printf "%.1f ms -> %.1f ms (%.0f%% %s)", a, b, (b-a)/a*100, (b<a?"faster":"slower") }')"
+            'BEGIN { d=(b-a)/a*100; printf "%.1f ms -> %.1f ms (%.0f%% %s)", a, b, (d<0?-d:d), (b<a?"faster":"slower") }')"
         say "stream-cull: 1% low $(awk -v a="$P1_OFF" -v b="$P1_ON" \
             'BEGIN { printf "%.1f ms -> %.1f ms", a, b }') (the worst 1% of walking frames)"
     fi

@@ -31,7 +31,7 @@ import core.sampleworld;
 import core.sha1;
 import core.gamefiles;
 
-let UMBRA_VERSION = "0.3.8";
+let UMBRA_VERSION = "0.3.9";
 
 // --- a demo world ------------------------------------------------------
 //
