@@ -285,6 +285,44 @@ launch_app() {   # $1 = log file; prints the launch's own verdict
     return 1
 }
 
+# Lines written by one app instance. `adb logcat -d -s umbra:V` also holds the *previous*
+# instance's lines -- a `logcat -c` does not always take effect before the next read -- and
+# run 44863692188 matched a `stream: window complete` from the app that had just been
+# force-stopped, then failed looking for a `world: opened:` line that was not there yet.
+# A phase that greps an unscoped log is reading a log of the last ten minutes, not of what
+# it just launched. Filter on the pid and wait for the line instead of sleeping at it.
+app_log() {   # $1 = pid; prints that instance's umbra lines with the logcat prefix removed
+    adb logcat -d -s umbra:V 2>/dev/null \
+        | awk -v p="$1" 'NF > 5 && $3 == p { sub(/^.*umbra *: /, ""); print }'
+}
+
+# The pid of the instance a launch produced, or empty. A launch that prints "Status: ok" and
+# an empty pidof has not started anything.
+launched_pid() {
+    local i
+    for i in $(seq 1 20); do
+        local got
+        got="$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n ') "
+        got="${got% }"
+        if [ -n "$got" ]; then printf '%s' "${got%% *}"; return 0; fi
+        sleep 1
+    done
+    return 1
+}
+
+# Wait for a line from one instance. $1 pid, $2 regex, $3 seconds, $4 what it is.
+wait_for_app_line() {
+    local pid="$1" pat="$2" limit="$3" what="$4" end
+    end=$((SECONDS + limit))
+    while [ $SECONDS -lt $end ]; do
+        if app_log "$pid" | grep -qE "$pat"; then return 0; fi
+        sleep 2
+    done
+    say "app: ${what} did not appear within ${limit}s from pid ${pid}; the last lines were:"
+    app_log "$pid" | tail -5 | cut -c1-200
+    return 1
+}
+
 phase "install"
 ADB_TIMEOUT=300 adb install -r -g "$APK" > install.log 2>&1 || die "adb install failed: $(tail -c 500 install.log)"
 say "install: $(tail -1 install.log)"
@@ -1419,18 +1457,15 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     # knobs were removed above, before the copy and after the previous app was stopped.)
     FS_R="$(adb shell "cat '$FILES_W/radius.txt' 2>/dev/null" | tr -d '\r\n')"
     [ -z "$FS_R" ] || die "stream-fullsize: radius.txt still says '$FS_R', so this phase would measure a window that is not the shipped default"
-    adb logcat -c > /dev/null 2>&1 || true
     LAUNCH="$(launch_app stream-fullsize-launch.log)" || die "stream-fullsize: the app would not start: $LAUNCH"
     say "stream-fullsize: $LAUNCH"
-    OPENED=0
-    DEADLINE=$((SECONDS + 300))
-    while [ $SECONDS -lt $DEADLINE ]; do
-        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "stream: window complete"; then OPENED=1; break; fi
-        sleep 3
-    done
-    [ "$OPENED" = 1 ] || die "stream-fullsize: the world never finished its first window: $(adb logcat -d -s umbra:V 2>/dev/null | grep -E 'stream:|world: ' | tail -3 | tr '\n' '|')"
-    sleep 1
-    OPEN_LINE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'world: opened:' | sed 's/.*umbra *: //')"
+    # A pid that is not empty is the only proof the launch above produced an instance, so
+    # every line this phase greps is scoped to it.
+    FS_PID="$(launched_pid)" || die "stream-fullsize: the app is not running after the launch said '$LAUNCH'"
+    say "stream-fullsize: listening to pid $FS_PID"
+    wait_for_app_line "$FS_PID" 'stream: window complete' 300 "the first window" \
+        || die "stream-fullsize: the world never finished its first window"
+    OPEN_LINE="$(app_log "$FS_PID" | grep -m1 'world: opened:')"
     say "stream-fullsize: ${OPEN_LINE:-no open line}"
     # `world: opened: 81 chunk(s) ...`, and the app logs `world:  opened:` with two spaces
     # when the import deferred every chunk. Split on whitespace rather than on the first
@@ -1438,27 +1473,22 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     FS_CHUNKS="$(printf '%s\n' "$OPEN_LINE" | tr ' ' '\n' | grep -m1 -E '^[0-9]+$')"
     [ "${FS_CHUNKS:-0}" -ge 50 ] || die "stream-fullsize: the window is '${FS_CHUNKS:-none}' chunks from '${OPEN_LINE:-no line}', and this phase is about the full-size window (radius 4 is 81)"
     # Wait for the mesh: a world still meshing refuses input.
-    MESHED=0
-    DEADLINE=$((SECONDS + 300))
-    while [ $SECONDS -lt $DEADLINE ]; do
-        if adb logcat -d -s umbra:V 2>/dev/null | grep -q "mesh: .* vertices drawn"; then MESHED=1; break; fi
-        sleep 3
-    done
-    [ "$MESHED" = 1 ] || die "stream-fullsize: the full-size window never meshed"
-    say "stream-fullsize: the window is meshed, drawing $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'mesh: .* vertices drawn' | sed 's/.*umbra *: //')"
-    POS0="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'player: at ' | tail -1 | sed 's/.*player: at //' | sed 's/,.*//')"
+    wait_for_app_line "$FS_PID" 'mesh: .* vertices drawn' 300 "the mesh" \
+        || die "stream-fullsize: the full-size window never meshed"
+    say "stream-fullsize: the window is meshed, drawing $(app_log "$FS_PID" | grep -m1 'mesh: .* vertices drawn')"
+    POS0="$(app_log "$FS_PID" | grep 'player: at ' | tail -1 | sed 's/,.*//')"
     say "stream-fullsize: walking from ${POS0:-?} for 45 s at radius 4; the app measures the frames"
     adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 )) "$P_SCENE_Y" 45000 \
         > /dev/null 2>&1 || say "stream-fullsize: the 45 s hold failed"
-    sleep 2
-    REPORT="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'walk: .* frame(s) avg ' | sed 's/.*umbra *: //')"
-    [ -n "$REPORT" ] || die "stream-fullsize: the app reported no walk measurement; it reports when a held finger starts walking and stops when it lifts: $(adb logcat -d -s umbra:V 2>/dev/null | grep -E 'walk:|player: at ' | tail -3 | tr '\n' '|')"
+    wait_for_app_line "$FS_PID" 'walk: .* frame\(s\) avg ' 30 "the walk report" \
+        || die "stream-fullsize: the app reported no walk measurement; it reports when a held finger starts walking and stops when it lifts"
+    REPORT="$(app_log "$FS_PID" | grep -m1 'walk: .* frame(s) avg ')"
     say "stream-fullsize: $REPORT"
-    WITHIN="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'walk: stopped' | sed 's/.*umbra *: //')"
+    WITHIN="$(app_log "$FS_PID" | grep -m1 'walk: stopped')"
     [ -n "$WITHIN" ] && say "stream-fullsize: $WITHIN"
-    DRAW="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'walk: drawing' | sed 's/.*umbra *: //')"
+    DRAW="$(app_log "$FS_PID" | grep -m1 'walk: drawing')"
     [ -n "$DRAW" ] && say "stream-fullsize: $DRAW"
-    POS1="$(adb logcat -d -s umbra:V 2>/dev/null | grep 'player: at ' | tail -1 | sed 's/.*player: at //' | sed 's/,.*//')"
+    POS1="$(app_log "$FS_PID" | grep 'player: at ' | tail -1 | sed 's/,.*//')"
     say "stream-fullsize: walked to ${POS1:-?}"
     # The whole point of the phase is the *full-size* window, and run 44861154896 walked 45 s
     # at radius 0, reported "1 over 50 ms" on a world of one column, and passed everything
@@ -1507,7 +1537,9 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     done
     adb shell "rm -f '$FILES_W/radius.txt'" > /dev/null 2>&1 || true
     walk_once() {
-        # $1 = "off" or "on" (the cull), $2 = the label for the log
+        # $1 = "off" or "on" (the cull), $2 = the label for the log.
+        # Prints the walk report for the instance *this* call launched; everything it greps
+        # is scoped to that pid, because an unscoped log holds the previous half too.
         if [ "$1" = "off" ]; then
             adb shell "echo 1 > '$FILES_W/nocull.txt'" > /dev/null 2>&1
         else
@@ -1519,34 +1551,54 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
             sleep 1
         done
         adb shell "cp /data/local/tmp/umbra-world.zip $FILES_W/world.zip" > /dev/null 2>&1 || true
-        adb logcat -c > /dev/null 2>&1 || true
-        launch_app "stream-cull-$2-launch.log" > /dev/null 2>&1 || die "stream-cull: the app would not start for the $1 half"
-        sleep 2
-        CULL_R="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'stream: the world is streamed' | sed 's/.*umbra *: //')"
-        say "stream-cull: the $1 half: ${CULL_R:-no stream line}"
-        case "$CULL_R" in
+        launch_app "stream-cull-$2-launch.log" > /dev/null 2>&1 \
+            || die "stream-cull: the app would not start for the $1 half"
+        local pid
+        pid="$(launched_pid)" || die "stream-cull: the $1 half launched and no process is running"
+        wait_for_app_line "$pid" 'stream: the world is streamed' 180 "the stream line, $1 half" \
+            || die "stream-cull: the $1 half never said what window it streamed"
+        local line
+        line="$(app_log "$pid" | grep -m1 'stream: the world is streamed')"
+        say "stream-cull: the $1 half: $line"
+        # Both halves have to be the same window, or the comparison is two worlds.
+        case "$line" in
             *"radius 4"*) : ;;
-            "") say "stream-cull: the $1 half did not say its radius" ;;
-            *) die "stream-cull: the $1 half opened at a radius that is not 4: $CULL_R" ;;
+            *) die "stream-cull: the $1 half opened at a window that is not radius 4: $line" ;;
         esac
-        DEADLINE=$((SECONDS + 300))
-        while [ $SECONDS -lt $DEADLINE ]; do
-            adb logcat -d -s umbra:V 2>/dev/null | grep -q "mesh: .* vertices drawn" && break
-            sleep 3
-        done
+        # And the switch has to be in the state this half is named for.
+        if [ "$1" = "off" ]; then
+            case "$line" in
+                *"culling off for measurement"*) : ;;
+                *) die "stream-cull: the off half is not actually drawing without the cull: $line" ;;
+            esac
+        fi
+        wait_for_app_line "$pid" 'cull: frustum culling' 60 "the cull state, $1 half" || true
+        say "stream-cull: the $1 half: $(app_log "$pid" | grep -m1 'cull: frustum culling')"
+        wait_for_app_line "$pid" 'mesh: .* vertices drawn' 300 "the mesh, $1 half" \
+            || die "stream-cull: the $1 half never meshed"
         adb shell input swipe $(( P_WIDTH / 2 )) "$P_SCENE_Y" $(( P_WIDTH / 2 )) "$P_SCENE_Y" 45000 \
             > /dev/null 2>&1 || say "stream-cull: the $1 hold failed"
-        sleep 2
-        adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "walk: .* frame(s) avg " | sed 's/.*umbra *: //'
+        wait_for_app_line "$pid" 'walk: .* frame\(s\) avg ' 30 "the walk report, $1 half" \
+            || die "stream-cull: the $1 half produced no walk measurement"
+        # Kept for the whole phase: the drawing line is read from the same instance.
+        # Written to files rather than printed, because this function's own `say` lines
+        # would otherwise be captured as if they were the measurement.
+        printf '%s\n' "$pid" > "stream-cull-$1.pid"
+        app_log "$pid" | grep -m1 'walk: .* frame(s) avg ' > "stream-cull-$1.report"
     }
-    CULL_OFF="$(walk_once off off)"
+    walk_once off off
+    CULL_OFF="$(cat stream-cull-off.report 2>/dev/null)"
     say "stream-cull: culling OFF -- ${CULL_OFF:-no measurement}"
-    CULL_ON="$(walk_once on on)"
+    walk_once on on
+    CULL_ON="$(cat stream-cull-on.report 2>/dev/null)"
     say "stream-cull: culling ON  -- ${CULL_ON:-no measurement}"
     [ -n "$CULL_ON" ] || die "stream-cull: the cull-on half produced no measurement"
     [ -n "$CULL_OFF" ] || die "stream-cull: the cull-off half produced no measurement"
-    DRAW_OFF="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'walk: drawing' | sed 's/.*umbra *: //')"
-    say "stream-cull: $DRAW_OFF"
+    ON_PID="$(cat stream-cull-on.pid 2>/dev/null)"
+    DRAW_ON="$(app_log "$ON_PID" | grep -m1 'walk: drawing')"
+    say "stream-cull: $DRAW_ON"
+    OFF_PID="$(cat stream-cull-off.pid 2>/dev/null)"
+    say "stream-cull: off half drew: $(app_log "$OFF_PID" | grep -m1 'walk: drawing')"
     # The comparison, computed here so the run's own summary carries the answer.
     AVG_OFF="$(printf '%s' "$CULL_OFF" | sed -n 's/.*avg \([0-9.]*\) ms.*/\1/p')"
     AVG_ON="$(printf '%s' "$CULL_ON" | sed -n 's/.*avg \([0-9.]*\) ms.*/\1/p')"
@@ -1563,8 +1615,8 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         *) say "stream-cull: no frame broke the 50 ms CPU budget with culling on" ;;
     esac
     # And the cull has to have rejected something, or this measured nothing.
-    REJ="$(printf '%s' "$DRAW_OFF" | sed -n 's/.*of \([0-9]*\) in.*/\1/p')"
-    DREW="$(printf '%s' "$DRAW_OFF" | sed -n 's/.*drawing \([0-9]*\) range(s).*/\1/p')"
+    REJ="$(printf '%s' "$DRAW_ON" | sed -n 's/.*of \([0-9]*\) in.*/\1/p')"
+    DREW="$(printf '%s' "$DRAW_ON" | sed -n 's/.*drawing \([0-9]*\) range(s).*/\1/p')"
     say "stream-cull: the cull drew ${DREW:-?} of ${REJ:-?} range(s) in its last frame"
     [ "${REJ:-0}" -gt "${DREW:-0}" ] || die "stream-cull: the cull rejected nothing ($DREW of $REJ), so this comparison means nothing"
 fi
