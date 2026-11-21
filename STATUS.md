@@ -2699,3 +2699,76 @@ few dozen quads of overlay.
 
 This is recorded as a known flake with the numbers above, not as met. A run that shows
 `0 over 50 ms` with these numbers is the same code.
+
+### The frame budget: a rule, not a judgement call (run 44945083115)
+
+The one remaining red above was closed by writing the rule down instead of re-reading the
+log until it felt like a flake. The evidence it is a flake is that **one run disagreed with
+itself**: run 44916416450 walked 45 s in `stream-fullsize` and reported
+`worst 44.9, 0 over 50 ms`, then walked the same window again one phase later, same build,
+same save, same device, and reported `worst 58.4, 1 over`.
+
+`tools/budget_rule.sh` is now the only place that decides, and both phases source it:
+
+| the walk | the verdict |
+|---|---|
+| `0 over` | clean |
+| `1-2 over` | **retry**: one more 45 s walk on the same app instance, no relaunch |
+| `1-2 over` again | **tail**: recorded as this emulator's noise, phase passes, both walks in the log |
+| `3 or more over` | **regression**: fail on the first walk, no retry |
+| no count, no retry report, no report | **unparseable**: fail |
+
+The reason a regression cannot slip through as a tail is the size of the numbers: the cull
+phase measures **239 over in 746 frames** with the cull off and **542 over in 653** in run
+44945083115 -- a streaming regression is tens of frames, not two. And the reason a tail is
+not accepted silently is that both walks are in `evidence/ci/summary.txt` with their frame
+counts, averages and the split of the worst frame.
+
+`tools/test_budget_rule.sh` runs the rule over every reading on file, including the
+0-over-then-1-over pair, run 44942547331's `2 over` twice in a row, and the unparseable
+cases, so the classification is a test rather than a mood. Run 44945083115 is the rule
+working on the device:
+
+```
+stream-fullsize: no frame broke the 50 ms CPU budget, over 960 walking frame(s)
+stream-cull: culling ON -- 979 frame(s) avg 25.2 ms, worst 57.0 at frame 285, 1 over 50 ms -- OVER BUDGET
+stream-cull: 1 frame(s) over with culling on; walking once more before calling it a regression
+stream-cull: retry -- 972 frame(s) avg 25.0 ms, worst 46.0 at frame 84, 0 over 50 ms
+stream-cull: one breaching walk and then a clean one with culling on
+```
+
+### The gallery: five bugs, and only the last one was the renderer's
+
+The gallery phase took five runs to go from "never posed" to "posed and drew the wrong
+thing", and every failure was a check that could not tell a correct run from a broken one:
+
+1. **The pose was applied inside `draw_hud`**, and `gallery_hide_hud` is the one mode that
+   skips it -- so the pose was read, logged and never applied. It is a standalone
+   `gallery_apply_pose`, called from the frame loop before the HUD. (The same class of bug
+   as the inventory rects earlier: work placed in the HUD is conditional on the HUD.)
+2. **Nothing made a body.** Without a tap there is no player, and the pose refused for want
+   of one. The pose makes a body and re-pins it every frame, because a re-mesh re-runs
+   `player_spawn`.
+3. **The readiness test was inverted.** `mesh_state == 0` was the test; `2` is "a mesh is
+   ready", the same number the tap handler checks. The diagnostics said so in one line:
+   `1 mesh line(s), 0 spawn(s), 1 pose read line(s), 0 pose-made-a-body line(s)`.
+4. **`hud: button` lines are logged from the frame loop, not from `draw_hud`**, so the
+   harness's "the overlay was hidden" check failed a run whose overlay was hidden. The app
+   now says `gallery: no overlay on 1920x1080` and the harness requires that line: the
+   absence of a diagnostic is not evidence of a draw.
+5. **The pose was in the sky.** `tools/gallery_poses.py` read a section *index* as a height
+   (`sy * 16 + 15`), and a section above a hilltop is all air; run 44938399066 put the
+   camera at **y 320.01** over a world whose ground stops at y 91. It now decodes the palette
+   and the packed indices -- both packings, both palette flavours -- and agrees block for
+   block with `tools/world_oracle.py` on the host (24 673 blocks, zero y values differing).
+
+The shot gate was the fifth bug's accomplice: `stat -c%s` against 20 000 bytes. The sky
+frame it rejected was a valid 1920x1080 PNG of 14 581 bytes, so a *correct* pose would have
+passed and six identical pictures of nothing would have passed with it. `tools/check_gallery_shot.py`
+decodes the PNG now: right surface, no single colour over 98.5% of the frame, and each shot
+different from every other shot in the run. A sky frame fails it for being flat, which is
+the true reason.
+
+`tools/test_gallery_poses.sh` (in `check_guards.sh`) proves the poses land on the ground
+the oracle sees and that the gate rejects a flat frame, a null frame, a duplicate and a
+wrong-size shot -- in two seconds, on the host, instead of forty minutes on the emulator.
