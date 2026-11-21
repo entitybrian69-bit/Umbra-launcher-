@@ -320,6 +320,15 @@ wait_for_app_line() {
     done
     say "app: ${what} did not appear within ${limit}s from pid ${pid}; the last lines were:"
     app_log "$pid" | tail -5 | cut -c1-200
+    # The state the gallery's pose depends on, said at the moment of failure rather than
+    # inferred afterwards: whether the world meshed, whether a body exists, whether the pose
+    # was read. Two runs were spent on "the pose never appeared" when the answer was one of
+    # those three and the log had it all along.
+    case "$pat" in
+        *"gallery: posed"*)
+            say "app: gallery state -- $(app_log "$pid" | grep -cE 'mesh: .*vertices drawn') mesh line(s), $(app_log "$pid" | grep -c 'player: spawned') spawn(s), $(app_log "$pid" | grep -c 'pose.txt read') pose read line(s), $(app_log "$pid" | grep -c 'gallery: the pose made a body') pose-made-a-body line(s), $(app_log "$pid" | grep -c 'gallery: gallery.txt is present') gallery flag line(s)"
+            ;;
+    esac
     return 1
 }
 

@@ -3934,16 +3934,37 @@ static void draw_gamefiles(umbra_app *app) {
 // could not be written. It is its own function now, called every frame from the same place
 // as the drawing but outside the HUD's own condition.
 static void gallery_apply_pose(umbra_app *app) {
-    if (!app->gallery || !app->pose_ready || app->pose_applied) return;
-    if (app->mesh_state != 0 || !app->player_on) return;
+    if (!app->gallery || !app->pose_ready) return;
+    if (app->mesh_state != 0) return;
+    // The body does not exist in gallery mode: nothing taps the screen, and the tap is the
+    // only thing that spawns it ("touch the world to walk" on the home screen). Requiring
+    // `player_on` meant the pose was read, logged and then refused for ever -- run
+    // 44927402030 waited 300 s for "gallery: posed at", which needs a body that was never
+    // made. So the pose makes one: the camera is a posed eye, and a posed eye is a body
+    // that has been put somewhere.
+    if (!app->player_on) {
+        umbra_player_reset(&app->player, app->pose[0], app->pose[1], app->pose[2]);
+        app->player.yaw = app->pose[3];
+        app->player.pitch = app->pose[4];
+        app->player.on_ground = 1;
+        app->player_on = 1;
+        umbra_log(app, "gallery: the pose made a body at %.2f %.2f %.2f", app->pose[0],
+                  app->pose[1], app->pose[2]);
+    }
     app->player.x = app->pose[0];
     app->player.y = app->pose[1];
     app->player.z = app->pose[2];
     app->player.yaw = app->pose[3];
     app->player.pitch = app->pose[4];
-    app->pose_applied = 1;
-    umbra_log(app, "gallery: posed at %.2f %.2f %.2f, yaw %.2f pitch %.2f",
-              app->pose[0], app->pose[1], app->pose[2], app->pose[3], app->pose[4]);
+    // The body is pinned every frame while the pose is in force, not set once: a re-mesh
+    // re-spawns the body from the world's bounds (`player_spawn` runs when a world is
+    // rebuilt), which would move the eye away from the pose between the shot being asked
+    // for and the shot being taken. Logged once, applied always.
+    if (!app->pose_applied) {
+        app->pose_applied = 1;
+        umbra_log(app, "gallery: posed at %.2f %.2f %.2f, yaw %.2f pitch %.2f",
+                  app->pose[0], app->pose[1], app->pose[2], app->pose[3], app->pose[4]);
+    }
 }
 
 static void draw_hud(umbra_app *app) {
