@@ -2345,6 +2345,59 @@ not against a second copy of `48.0` -- the constant had already been copied once
 how the two answers drifted. The emulator now also says where the body spawned when a hold
 does not move it, so the next time this fails the log names the pit.
 
+## Stage 3, step 4: the look, with a number and a check that can fail
+
+Step 4 asks for biome tints, stored light, vanilla face shading, sky and fog, and
+translucent water -- and forbids claiming visual parity without a score. What is there now,
+and what was wrong with what had been built before this stretch:
+
+**Stored light did not reach a single vertex of the real world.** `SkyLight` and `BlockLight`
+were parsed into `sky_light[4096]`/`block_light[4096]`, kept across the stream, and read by
+the *cube* mesher -- the fallback. Every block on a 26.3 save is drawn from the jar's model,
+and `push_model_face` shaded a face only by the direction it pointed. Reading the light
+arrays changed nothing anyone could see. Both paths now take the same light, from the open
+block in front of the rotated face.
+
+Finding that took four attempts, and the first three are the reason this is written down:
+
+| what the check measured | result | why it proved nothing |
+|---|---|---|
+| demo scene, light on vs off | 0 of 480000 vertices differed | the demo scene has no light arrays: correct behaviour, no test |
+| streamed save, light on vs off | 0 of 480000 differed | **no fixture in the repository had light arrays at all** |
+| streamed save with a hand-written array | 0 sections read | the array was written without the int32 length a `TAG_Byte_Array` needs |
+| the same, with the length | 43 sections, 25032 vertices | this one can fail, and does when the path is broken |
+
+`tools/gen_stream_world.py` and `tools/make_test_world.section()` now write the arrays the way
+a save does, and the host check meshes the same window twice in one process, with the light
+switched between the meshes, and holds the result to four things: the vertex count does not
+change, some faces come out darker, **no** face comes out brighter (light only attenuates),
+and the window's mean green falls. 25032 of 480000 vertices differ, all darker, 0.905 ->
+0.902. `umbra_set_light` is the switch; it exists for that comparison, since two builds are
+not the same process.
+
+**The look score was measuring the HUD.** `tools/look_score.py` scored the phone's screenshot
+whole, against a reference that is a bare frame of the world. The app's overlay takes up to
+45% of the height and there is a button row along the bottom, so the "sky" band was a dark
+rectangle with text on it. Cropped to the world:
+
+```
+look: whole frame 32.85 of 255, sky 34.62, ground 34.25
+look: horizon-blue share 21.4% against the reference's 24.1%
+```
+
+Uncropped it was 48.12 with a sky band of 73.96 -- a number about the overlay. The crops are
+asymmetric (the reference needs none, and cropping it the same way compared its sky against
+the capture's ground and scored 37.52), they are expressed as fractions of the height
+because the panel's limit is a fraction, and the tool now slices the uncropped rows a second
+way and requires the two to be identical, because a crop applied to the wrong rows still
+produces a plausible number. That self-check reports 5.42 of 255 when the slice is off by
+seven rows. The score runs in `android.yml` and its output is committed with the evidence.
+
+**What this number does not say yet.** It was taken on `evidence/ci/shot-world.png` from run
+`44889003065`, which is build 0.3.7 -- before the light reached the model path. The next
+android run rescores the build that has it. No claim of parity is made here: 32.85 of 255
+mean absolute difference is a measurement, not a verdict.
+
 ## 0.3.9-pre: published, verified, and it is the culled window (2026-11-14)
 
 Tag `v0.3.9-pre` at `2946f199`, release run `44889003059`, every job `success`.
