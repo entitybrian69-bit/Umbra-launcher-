@@ -1,4 +1,4 @@
-# Umbra gallery -- 0.3.10, build 9a67e424
+# Umbra gallery -- 0.3.10, build bdd4e580
 
 Six fixed poses in the save this run was given, with the overlay and the hand
 controls switched off. Taken by `tools/emulator_smoke.sh`, phase `gallery`;
