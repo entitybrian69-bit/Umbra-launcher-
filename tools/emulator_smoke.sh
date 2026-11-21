@@ -877,15 +877,55 @@ for frame in identity rot90 rot180 rot270; do
 done
 [ -n "$HAND_MODE" ] || die "hands: no rotation of the slab slot's centre selected it (the world is $(adb logcat -d -s umbra:V 2>/dev/null | grep -c "player: tap, jumping"), jumps so far)"
 say "hands: the hotbar selected the slab: $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "player: hotbar slot 4 selected" | sed 's/.*umbra   : //')"
-# Look down at the ground before breaking: the crosshair has to be on a block within
-# reach, and a level gaze at the horizon reaches nothing.
-# The drag is in surface pixels too, and the surface is what the app logged.
 SURF="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "hud: hand hotbar 0 at " | sed 's/.* on //' | tr -d '\r')"
 SURF_W="${SURF%x*}"
 SURF_H="${SURF#*x}"
 case "$SURF_W" in ''|*[!0-9]*) SURF_W="$P_WIDTH" ;; esac
 case "$SURF_H" in ''|*[!0-9]*) SURF_H="$P_HEIGHT" ;; esac
 say "hands: the surface is ${SURF_W}x${SURF_H}, the panel ${DISP_W}x${DISP_H}"
+# The inventory: the hand is five slots and the jar names a thousand blocks, so the panel
+# is the only way to the rest of them. Tapped and read back the same way as the hotbar --
+# the app logs the BAGS rect, this taps its centre, and the app answers with what it did.
+tap_hand "bags"
+sleep 1
+if adb logcat -d -s umbra:V 2>/dev/null | grep -q "inventory: opened for slot"; then
+    say "inventory: $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "inventory: opened for slot" \
+        | sed 's/.*umbra   : //')"
+else
+    die "inventory: the BAGS button did not open the panel: $(adb logcat -d -s umbra:V 2>/dev/null | grep "player: \(break\|place\) tapped" | tail -2 | tr '\n' '|')"
+fi
+# The panel lists the jar's blocks; a tap on the first tile must fill a slot with one.
+# The tile's rect is read back from the log, so the tap lands on the tile the app drew
+# and not on a coordinate this script guessed.
+TILE_HIT=0
+TILE_RECT="$(hand_rect "inventory tile 0")"
+if [ -n "$TILE_RECT" ]; then
+    set -- $(hand_centre "$TILE_RECT")
+    set -- $(hand_tap_xy "${HAND_MODE:-identity}" "$1" "$2")
+    adb shell input tap "$1" "$2" > /dev/null 2>&1 || true
+    sleep 1
+    adb logcat -d -s umbra:V 2>/dev/null | grep -q "inventory: slot .* <- " && TILE_HIT=1
+fi
+if [ "$TILE_HIT" = 1 ]; then
+    say "inventory: $(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 "inventory: slot .* <- " \
+        | sed 's/.*umbra   : //')"
+else
+    err "inventory: no tile took a tap (rect '${TILE_RECT}', mode '${HAND_MODE}', surface ${SURF_W}x${SURF_H})"
+fi
+# And close it again: a tap outside the panel, at the bottom of the screen where the
+# hand controls are -- and the panel takes the tap first, so this closes it rather than
+# selecting a slot. A panel that cannot be closed is a screen a phone cannot get out of.
+set -- $(hand_tap_xy "${HAND_MODE:-identity}" $(( SURF_W / 2 )) $(( SURF_H - 12 )))
+adb shell input tap "$1" "$2" > /dev/null 2>&1 || true
+sleep 1
+if adb logcat -d -s umbra:V 2>/dev/null | grep -q "inventory: closed by a tap outside it"; then
+    say "inventory: closed by a tap outside it"
+else
+    err "inventory: the panel did not close on a tap outside it"
+fi
+# Look down at the ground before breaking: the crosshair has to be on a block within
+# reach, and a level gaze at the horizon reaches nothing.
+# The drag is in surface pixels too, and the surface is what the app logged.
 set -- $(hand_tap_xy "$HAND_MODE" $(( SURF_W / 3 )) $(( SURF_H / 2 )))
 LD_X="$1"; LD_Y="$2"
 set -- $(hand_tap_xy "$HAND_MODE" $(( SURF_W / 3 )) $(( SURF_H * 3 / 4 )))

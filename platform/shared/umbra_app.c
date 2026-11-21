@@ -1534,6 +1534,8 @@ int umbra_app_init(umbra_app *app) {
     // its own nothing here: a 0 that means "index 0" would fill the hand on the first
     // frame.
     app->inv_wanted_all = -1;
+    app->inv_logged_width = -1;
+    app->inv_logged_page = -1;
     app->inv_open = 0;
     app->inv_page = 0;
     app->inv_slot = 0;
@@ -3051,6 +3053,9 @@ static void draw_hands(umbra_app *app) {
         umbra_rect sr = umbra_hud_sneak(app->width, app->height, app->insets, s);
         umbra_log(app, "hud: hand sneak at %d,%d size %dx%d on %dx%d (held)",
                   (int)sr.x, (int)sr.y, (int)sr.w, (int)sr.h, app->width, app->height);
+        umbra_rect br = umbra_hud_inv_button(app->width, app->height, app->insets, s);
+        umbra_log(app, "hud: hand bags at %d,%d size %dx%d on %dx%d",
+                  (int)br.x, (int)br.y, (int)br.w, (int)br.h, app->width, app->height);
     }
     for (int i = 0; i < UMBRA_HOTBAR_SLOTS; i++) {
         umbra_rect r = umbra_hud_hotbar_slot(i, app->width, app->height, app->insets, s);
@@ -3115,6 +3120,25 @@ static void draw_hands(umbra_app *app) {
 static void draw_inventory(umbra_app *app) {
     if (!app->inv_open) return;
     if (app->mesh_state == 1) return;
+    // The panel's rects are logged the way the hand controls' are -- once, and again on
+    // a new page or a new screen size -- so the automated run taps the first tile by
+    // reading its rect back instead of guessing where a fifth of the way in lands.
+    if (app->inv_logged_width != app->width || app->inv_logged_page != app->inv_page) {
+        app->inv_logged_width = app->width;
+        app->inv_logged_page = app->inv_page;
+        umbra_rect pn = umbra_hud_inv_panel(app->width, app->height, app->insets);
+        umbra_log(app, "hud: inventory panel at %d,%d size %dx%d on %dx%d",
+                  (int)pn.x, (int)pn.y, (int)pn.w, (int)pn.h, app->width, app->height);
+        umbra_rect t0 = umbra_hud_inv_tile(0, app->width, app->height, app->insets);
+        umbra_log(app, "hud: inventory tile 0 at %d,%d size %dx%d on %dx%d",
+                  (int)t0.x, (int)t0.y, (int)t0.w, (int)t0.h, app->width, app->height);
+        for (int b = 0; b < 2; b++) {
+            umbra_rect q = umbra_hud_inv_page_button(b, app->width, app->height, app->insets);
+            umbra_log(app, "hud: inventory page %s at %d,%d size %dx%d on %dx%d",
+                      b == 0 ? "back" : "more", (int)q.x, (int)q.y, (int)q.w, (int)q.h,
+                      app->width, app->height);
+        }
+    }
     int64_t total = umbra_hotbar_total();
     int pages = umbra_hud_inv_pages(total);
     if (app->inv_page >= pages) app->inv_page = pages - 1;
@@ -4418,6 +4442,8 @@ void umbra_app_touch_id(umbra_app *app, int32_t id, int32_t x, int32_t y, int32_
                 app->inv_open = 1;
                 app->inv_page = 0;
                 app->inv_slot = app->hotbar_sel;
+                // Log the panel's rects again for this open: the run taps them back.
+                app->inv_logged_width = -1;
                 app->tap_used = 1;
                 umbra_log(app, "inventory: opened for slot %d (%lld block(s) in the list)",
                           app->inv_slot, (long long)umbra_hotbar_total());

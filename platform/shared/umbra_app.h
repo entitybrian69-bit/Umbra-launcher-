@@ -136,6 +136,8 @@ struct umbra_app {
     // A tile tap that has been asked for but not yet applied: the same rule as
     // `act_wanted`, the write happens between frames and not inside event dispatch.
     int inv_wanted_all;         // index into the whole list, or -1
+    int inv_logged_width;       // the width the panel's rects were last logged at
+    int inv_logged_page;
     int act_wanted;
     char act_text[96];
     int act_edits;              // how many blocks were changed this session
