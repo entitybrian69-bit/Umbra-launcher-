@@ -1,26 +1,26 @@
 host: aarch64
 compiler: cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
-run: 44891877038
-commit: 8678e88743af758a19a2316bc0ae0ba8b92961bc
+run: 44896127030
+commit: 4bc3bcd4cb376cf81b59504da101435adef64aea
 note: this is the host test suite on ARM, not the Android arm64 .so
 
 png: 10 images decoded to their expected RGBA, 4 broken refused
 PASS png (164 checks)
 nbt: parsed and rewrote level.dat byte for byte, 4 broken files refused
 PASS nbt (207 checks)
-PASS region (248 checks)
-PASS json (313 checks)
+PASS region (256 checks)
+PASS json (321 checks)
 mesh: real chunk -> 35652 vertices, 53478 indices, fnv1a 4f270675
-PASS mesh (365 checks)
-PASS mesh_borders (371 checks)
-PASS mesh_model_counts (376 checks)
-PASS atlas (425 checks)
-PASS models (447 checks)
-PASS modelstore (497 checks)
-PASS raster (507 checks)
-PASS worldzip (602 checks)
-  ws: 2 slices for 16 chunks, worst 152 us
+PASS mesh (373 checks)
+PASS mesh_borders (379 checks)
+PASS mesh_model_counts (384 checks)
+PASS atlas (433 checks)
+PASS models (455 checks)
+PASS modelstore (505 checks)
+PASS raster (515 checks)
+PASS worldzip (610 checks)
+  ws: 2 slices for 16 chunks, worst 256 us
 
-PASS worldstream (675 checks)
+PASS worldstream (683 checks)
 all modules passed
 c-host: goose_exit returned 0
