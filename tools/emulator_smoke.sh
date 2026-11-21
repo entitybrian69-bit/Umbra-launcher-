@@ -1382,11 +1382,25 @@ fi
 # has to be ~20 s to cross one window and ~40 s to cross two. It is 45 s.
 if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     section "stream-fullsize"
+    # Ends the previous phase's app *and every thread in it* before the save is touched.
+    # Run 44851884942 lost the world here: the re-centre phase left an app walking, its
+    # shutdown path re-saved the one-column window it had open over world.zip, and this
+    # phase then opened a 1-chunk save whose "opened:" line begins with a space --
+    # `world:  opened:` -- so its chunk count parsed as 0. A force-stop returns before the
+    # process is gone, so the wait is not politeness.
     adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
-    sleep 1
+    for _i in 1 2 3 4 5 6 7 8 9 10; do
+        [ -z "$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')" ] && break
+        sleep 1
+    done
     adb shell "cp /data/local/tmp/umbra-world.zip '$FILES_W/world.zip'" > /dev/null 2>&1 || true
+    FS_BYTES="$(adb shell stat -c %s '$FILES_W/world.zip' 2>/dev/null | tr -d '\r\n')"
+    say "stream-fullsize: the save on the phone is ${FS_BYTES:-?} bytes (the run's own world.zip is $(stat -c %s "${WORLD_ZIP:-/dev/null}" 2>/dev/null || echo ?) bytes)"
+    [ "${FS_BYTES:-0}" -gt 1000000 ] || die "stream-fullsize: world.zip is ${FS_BYTES:-0} bytes, so the save the run was given is not there any more"
     # The default radius: this phase must measure the window the app ships with.
     adb shell "rm -f '$FILES_W/radius.txt'" > /dev/null 2>&1 || true
+    FS_R="$(adb shell "cat '$FILES_W/radius.txt' 2>/dev/null" | tr -d '\r\n')"
+    [ -z "$FS_R" ] || die "stream-fullsize: radius.txt still says '$FS_R', so this phase would measure a window that is not the shipped default"
     adb logcat -c > /dev/null 2>&1 || true
     LAUNCH="$(launch_app stream-fullsize-launch.log)" || die "stream-fullsize: the app would not start: $LAUNCH"
     say "stream-fullsize: $LAUNCH"
@@ -1397,10 +1411,14 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         sleep 3
     done
     [ "$OPENED" = 1 ] || die "stream-fullsize: the world never finished its first window: $(adb logcat -d -s umbra:V 2>/dev/null | grep -E 'stream:|world: ' | tail -3 | tr '\n' '|')"
+    sleep 1
     OPEN_LINE="$(adb logcat -d -s umbra:V 2>/dev/null | grep -m1 'world: opened:' | sed 's/.*umbra *: //')"
-    say "stream-fullsize: $OPEN_LINE"
-    FS_CHUNKS="$(printf '%s\n' "${OPEN_LINE#*opened: }" | sed 's/ .*//')"
-    [ "${FS_CHUNKS:-0}" -ge 50 ] || die "stream-fullsize: the window is ${FS_CHUNKS:-0} chunks, and this phase is about the full-size window (radius 4 is 81)"
+    say "stream-fullsize: ${OPEN_LINE:-no open line}"
+    # `world: opened: 81 chunk(s) ...`, and the app logs `world:  opened:` with two spaces
+    # when the import deferred every chunk. Split on whitespace rather than on the first
+    # space after the colon, which read the empty string as the count.
+    FS_CHUNKS="$(printf '%s\n' "$OPEN_LINE" | tr ' ' '\n' | grep -m1 -E '^[0-9]+$')"
+    [ "${FS_CHUNKS:-0}" -ge 50 ] || die "stream-fullsize: the window is '${FS_CHUNKS:-none}' chunks from '${OPEN_LINE:-no line}', and this phase is about the full-size window (radius 4 is 81)"
     # Wait for the mesh: a world still meshing refuses input.
     MESHED=0
     DEADLINE=$((SECONDS + 300))
