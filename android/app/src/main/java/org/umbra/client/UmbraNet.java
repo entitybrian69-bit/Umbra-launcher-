@@ -21,13 +21,18 @@ import android.app.NativeActivity;
 import android.content.ContentResolver;
 import android.content.Intent;
 import android.net.Uri;
+import android.database.Cursor;
+import android.provider.DocumentsContract;
 import android.util.Log;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import java.net.URL;
 
 public class UmbraNet {
@@ -124,7 +129,9 @@ public class UmbraNet {
     private static final Object LOCK = new Object();
     private static Uri sPicked = null;
     private static boolean sPicking = false;
-    private static int sRequest = 0x554D42;   // "UMB"
+    private static int sRequest = 0x554D42;      // "UMB": one file
+    private static int sTreeRequest = 0x554D43;  // "UMB" + 1: a folder of one
+    private static int sZipEntries = 0;          // region files the folder pick wrote
 
     public static void pick(Activity activity, String[] mimeTypes) {
         synchronized (LOCK) {
@@ -155,11 +162,167 @@ public class UmbraNet {
 
     /** Called by UmbraActivity when the picker answers. */
     public static void delivered(int requestCode, int resultCode, Intent data) {
-        if (requestCode != sRequest) return;
+        if (requestCode != sRequest && requestCode != sTreeRequest) return;
         synchronized (LOCK) {
             sPicked = (resultCode == Activity.RESULT_OK && data != null) ? data.getData() : null;
             sPicking = false;
             LOCK.notifyAll();
+        }
+    }
+
+    /**
+     * Picks a *folder* -- a save's own directory, as it sits in the phone's storage --
+     * and writes a zip of its region files to dest.
+     *
+     * Why this exists beside the zip picker: the owner's world on a phone is a folder
+     * (Android/data/com.mojang.minecraftpe/files/games/com.mojang/minecraftWorlds/<name>),
+     * and asking them to zip it first is asking them to do the app's job with a file
+     * manager. ACTION_OPEN_DOCUMENT_TREE grants a whole subtree, so the app can read the
+     * region files out of it directly.
+     *
+     * The zip is written here rather than handed to the native side as a folder because the
+     * native importer reads one archive and has been tested against real saves that way; a
+     * second entry point into the reader would be a second thing to get wrong. What comes
+     * out is the same archive the picker would have produced.
+     *
+     * Returns the bytes written, or -1 if nothing was picked, or negative with lastError().
+     */
+    public static long pickFolderWorldAndZip(Activity activity, String dest) {
+        Uri tree;
+        synchronized (LOCK) {
+            sPicked = null;
+            sPicking = true;
+        }
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        try {
+            activity.startActivityForResult(intent, sTreeRequest);
+        } catch (Exception e) {
+            synchronized (LOCK) {
+                sPicking = false;
+                sError = "no folder picker on this device: " + e.getMessage();
+                LOCK.notifyAll();
+            }
+            return -2;
+        }
+        synchronized (LOCK) {
+            long deadline = System.currentTimeMillis() + 300000;
+            while (sPicking) {
+                long left = deadline - System.currentTimeMillis();
+                if (left <= 0) break;
+                try { LOCK.wait(left); } catch (InterruptedException e) { break; }
+            }
+            tree = sPicked;
+            sPicked = null;
+            sPicking = false;
+        }
+        if (tree == null) return -1;
+        return zipTreeRegion(activity, tree, dest);
+    }
+
+    /**
+     * Zips every .mca file under the picked tree's `region` folder into dest, at the paths
+     * the importer expects (`region/r.x.z.mca`). Returns the archive's size, or negative
+     * with lastError() set.
+     *
+     * The save's folder may be the world itself or a parent of it (a player who picks
+     * `minecraftWorlds` rather than one world), so the tree is searched for a `region`
+     * directory rather than assumed to be one. Nothing outside that folder is read: a
+     * world's `level.dat`, `playerdata` and `DIM-1` are not what this app draws.
+     *
+     * Written against DocumentsContract rather than androidx.documentfile.provider.
+     * DocumentFile: this app has no dependencies at all, and adding one for a directory
+     * listing is not a trade worth making.
+     */
+    public static long zipTreeRegion(Activity activity, Uri tree, String dest) {
+        Cursor c = null;
+        ZipOutputStream zos = null;
+        try {
+            String treeId = DocumentsContract.getTreeDocumentId(tree);
+            String regionParent = findRegionParent(activity, tree, treeId, 0);
+            if (regionParent == null) {
+                sError = "no region folder in the picked folder -- pick the world's own "
+                       + "folder (the one that contains region/)";
+                return -3;
+            }
+            Uri regionUri = DocumentsContract.buildChildDocumentsUriUsingTree(tree, regionParent);
+            File tmp = new File(dest);
+            zos = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(tmp)));
+            c = activity.getContentResolver().query(regionUri, new String[]{
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                    DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null);
+            if (c == null) { sError = "the region folder could not be listed"; return -4; }
+            byte[] buf = new byte[65536];
+            int count = 0;
+            while (c.moveToNext()) {
+                String id = c.getString(0);
+                String name = c.getString(1);
+                String mime = c.getString(2);
+                if (name == null || !name.endsWith(".mca")) continue;
+                if (mime != null && DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) continue;
+                Uri file = DocumentsContract.buildDocumentUriUsingTree(tree, id);
+                InputStream in = activity.getContentResolver().openInputStream(file);
+                if (in == null) continue;
+                zos.putNextEntry(new ZipEntry("region/" + name));
+                int n;
+                while ((n = in.read(buf)) > 0) { zos.write(buf, 0, n); sGot += n; }
+                in.close();
+                zos.closeEntry();
+                count++;
+            }
+            zos.close();
+            zos = null;
+            if (count == 0) { sError = "the region folder holds no .mca files"; return -5; }
+            sZipEntries = count;
+            return tmp.length();
+        } catch (Exception e) {
+            String m = e.getMessage();
+            sError = (m == null || m.isEmpty()) ? e.getClass().getSimpleName() : m;
+            return -6;
+        } finally {
+            if (c != null) { try { c.close(); } catch (Exception ignored) { } }
+            if (zos != null) { try { zos.close(); } catch (Exception ignored) { } }
+        }
+    }
+
+    /**
+     * The document id of the first `region` directory at or below this one, or null.
+     *
+     * The world folder is checked for a `region` child first, which is the common case and
+     * avoids walking every file in a large world's parent; the recursion is depth-limited
+     * because a picked tree can be a whole storage volume.
+     */
+    private static String findRegionParent(Activity activity, Uri tree, String parentId, int depth) {
+        if (depth > 2) return null;
+        Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, parentId);
+        Cursor c = null;
+        try {
+            c = activity.getContentResolver().query(children, new String[]{
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                    DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null);
+            if (c == null) return null;
+            java.util.ArrayList<String> dirs = new java.util.ArrayList<String>();
+            while (c.moveToNext()) {
+                String id = c.getString(0);
+                String name = c.getString(1);
+                String mime = c.getString(2);
+                if (mime == null || !DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) continue;
+                if ("region".equals(name)) return id;
+                dirs.add(id);
+            }
+            c.close();
+            c = null;
+            for (String id : dirs) {
+                String got = findRegionParent(activity, tree, id, depth + 1);
+                if (got != null) return got;
+            }
+            return null;
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (c != null) { try { c.close(); } catch (Exception ignored) { } }
         }
     }
 

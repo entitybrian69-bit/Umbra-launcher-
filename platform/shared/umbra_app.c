@@ -1530,6 +1530,13 @@ int umbra_app_init(umbra_app *app) {
     app->fov_y = 55.0f;
     app->touch_look_id = -1;
     app->touch_walk_id = -1;
+    // The app struct is memset to zero, so every "nothing wanted" flag has to be set to
+    // its own nothing here: a 0 that means "index 0" would fill the hand on the first
+    // frame.
+    app->inv_wanted_all = -1;
+    app->inv_open = 0;
+    app->inv_page = 0;
+    app->inv_slot = 0;
     // The result files sit next to the log, so their names have to be known
     // before the start-up read: this line is the whole 0.3.1 last-run bug.
     set_run_paths(app);
@@ -2688,6 +2695,27 @@ static void player_log_position(umbra_app *app) {
               app->player.sneaking ? ", sneaking" : "");
 }
 
+// A tile tapped in the inventory: put that block into the slot the panel was opened
+// on. Applied between frames for the same reason an edit is -- nothing here touches the
+// world, but the rule should not depend on which of the two happened first.
+static void inv_apply(umbra_app *app) {
+    if (app->inv_wanted_all < 0) return;
+    int all = app->inv_wanted_all;
+    app->inv_wanted_all = -1;
+    int64_t ok = umbra_hotbar_set_slot((int64_t)app->inv_slot, (int64_t)all);
+    const uint8_t *nm = NULL;
+    int64_t nm_len = 0;
+    nm = umbra_hotbar_name((int64_t)app->inv_slot, &nm_len);
+    char name[48];
+    int k = 0;
+    for (int64_t i = 0; i < nm_len && k + 1 < (int)sizeof name; i++) {
+        name[k++] = (char)nm[i];
+    }
+    name[k] = 0;
+    umbra_log(app, "inventory: slot %d <- %s (block %d of the list, %s)", app->inv_slot,
+              name, all, ok ? "taken" : "refused");
+}
+
 // The block under the crosshair: what the ray from the eye hits, and what the two
 // buttons do to it. The work is Goose's (ray, edit, re-mesh); this only carries the
 // eye and the look direction and reports what came back.
@@ -3062,6 +3090,120 @@ static void draw_hands(umbra_app *app) {
         hud_text(r.x + (r.w - tw) * 0.5f, r.y + (r.h - UMBRA_HUD_ROW_HEIGHT * ts) * 0.5f,
                  ts, 1, 1, 1, 1, action_names[i]);
     }
+    // The way into the rest of the block list. A hotbar of five is only a choice if the
+    // other nine hundred are somewhere behind it.
+    {
+        umbra_rect r = umbra_hud_inv_button(app->width, app->height, app->insets, s);
+        int on = app->inv_open;
+        hud_rect(r.x, r.y, r.w, r.h, on ? 0.2f : 0.25f, on ? 0.5f : 0.3f, on ? 0.9f : 0.35f, 0.55f);
+        char label[32];
+        int64_t total = umbra_hotbar_total();
+        if (total > 999) {
+            snprintf(label, sizeof label, "BAGS 999+");
+        } else {
+            snprintf(label, sizeof label, "BAGS %lld", (long long)total);
+        }
+        float ts = text_s * 0.75f;
+        float tw = hud_text_width(label, ts);
+        hud_text(r.x + (r.w - tw) * 0.5f, r.y + (r.h - UMBRA_HUD_ROW_HEIGHT * ts) * 0.5f,
+                 ts, 1, 1, 1, 1, label);
+    }
+}
+
+// The inventory panel: a paged grid of the jar's block list, over the world rather than
+// instead of it. Drawn from the same rects the taps use.
+static void draw_inventory(umbra_app *app) {
+    if (!app->inv_open) return;
+    if (app->mesh_state == 1) return;
+    int64_t total = umbra_hotbar_total();
+    int pages = umbra_hud_inv_pages(total);
+    if (app->inv_page >= pages) app->inv_page = pages - 1;
+    if (app->inv_page < 0) app->inv_page = 0;
+    float text_s = hud_scale(app);
+
+    umbra_rect p = umbra_hud_inv_panel(app->width, app->height, app->insets);
+    hud_rect(p.x, p.y, p.w, p.h, 0.04f, 0.05f, 0.07f, 0.93f);
+
+    // The heading: what is being chosen, and for which slot.
+    int first = app->inv_page * UMBRA_INV_TILES + 1;
+    int last = first + UMBRA_INV_TILES - 1;
+    if (last > (int)total) last = (int)total;
+    char head[64];
+    if (total <= 0) {
+        snprintf(head, sizeof head, "no blocks: load a jar");
+    } else {
+        snprintf(head, sizeof head, "%d-%d of %lld for slot %d", first, last,
+                 (long long)total, app->inv_slot + 1);
+    }
+    float ts = text_s * 0.75f;
+    hud_text(p.x + 8.0f, p.y + 8.0f, ts, 1, 1, 1, 1, head);
+
+    // The tiles. A tile shows the block's short name under a coloured square: the colour
+    // is a stable hash of the name, so a block looks the same every time it is drawn
+    // without an icon path that does not exist yet.
+    for (int i = 0; i < UMBRA_INV_TILES; i++) {
+        int64_t idx = (int64_t)app->inv_page * UMBRA_INV_TILES + i;
+        umbra_rect r = umbra_hud_inv_tile(i, app->width, app->height, app->insets);
+        if (idx >= total) {
+            hud_rect(r.x, r.y, r.w, r.h, 0.08f, 0.08f, 0.1f, 0.6f);
+            continue;
+        }
+        int64_t len = 0;
+        const uint8_t *nm = umbra_hotbar_all_name(idx, &len);
+        char name[28];
+        int n = 0;
+        for (int64_t k = 0; k < len && n + 1 < (int)sizeof name; k++) {
+            name[n++] = (char)nm[k];
+        }
+        name[n] = 0;
+        unsigned h = 2166136261u;
+        for (int k = 0; k < n; k++) {
+            h = (h ^ (unsigned char)name[k]) * 16777619u;
+        }
+        float cr = 0.25f + 0.5f * (float)((h >> 0) & 0xff) / 255.0f;
+        float cg = 0.25f + 0.5f * (float)((h >> 8) & 0xff) / 255.0f;
+        float cb = 0.25f + 0.5f * (float)((h >> 16) & 0xff) / 255.0f;
+        int held = (idx >= 0) && 0;
+        (void)held;
+        hud_rect(r.x, r.y, r.w, r.h, cr, cg, cb, 0.92f);
+        hud_rect(r.x, r.y, r.w, 2.0f, 0.9f, 0.9f, 0.95f, 0.5f);
+        float lt = ts * 0.62f;
+        float lw = hud_text_width(name, lt);
+        if (lw > r.w - 2.0f && n > 3) {
+            // A long name is shortened rather than drawn outside its tile.
+            int cut = n;
+            while (cut > 3 && hud_text_width(name, lt) > r.w - 2.0f) {
+                cut--;
+                name[cut] = 0;
+            }
+        }
+        lw = hud_text_width(name, lt);
+        hud_text(r.x + (r.w - lw) * 0.5f, r.y + r.h - UMBRA_HUD_ROW_HEIGHT * lt - 1.0f,
+                 lt, 1, 1, 1, 1, name);
+    }
+
+    // The strips: page buttons, and the page number between them.
+    static const char *page_names[2] = { "< BACK", "MORE >" };
+    for (int i = 0; i < 2; i++) {
+        umbra_rect r = umbra_hud_inv_page_button(i, app->width, app->height, app->insets);
+        int live = (i == 0) ? app->inv_page > 0 : app->inv_page + 1 < pages;
+        hud_rect(r.x, r.y, r.w, r.h, live ? 0.2f : 0.1f, live ? 0.35f : 0.1f,
+                 live ? 0.6f : 0.12f, 0.7f);
+        float pts = text_s * 0.7f;
+        float pw = hud_text_width(page_names[i], pts);
+        hud_text(r.x + (r.w - pw) * 0.5f, r.y + (r.h - UMBRA_HUD_ROW_HEIGHT * pts) * 0.5f,
+                 pts, live ? 1.0f : 0.5f, live ? 1.0f : 0.5f, live ? 1.0f : 0.5f, 1,
+                 page_names[i]);
+    }
+    char page[32];
+    snprintf(page, sizeof page, "%d/%d", app->inv_page + 1, pages);
+    float pgs = text_s * 0.7f;
+    float pgw = hud_text_width(page, pgs);
+    umbra_rect mid = umbra_hud_inv_page_button(0, app->width, app->height, app->insets);
+    umbra_rect mid2 = umbra_hud_inv_page_button(1, app->width, app->height, app->insets);
+    float midx = (mid.x + mid.w + mid2.x) * 0.5f;
+    hud_text(midx - pgw * 0.5f, mid.y + (mid.h - UMBRA_HUD_ROW_HEIGHT * pgs) * 0.5f, pgs,
+             1, 1, 1, 1, page);
 }
 
 // --- the "get game files" screen -----------------------------------------
@@ -3892,6 +4034,7 @@ static void draw_hud(umbra_app *app) {
     }
     if (!app->gallery_hide_hud) {
         draw_hands(app);
+        draw_inventory(app);
         hud_flush(app);
     }
 }
@@ -3938,6 +4081,7 @@ void umbra_app_frame(umbra_app *app) {
     world_pump(app);
     int64_t pump_us = umbra_now_us() - pump_t0;
     int64_t act_t0 = umbra_now_us();
+    inv_apply(app);
     player_act(app);
     int64_t act_us = umbra_now_us() - act_t0;
     if (app->gf_pending_open && app->width >= 320 && app->mesh_state == 2) {
@@ -4234,6 +4378,51 @@ void umbra_app_touch_id(umbra_app *app, int32_t id, int32_t x, int32_t y, int32_
         // The hotbar and the two action buttons take the tap when it lands on them.
         float hs = hand_scale(app);
         if (phase == 0) {
+            // The inventory, when it is open, takes the tap before anything else: it is
+            // drawn over the hand controls, so a tap on it must not reach them. A tap
+            // outside it closes it and does nothing else -- a phone has no escape key.
+            if (app->inv_open) {
+                int tile = umbra_hud_inv_tile_hit(x, y, app->width, app->height, app->insets);
+                if (tile >= 0) {
+                    int64_t total = umbra_hotbar_total();
+                    int64_t idx = (int64_t)app->inv_page * UMBRA_INV_TILES + tile;
+                    if (idx < total) {
+                        app->inv_wanted_all = (int)idx;
+                        app->tap_used = 1;
+                        umbra_log(app, "inventory: tile %d tapped (block %lld)", tile,
+                                  (long long)idx);
+                    }
+                    return;
+                }
+                int pg = umbra_hud_inv_page_hit(x, y, app->width, app->height, app->insets);
+                if (pg >= 0) {
+                    int pages = umbra_hud_inv_pages(umbra_hotbar_total());
+                    if (pg == 0 && app->inv_page > 0) app->inv_page--;
+                    if (pg == 1 && app->inv_page + 1 < pages) app->inv_page++;
+                    app->tap_used = 1;
+                    umbra_log(app, "inventory: page %d of %d", app->inv_page + 1, pages);
+                    return;
+                }
+                if (!umbra_hud_inv_inside(x, y, app->width, app->height, app->insets)) {
+                    app->inv_open = 0;
+                    app->tap_used = 1;
+                    umbra_log(app, "inventory: closed by a tap outside it");
+                    return;
+                }
+                // Inside the panel but on none of its parts: swallowed, so a tap between
+                // two tiles does not also swing at the world.
+                app->tap_used = 1;
+                return;
+            }
+            if (umbra_hud_inv_button_hit(x, y, app->width, app->height, app->insets, hs)) {
+                app->inv_open = 1;
+                app->inv_page = 0;
+                app->inv_slot = app->hotbar_sel;
+                app->tap_used = 1;
+                umbra_log(app, "inventory: opened for slot %d (%lld block(s) in the list)",
+                          app->inv_slot, (long long)umbra_hotbar_total());
+                return;
+            }
             int slot = umbra_hud_hotbar_hit(x, y, app->width, app->height, app->insets, hs);
             if (slot >= 0) {
                 app->hotbar_sel = (int)umbra_hotbar_select((int64_t)slot);
@@ -4270,8 +4459,13 @@ void umbra_app_touch_id(umbra_app *app, int32_t id, int32_t x, int32_t y, int32_
                 return;
             }
         } else if (phase == 1) {
-            // A finger that started on a hand control does not also turn the head.
+            // A finger that started on a hand control, or on the inventory, does not also
+            // turn the head.
             if (app->tap_used) return;
+            if (app->inv_open &&
+                umbra_hud_inv_inside(x, y, app->width, app->height, app->insets)) {
+                return;
+            }
         }
     }
     if (!app->player_on) {

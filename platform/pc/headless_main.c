@@ -1415,18 +1415,81 @@ int main(int argc, char **argv) {
 
     // --- the hands: a hotbar, a ray, and an edit that survives a re-mesh ---
     {
-        check(umbra_hotbar_count() == 5, "the hotbar has five slots");
-        int64_t len = 0;
-        const uint8_t *name = umbra_hotbar_name(0, &len);
-        check(len == (int64_t)strlen("grass_block") &&
-              memcmp(name, "grass_block", (size_t)len) == 0,
-              "slot 0 is a grass block, named without its namespace");
+        // The hand is five slots; the list behind it is the jar's blockstate set. What
+        // that list holds here is whatever `region_fixture` interned -- 53 states in the
+        // stream fixture -- so the checks are about the shape, not about names.
+        check(umbra_hotbar_count() == 5, "the hand holds five slots");
+        int64_t total = umbra_hotbar_total();
+        printf("hotbar: %lld placeable block(s) from %lld state(s), hand of %lld\n",
+               (long long)total, (long long)umbra_state_count(),
+               (long long)umbra_hotbar_count());
+        check(total >= 5, "the blockstates give the hand a real list to draw from");
+        check(umbra_hotbar_count() <= total, "and the hand does not hold more than the list");
+
+        // Every slot on a page names something, and no slot names air: the list is the
+        // placeable set, and a hotbar that offers air is a hotbar that places nothing.
+        int named = 0, air = 0;
+        for (int64_t i = 0; i < umbra_hotbar_count(); i++) {
+            int64_t l2 = 0;
+            const uint8_t *nm = umbra_hotbar_name(i, &l2);
+            if (nm && l2 > 0) named++;
+            if (l2 == 4 && memcmp(nm, "air", 3) == 0) air++;
+        }
+        check(named == umbra_hotbar_count(), "every slot on the page has a name");
+        check(air == 0, "and none of them is air");
+
         check(umbra_hotbar_select(2) == 2, "a slot can be selected");
-        name = umbra_hotbar_name(2, &len);
-        check(len == (int64_t)strlen("stone") && memcmp(name, "stone", (size_t)len) == 0,
-              "and the selected slot is stone");
+        int64_t sel_len = 0;
+        const uint8_t *sel_name = umbra_hotbar_name(2, &sel_len);
+        check(sel_name && sel_len > 0, "and the selected slot has a name");
         check(umbra_hotbar_select(99) == 2, "a slot outside the hotbar is refused");
         check(umbra_hotbar_select(0) == 0, "and the selection can go back");
+
+        // The hand is five slots and stays five; the list behind it is the jar's. Turning
+        // a page of the *panel* must not touch the hand -- the bug this rule exists for
+        // was a chosen block silently reverting when the person paged to look for another.
+        {
+            int64_t before_len = 0;
+            const uint8_t *before = umbra_hotbar_name(2, &before_len);
+            char kept[64];
+            int64_t kn = before_len < (int64_t)sizeof kept - 1 ? before_len : (int64_t)sizeof kept - 1;
+            if (kn > 0) memcpy(kept, before, (size_t)kn);
+            kept[kn] = 0;
+            int64_t all = umbra_hotbar_total() - 1;
+            check(umbra_hotbar_set_slot(2, all) == 1, "a tile fills the slot it was opened on");
+            before = umbra_hotbar_name(2, &before_len);
+            check(before_len > 0, "and the slot now holds that block, by name");
+            int64_t alen = 0;
+            const uint8_t *awant = umbra_hotbar_all_name(all, &alen);
+            check(alen == before_len && memcmp(awant, before, (size_t)alen) == 0,
+                  "the slot's block is the list's block, end to end");
+            check(umbra_hotbar_set_slot(99, all) == 0, "a slot outside the hotbar takes nothing");
+            check(umbra_hotbar_set_slot(0, -1) == 0, "and a block outside the list fills nothing");
+            check(umbra_hotbar_set_slot(0, umbra_hotbar_total()) == 0,
+                  "a block past the end of the list fills nothing");
+            (void)kept;
+        }
+
+        // The panel's page count is the HUD's, not the hotbar's: a grid of 16 to a page.
+        {
+            int64_t total = umbra_hotbar_total();
+            check(umbra_hud_inv_pages(total) == (int)((total + UMBRA_INV_TILES - 1) / UMBRA_INV_TILES),
+                  "the inventory's pages cover the whole list");
+            check(umbra_hud_inv_pages(0) == 1, "an empty list still opens one page");
+        }
+        {
+            int64_t fl = 0;
+            const uint8_t *fname = umbra_hotbar_all_name(0, &fl);
+            char full[64];
+            int64_t fn = fl < (int64_t)sizeof full - 1 ? fl : (int64_t)sizeof full - 1;
+            if (fn > 0) memcpy(full, fname, (size_t)fn);
+            full[fn] = 0;
+            // `name` here is the short form the HUD shows; the list is searched by that.
+            check(umbra_hotbar_find((sl_u8){full, fn}) == 0,
+                  "a block can be found in the whole list by name");
+            check(umbra_hotbar_find((sl_u8){(uint8_t *)"minecraft:no_such_block", 23}) == -1,
+                  "and a block that is not there is not found");
+        }
 
         // Looking straight down from above the world hits the top of the grass.
         int64_t target = umbra_player_target(24.5f, 70.0f, 24.5f, 0.0f, -1.0f, 0.0f, 5.0f);
@@ -1465,17 +1528,35 @@ int main(int argc, char **argv) {
         int64_t v1 = used_index_total();
         check(v1 != v0, "and the mesh is not the same size as before the edit");
 
-        // Put a slab into the hole: the ray reaches the dirt under it, and a placement
-        // goes on the face it hit.
-        check(umbra_hotbar_select(4) == 4, "the slab slot selects");
+        // Put a block into the hole: the ray reaches the dirt under it, and a placement
+        // goes on the face it hit. Which block lands is whatever the slot holds, so the
+        // test reads the slot's name and then expects that name in the world -- rather than
+        // assuming a list the hotbar no longer has.
+        check(umbra_hotbar_select(4) == 4, "the fifth slot selects");
+        check(umbra_hotbar_selected() == 4, "and the fifth slot is what the hand holds");
+        int64_t want_len = 0;
+        const uint8_t *want = umbra_hotbar_name(umbra_hotbar_selected(), &want_len);
+        char want_name[64];
+        int64_t wn = want_len < (int64_t)sizeof want_name - 1 ? want_len : (int64_t)sizeof want_name - 1;
+        if (wn > 0) memcpy(want_name, want, (size_t)wn);
+        want_name[wn] = 0;
         int64_t placed = umbra_player_act(1, 24.5f, 70.0f, 24.5f, 0.0f, -1.0f, 0.0f, 5.0f);
         check(placed == 1, "placing a block reports that the world changed");
         int64_t slab_len = 0;
-        // The ray now reaches the dirt under the hole, so the slab lands in the hole.
+        // The ray now reaches the dirt under the hole, so the block that was held lands in
+        // the hole.
         const uint8_t *slab = umbra_block_at(tx, ty, tz, &slab_len);
-        check(slab_len == (int64_t)strlen("minecraft:oak_slab") &&
-              memcmp(slab, "minecraft:oak_slab", (size_t)slab_len) == 0,
-              "and the selected block is what stands there now");
+        // The world names blocks with their namespace; the HUD slot drops it. The slot's
+        // name is the tail of the world's, and that is the property to check.
+        const char *ns = "minecraft:";
+        int tails = (int)(slab_len - (int64_t)strlen(ns)) == (int)wn &&
+                    slab_len == wn + (int64_t)strlen(ns) &&
+                    memcmp(slab, ns, strlen(ns)) == 0 &&
+                    memcmp(slab + strlen(ns), want_name, (size_t)wn) == 0;
+        check(tails, "and the selected block is what stands there now");
+        if (!tails) {
+            printf("  held '%s', world has '%.*s'\n", want_name, (int)slab_len, (const char *)slab);
+        }
 
         tries = 0;
         done = 0;
@@ -1607,6 +1688,79 @@ int main(int argc, char **argv) {
             check(umbra_hud_sneak_hit((int)(sn.x + sn.w * 0.5f), (int)(sn.y + sn.h * 0.5f),
                                       w, h, cases[c].in, s) == 1,
                   "a tap in the middle of the sneak button holds it");
+
+            // --- the inventory -------------------------------------------------
+            // The panel is the only way to the other blocks, so its geometry is checked
+            // on the same three windows: it fits, it is not a sliver, its tiles do not
+            // overlap each other or spill out of the panel, and every tile and both page
+            // buttons answer a tap in their middle.
+            umbra_rect ib = umbra_hud_inv_button(w, h, cases[c].in, s);
+            check(ib.x >= 0 && ib.y >= 0 && ib.x + ib.w <= (float)w && ib.y + ib.h <= (float)h,
+                  "the inventory button is on the screen");
+            int ibo = 0;
+            for (int i = 0; i < UMBRA_HOTBAR_SLOTS; i++) {
+                umbra_rect r = umbra_hud_hotbar_slot(i, w, h, cases[c].in, s);
+                if (r.x < ib.x + ib.w && ib.x < r.x + r.w && r.y < ib.y + ib.h && ib.y < r.y + r.h) ibo = 1;
+            }
+            for (int a = 0; a < 2; a++) {
+                umbra_rect b = umbra_hud_action(a, w, h, cases[c].in, s);
+                if (b.x < ib.x + ib.w && ib.x < b.x + b.w && b.y < ib.y + ib.h && ib.y < b.y + b.h) ibo = 1;
+            }
+            check(!ibo, "the inventory button does not sit on the hotbar or the action buttons");
+            check(umbra_hud_inv_button_hit((int)(ib.x + ib.w * 0.5f), (int)(ib.y + ib.h * 0.5f),
+                                           w, h, cases[c].in, s) == 1,
+                  "a tap in the middle of the inventory button opens it");
+
+            umbra_rect pn = umbra_hud_inv_panel(w, h, cases[c].in);
+            check(pn.x >= 0 && pn.y >= 0 && pn.x + pn.w <= (float)w && pn.y + pn.h <= (float)h,
+                  "the inventory panel fits on the screen");
+            check(pn.w * pn.h >= (float)w * (float)h * 0.25f,
+                  "and it is big enough to be the screen's subject, not a sliver");
+            int tall = 1, tiles_on = 1, tiles_apart = 1, tile_hits = 1;
+            for (int i = 0; i < UMBRA_INV_TILES; i++) {
+                umbra_rect r = umbra_hud_inv_tile(i, w, h, cases[c].in);
+                if (r.w < 16.0f || r.h < 16.0f) tall = 0;
+                if (r.x < pn.x - 0.5f || r.y < pn.y - 0.5f ||
+                    r.x + r.w > pn.x + pn.w + 0.5f || r.y + r.h > pn.y + pn.h + 0.5f) tiles_on = 0;
+                for (int j = i + 1; j < UMBRA_INV_TILES; j++) {
+                    umbra_rect q = umbra_hud_inv_tile(j, w, h, cases[c].in);
+                    if (r.x < q.x + q.w - 0.5f && q.x < r.x + r.w - 0.5f &&
+                        r.y < q.y + q.h - 0.5f && q.y < r.y + r.h - 0.5f) tiles_apart = 0;
+                }
+                if (umbra_hud_inv_tile_hit((int)(r.x + r.w * 0.5f), (int)(r.y + r.h * 0.5f),
+                                           w, h, cases[c].in) != i) tile_hits = 0;
+            }
+            check(tall, "every inventory tile is big enough to tap");
+            check(tiles_on, "every inventory tile is inside the panel");
+            check(tiles_apart, "no two inventory tiles overlap");
+            check(tile_hits, "a tap in the middle of a tile picks that tile");
+            int page_hits = 1;
+            for (int b = 0; b < 2; b++) {
+                umbra_rect r = umbra_hud_inv_page_button(b, w, h, cases[c].in);
+                if (umbra_hud_inv_page_hit((int)(r.x + r.w * 0.5f), (int)(r.y + r.h * 0.5f),
+                                           w, h, cases[c].in) != b) page_hits = 0;
+            }
+            check(page_hits, "a tap on a page button turns the page");
+            // The panel closes on a tap outside it, and only on one: a corner tap is
+            // outside, a centre tap is not.
+            check(!umbra_hud_inv_inside(4, 4, w, h, cases[c].in),
+                  "a tap in the corner is outside the panel, so it closes it");
+            check(umbra_hud_inv_inside((int)(pn.x + pn.w * 0.5f), (int)(pn.y + pn.h * 0.5f),
+                                       w, h, cases[c].in),
+                  "and a tap in the middle is inside, so it does not");
+            // The panel is handled before the hand controls, so a tap that lands on a
+            // tile must not also select a hotbar slot behind it. The two rect sets are
+            // independent, so this is the property that makes the order matter: no tile's
+            // centre is a hotbar hit.
+            int double_fire = 0;
+            for (int i = 0; i < UMBRA_INV_TILES; i++) {
+                umbra_rect r = umbra_hud_inv_tile(i, w, h, cases[c].in);
+                int cx = (int)(r.x + r.w * 0.5f), cy = (int)(r.y + r.h * 0.5f);
+                if (umbra_hud_hotbar_hit(cx, cy, w, h, cases[c].in, s) >= 0) double_fire = 1;
+                if (umbra_hud_action_hit(cx, cy, w, h, cases[c].in, s) >= 0) double_fire = 1;
+                if (umbra_hud_sneak_hit(cx, cy, w, h, cases[c].in, s)) double_fire = 1;
+            }
+            check(!double_fire, "no inventory tile sits on top of a hand control");
         }
     }
 

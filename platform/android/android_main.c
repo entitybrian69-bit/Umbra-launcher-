@@ -387,6 +387,7 @@ static JavaVM *g_vm = NULL;
 static jclass g_umbra_net = NULL;
 static jmethodID g_m_download = NULL;
 static jmethodID g_m_pick = NULL;
+static jmethodID g_m_pick_folder = NULL;
 static jmethodID g_m_got = NULL;
 static jmethodID g_m_total = NULL;
 static jmethodID g_m_error = NULL;
@@ -469,6 +470,12 @@ static void net_init(ANativeActivity *activity) {
                                              "(Ljava/lang/String;Ljava/lang/String;)J");
     g_m_pick = (*env)->GetStaticMethodID(env, g_umbra_net, "pickAndCopy",
                                          "(Landroid/app/Activity;Ljava/lang/String;[Ljava/lang/String;)J");
+    // The folder picker, looked up separately and allowed to be absent: it is new, and a
+    // build whose Java side is older than its C side should import zips rather than refuse
+    // every import. `android_pick_world` tries it first and falls back.
+    g_m_pick_folder = (*env)->GetStaticMethodID(env, g_umbra_net, "pickFolderWorldAndZip",
+                                                "(Landroid/app/Activity;Ljava/lang/String;)J");
+    if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
     g_m_got = (*env)->GetStaticMethodID(env, g_umbra_net, "progressGot", "()J");
     g_m_total = (*env)->GetStaticMethodID(env, g_umbra_net, "progressTotal", "()J");
     g_m_error = (*env)->GetStaticMethodID(env, g_umbra_net, "lastError", "()Ljava/lang/String;");
@@ -609,6 +616,28 @@ static int android_pick_world(void *ctx, const char *dest, long long *got) {
         return -1;
     }
     jobject activity = st->state->activity->clazz;
+    // The folder first. The owner's world on a phone is a folder -- asking them to zip it
+    // first is asking them to do the app's job with a file manager -- and the picked tree is
+    // zipped on the device by UmbraNet.pickFolderWorldAndZip, so what reaches the importer is
+    // the same archive shape it has always read. A phone that has no folder picker, or a
+    // person who taps back, falls through to the zip picker below rather than being told no.
+    if (g_m_pick_folder) {
+        jstring jdestf = net_string(env, dest);
+        jlong nf = (*env)->CallStaticLongMethod(env, g_umbra_net, g_m_pick_folder, activity, jdestf);
+        int failedf = 0;
+        if ((*env)->ExceptionCheck(env)) { net_throw_away(env); failedf = 1; }
+        (*env)->DeleteLocalRef(env, jdestf);
+        ALOGI("pick world folder: -> %s: %lld bytes%s", dest, (long long)nf,
+              failedf ? " (threw)" : "");
+        if (nf > 0) {
+            if (got) *got = (long long)nf;
+            return 0;
+        }
+        // -1 is "nothing was picked": the person cancelled, and showing them a second picker
+        // they did not ask for is worse than saying so.
+        if (nf == -1) { if (got) *got = -1; return -1; }
+        ALOGI("pick world folder: refused (%lld), falling back to a zip", (long long)nf);
+    }
     jstring jdest = net_string(env, dest);
     jstring mime_zip = net_string(env, "application/zip");
     jstring mime_bin = net_string(env, "application/octet-stream");

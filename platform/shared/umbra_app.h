@@ -127,6 +127,15 @@ struct umbra_app {
     // Goose said it did, printed in the overlay and logged, so a phone report says
     // "broke grass_block at 24 65 24" instead of "nothing happened".
     int hotbar_sel;
+    // The inventory panel: which page of the block list it is showing, whether it is
+    // open, and which slot a tile tap will fill (the one that was selected when it
+    // opened, so the panel cannot change the hand's slot by accident).
+    int inv_open;
+    int inv_page;
+    int inv_slot;
+    // A tile tap that has been asked for but not yet applied: the same rule as
+    // `act_wanted`, the write happens between frames and not inside event dispatch.
+    int inv_wanted_all;         // index into the whole list, or -1
     int act_wanted;
     char act_text[96];
     int act_edits;              // how many blocks were changed this session

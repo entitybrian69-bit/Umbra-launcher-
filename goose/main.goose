@@ -857,6 +857,9 @@ export "umbra_jar_load" fn jar_load_export(path: const u8[:]) -> i64 {
     jar_bytes = data.len as i64;
     jar_models = models;
     jar_blockstates = states;
+    // The hotbar is the jar's block list, and the jar has just replaced the table: build it
+    // now rather than lazily, so the first frame after a load already has the real list.
+    if states > 0 { hotbar_build_all(); }
     jar_textures = jp_tex_used;
     return 1;
 }
@@ -1087,13 +1090,165 @@ var hb_ids: u32[>..] = [];
 var hb_sel: i64 = 0;
 var act_text: u8[>..] = [];
 
+// The hotbar the player actually gets, and the inventory behind it.
+//
+// The hotbar used to be five hard-coded blocks -- grass, dirt, stone, an oak log, an oak
+// slab -- which is not "the real block/item list" and not what a person who has opened
+// their own world expects to build with. The list now comes from the jar the phone
+// loaded: every blockstate the game ships (around a thousand names on a 26.3 jar), with
+// the ones that cannot be placed filtered out by name.
+//
+// Two things are deliberately separate, and conflating them was a bug:
+//
+//   * `hb_all` is the whole list, and the inventory panel pages through it. It is
+//     browsing, and browsing changes nothing.
+//   * `hb_ids` is the hand: five slots, filled once from the head of the list, and after
+//     that changed only by a person tapping a tile in the panel.
+//
+// The first version made one list do both -- the panel paged `hb_ids` itself -- and the
+// consequence was that picking a block and then turning a page to look for another one
+// silently threw the first block away. A hand is not a cursor.
+var hb_all: u32[>..] = [];     // every placeable block the jar's blockstates name
+// (hb_ids and hb_sel are declared above, with the rest of the edit state.)
+var hb_seeded: bool = false;   // the hand has been filled from the list once
+
+// Kinds of block a person cannot place from an inventory. Named rather than patterned:
+// `_button`, `_door` and `_sign` are placeable, and a suffix rule that excludes them by
+// accident is worse than a list.
+fn hotbar_placeable(name: const u8[:]) -> bool {
+    if eq_bytes(name, "minecraft:air") { return false; }
+    if eq_bytes(name, "minecraft:cave_air") { return false; }
+    if eq_bytes(name, "minecraft:void_air") { return false; }
+    if eq_bytes(name, "minecraft:water") { return false; }
+    if eq_bytes(name, "minecraft:lava") { return false; }
+    if eq_bytes(name, "minecraft:fire") { return false; }
+    if eq_bytes(name, "minecraft:soul_fire") { return false; }
+    if eq_bytes(name, "minecraft:nether_portal") { return false; }
+    if eq_bytes(name, "minecraft:end_portal") { return false; }
+    if eq_bytes(name, "minecraft:end_gateway") { return false; }
+    if eq_bytes(name, "minecraft:barrier") { return false; }
+    if eq_bytes(name, "minecraft:light") { return false; }
+    if eq_bytes(name, "minecraft:structure_void") { return false; }
+    if eq_bytes(name, "minecraft:moving_piston") { return false; }
+    if eq_bytes(name, "minecraft:bubble_column") { return false; }
+    if eq_bytes(name, "minecraft:piston_head") { return false; }
+    return true;
+}
+
+// Build the list from the blockstate table, once. Called when the jar loads and, for a
+// build with no jar, by the first hotbar query.
+fn hotbar_build_all() {
+    hb_all = [];
+    for i in bs_defs.len {
+        let name = bs_path(bs_name(i as u32));
+        if hotbar_placeable(name) { hb_all.push(i as u32); }
+    }
+    // A jar has replaced the list, so the hand is filled from the new one -- but only if
+    // it has never been filled at all. A person who picked their five blocks keeps them
+    // when they load a different jar, unless the old blocks are gone from it, which the
+    // next check catches.
+    hb_seeded = false;
+    hotbar_seed_hand();
+}
+
+// Fill the hand from the head of the list: grass, dirt, stone and two more if the list
+// has them, so a fresh install has a usable hand without opening the panel. It does not
+// overwrite a hand that is already seeded.
+fn hotbar_seed_hand() {
+    if hb_seeded { return; }
+    if hb_all.len == 0 { return; }
+    // A preference order, best first: a person builds with these before anything else, and
+    // `find` is a linear scan of names the list already holds.
+    hb_ids = [];
+    hotbar_try("minecraft:grass_block");
+    hotbar_try("minecraft:dirt");
+    hotbar_try("minecraft:stone");
+    hotbar_try("minecraft:oak_planks");
+    hotbar_try("minecraft:oak_log");
+    hotbar_try("minecraft:cobblestone");
+    hotbar_try("minecraft:sand");
+    hotbar_try("minecraft:glass");
+    // Anything left over: the head of the list, so the hand is five slots on any jar.
+    var next: i64 = 0;
+    while hb_ids.len < 5 && next < hb_all.len {
+        var have: bool = false;
+        for j in hb_ids.len {
+            if hb_ids[j] == hb_all[next] { have = true; }
+        }
+        if !have { hb_ids.push(hb_all[next]); }
+        next += 1;
+    }
+    if hb_sel >= hb_ids.len { hb_sel = 0; }
+    hb_seeded = true;
+}
+
+// Add a block to the hand by name if the list has it and the hand has room. Written as a
+// call per name rather than a table: a table of string literals needs a per-entry length
+// the language spells differently, and eight lines are clearer than the type that holds
+// them.
+fn hotbar_try(name: const u8[:]) {
+    if hb_ids.len >= 5 { return; }
+    let at = hotbar_find_in_all(name);
+    if at >= 0 { hb_ids.push(hb_all[at]); }
+}
+
+fn hotbar_find_in_all(name: const u8[:]) -> i64 {
+    for i in hb_all.len {
+        let n = bs_path(bs_name(hb_all[i]));
+        if n.len == name.len && eq_bytes(n, name) { return i as i64 }
+    }
+    return -1
+}
+
 fn hotbar_init() {
     if hb_ids.len > 0 { return; }
+    if bs_defs.len > 0 {
+        hotbar_build_all();
+        if hb_ids.len > 0 { return; }
+    }
+    // No jar's blockstates: the demo world's own five, which is what this hotbar was.
     hb_ids.push(bs_intern("minecraft:grass_block", "snowy=false"));
     hb_ids.push(bs_intern("minecraft:dirt", ""));
     hb_ids.push(bs_intern("minecraft:stone", ""));
     hb_ids.push(bs_intern("minecraft:oak_log", "axis=y"));
     hb_ids.push(bs_intern("minecraft:oak_slab", "type=bottom"));
+    if hb_all.len == 0 {
+        for i in hb_ids.len { hb_all.push(hb_ids[i]); }
+    }
+    hb_seeded = true;
+}
+
+// How many blocks the jar offers: the number the inventory panel pages through and the
+// number the BAGS button shows.
+export fn umbra_hotbar_total() -> i64 { hotbar_init(); return hb_all.len }
+// How many blockstates are interned: the list the hotbar was drawn from. One number that
+// separates "no jar" from "a jar whose list is short".
+export fn umbra_state_count() -> i64 { return bs_defs.len }
+
+// Put any block of the whole list into a hotbar slot: what the touch inventory does when a
+// person taps a tile. The slot's old block is replaced, not displaced -- there is no
+// inventory behind the hotbar holding what was there, and pretending there is would be a
+// second kind of state to keep in step for nothing.
+export fn umbra_hotbar_set_slot(slot: i64, all: i64) -> i64 {
+    hotbar_init();
+    if slot < 0 || slot >= hb_ids.len { return 0; }
+    if all < 0 || all >= hb_all.len { return 0; }
+    hb_ids[slot] = hb_all[all];
+    return 1;
+}
+
+// The whole list, one entry at a time, for anything that wants to show it: the name at an
+// index in `hb_all`, and "" past the end. This is the inventory panel's data.
+export "umbra_hotbar_all_name" fn hotbar_all_name(i: i64) -> const u8[:] {
+    hotbar_init();
+    if i < 0 || i >= hb_all.len { return ""; }
+    return bs_path(bs_name(hb_all[i]))
+}
+
+// Pick from the whole list by name: what a search box, a saved hotbar or a test uses.
+export fn umbra_hotbar_find(name: const u8[:]) -> i64 {
+    hotbar_init();
+    return hotbar_find_in_all(name)
 }
 
 export fn umbra_hotbar_count() -> i64 { hotbar_init(); return hb_ids.len }

@@ -207,6 +207,151 @@ static int umbra_hud_hotbar_hit(int x, int y, int width, int height, const int32
     return -1;
 }
 
+// --- the inventory --------------------------------------------------------
+//
+// The hotbar is five slots and the jar names around a thousand blocks, so the hotbar
+// alone cannot be how a person reaches the list: five of a thousand is not a choice.
+// The inventory is a grid of tiles over the world, paged, that puts any block of the
+// list into the slot the person had selected when they opened it.
+//
+// It is a panel and not a screen: the world keeps drawing behind it, the look and the
+// walk keep working, and one tap outside the panel closes it. A phone has no escape
+// key, so the way out has to be somewhere a thumb already is.
+#define UMBRA_INV_COLS 4
+#define UMBRA_INV_ROWS 4
+#define UMBRA_INV_TILES (UMBRA_INV_COLS * UMBRA_INV_ROWS)
+
+// How many pages a grid has for a list this long; never zero, so an empty list still
+// opens a panel (that is a state a person should see, not a tap that does nothing).
+static int umbra_hud_inv_pages(int64_t total) {
+    if (total <= 0) return 1;
+    return (int)((total + UMBRA_INV_TILES - 1) / UMBRA_INV_TILES);
+}
+
+// The panel: a grid centred on the screen, with a heading strip above it and a page
+// strip below. The grid is square tiles so a block's name fits under a picture of it;
+// the whole panel is fitted to the short side of the screen so it works in landscape.
+static umbra_rect umbra_hud_inv_panel(int width, int height, const int32_t insets[4]) {
+    umbra_rect r = { 0, 0, 0, 0 };
+    // Width from the short side; a fixed pixel cap was wrong -- on a 1080-wide phone it
+    // left the panel under a fifth of the screen, which is not a panel anybody would
+    // read. What has to be capped is the *height*, so the panel never runs off a
+    // landscape window or a short tablet.
+    float side = (float)(width < height ? width : height);
+    float w = side * 0.86f;
+    // Tiles: a square grid, and the panel is the grid plus the two strips.
+    float tile = (w - (UMBRA_INV_COLS + 1) * 6.0f) / (float)UMBRA_INV_COLS;
+    float h = (UMBRA_INV_ROWS + 1) * 6.0f + UMBRA_INV_ROWS * tile + 34.0f + 22.0f;
+    float maxh = (float)height * 0.8f;
+    if (h > maxh) {
+        // Shrink the whole panel rather than the tiles alone, so the strips keep their
+        // proportion and the tile-to-panel arithmetic stays one formula.
+        float k = maxh / h;
+        w *= k;
+        h = maxh;
+    }
+    r.w = w;
+    r.h = h;
+    r.x = ((float)width - w) * 0.5f;
+    // Anchored under the status bar rather than centred: the hand controls live along the
+    // bottom edge, and a centred panel covered them, so the last row of tiles sat on top
+    // of BREAK. Top-anchoring leaves both reachable and needs no rule about which of the
+    // two a tap means.
+    r.y = (float)insets[1] + 8.0f;
+    return r;
+}
+
+// Tile `i` of the page: the same arithmetic the taps use.
+static umbra_rect umbra_hud_inv_tile(int i, int width, int height, const int32_t insets[4]) {
+    umbra_rect r = { 0, 0, 0, 0 };
+    if (i < 0 || i >= UMBRA_INV_TILES) return r;
+    umbra_rect p = umbra_hud_inv_panel(width, height, insets);
+    float pad = 6.0f;
+    float tile = (p.w - (UMBRA_INV_COLS + 1) * pad) / (float)UMBRA_INV_COLS;
+    int col = i % UMBRA_INV_COLS;
+    int row = i / UMBRA_INV_COLS;
+    r.x = p.x + pad + (float)col * (tile + pad);
+    r.y = p.y + 34.0f + pad + (float)row * (tile + pad);
+    r.w = tile;
+    r.h = tile;
+    return r;
+}
+
+// The strips: "blocks 1-16 of 1043" above, "page 1/66" and the two page buttons below.
+static umbra_rect umbra_hud_inv_page_button(int which, int width, int height,
+                                            const int32_t insets[4]) {
+    umbra_rect r = { 0, 0, 0, 0 };
+    if (which < 0 || which > 1) return r;
+    umbra_rect p = umbra_hud_inv_panel(width, height, insets);
+    float w = p.w * 0.3f;
+    float h = 18.0f;
+    r.w = w;
+    r.h = h;
+    r.y = p.y + p.h - h - 3.0f;
+    r.x = (which == 0) ? p.x + 6.0f : p.x + p.w - w - 6.0f;
+    return r;
+}
+
+// The button that opens the panel. It sits on the hotbar row's left end, opposite
+// break/place: a thumb on the right can reach it, and it never overlaps a slot. It says
+// how many blocks there are behind it, because "5 of 1043" is the reason the panel
+// exists.
+static umbra_rect umbra_hud_inv_button(int width, int height, const int32_t insets[4],
+                                       float scale) {
+    umbra_rect r = { 0, 0, 0, 0 };
+    float w = 34.0f * scale;
+    float h = 16.0f * scale;
+    float row_top = (float)height - (float)insets[3] - 14.0f * scale - 8.0f * scale;
+    r.w = w;
+    r.h = h;
+    r.x = (float)insets[0] + 8.0f * scale;
+    if (r.x + w > (float)width * 0.5f) r.x = 4.0f;
+    r.y = row_top - 6.0f * scale - 2.0f * (h + 3.0f * scale);
+    return r;
+}
+
+static int umbra_hud_inv_button_hit(int x, int y, int width, int height,
+                                    const int32_t insets[4], float scale) {
+    umbra_rect r = umbra_hud_inv_button(width, height, insets, scale);
+    float pad = 6.0f * scale;
+    return (float)x >= r.x - pad && (float)x <= r.x + r.w + pad &&
+           (float)y >= r.y - pad && (float)y <= r.y + r.h + pad;
+}
+
+// A tile hit, padded the way the hotbar is padded: a near miss is not a closed panel.
+static int umbra_hud_inv_tile_hit(int x, int y, int width, int height,
+                                  const int32_t insets[4]) {
+    for (int i = 0; i < UMBRA_INV_TILES; i++) {
+        umbra_rect r = umbra_hud_inv_tile(i, width, height, insets);
+        if ((float)x >= r.x && (float)x <= r.x + r.w &&
+            (float)y >= r.y && (float)y <= r.y + r.h) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static int umbra_hud_inv_page_hit(int x, int y, int width, int height,
+                                  const int32_t insets[4]) {
+    float pad = 6.0f;
+    for (int i = 0; i < 2; i++) {
+        umbra_rect r = umbra_hud_inv_page_button(i, width, height, insets);
+        if ((float)x >= r.x - pad && (float)x <= r.x + r.w + pad &&
+            (float)y >= r.y - pad && (float)y <= r.y + r.h + pad) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static int umbra_hud_inv_inside(int x, int y, int width, int height,
+                                const int32_t insets[4]) {
+    float pad = 8.0f;
+    umbra_rect p = umbra_hud_inv_panel(width, height, insets);
+    return (float)x >= p.x - pad && (float)x <= p.x + p.w + pad &&
+           (float)y >= p.y - pad && (float)y <= p.y + p.h + pad;
+}
+
 // Two action buttons above the hotbar, on the right: break and place. They are buttons
 // rather than gestures on the world because one finger already means look, walk and
 // jump, and a fourth meaning would be a mode nobody can see.
