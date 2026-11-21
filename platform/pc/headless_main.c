@@ -2116,6 +2116,10 @@ int main(int argc, char **argv) {
 
         // A cell inside is not walled; a cell just outside is. Twenty blocks in, so this is
         // not a test of the last block's own arithmetic.
+        // The wall's column is built from the body's floor. These probes stand on the
+        // ground at y 73 in the fixture, so say so: a wall built from the default would be
+        // air at the probe height and the checks below would be testing nothing.
+        umbra_edge_ground(73);
         int64_t cx_i = (int64_t)((x0 + x1) * 0.5f);
         int64_t cz_i = (int64_t)((z0 + z1) * 0.5f);
         check(umbra_block_top(cx_i, 70, cz_i) <= 1.0f,
@@ -2166,6 +2170,15 @@ int main(int argc, char **argv) {
                   "the parsed edge is exported as the parsed edge");
             check(umbra_edge_x1() == x1, "and the save's edge as the save's");
 
+            // --- the wall is a wall, not a cage -----------------------------
+            //
+            // The device failure this run is fixing: the wall was at the resident window's
+            // edge, the window is centred on the body, so the body could never walk out of
+            // the ring it stood in -- ten seconds of held finger at one coordinate (run
+            // 44902159615). The two properties that rule that out are checked here: the
+            // wall's bounds do not follow the body, and the wall's column is solid where the
+            // body walks and clear above where it looks.
+
             // Walk east from the last standable column in the parsed window. The body must
             // stop before it leaves the parsed terrain -- if it does not, it is standing on
             // air, which is the fall the device run reported.
@@ -2182,6 +2195,7 @@ int main(int argc, char **argv) {
                 }
             }
             check(sf > 0.0f, "there is flat ground near the parsed window's eastern edge");
+            umbra_edge_ground((int64_t)sf);
             umbra_player wp;
             umbra_player_reset(&wp, sx, sf + 0.01f, sz);
             wp.yaw = -1.5707963f;   // +X, at the parsed edge
@@ -2200,6 +2214,42 @@ int main(int argc, char **argv) {
             check(out == 0, "a body walking at the parsed edge never leaves the parsed window");
             check(wp.y > 0.0f && lowest > sf - 8.0f,
                   "and it stays on the world instead of falling out of it");
+
+            float ex0 = umbra_edge_x0(), ex1 = umbra_edge_x1();
+            float ez0 = umbra_edge_z0(), ez1 = umbra_edge_z1();
+            check(ex0 == x0 && ex1 == x1 && ez0 == z0 && ez1 == z1,
+                  "the wall's bounds do not move when the window is re-centred");
+            umbra_world_stream_centre(1, 0, 1);
+            int d2 = 0; int64_t sl2 = 0;
+            while (!d2 && sl2 < 1000000) { d2 = umbra_world_stream_step(6000) != 0; sl2++; }
+            check(d2, "the re-centred window fills");
+            check(umbra_edge_x0() == x0 && umbra_edge_x1() == x1,
+                  "and the save's edge is still where it was after the re-centre");
+
+            // The wall's column: solid at the walking level, clear above. A wall that is
+            // solid above its own top is one a body climbs; a wall that is air at the
+            // walking level is one it walks through. Both were shipped and both were wrong.
+            // Read the window again: the re-centre above moved it, so the row that is
+            // inside the parsed set is not the row the earlier checks used.
+            int64_t gz = (int64_t)((umbra_edge_parsed_z0() + umbra_edge_parsed_z1()) * 0.5f);
+            int64_t gx = (int64_t)x1;    // the wall's own column
+            umbra_edge_ground(73);
+            printf("edge: the wall's column at x %lld z %lld: top(73) %.2f, top(74) %.2f, "
+                   "top(90) %.2f\n", (long long)gx, (long long)gz,
+                   umbra_block_top(gx, 73, gz), umbra_block_top(gx, 74, gz),
+                   umbra_block_top(gx, 90, gz));
+            check(umbra_block_top(gx, 73, gz) > 0.0f,
+                  "the wall is solid at the level the body walks on");
+            check(umbra_block_top(gx, 74, gz) > 0.0f, "and one block above it");
+            check(umbra_block_top(gx, 90, gz) <= 0.0f,
+                  "and clear ten blocks up, so it can be seen over");
+            // Five blocks inside the save's edge, so this is a cell the body can stand in
+            // rather than another wall cell.
+            // A cell inside the *parsed* window, which is much smaller than the save and is
+            // the bound that matters for a body: this one is walkable, that one is wall.
+            int64_t inside_x = (int64_t)((umbra_edge_parsed_x0() + umbra_edge_parsed_x1()) * 0.5f);
+            check(umbra_block_top(inside_x, 73, gz) <= 0.0f,
+                  "while a cell inside the parsed window is where the body stands, not a wall");
         }
     }
 
