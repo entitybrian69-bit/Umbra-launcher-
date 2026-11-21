@@ -45,6 +45,11 @@ guard evidence_syn  bash -n tools/commit_evidence.sh
 #                   y 91 (a section index read as a height) and then failed a byte-count gate
 #                   that called a valid sky shot "not a picture". Both are host-checkable.
 guard gallery       bash tools/test_gallery_poses.sh
+#   budget        - run 44916416450 said 0 over and 1 over about the same walk on the same
+#                   build, one phase apart; run 44942547331 said 2 over, twice. Whether that
+#                   is the emulator's tail or a step-1 regression is a rule, and the rule is
+#                   a function, so it is tested against every reading on file.
+guard budget        bash tools/test_budget_rule.sh
 
 #   c_compiles    - platform/shared/umbra_app.c is one file with two platform branches
 #                   behind #ifdef __ANDROID__, and only one of them is compiled by any
