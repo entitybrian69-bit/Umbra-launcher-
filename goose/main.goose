@@ -1221,24 +1221,43 @@ var hb_seeded: bool = false;   // the hand has been filled from the list once
 // Kinds of block a person cannot place from an inventory. Named rather than patterned:
 // `_button`, `_door` and `_sign` are placeable, and a suffix rule that excludes them by
 // accident is worse than a list.
+// The name handed in is `bs_path(...)` -- the part after the colon -- and the first version
+// compared it against the full `minecraft:` names, so every comparison was false and air
+// went into the hotbar. The device run showed it: the first tile's tap logged
+// "inventory: slot 4 <- air (block 0 of the list, taken)". Air *is* block 0 of the
+// blockstate table, so the list was simply the whole table and not the placeable part.
+//
+// Two spellings are accepted because the caller's form should not be load-bearing: with or
+// without the namespace, the answer is the same.
 fn hotbar_placeable(name: const u8[:]) -> bool {
-    if eq_bytes(name, "minecraft:air") { return false; }
-    if eq_bytes(name, "minecraft:cave_air") { return false; }
-    if eq_bytes(name, "minecraft:void_air") { return false; }
-    if eq_bytes(name, "minecraft:water") { return false; }
-    if eq_bytes(name, "minecraft:lava") { return false; }
-    if eq_bytes(name, "minecraft:fire") { return false; }
-    if eq_bytes(name, "minecraft:soul_fire") { return false; }
-    if eq_bytes(name, "minecraft:nether_portal") { return false; }
-    if eq_bytes(name, "minecraft:end_portal") { return false; }
-    if eq_bytes(name, "minecraft:end_gateway") { return false; }
-    if eq_bytes(name, "minecraft:barrier") { return false; }
-    if eq_bytes(name, "minecraft:light") { return false; }
-    if eq_bytes(name, "minecraft:structure_void") { return false; }
-    if eq_bytes(name, "minecraft:moving_piston") { return false; }
-    if eq_bytes(name, "minecraft:bubble_column") { return false; }
-    if eq_bytes(name, "minecraft:piston_head") { return false; }
+    var n = name;
+    let colon = bs_colon(name);
+    if colon >= 0 { n = name[colon + 1 .. name.len]; }
+    if eq_bytes(n, "air") { return false; }
+    if eq_bytes(n, "cave_air") { return false; }
+    if eq_bytes(n, "void_air") { return false; }
+    if eq_bytes(n, "water") { return false; }
+    if eq_bytes(n, "lava") { return false; }
+    if eq_bytes(n, "fire") { return false; }
+    if eq_bytes(n, "soul_fire") { return false; }
+    if eq_bytes(n, "nether_portal") { return false; }
+    if eq_bytes(n, "end_portal") { return false; }
+    if eq_bytes(n, "end_gateway") { return false; }
+    if eq_bytes(n, "barrier") { return false; }
+    if eq_bytes(n, "light") { return false; }
+    if eq_bytes(n, "structure_void") { return false; }
+    if eq_bytes(n, "moving_piston") { return false; }
+    if eq_bytes(n, "bubble_column") { return false; }
+    if eq_bytes(n, "piston_head") { return false; }
     return true;
+}
+
+fn bs_colon(name: const u8[:]) -> i64 {
+    var colon: i64 = -1;
+    for i in name.len {
+        if name[i] == ':' { colon = i as i64; }
+    }
+    return colon
 }
 
 // Build the list from the blockstate table, once. Called when the jar loads and, for a

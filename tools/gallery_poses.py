@@ -57,10 +57,38 @@ def parse_column(nbt):
     return (top, water, log)
 
 
+def find_region_dir(save_dir):
+    """Where the terrain regions are, wherever this version of the game puts them.
+
+    A 26.3 save keeps the overworld's regions under a dimension path, not directly in
+    `region/`, and the workflow's own step already searches (`find ... -path
+    '*/region/*.mca'`) for exactly that reason. This function only ever looked one level
+    down, so on a save with the newer layout it found nothing and the gallery failed with
+    "no region files" -- which reads like a broken save rather than a broken lookup.
+
+    `entities/r.x.z.mca` files are deliberately not candidates: the same names hold NBT
+    that is not a chunk, which is the bug that made a phone open a world of 0 blocks once.
+    """
+    direct = os.path.join(save_dir, "region")
+    if os.path.isdir(direct) and any(n.endswith(".mca") for n in os.listdir(direct)):
+        return direct
+    best = None
+    for root, dirs, files in os.walk(save_dir):
+        if os.path.basename(root) != "region" or os.path.basename(os.path.dirname(root)) == "entities":
+            continue
+        if any(n.endswith(".mca") for n in files):
+            # Prefer the shallowest match: a save can hold several dimensions, and the
+            # overworld is the one nearest the top.
+            depth = root.count(os.sep)
+            if best is None or depth < best[0]:
+                best = (depth, root)
+    return best[1] if best else None
+
+
 def load_columns(save_dir):
-    region_dir = os.path.join(save_dir, "region")
+    region_dir = find_region_dir(save_dir)
     cols = {}
-    if not os.path.isdir(region_dir):
+    if region_dir is None:
         return cols
     for name in sorted(os.listdir(region_dir)):
         if not name.endswith(".mca"):
@@ -130,7 +158,16 @@ def main():
     out = sys.argv[sys.argv.index("--out") + 1] if "--out" in sys.argv else None
     cols = load_columns(save_dir)
     if not cols:
-        raise SystemExit(f"{save_dir}: no region files")
+        # Say which directories were looked in, so the next failure of this kind is a fact
+        # rather than a guess.
+        seen = []
+        for root, dirs, files in os.walk(save_dir):
+            if any(n.endswith(".mca") for n in files):
+                seen.append(root)
+            if len(seen) >= 4:
+                break
+        raise SystemExit(f"{save_dir}: no region files (region/ or any */region/ dir; "
+                         f"directories holding .mca files: {seen or 'none'})")
     xs = [k[0] for k in cols]
     zs = [k[1] for k in cols]
     centre = ((min(xs) + max(xs)) // 2, (min(zs) + max(zs)) // 2)

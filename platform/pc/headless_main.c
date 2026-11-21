@@ -1425,6 +1425,32 @@ int main(int argc, char **argv) {
                (long long)umbra_hotbar_count());
         check(total >= 5, "the blockstates give the hand a real list to draw from");
         check(umbra_hotbar_count() <= total, "and the hand does not hold more than the list");
+        // The whole list, not only the hand's five: air must not be in it. The device run
+        // caught this the hard way -- the first tile's tap logged
+        // "inventory: slot 4 <- air (block 0 of the list, taken)" -- because the filter
+        // compared the stripped name against the namespaced one and never matched. The
+        // check that should have existed is this one, over every entry.
+        {
+            int air = 0, unplaceable = 0, named = 0;
+            for (int64_t i = 0; i < total; i++) {
+                int64_t len = 0;
+                const uint8_t *nm = umbra_hotbar_all_name(i, &len);
+                if (len <= 0) { continue; }          // absent entry; the tiling check covers
+                named++;
+                if (len == 3 && memcmp(nm, "air", 3) == 0) air++;
+                const char *bad[] = { "water", "lava", "barrier", "light",
+                                      "structure_void", "moving_piston" };
+                for (int b = 0; b < 6; b++) {
+                    if (len == (int64_t)strlen(bad[b]) &&
+                        memcmp(nm, bad[b], (size_t)len) == 0) unplaceable++;
+                }
+            }
+            printf("hotbar: %d of %lld entries named, %d air, %d unplaceable in the whole list\n",
+                   named, (long long)total, air, unplaceable);
+            check(named == (int)total, "every block of the whole list is named");
+            check(air == 0, "and none of them is air");
+            check(unplaceable == 0, "and none of them is a fluid or a technical block");
+        }
         // The bug the device run found: the demo world called `bs_reset()`, which wiped the
         // jar's 1288 blockstates *after* the jar had loaded them, and the hand came back
         // nine blocks long beside a log line saying "1288 blockstates" from the jar. The fix
