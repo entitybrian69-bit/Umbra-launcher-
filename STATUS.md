@@ -2393,10 +2393,29 @@ way and requires the two to be identical, because a crop applied to the wrong ro
 produces a plausible number. That self-check reports 5.42 of 255 when the slice is off by
 seven rows. The score runs in `android.yml` and its output is committed with the evidence.
 
-**What this number does not say yet.** It was taken on `evidence/ci/shot-world.png` from run
-`44889003065`, which is build 0.3.7 -- before the light reached the model path. The next
-android run rescores the build that has it. No claim of parity is made here: 32.85 of 255
-mean absolute difference is a measurement, not a verdict.
+**The before and after, on the phone, same world, same pose, same crop** (run `44896127007`,
+android success; the previous run's own screenshot scored with the identical crops):
+
+| | before (`4bc3bcd4` minus light) | after | reference |
+|---|---|---|---|
+| whole frame | 32.75 | **33.19** | 0 |
+| sky (top third) | 36.09 | **34.68** | 0 |
+| ground (the rest) | 33.32 | **34.71** | 0 |
+| horizon-blue share | 20.6% | **21.4%** | 24.1% |
+
+The sky band got closer by 1.4, the ground *further* by 1.4, and the whole frame by 0.4. That
+is not a win, and saying it was one would be the exact claim step 4 forbids: stored light
+makes the world darker where the save says it is dark, and the reference frame is a flat
+daylight scene, so "darker than vanilla" scores as *further away* on this measure even when it
+is more faithful. What the table does show is that the light changes the picture -- 0.44 of
+255 on the whole frame, 1.4 in each band -- which is the thing that was in doubt, since before
+this stretch the arrays were read by a path the phone never drew.
+
+A number that could tell "correctly shaded" from "darker" would have to compare against the
+game's own frame at the same pose, and this project cannot run the game in CI. Until it can,
+the honest statement is: the light reaches the geometry (measured at the vertex, above), the
+picture moves with it (measured here), and neither number is a similarity score for vanilla.
+
 
 ## 0.3.9-pre: published, verified, and it is the culled window (2026-11-14)
 
