@@ -1696,6 +1696,71 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
     [ -n "$LIVE" ] || die "stream-where: the app died"
 fi
 
+# ---- gallery: six fixed poses, no overlay, one file each --------------------------
+# Step 4's other half, and the owner's own request: a similarity score against a picture this
+# project made cannot say "looks like the game", so the pictures are the answer and the score
+# is kept only as a regression check. Six of them, at fixed poses inside the save the run was
+# given, with the overlay and the hand controls switched off so the frame is the world.
+#
+# Fixed pose is the whole point: a screenshot taken by tapping a phone depends on where the
+# finger landed, and two runs would differ by the camera and not by the renderer. `pose.txt`
+# is read by the app and puts the eye exactly where the tool says; `gallery.txt` hides the
+# overlay. Both are read from the app's own directory, like `radius.txt`.
+#
+# Each file is named for the build that took it, so a picture outlives the log that explains
+# it: gallery-<pose>-<version>-<sha8>.png.
+if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
+    section "gallery"
+    GAL_DIR="gallery"
+    rm -rf "$GAL_DIR"; mkdir -p "$GAL_DIR"
+    adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
+    adb shell "rm -f '$FILES_W/radius.txt' '$FILES_W/nocull.txt' '$FILES_W/walkfinish.txt'" \
+        > /dev/null 2>&1 || true
+    adb shell "echo gallery > '$FILES_W/gallery.txt'" > /dev/null 2>&1
+    adb shell "cp /data/local/tmp/umbra-world.zip $FILES_W/world.zip" > /dev/null 2>&1 \
+        || die "gallery: the save could not be put back in the app's directory"
+    # The poses come from the save's own terrain, so the pictures land on hills, water and
+    # logs wherever this run's world put them.
+    GAL_SAVE="${UMBRA_WORLD_DIR:-build/server/run/world}"
+    if ! python3 tools/gallery_poses.py "$GAL_SAVE" --out gallery-poses.txt \
+            2>&1 | tee gallery-poses.log; then
+        die "gallery: no poses could be chosen from this save: $(tail -2 gallery-poses.log | tr '\n' '|')"
+    fi
+    POSE_COUNT="$(wc -l < gallery-poses.txt 2>/dev/null || echo 0)"
+    [ "${POSE_COUNT:-0}" -gt 0 ] || die "gallery: gallery-poses.txt is empty"
+    say "gallery: $POSE_COUNT pose(s): $(tr '\n' ' ' < gallery-poses.txt)"
+    while read -r pose px py pz pyaw ppitch; do
+        [ -n "${pose:-}" ] || continue
+        adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
+        for _i in 1 2 3 4 5 6 7 8 9 10; do
+            [ -z "$(adb shell pidof org.umbra.client 2>/dev/null | tr -d '\r\n')" ] && break
+            sleep 1
+        done
+        adb shell "printf '%s %s %s %s %s\n' '$px' '$py' '$pz' '$pyaw' '$ppitch' > '$FILES_W/pose.txt'" \
+            > /dev/null 2>&1 || die "gallery: could not write pose.txt for $pose"
+        adb logcat -c > /dev/null 2>&1 || true
+        GAL_LAUNCH="$(launch_app "gallery-$pose-launch.log")" \
+            || die "gallery: the app would not start for $pose"
+        GAL_PID="$(launched_pid)" || die "gallery: no process for $pose"
+        wait_for_app_line "$GAL_PID" 'gallery: posed at' 300 "the pose ($pose)" \
+            || die "gallery: the app never posed for $pose: $(app_log "$GAL_PID" | grep -E 'gallery:' | tail -2 | tr '\n' '|')"
+        say "gallery: $pose $(app_log "$GAL_PID" | grep -m1 'gallery: posed at')"
+        # The overlay has to be off, or the picture is of the overlay.
+        if app_log "$GAL_PID" | grep -q 'hud: button 0 at'; then
+            die "gallery: the overlay logged a button layout for $pose, so it was not hidden"
+        fi
+        # Two frames after the pose, so the draw that follows the pose is on screen.
+        sleep 4
+        adb exec-out screencap -p > "gallery/shot-$pose.png" 2>/dev/null \
+            || die "gallery: screencap failed for $pose"
+        SZ="$(stat -c%s "gallery/shot-$pose.png" 2>/dev/null || echo 0)"
+        [ "${SZ:-0}" -gt 20000 ] || die "gallery: shot-$pose.png is ${SZ:-0} bytes, which is not a picture"
+        say "gallery: shot-$pose.png is $SZ bytes"
+    done < gallery-poses.txt
+    adb shell "rm -f '$FILES_W/gallery.txt' '$FILES_W/pose.txt'" > /dev/null 2>&1 || true
+    note "gallery: $POSE_COUNT fixed-pose screenshot(s) taken with the overlay hidden"
+fi
+
 # ---- 10b. the world button: a save on the phone, no jar, one tap ------------------
 # The "world" phase above proves the *import*: adb puts the archive in the app's own
 # directory and the app opens it at start-up. That is not the owner's situation in one

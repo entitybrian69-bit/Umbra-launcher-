@@ -1653,6 +1653,41 @@ int umbra_app_init(umbra_app *app) {
                                "instead of pipelined (walkfinish.txt is present)");
             }
         }
+        // The gallery: `gallery.txt` beside the world means "take pictures, not a
+        // benchmark" -- the overlay and the hand controls are not drawn, and `pose.txt`
+        // puts the body at a fixed place looking a fixed way, so two runs of the same build
+        // produce the same picture. Both are read once, here, with the other knobs; e2e
+        // screenshots from a finger on a phone cannot be fixed-pose, and a gallery whose
+        // frames differ by the camera is a gallery of the camera.
+        {
+            char gp[560];
+            snprintf(gp, sizeof gp, "%s/gallery.txt", files);
+            FILE *gf = fopen(gp, "rb");
+            app->gallery = gf ? 1 : 0;
+            if (gf) fclose(gf);
+            app->gallery_hide_hud = app->gallery;
+            if (app->gallery) umbra_log(app, "gallery: gallery.txt is present; this run draws "
+                                              "the world with no overlay and poses from pose.txt");
+            char pp[560];
+            snprintf(pp, sizeof pp, "%s/pose.txt", files);
+            FILE *pf = fopen(pp, "rb");
+            if (pf) {
+                char line[160];
+                if (fgets(line, (int)sizeof line, pf)) {
+                    float a = 0, b = 0, cc = 0, d = 0, e = 0;
+                    if (sscanf(line, "%f %f %f %f %f", &a, &b, &cc, &d, &e) == 5) {
+                        app->pose[0] = a; app->pose[1] = b; app->pose[2] = cc;
+                        app->pose[3] = d; app->pose[4] = e;
+                        app->pose_ready = 1;
+                    }
+                }
+                fclose(pf);
+                umbra_log(app, "gallery: pose.txt %s (%.2f %.2f %.2f yaw %.2f pitch %.2f)",
+                          app->pose_ready ? "read" : "is unreadable: expected five numbers",
+                          app->pose[0], app->pose[1], app->pose[2],
+                          app->pose[3], app->pose[4]);
+            }
+        }
         // A test can ask for a particular render distance by leaving `radius.txt` beside
         // the save. This is the *only* way the radius is set from outside, and it exists
         // because the device walk is 1.5-second holds: at radius 4 the stride is 64
@@ -3843,8 +3878,22 @@ static void draw_hud(umbra_app *app) {
                       hud_rows(app), content_bottom, panel_h);
         }
     }
-    draw_hands(app);
-    hud_flush(app);
+    // The gallery's pose is applied here, after the world has meshed and the body exists,
+    // so the eye is the pose's and not the spawn's.
+    if (app->gallery && app->pose_ready && !app->pose_applied && app->mesh_state == 0 && app->player_on) {
+        app->player.x = app->pose[0];
+        app->player.y = app->pose[1];
+        app->player.z = app->pose[2];
+        app->player.yaw = app->pose[3];
+        app->player.pitch = app->pose[4];
+        app->pose_applied = 1;
+        umbra_log(app, "gallery: posed at %.2f %.2f %.2f, yaw %.2f pitch %.2f",
+                  app->pose[0], app->pose[1], app->pose[2], app->pose[3], app->pose[4]);
+    }
+    if (!app->gallery_hide_hud) {
+        draw_hands(app);
+        hud_flush(app);
+    }
 }
 
 void umbra_app_frame(umbra_app *app) {
@@ -3955,7 +4004,7 @@ void umbra_app_frame(umbra_app *app) {
         }
     }
     int64_t hud_t0 = umbra_now_us();
-    draw_hud(app);
+    if (!app->gallery_hide_hud) draw_hud(app);
     int64_t hud_us = umbra_now_us() - hud_t0;
     app->frames_drawn++;
     gpu_timer_collect(app);

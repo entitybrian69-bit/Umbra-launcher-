@@ -465,6 +465,60 @@ jobs:
             2>&1 | tee evidence/ci/look-score.txt
           cp -f shot-world.png evidence/ci/shot-world.png || true
 
+      # The gallery: six fixed-pose screenshots of the save this run was given, with the
+      # overlay hidden, each named for the build that took it and captioned in one line.
+      # Step 4 asks for the look, and a similarity score against a picture this project
+      # made cannot answer "does it look like the game" -- the pictures are the answer and
+      # the score stays only as a regression check (look-score.txt above).
+      #
+      # The owner reads these on GitHub from a phone, so they are committed as files with
+      # the caption in the name and a README beside them, not as an artifact zip.
+      - name: Caption the gallery and give it a README
+        if: always()
+        run: |
+          mkdir -p evidence/ci/gallery
+          VERSION="$(sed -n 's/^#define UMBRA_APP_VERSION "\(.*\)"/\1/p' platform/shared/umbra_app.h)"
+          SHA8="$(git rev-parse --short=8 HEAD)"
+          {
+            echo "# Umbra gallery -- $VERSION, build $SHA8"
+            echo ""
+            echo "Six fixed poses in the save this run was given, with the overlay and the hand"
+            echo "controls switched off. Taken by \`tools/emulator_smoke.sh\`, phase \`gallery\`;"
+            echo "the poses are chosen from the save's own terrain by \`tools/gallery_poses.py\`."
+            echo ""
+            echo "Each file is named \`gallery-<pose>-<version>-<build>.png\` so a picture outlives"
+            echo "the log that explains it. Captions:"
+            echo ""
+          } > evidence/ci/gallery/README.md
+          if [ -d gallery ]; then
+            for f in gallery/shot-*.png; do
+              [ -f "$f" ] || continue
+              pose="$(basename "$f" .png)"; pose="${pose#shot-}"
+              case "$pose" in
+                hills)  cap="grassy hills, from the highest ground in the save" ;;
+                forest) cap="forest: a column with logs, at eye height" ;;
+                shore)  cap="a shoreline, looking along the waterline" ;;
+                cave)   cap="under the terrain, looking up at the roof" ;;
+                sky)    cap="above the highest ground, looking at the horizon" ;;
+                edge)   cap="the edge of the loaded save, looking outward" ;;
+                *)      cap="pose $pose" ;;
+              esac
+              out="evidence/ci/gallery/gallery-$pose-$VERSION-$SHA8.png"
+              cp -f "$f" "$out"
+              echo "- \`$(basename "$out")\` -- $cap" >> evidence/ci/gallery/README.md
+              echo "gallery: $(basename "$out") -- $cap"
+            done
+            count="$(ls evidence/ci/gallery/*.png 2>/dev/null | wc -l)"
+            echo "" >> evidence/ci/gallery/README.md
+            echo "$count picture(s) in this run. The versions are never re-taken: a changed" >> evidence/ci/gallery/README.md
+            echo "renderer produces a new set of files beside the old ones." >> evidence/ci/gallery/README.md
+            [ "$count" -ge 6 ] || echo "::error title=gallery::$count picture(s), expected six"
+          else
+            echo "no gallery/ directory in this run -- the gallery phase did not run" \
+              > evidence/ci/gallery/README.md
+            echo "::error title=gallery::the gallery phase produced nothing"
+          fi
+
       # Evidence has to travel back through git: job logs and artifact
       # downloads are both unavailable to the environment that drives this
       # project, and a screenshot nobody can look at proves nothing.
@@ -472,6 +526,7 @@ jobs:
         if: always()
         run: |
           mkdir -p evidence/ci
+          # The gallery is copied by the step above, which names the files for the build.
           # Everything the smoke test wrote, whatever it got as far as doing.
           for f in *; do
             [ -f "$f" ] || continue
