@@ -32,7 +32,7 @@ typedef enum {
 
 // The app's own version, next to the git commit the build records. Bumped with
 // the tag that publishes it (see .github/workflows/release.yml).
-#define UMBRA_APP_VERSION "0.3.7"
+#define UMBRA_APP_VERSION "0.3.10"
 
 // The brief's number: re-meshing after a break or a place must not hold a frame for
 // more than about 50 ms, and the CI smoke test reads the same figure out of the log.
