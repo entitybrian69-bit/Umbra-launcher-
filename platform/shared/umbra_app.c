@@ -3935,7 +3935,11 @@ static void draw_gamefiles(umbra_app *app) {
 // as the drawing but outside the HUD's own condition.
 static void gallery_apply_pose(umbra_app *app) {
     if (!app->gallery || !app->pose_ready) return;
-    if (app->mesh_state != 0) return;
+    // 2 is "a mesh is ready", which is the same test the tap handler uses before it will
+    // put the body anywhere. The first version of this line required 0, which never
+    // happens after a world is built -- the new diagnostics said so in one run: "1 mesh
+    // line(s), 0 spawn(s), 1 pose read line(s), 0 pose-made-a-body line(s)".
+    if (app->mesh_state != 2) return;
     // The body does not exist in gallery mode: nothing taps the screen, and the tap is the
     // only thing that spawns it ("touch the world to walk" on the home screen). Requiring
     // `player_on` meant the pose was read, logged and then refused for ever -- run
