@@ -1301,6 +1301,11 @@ static void walk_report_begin(umbra_app *app) {
     app->walk_upload_worst_us = 0;
     app->walk_uploads = 0;
     app->walk_recentres = 0;
+    app->last_breach_frame = 0;
+    app->last_draw_breach_us = 0;
+    app->last_pump_breach_us = 0;
+    app->last_act_breach_us = 0;
+    app->last_hud_breach_us = 0;
     app->walk_start_resident = umbra_world_stream_resident();
     app->walk_report = 1;
     umbra_log(app, "walk: measuring the full-size window -- %lld column(s) resident, "
@@ -1330,6 +1335,17 @@ static void walk_report_end(umbra_app *app, const char *why) {
               app->cull.ranges_drawn, app->cull.ranges_total, app->draw_calls,
               app->cull_on ? "on" : "off", (long long)app->cull.boxes_rejected,
               (long long)umbra_world_stream_resident());
+    // The worst frame's split, repeated here so the summary line (which is what a reader
+    // of the run sees first) names the cause without another grep. Printed only when a
+    // frame broke the budget, so its absence means "nothing broke it".
+    if (app->last_breach_frame > 0) {
+        umbra_log(app, "walk: the worst over-budget frame was %lld, and its CPU went: pumps "
+                       "%.1f ms, body %.1f, scene %.1f, overlay %.1f (the rest is the frame's "
+                       "own bookkeeping)",
+                  (long long)app->last_breach_frame,
+                  app->last_pump_breach_us / 1000.0, app->last_act_breach_us / 1000.0,
+                  app->last_draw_breach_us / 1000.0, app->last_hud_breach_us / 1000.0);
+    }
 }
 
 // Re-centre the window on the chunk the player is standing in -- but only once they are
@@ -3717,11 +3733,15 @@ void umbra_app_frame(umbra_app *app) {
         umbra_log(app, "long frame %.1f ms (mesh %d%%, %lld calls)", app->frame_us / 1000.0,
                   app->mesh_progress / 10, (long long)app->mesh_calls);
     }
+    int64_t pump_t0 = umbra_now_us();
     pump_mesh(app);
     stream_pump(app);
-    player_act(app);
     gf_pump(app);
     world_pump(app);
+    int64_t pump_us = umbra_now_us() - pump_t0;
+    int64_t act_t0 = umbra_now_us();
+    player_act(app);
+    int64_t act_us = umbra_now_us() - act_t0;
     if (app->gf_pending_open && app->width >= 320 && app->mesh_state == 2) {
         app->gf_pending_open = 0;
         open_gamefiles_screen(app);
@@ -3780,7 +3800,9 @@ void umbra_app_frame(umbra_app *app) {
                       app->vert_count, app->draw_calls);
         }
     }
+    int64_t hud_t0 = umbra_now_us();
     draw_hud(app);
+    int64_t hud_us = umbra_now_us() - hud_t0;
     app->frames_drawn++;
     gpu_timer_collect(app);
 
@@ -3808,8 +3830,26 @@ void umbra_app_frame(umbra_app *app) {
     if (app->walk_report) {
         app->walk_frames++;
         if (umbra_ustat_add(&app->cpu, cpu_us)) {
-            umbra_log(app, "walk: frame %lld took %.1f ms of CPU, over the %d ms budget",
-                      (long long)app->walk_frames, cpu_us / 1000.0, UMBRA_CPU_BUDGET_MS);
+            // The frame that broke it, split where the time can go. The whole-walk report
+            // says "0 uploads, 0 re-centres" and then names a 52 ms frame -- which is true
+            // and useless. These four numbers say whether it was the scene draw, the
+            // streams, the body, or the overlay, and they are kept so the end-of-walk
+            // report can repeat the worst one's split rather than only its duration.
+            umbra_log(app, "walk: frame %lld took %.1f ms of CPU, over the %d ms budget "
+                           "(pumps %.1f, body %.1f, scene %.1f, overlay %.1f; %d draw call(s), "
+                           "%d of %d ranges)",
+                      (long long)app->walk_frames, cpu_us / 1000.0, UMBRA_CPU_BUDGET_MS,
+                      pump_us / 1000.0, act_us / 1000.0, app->last_draw_us / 1000.0,
+                      hud_us / 1000.0, (int)app->draw_calls,
+                      (int)app->cull.ranges_drawn, (int)app->cull.ranges_total);
+            if (cpu_us > app->last_draw_breach_us + app->last_pump_breach_us +
+                          app->last_act_breach_us + app->last_hud_breach_us) {
+                app->last_draw_breach_us = app->last_draw_us;
+                app->last_pump_breach_us = pump_us;
+                app->last_act_breach_us = act_us;
+                app->last_hud_breach_us = hud_us;
+                app->last_breach_frame = app->walk_frames;
+            }
         }
     }
 

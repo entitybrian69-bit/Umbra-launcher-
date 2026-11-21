@@ -262,6 +262,19 @@ struct umbra_app {
     int64_t mesh_calls, mesh_worst_call_us, mesh_total_us;
     int64_t upload_us;         // the one whole-arena upload, timed on its own
     int64_t last_draw_us;      // the scene draw, timed every frame
+    // The parts of a *breaching* walking frame, recorded only on that frame: a 52 ms frame
+    // with no upload and no re-centre in the whole walk is a stall somewhere between the
+    // frame's start and its end, and "somewhere" is not a diagnosis. Scene and HUD are
+    // timed every frame anyway; the pumps and player_act are timed only when the ledger has
+    // just complained, because timing them every frame costs more than the answer is worth.
+    int64_t last_pump_us;
+    int64_t last_act_us;
+    int64_t last_hud_us;
+    int64_t last_draw_breach_us;   // the scene draw of the worst over-budget walking frame
+    int64_t last_pump_breach_us;
+    int64_t last_act_breach_us;
+    int64_t last_hud_breach_us;
+    long long last_breach_frame;
     // The brief's question (d), as one number: from the edit being applied to the first
     // swap that presents the changed geometry. The four parts are kept apart because they
     // are four different faults -- the wait for a slice, the re-mesh itself, the

@@ -1499,11 +1499,17 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         8[01]) say "stream-fullsize: the window stayed full-size through the walk ($RESIDENT column(s) resident)" ;;
         *) die "stream-fullsize: the walk was on '${RESIDENT}' column(s), not the 81 the save opened with -- the phase would have reported a frame time for a window it is not about ($WITHIN)" ;;
     esac
+    # Where the worst over-budget frame's time went, when there was one. The app prints this
+    # only after a breach, so its presence is part of the failure message and never a
+    # separate question.
+    SPLIT="$(app_log "$FS_PID" | grep -m1 'walk: the worst over-budget frame')"
     case "$REPORT" in
         *"OVER BUDGET"*)
             # The acceptance rule: no frame may block over ~50 ms of CPU work. A breach is
-            # a failure of step 1, said with the number that broke it.
-            die "stream-fullsize: a frame broke the 50 ms CPU budget while walking at full size: $REPORT" ;;
+            # a failure of step 1, said with the number that broke it -- and with the split,
+            # because "one frame took 52.2 ms" does not say what to fix.
+            [ -n "$SPLIT" ] && say "stream-fullsize: $SPLIT"
+            die "stream-fullsize: a frame broke the 50 ms CPU budget while walking at full size: $REPORT${SPLIT:+ -- $SPLIT}" ;;
         *) say "stream-fullsize: no frame broke the 50 ms CPU budget, over $(printf '%s' "$REPORT" | sed -n 's/.*: \([0-9]*\) frame(s).*/\1/p') walking frame(s)" ;;
     esac
     REC="$(printf '%s\n' "$WITHIN" | sed -n 's/.*, \([0-9]*\) re-centre(s).*/\1/p')"
