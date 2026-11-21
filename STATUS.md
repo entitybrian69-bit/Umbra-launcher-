@@ -2393,6 +2393,24 @@ way and requires the two to be identical, because a crop applied to the wrong ro
 produces a plausible number. That self-check reports 5.42 of 255 when the slice is off by
 seven rows. The score runs in `android.yml` and its output is committed with the evidence.
 
+**The device numbers from that run, which is where the log fix lands.** The android workflow
+was red on the run before (`44891876990`) for one walking frame at 50.2 ms; this one is green.
+
+```
+stream-fullsize: 1290 frame(s) avg 19.4 ms (51 fps), median 19.9, 1% low 38.9,
+                 worst 49.6 at frame 1238, 0 over 50 ms
+stream-cull:     culling OFF  915 frame(s) avg 39.4 ms, 1% low 65.6, worst 73.6, 27 over
+stream-cull:     culling ON  1307 frame(s) avg 19.1 ms, 1% low 36.9, worst 42.6, 0 over
+stream-where:    the worst over-budget frame ... pumps 0.0, body 0.0, scene 50.8,
+                 log 0.0, overlay 0.3
+```
+
+Both halves got faster than the run before it (24.1 -> 19.4 ms and 24.3 -> 19.1 ms) and the
+cull-on half now has *no* frame over budget at all, worst 42.6 instead of 50.2. `log 0.0` is
+the attribution fix above, printed in the split where the log line used to be charged to
+`scene`. `stream-where` still breaks its budget, and that is the phase's job: it deliberately
+walks into the worst place it can find (scene 50.8, log 0.0) so the next fix has a target.
+
 **The before and after, on the phone, same world, same pose, same crop** (run `44896127007`,
 android success; the previous run's own screenshot scored with the identical crops):
 
