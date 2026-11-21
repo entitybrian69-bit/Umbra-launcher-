@@ -64,13 +64,13 @@ goose/main.goose:1169: warning: redundant `as i32`: y is already i32
 goose/main.goose:1169: warning: redundant `as i32`: z is already i32
     return if demo_set_block((x as i32), (y as i32), (z as i32), id) { 1 } else { 0 }
                                                       ^~~~~~~~
-goose/main.goose:1251: warning: redundant `as i32`: x is already i32
+goose/main.goose:1266: warning: redundant `as i32`: x is already i32
     if !demo_set_block((x as i32), (y as i32), (z as i32), id) { return 0; }
                         ^~~~~~~~
-goose/main.goose:1251: warning: redundant `as i32`: y is already i32
+goose/main.goose:1266: warning: redundant `as i32`: y is already i32
     if !demo_set_block((x as i32), (y as i32), (z as i32), id) { return 0; }
                                     ^~~~~~~~
-goose/main.goose:1251: warning: redundant `as i32`: z is already i32
+goose/main.goose:1266: warning: redundant `as i32`: z is already i32
     if !demo_set_block((x as i32), (y as i32), (z as i32), id) { return 0; }
                                                 ^~~~~~~~
 goose/core/gamefiles.goose:89: warning: redundant `as i64`: json_str(json_get(c, "time")).len is already i64
@@ -115,28 +115,28 @@ goose/core/sha1.goose:155: warning: redundant `as i64`: want.len is already i64
 goose/core/sampleworld.goose:132: warning: redundant `as i64`: bytes.len is already i64
     if bytes.len as i64 != UM_WORLD_BYTES { return 0; }
        ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:179: warning: redundant `as i64`: bytes.len is already i64
+goose/core/worldstream.goose:182: warning: redundant `as i64`: bytes.len is already i64
     let view = sref_of(ws_archive[..], off, bytes.len as i64);
                                             ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:256: warning: redundant `as i64`: demo.len is already i64
+goose/core/worldstream.goose:259: warning: redundant `as i64`: demo.len is already i64
     ws_stats.resident = demo.len as i64;
                         ^~~~~~~~~~~~~~~
-goose/core/worldstream.goose:266: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/core/worldstream.goose:269: warning: redundant `as i64`: an i32 converts to i64 implicitly here
         let dx = (demo[i].x as i64) - cx;
                   ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:267: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/core/worldstream.goose:270: warning: redundant `as i64`: an i32 converts to i64 implicitly here
         let dz = (demo[i].z as i64) - cz;
                   ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:376: warning: redundant `as i64`: demo.len is already i64
+goose/core/worldstream.goose:379: warning: redundant `as i64`: demo.len is already i64
                 ws_stats.resident = demo.len as i64;
                                     ^~~~~~~~~~~~~~~
-goose/core/worldstream.goose:414: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/core/worldstream.goose:417: warning: redundant `as i64`: an i32 converts to i64 implicitly here
         if (demo[i].x as i64) == cx && (demo[i].z as i64) == cz { return i }
             ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:414: warning: redundant `as i64`: an i32 converts to i64 implicitly here
+goose/core/worldstream.goose:417: warning: redundant `as i64`: an i32 converts to i64 implicitly here
         if (demo[i].x as i64) == cx && (demo[i].z as i64) == cz { return i }
                                         ^~~~~~~~~~~~~~~~
-goose/core/worldstream.goose:456: warning: redundant `as i64`: demo.len is already i64
+goose/core/worldstream.goose:459: warning: redundant `as i64`: demo.len is already i64
     ws_stats.resident = demo.len as i64;
                         ^~~~~~~~~~~~~~~
 goose/core/worldload_in.goose:336: warning: redundant `as i64`: cx is already i64
@@ -265,56 +265,56 @@ goose/core/atlas.goose:207: warning: redundant `as i64`: a u8 converts to i64 im
 goose/core/atlas.goose:217: warning: redundant `as u32`: a u8 converts to u32 implicitly here
         h = (h ^ (b as u32)) * 16777619;
                   ^~~~~~~~
-goose/core/mesh.goose:409: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:433: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             x: (bx as f32) + 0.5 + off[0],
                 ^~~~~~~~~
-goose/core/mesh.goose:410: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:434: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             y: (by as f32) + 0.5 + off[1],
                 ^~~~~~~~~
-goose/core/mesh.goose:411: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:435: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             z: (bz as f32) + 0.5 + off[2],
                 ^~~~~~~~~
-goose/core/mesh.goose:473: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:497: warning: redundant `as f32`: an i32 converts to f32 implicitly here
         let px = (bx as f32) + (if ux > 0.5 { hi[0] } else { lo[0] });
                   ^~~~~~~~~
-goose/core/mesh.goose:474: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:498: warning: redundant `as f32`: an i32 converts to f32 implicitly here
         let py = (by as f32) + (if uy > 0.5 { hi[1] } else { lo[1] });
                   ^~~~~~~~~
-goose/core/mesh.goose:475: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:499: warning: redundant `as f32`: an i32 converts to f32 implicitly here
         let pz = (bz as f32) + (if uz > 0.5 { hi[2] } else { lo[2] });
                   ^~~~~~~~~
-goose/core/mesh.goose:588: warning: redundant `as i32`: (cx * 16) is already i32
+goose/core/mesh.goose:612: warning: redundant `as i32`: (cx * 16) is already i32
     return demo_column_of((cx * 16) as i32, (cz * 16) as i32);
                            ^~~~~~~~~~~~~~~
-goose/core/mesh.goose:588: warning: redundant `as i32`: (cz * 16) is already i32
+goose/core/mesh.goose:612: warning: redundant `as i32`: (cz * 16) is already i32
     return demo_column_of((cx * 16) as i32, (cz * 16) as i32);
                                              ^~~~~~~~~~~~~~~
-goose/core/mesh.goose:689: warning: redundant `as i32`: x is already i32
+goose/core/mesh.goose:756: warning: redundant `as i32`: x is already i32
                 mesh_emit_model(c, x as i32, y as i32, z as i32, id);
                                    ^~~~~~~~
-goose/core/mesh.goose:689: warning: redundant `as i32`: y is already i32
+goose/core/mesh.goose:756: warning: redundant `as i32`: y is already i32
                 mesh_emit_model(c, x as i32, y as i32, z as i32, id);
                                              ^~~~~~~~
-goose/core/mesh.goose:689: warning: redundant `as i32`: z is already i32
+goose/core/mesh.goose:756: warning: redundant `as i32`: z is already i32
                 mesh_emit_model(c, x as i32, y as i32, z as i32, id);
                                                        ^~~~~~~~
-goose/core/mesh.goose:708: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:775: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
                        ^~~~~~~~
-goose/core/mesh.goose:708: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:775: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
                                  ^~~~~~~~
-goose/core/mesh.goose:708: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+goose/core/mesh.goose:775: warning: redundant `as f32`: an i32 converts to f32 implicitly here
             push_cross(x as f32, y as f32, z as f32, tint, tex_uv(tex_face_slot(path, 2)));
                                            ^~~~~~~~
-goose/core/mesh.goose:752: warning: redundant `as f32`: an i32 converts to f32 implicitly here
-            push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
+goose/core/mesh.goose:821: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+            push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao, lit);
                       ^~~~~~~~
-goose/core/mesh.goose:752: warning: redundant `as f32`: an i32 converts to f32 implicitly here
-            push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
+goose/core/mesh.goose:821: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+            push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao, lit);
                                 ^~~~~~~~
-goose/core/mesh.goose:752: warning: redundant `as f32`: an i32 converts to f32 implicitly here
-            push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao);
+goose/core/mesh.goose:821: warning: redundant `as f32`: an i32 converts to f32 implicitly here
+            push_quad(x as f32, y as f32, z as f32, face, uv[0], uv[1], uv[2], uv[3], tint, ao, lit);
                                           ^~~~~~~~
 goose/core/region.goose:60: warning: redundant `as i64`: a u32 converts to i64 implicitly here
     if id as i64 >= bs_defs.len { return bs_names[0..0]; }
@@ -322,10 +322,10 @@ goose/core/region.goose:60: warning: redundant `as i64`: a u32 converts to i64 i
 goose/core/region.goose:66: warning: redundant `as i64`: a u32 converts to i64 implicitly here
     if id as i64 >= bs_defs.len { return bs_props[0..0]; }
        ^~~~~~~~~
-goose/core/region.goose:142: warning: redundant `as u32`: a u16 converts to u32 implicitly here
+goose/core/region.goose:152: warning: redundant `as u32`: a u16 converts to u32 implicitly here
     return s.blocks[i] as u32;
            ^~~~~~~~~~~~~~~~~~
-goose/core/region.goose:526: warning: redundant `as u32`: a u8 converts to u32 implicitly here
+goose/core/region.goose:599: warning: redundant `as u32`: a u8 converts to u32 implicitly here
             put_be_u32(out, (offsets[i] << 8) | (counts[i] as u32));
                                                  ^~~~~~~~~~~~~~~~
 goose/core/nbt.goose:104: warning: redundant `as i64`: an i8 converts to i64 implicitly here
@@ -447,16 +447,16 @@ demo: the middle of the world is 24,24 and its floor is 66.00
 demo: a body at the corner 24.0,24.0 would overlap 1 solid cell(s) at foot height
 demo: this is the spawn that failed on the device (44241902430)
 demo: spawning at 24.5,24.5 in cell 24,24 (floor 66.00)
-progress: worst 969 permille; units 10369, total 10369
-sliced mesh: 46 calls, worst call 25.49 ms, worst unit 7.71 ms
+progress: worst 899 permille; units 10369, total 10369
+sliced mesh: 23 calls, worst call 20.50 ms, worst unit 1.14 ms
 ranges: 27 slots for 9 columns
 ranges: 247116 + 12690 + 6414 = 266220 indices used of 580000 in the arena
 edit 0: 1 columns, 1153 units of work, is_edit 1
-edit 0: 14 calls, worst call 7.07 ms, worst slice 1.20 ms
+edit 0: 9 calls, worst call 6.67 ms, worst slice 0.94 ms
 edit 1: 1 columns, 1153 units of work, is_edit 1
-edit 1: 12 calls, worst call 6.40 ms, worst slice 1.17 ms
+edit 1: 9 calls, worst call 6.25 ms, worst slice 0.80 ms
 edit 2: 2 columns, 2305 units of work, is_edit 1
-edit 2: 24 calls, worst call 6.70 ms, worst slice 1.15 ms
+edit 2: 17 calls, worst call 6.60 ms, worst slice 0.84 ms
 edit: patched geometry 1409d6e1c0ba34c9 (266220 indices), rebuilt 1409d6e1c0ba34c9 (266220)
 layout: phone scale 2.64, desktop scale 1.00
 layout: button 0 21,1006 737x53; button 2 1528,1006
@@ -492,14 +492,16 @@ world: floor at 24,24 is 66.00
 world: slab at 12,64,21 with a half-block collision top
 water: 386 fluid cells, 22287 solid, 367 air-or-other near the surface
 edits: the last line is "26 65 24 minecraft:stone"
-world: opened 4 chunk(s) from 1 region file(s): 24673 non-air blocks, 53 states, 0 errors, 0 not full, 0 left out, in 13.5 ms
+world: opened 4 chunk(s) from 1 region file(s): 24673 non-air blocks, 53 states, 0 errors, 0 not full, 0 left out, in 7.9 ms
 world: bounds x 0.0..32.0 z 0.0..32.0
 world: the topmost block at 1,1 is y 61
 world: the block at 1,61,1 is minecraft:grass_block
 world: the floors at 1,17 and 17,17 are 64.00 and 62.00
-world: meshed 41092 vertices in 8 calls, x 0.0..32.0, 0 outside the save's bounds
+world: meshed 41092 vertices in 3 calls, x 0.0..32.0, 0 outside the save's bounds
 stream: radius 2 -> 16 column(s) resident of 25 asked for, 0 evicted, 9 missing, 0 error(s)
-stream: centre 0.02 ms, fill 0.01 ms over 1 slice(s), worst slice 0.01 ms, 0.1 MB of region files
-stream: meshed 64768 vertex(es) of 16 column(s) in 17 call(s), 341.3 ms
+stream: centre 0.01 ms, fill 0.00 ms over 1 slice(s), worst slice 0.00 ms, 0.1 MB of region files
+stream: meshed 64768 vertex(es) of 16 column(s) in 9 call(s), 173.4 ms
+light: 43 section(s) of the window were read with sky/block light
+light: 25032 of 480000 vertex colour(s) differ when the save's light is ignored (25032 darker, 0 brighter), mean green 0.902 -> 0.905
 stream: 64768 vertex(es) drawn, 0 outside x -32..32 z -32..32
-PASS: 364 checks, 0 failures
+PASS: 372 checks, 0 failures
