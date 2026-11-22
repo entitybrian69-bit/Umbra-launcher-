@@ -2791,6 +2791,12 @@ the true reason.
    subtracts the camera, and the fog measures from the same eye (`u_eye`). `app->center` was
    the dead half of the mistake and is gone, with a note where it was.
 
+   Run 44997712805 is the confirmation: `gallery: drew from eye -19.50 98.61 18.50 ... body
+   at -19.50 96.99 18.50 ..., first person yes`, 32 of 132 ranges, and the shot
+   **2905 distinct colours, no single colour over 60%** -- against 99.8% of one colour for
+   every attempt before it. The six-phase gallery ran, then `gamefiles`, then the run ended
+   reporting the budget breach that had been deferred six phases earlier.
+
    The reason to believe it: `goose/core/raster.goose`, the CPU rasterizer that has drawn
    every world this project ever verified, always computed `d = p - eye` in world space. The
    phone was the only renderer with two origins, and the instrument that disagreed with it
