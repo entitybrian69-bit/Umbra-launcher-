@@ -1,10 +1,10 @@
 
 
------ pid 7978 at 2026-11-21 22:06:03 -----
+----- pid 8446 at 2026-11-22 01:50:56 -----
 Cmd line: org.umbra.client
 ABI: 'x86_64'
 
-"rg.umbra.client" sysTid=7978
+"rg.umbra.client" sysTid=8446
     #00 pc 00000000000b30fa  /apex/com.android.runtime/lib64/bionic/libc.so (__epoll_pwait+10) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 000000000001a619  /system/lib64/libutils.so (android::Looper::pollInner(int)+249) (BuildId: 658bede56204d492a28682a718f6f501)
     #02 pc 000000000001a4be  /system/lib64/libutils.so (android::Looper::pollOnce(int, int*, int*, void**)+126) (BuildId: 658bede56204d492a28682a718f6f501)
@@ -29,7 +29,7 @@ ABI: 'x86_64'
     #21 pc 0000000000004160  /system/bin/app_process64 (main+1616) (BuildId: ce3cc65283f87cf0181925988a809dbd)
     #22 pc 00000000000507c8  /apex/com.android.runtime/lib64/bionic/libc.so (__libc_init+104) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
-"Signal Catcher" sysTid=7986
+"Signal Catcher" sysTid=8454
     #00 pc 00000000000b2b3a  /apex/com.android.runtime/lib64/bionic/libc.so (__rt_sigtimedwait+10) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 000000000006c1ca  /apex/com.android.runtime/lib64/bionic/libc.so (sigwait+74) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #02 pc 000000000065d24a  /apex/com.android.art/lib64/libart.so (art::SignalCatcher::WaitForSignal(art::Thread*, art::SignalSet&)+458) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
@@ -37,13 +37,13 @@ ABI: 'x86_64'
     #04 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #05 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
-"perfetto_hprof_" sysTid=7987
+"perfetto_hprof_" sysTid=8455
     #00 pc 00000000000b1eb7  /apex/com.android.runtime/lib64/bionic/libc.so (read+7) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 000000000001cb70  /apex/com.android.art/lib64/libperfetto_hprof.so (void* std::__1::__thread_proxy<std::__1::tuple<std::__1::unique_ptr<std::__1::__thread_struct, std::__1::default_delete<std::__1::__thread_struct> >, ArtPlugin_Initialize::$_29> >(void*)+288) (BuildId: 389f643e3949f377b8ed814829c73071)
     #02 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #03 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
-"ADB-JDWP Connec" sysTid=7988
+"ADB-JDWP Connec" sysTid=8456
     #00 pc 00000000000b31fa  /apex/com.android.runtime/lib64/bionic/libc.so (__ppoll+10) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 000000000006974a  /apex/com.android.runtime/lib64/bionic/libc.so (poll+74) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #02 pc 000000000000a931  /apex/com.android.art/lib64/libadbconnection.so (adbconnection::AdbConnectionState::RunPollLoop(art::Thread*)+929) (BuildId: 1bc50b9cfe013d106ee1b6fe411a609e)
@@ -51,7 +51,7 @@ ABI: 'x86_64'
     #04 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #05 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
-"Jit thread pool" sysTid=7989
+"Jit thread pool" sysTid=8457
     #00 pc 000000000005a298  /apex/com.android.runtime/lib64/bionic/libc.so (syscall+24) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 0000000000212f1e  /apex/com.android.art/lib64/libart.so (art::ConditionVariable::WaitHoldingLocks(art::Thread*)+110) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
     #02 pc 00000000006b9245  /apex/com.android.art/lib64/libart.so (art::ThreadPool::GetTask(art::Thread*)+101) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
@@ -60,7 +60,7 @@ ABI: 'x86_64'
     #05 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #06 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
-"HeapTaskDaemon" sysTid=7990
+"HeapTaskDaemon" sysTid=8458
     #00 pc 000000000005a298  /apex/com.android.runtime/lib64/bionic/libc.so (syscall+24) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 0000000000212f1e  /apex/com.android.art/lib64/libart.so (art::ConditionVariable::WaitHoldingLocks(art::Thread*)+110) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
     #02 pc 000000000036fab1  /apex/com.android.art/lib64/libart.so (art::gc::TaskProcessor::GetTask(art::Thread*)+545) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
@@ -76,7 +76,7 @@ ABI: 'x86_64'
     #12 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #13 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
-"ReferenceQueueD" sysTid=7991
+"ReferenceQueueD" sysTid=8459
     #00 pc 000000000005a298  /apex/com.android.runtime/lib64/bionic/libc.so (syscall+24) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 0000000000212f1e  /apex/com.android.art/lib64/libart.so (art::ConditionVariable::WaitHoldingLocks(art::Thread*)+110) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
     #02 pc 00000000005489dd  /apex/com.android.art/lib64/libart.so (art::Monitor::Wait(art::Thread*, long, int, bool, art::ThreadState)+557) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
@@ -93,7 +93,7 @@ ABI: 'x86_64'
     #13 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #14 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
-"FinalizerDaemon" sysTid=7992
+"FinalizerDaemon" sysTid=8460
     #00 pc 000000000005a298  /apex/com.android.runtime/lib64/bionic/libc.so (syscall+24) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 0000000000212f1e  /apex/com.android.art/lib64/libart.so (art::ConditionVariable::WaitHoldingLocks(art::Thread*)+110) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
     #02 pc 00000000005489dd  /apex/com.android.art/lib64/libart.so (art::Monitor::Wait(art::Thread*, long, int, bool, art::ThreadState)+557) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
@@ -111,7 +111,7 @@ ABI: 'x86_64'
     #14 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #15 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
-"FinalizerWatchd" sysTid=7993
+"FinalizerWatchd" sysTid=8461
     #00 pc 000000000005a298  /apex/com.android.runtime/lib64/bionic/libc.so (syscall+24) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 0000000000212f1e  /apex/com.android.art/lib64/libart.so (art::ConditionVariable::WaitHoldingLocks(art::Thread*)+110) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
     #02 pc 00000000005489dd  /apex/com.android.art/lib64/libart.so (art::Monitor::Wait(art::Thread*, long, int, bool, art::ThreadState)+557) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
@@ -129,7 +129,7 @@ ABI: 'x86_64'
     #14 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #15 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
-"Binder:7978_1" sysTid=7994
+"Binder:8446_1" sysTid=8462
     #00 pc 00000000000b2137  /apex/com.android.runtime/lib64/bionic/libc.so (__ioctl+7) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 00000000000670a8  /apex/com.android.runtime/lib64/bionic/libc.so (ioctl+216) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #02 pc 0000000000059e0f  /system/lib64/libbinder.so (android::IPCThreadState::talkWithDriver(bool)+319) (BuildId: f55f2948551e7a9225c5653544eb5571)
@@ -142,7 +142,7 @@ ABI: 'x86_64'
     #09 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #10 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
-"Binder:7978_2" sysTid=7995
+"Binder:8446_2" sysTid=8463
     #00 pc 00000000000b2137  /apex/com.android.runtime/lib64/bionic/libc.so (__ioctl+7) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 00000000000670a8  /apex/com.android.runtime/lib64/bionic/libc.so (ioctl+216) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #02 pc 0000000000059e0f  /system/lib64/libbinder.so (android::IPCThreadState::talkWithDriver(bool)+319) (BuildId: f55f2948551e7a9225c5653544eb5571)
@@ -155,7 +155,7 @@ ABI: 'x86_64'
     #09 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #10 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
-"Profile Saver" sysTid=7996
+"Profile Saver" sysTid=8464
     #00 pc 000000000005a298  /apex/com.android.runtime/lib64/bionic/libc.so (syscall+24) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 0000000000212f1e  /apex/com.android.art/lib64/libart.so (art::ConditionVariable::WaitHoldingLocks(art::Thread*)+110) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
     #02 pc 00000000003eca92  /apex/com.android.art/lib64/libart.so (art::ProfileSaver::Run()+482) (BuildId: 7fbaf2a1a3317bd634b00eb90e32291e)
@@ -163,20 +163,7 @@ ABI: 'x86_64'
     #04 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #05 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
-"Binder:7978_3" sysTid=7997
-    #00 pc 00000000000b2137  /apex/com.android.runtime/lib64/bionic/libc.so (__ioctl+7) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
-    #01 pc 00000000000670a8  /apex/com.android.runtime/lib64/bionic/libc.so (ioctl+216) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
-    #02 pc 0000000000059e0f  /system/lib64/libbinder.so (android::IPCThreadState::talkWithDriver(bool)+319) (BuildId: f55f2948551e7a9225c5653544eb5571)
-    #03 pc 000000000005a010  /system/lib64/libbinder.so (android::IPCThreadState::getAndExecuteCommand()+16) (BuildId: f55f2948551e7a9225c5653544eb5571)
-    #04 pc 000000000005aa5d  /system/lib64/libbinder.so (android::IPCThreadState::joinThreadPool(bool)+45) (BuildId: f55f2948551e7a9225c5653544eb5571)
-    #05 pc 0000000000082a57  /system/lib64/libbinder.so (android::PoolThread::threadLoop()+23) (BuildId: f55f2948551e7a9225c5653544eb5571)
-    #06 pc 00000000000160f9  /system/lib64/libutils.so (android::Thread::_threadLoop(void*)+313) (BuildId: 658bede56204d492a28682a718f6f501)
-    #07 pc 00000000000b588c  /system/lib64/libandroid_runtime.so (android::AndroidRuntime::javaThreadShell(void*)+140) (BuildId: 84eb9c8bad06a5ac4720d16d40f66380)
-    #08 pc 0000000000015980  /system/lib64/libutils.so (thread_data_t::trampoline(thread_data_t const*)+416) (BuildId: 658bede56204d492a28682a718f6f501)
-    #09 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
-    #10 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
-
-"RenderThread" sysTid=7998
+"RenderThread" sysTid=8465
     #00 pc 00000000000b30fa  /apex/com.android.runtime/lib64/bionic/libc.so (__epoll_pwait+10) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 000000000001a619  /system/lib64/libutils.so (android::Looper::pollInner(int)+249) (BuildId: 658bede56204d492a28682a718f6f501)
     #02 pc 000000000001a4be  /system/lib64/libutils.so (android::Looper::pollOnce(int, int*, int*, void**)+126) (BuildId: 658bede56204d492a28682a718f6f501)
@@ -187,17 +174,34 @@ ABI: 'x86_64'
     #07 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #08 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
-"Thread-3" sysTid=8001
+"Thread-3" sysTid=8467
     #00 pc 00000000000b1eb7  /apex/com.android.runtime/lib64/bionic/libc.so (read+7) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 000000000000eca8  /vendor/lib64/libOpenglSystemCommon.so (QemuPipeStream::commitBufferAndReadFully(unsigned long, void*, unsigned long)+232) (BuildId: f9e705d80d0545f12d9fc926923f60f7)
-    #02 pc 000000000004ba31  /vendor/lib64/libGLESv2_enc.so ((anonymous namespace)::glGetUniformLocation_enc(void*, unsigned int, char const*)+289) (BuildId: 2ed55cef0b8d41699a4fddd03d4ca830)
-    #03 pc 000000000005e73d  /data/app/~~Y2Ldt8NaFwT5ORKUW9p6Ow==/org.umbra.client-a3UEURfaea1TxbEAIkikRA==/base.apk!libumbra.so (offset 0x6c000) (umbra_app_frame+26381) (BuildId: a025d4469783a38d5bf3db90629377e039878490)
-    #04 pc 000000000006cb89  /data/app/~~Y2Ldt8NaFwT5ORKUW9p6Ow==/org.umbra.client-a3UEURfaea1TxbEAIkikRA==/base.apk!libumbra.so (offset 0x6c000) (android_main+1577) (BuildId: a025d4469783a38d5bf3db90629377e039878490)
-    #05 pc 000000000006fe0c  /data/app/~~Y2Ldt8NaFwT5ORKUW9p6Ow==/org.umbra.client-a3UEURfaea1TxbEAIkikRA==/base.apk!libumbra.so (offset 0x6c000) (BuildId: a025d4469783a38d5bf3db90629377e039878490)
-    #06 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
-    #07 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
+    #02 pc 000000000000825a  /vendor/lib64/lib_renderControl_enc.so ((anonymous namespace)::rcCreateSyncKHR_enc(void*, unsigned int, int*, unsigned int, int, unsigned long*, unsigned long*)+394) (BuildId: 409b76f7356211e2071b559453aba1f5)
+    #03 pc 0000000000012072  /vendor/lib64/egl/libEGL_emulation.so (createNativeSync(unsigned int, int const*, int, bool, int, int*)+130) (BuildId: 1c910424fcdb1518e1cd3989660d173c)
+    #04 pc 000000000000c936  /vendor/lib64/egl/libEGL_emulation.so (egl_window_surface_t::swapBuffers()+390) (BuildId: 1c910424fcdb1518e1cd3989660d173c)
+    #05 pc 0000000000011584  /vendor/lib64/egl/libEGL_emulation.so (eglSwapBuffers+484) (BuildId: 1c910424fcdb1518e1cd3989660d173c)
+    #06 pc 0000000000021c2b  /system/lib64/libEGL.so (android::eglSwapBuffersWithDamageKHRImpl(void*, void*, int*, int)+395) (BuildId: 2a2c36a4dd977d11859dfc585e6bf4e1)
+    #07 pc 000000000001e27a  /system/lib64/libEGL.so (eglSwapBuffers+42) (BuildId: 2a2c36a4dd977d11859dfc585e6bf4e1)
+    #08 pc 000000000006cb9c  /data/app/~~69YaD28tpHWSL9WAe5-TrQ==/org.umbra.client-YKa25oJ0TMEK21Sqi7lQJw==/base.apk!libumbra.so (offset 0x6c000) (android_main+1596) (BuildId: 2590d1e09303b019f5e59a6b31300955001b541c)
+    #09 pc 000000000006fe0c  /data/app/~~69YaD28tpHWSL9WAe5-TrQ==/org.umbra.client-YKa25oJ0TMEK21Sqi7lQJw==/base.apk!libumbra.so (offset 0x6c000) (BuildId: 2590d1e09303b019f5e59a6b31300955001b541c)
+    #10 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
+    #11 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
-"InsetsAnimation" sysTid=8003
+"Binder:8446_3" sysTid=8469
+    #00 pc 00000000000b2137  /apex/com.android.runtime/lib64/bionic/libc.so (__ioctl+7) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
+    #01 pc 00000000000670a8  /apex/com.android.runtime/lib64/bionic/libc.so (ioctl+216) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
+    #02 pc 0000000000059e0f  /system/lib64/libbinder.so (android::IPCThreadState::talkWithDriver(bool)+319) (BuildId: f55f2948551e7a9225c5653544eb5571)
+    #03 pc 000000000005a010  /system/lib64/libbinder.so (android::IPCThreadState::getAndExecuteCommand()+16) (BuildId: f55f2948551e7a9225c5653544eb5571)
+    #04 pc 000000000005aa5d  /system/lib64/libbinder.so (android::IPCThreadState::joinThreadPool(bool)+45) (BuildId: f55f2948551e7a9225c5653544eb5571)
+    #05 pc 0000000000082a57  /system/lib64/libbinder.so (android::PoolThread::threadLoop()+23) (BuildId: f55f2948551e7a9225c5653544eb5571)
+    #06 pc 00000000000160f9  /system/lib64/libutils.so (android::Thread::_threadLoop(void*)+313) (BuildId: 658bede56204d492a28682a718f6f501)
+    #07 pc 00000000000b588c  /system/lib64/libandroid_runtime.so (android::AndroidRuntime::javaThreadShell(void*)+140) (BuildId: 84eb9c8bad06a5ac4720d16d40f66380)
+    #08 pc 0000000000015980  /system/lib64/libutils.so (thread_data_t::trampoline(thread_data_t const*)+416) (BuildId: 658bede56204d492a28682a718f6f501)
+    #09 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
+    #10 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
+
+"InsetsAnimation" sysTid=8470
     #00 pc 00000000000b30fa  /apex/com.android.runtime/lib64/bionic/libc.so (__epoll_pwait+10) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 000000000001a619  /system/lib64/libutils.so (android::Looper::pollInner(int)+249) (BuildId: 658bede56204d492a28682a718f6f501)
     #02 pc 000000000001a4be  /system/lib64/libutils.so (android::Looper::pollOnce(int, int*, int*, void**)+126) (BuildId: 658bede56204d492a28682a718f6f501)
@@ -213,7 +217,7 @@ ABI: 'x86_64'
     #12 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #13 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
-"Binder:7978_4" sysTid=8009
+"Binder:8446_4" sysTid=8476
     #00 pc 00000000000b2137  /apex/com.android.runtime/lib64/bionic/libc.so (__ioctl+7) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #01 pc 00000000000670a8  /apex/com.android.runtime/lib64/bionic/libc.so (ioctl+216) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #02 pc 0000000000059e0f  /system/lib64/libbinder.so (android::IPCThreadState::talkWithDriver(bool)+319) (BuildId: f55f2948551e7a9225c5653544eb5571)
@@ -226,4 +230,4 @@ ABI: 'x86_64'
     #09 pc 00000000000c7d1a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
     #10 pc 000000000005f0b7  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+55) (BuildId: edf0af8d613e7bdf6a416ec8f4edeb0d)
 
------ end 7978 -----
+----- end 8446 -----
