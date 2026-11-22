@@ -15,7 +15,7 @@
 #
 #   * a 2-frame breach followed by a clean retry -- the branch that killed 44948979735;
 #   * a 2-frame breach followed by another one (the tail);
-#   * 40 frames over (a regression, which must die);
+#   * 40 frames over (a regression, which must fail and not be retried);
 #   * a clean walk (no retry, no message that mentions a count).
 #
 # Every one of them must finish with a verdict and no unbound variable anywhere.
@@ -78,6 +78,10 @@ OUT=""
 say()  { OUT="${OUT}say: $*"$'\n'; }
 note() { OUT="${OUT}note: $*"$'\n'; }
 die()  { OUT="${OUT}DIE: $*"$'\n'; FAILED=1; }
+# `defer` is the other way a phase can fail: the breach is recorded, the run keeps going so
+# the phase that explains it can run, and the exit status is non-zero at the end. For this
+# test it is a failure like any other -- what matters is that the breach is not dropped.
+defer() { OUT="${OUT}DIE: $*"$'\n'; FAILED=1; }
 FAILED=0
 ADEV=""
 app_log() { printf '%s' "$ADEV"; }
@@ -148,9 +152,13 @@ grep -q "STILL OVER BUDGET by 1 frame(s)" "$TMP/cull: 2 over, then 1 over.log" \
     || { printf 'FAIL %-34s did not record the tail\n' "cull: 2 over, then 1 over"; fail=1; }
 
 run_phase "fullsize: 40 over"              "$TMP/fullsize.sh" "$BIG"     ""
+# It has to fail *and* it has to have spent no retry: a real regression is not retried.
+# Whether it `die`s or `defer`s is the harness's business -- run 44984148148 defers so that
+# `stream-where` can attribute the number -- but the breach itself is never dropped.
 grep -q "DIE:" "$TMP/fullsize: 40 over.log" \
+    && ! grep -q "walking once more" "$TMP/fullsize: 40 over.log" \
     && printf 'ok   %-34s failed without spending a retry\n' "fullsize: 40 over" \
-    || { printf 'FAIL %-34s a 40-frame breach passed\n' "fullsize: 40 over"; fail=1; }
+    || { printf 'FAIL %-34s a 40-frame breach passed or was retried\n' "fullsize: 40 over"; fail=1; }
 
 run_phase "fullsize: clean"                "$TMP/fullsize.sh" "$CLEAN"   ""
 grep -q "no frame broke the 50 ms CPU budget" "$TMP/fullsize: clean.log" \

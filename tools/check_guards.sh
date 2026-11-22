@@ -56,6 +56,14 @@ guard budget        bash tools/test_budget_rule.sh
 #                    cannot see it, and the summary ended mid-phase. This runs both phases
 #                    against stubs, so every branch is executed rather than parsed.
 guard budget_phases bash tools/test_budget_phases.sh
+#   smoke_order   - run 44984148148 died on a 49-frame budget breach and *that was the end of
+#                    the run*: `stream-where`, the only phase whose split is raster time
+#                    rather than enqueue time, is four phases later and never ran, so the
+#                    breach arrived with a number and no explanation -- which is how six
+#                    attempts each became a guess. A breach now defers: the run still fails,
+#                    but the phase that explains it runs first. This checks that order, and
+#                    that a deferred failure is still fatal at the end.
+guard smoke_order  bash tools/test_smoke_order.sh
 
 #   c_compiles    - platform/shared/umbra_app.c is one file with two platform branches
 #                   behind #ifdef __ANDROID__, and only one of them is compiled by any

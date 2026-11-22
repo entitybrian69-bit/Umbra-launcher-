@@ -46,6 +46,30 @@ die() {
     exit 1
 }
 
+# A failure that must still fail the run, but not before the phases that explain it have
+# run. Run 44984148148 is the reason: `stream-fullsize` said
+#
+#     49 frames broke the 50 ms CPU budget ... scene 87.0, cutout 38.7
+#
+# and died there -- and the only phase that can attribute that number, `stream-where` (the
+# one with a glFinish per pass, so the split is raster time and not enqueue time), sits
+# four phases later and never ran. The run then reported a budget breach with no evidence
+# of where it went, and the gallery never happened either.
+#
+# `defer` records the failure and keeps going; the next `section` that would be a fresh
+# start of a *measurement* checks `deferred_fail` first. The exit status is unchanged: the
+# run fails, at the end, saying which phase it was.
+DEFERRED=""
+defer() {
+    err "$PHASE: $1"
+    DEFERRED="${DEFERRED}${DEFERRED:+; }$PHASE: $1"
+}
+deferred_fail() {
+    [ -n "$DEFERRED" ] || return 0
+    err "$DEFERRED"
+    exit 1
+}
+
 # Is a crash in the log ours? A FATAL EXCEPTION is not this app's crash unless its own
 # process is the one that died. Run 44432932868 failed its soak on
 # "FATAL EXCEPTION: main ... Process: com.google.android.apps.youtube.music" -- a
@@ -1676,7 +1700,12 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
                         say "stream-fullsize: STILL OVER BUDGET by $OVERS frame(s) on both walks -- recorded as this emulator's tail, not a step-1 regression: $REPORT${SPLIT:+ -- $SPLIT}"
                         note "stream-fullsize: the budget was breached by $OVERS frame(s) twice; tail, not regression (worst $(worst_ms "$REPORT") ms)"
                     else
-                        die "stream-fullsize: $OVERS frames broke the 50 ms CPU budget while walking at full size, which is not noise: $REPORT${SPLIT:+ -- $SPLIT}"
+                        # Deferred, not fatal: `stream-where` runs a few phases later with a
+                        # glFinish per pass and is the only measurement here that says
+                        # whether this 87 ms is the cutout pass's raster time or the queue's
+                        # enqueue time. A run that stops at the number cannot answer that,
+                        # and the next attempt is then another guess (run 44984148148).
+                        defer "stream-fullsize: $OVERS frames broke the 50 ms CPU budget while walking at full size, which is not noise: $REPORT${SPLIT:+ -- $SPLIT} -- the attribution is stream-where, below"
                     fi ;;
                 *) say "stream-fullsize: one breaching walk and then a clean one; the clean numbers are $REPORT" ;;
             esac ;;
@@ -1697,6 +1726,7 @@ fi
 # Both halves walk from the spawn, so the world under the walker is the same distance
 # either way. The comparison is draw calls and frame times; the app measures both.
 if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
+    deferred_fail
     section "stream-cull"
     # The shipped radius, and no leftovers from the previous phases: both halves of this
     # comparison have to be the same window or the numbers are about two worlds.
@@ -1854,6 +1884,8 @@ fi
 # Its frame times are *not* comparable with the shipped walk's and the phase says so: a
 # glFinish per pass serialises the frame deliberately.
 if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
+    # Deliberately no `deferred_fail` here: this phase is the explanation for a budget
+    # breach in `stream-fullsize`, so it runs *because* that failed, not in spite of it.
     section "stream-where"
     adb shell am force-stop org.umbra.client > /dev/null 2>&1 || true
     for _i in 1 2 3 4 5 6 7 8 9 10; do
@@ -1902,6 +1934,7 @@ fi
 # Each file is named for the build that took it, so a picture outlives the log that explains
 # it: gallery-<pose>-<version>-<sha8>.png.
 if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
+    deferred_fail
     section "gallery"
     GAL_DIR="gallery"
     rm -rf "$GAL_DIR"; mkdir -p "$GAL_DIR"
@@ -2280,5 +2313,9 @@ fi
 COLLECTED=1
 adb emu kill > /dev/null 2>&1 || true
 phase "done"
+# A deferred failure is still a failure, and the run says so at the end with the phase it
+# came from. Everything after the deferred phase ran to give the breach an explanation;
+# none of that turns the breach into a pass.
+deferred_fail
 say "result: PASS (installed, launched, drew, self test tapped, the game-files screen fetched the jar it needs, ${SOAK_SECONDS}s soak, no crash)"
 note "PASS: app ran on the emulator, see summary.txt in evidence/ci"

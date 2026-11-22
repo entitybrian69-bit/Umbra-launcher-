@@ -2737,7 +2737,7 @@ stream-cull: retry -- 972 frame(s) avg 25.0 ms, worst 46.0 at frame 84, 0 over 5
 stream-cull: one breaching walk and then a clean one with culling on
 ```
 
-### The gallery: five bugs, and only the last one was the renderer's
+### The gallery: six bugs, and only the last one was the renderer's
 
 The gallery phase took five runs to go from "never posed" to "posed and drew the wrong
 thing", and every failure was a check that could not tell a correct run from a broken one:
@@ -2768,6 +2768,43 @@ passed and six identical pictures of nothing would have passed with it. `tools/c
 decodes the PNG now: right surface, no single colour over 98.5% of the frame, and each shot
 different from every other shot in the run. A sky frame fails it for being flat, which is
 the true reason.
+
+6. **The renderer subtracted the camera twice.** This one was not in the gallery code at
+   all, and it is why six sessions of fixing the pose changed nothing. The mesh shader did
+   `p = a_pos - u_center` and fogged by `length(p)`, with `u_center` the mesh centre for the
+   overview and **the player's own position for a walking body** -- while `u_viewproj` was
+   built from a world-space eye. Every path drew a world translated twice. The overview hid
+   it by arithmetic accident: its look-at point *is* the mesh centre, so the second
+   subtraction landed on the first and the only visible effect was a slightly odd fog
+   origin. First person did not, and the gallery's poses are first person:
+
+   ```
+   eye -19.50 98.62 18.50, body at -19.50 97.00 18.50, 32 range(s) of 132 drawn
+   a wall 3.16 blocks away          -> 3.16 blocks away
+   the same wall, doubled origin    -> 101.84 blocks away, 100% fogged
+   ```
+
+   `fog_far` while walking is 96, and the fragment shader mixes to `vec3(0.55, 0.70, 0.92)`
+   -- bit for bit the clear colour. So "drew 32 range(s) of 132" and "99.8% of the frame is
+   one colour" were both true at once, and no screenshot could tell a drawn world from an
+   empty one. It is fixed by having one origin: vertices are in the world, the view matrix
+   subtracts the camera, and the fog measures from the same eye (`u_eye`). `app->center` was
+   the dead half of the mistake and is gone, with a note where it was.
+
+   The reason to believe it: `goose/core/raster.goose`, the CPU rasterizer that has drawn
+   every world this project ever verified, always computed `d = p - eye` in world space. The
+   phone was the only renderer with two origins, and the instrument that disagreed with it
+   was right. `headless_main.c` now checks the shader's own arithmetic -- distance, fog and
+   clip w -- and `raster_test.goose` pins the same invariant from both ends.
+
+**What the fix uncovered, and the next real problem.** A drawn frame costs what a drawn
+frame costs, and until this run no frame had been drawn. The full-size walk went from
+`avg 20.2 ms, 0 over 50` to `avg 40.0 ms, 49 over 50`, with the per-frame split naming
+`scene 87.0 [opaque 0.6, cutout 38.7, water 0.0]` -- the cutout pass, 38 ranges, on
+swiftshader's software rasteriser. That is a measurement of a real renderer for the first
+time, and it is over the bar. It is *not* this fix's doing and it is not noise, so it is
+being treated as the next piece of work rather than explained away; the phases after
+`stream-fullsize` (cull, where, gallery) did not run.
 
 `tools/test_gallery_poses.sh` (in `check_guards.sh`) proves the poses land on the ground
 the oracle sees and that the gate rejects a flat frame, a null frame, a duplicate and a
