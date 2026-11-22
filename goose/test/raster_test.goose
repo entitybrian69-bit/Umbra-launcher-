@@ -110,5 +110,56 @@ fn run_raster() {
     let fb = fogged & 0xFF;
     check(fr > 100 && fb > 100, "a fully fogged pixel is the sky colour, not the texture");
 
+    // Fog has to be measured from the *eye*, in the world the geometry is in. The phone
+    // shipped the other thing for a while: the vertex shader subtracted a second origin
+    // (the mesh centre for the overview, the player for a walking body) and fogged by the
+    // distance from it, so a body 3 blocks from a wall read as 30 and the whole frame came
+    // out the sky colour with thousands of ranges drawn -- runs 44951752864 through
+    // 44979840981, six "blank" screenshots and a wrong diagnosis each time.
+    //
+    // Both ends are pinned here, because a fog that is always clear passes the first check
+    // alone and a fog that is always sky passes the second: a wall 3 blocks from an eye
+    // that is nowhere near the origin must keep its texture, and one 300 blocks behind it
+    // must be sky.
+    var wall: Vertex[>..] = [];
+    // Same quad, moved out to where a body would be standing: eye at (500, 70, 500).
+    wall.push(Vertex { x: 499.0, y: 69.0, z: 497.0, nx: 0.0, ny: 0.0, nz: 1.0,
+                       u: 0.0, v: 1.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0 });
+    wall.push(Vertex { x: 499.0, y: 71.0, z: 497.0, nx: 0.0, ny: 0.0, nz: 1.0,
+                       u: 0.0, v: 0.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0 });
+    wall.push(Vertex { x: 501.0, y: 71.0, z: 497.0, nx: 0.0, ny: 0.0, nz: 1.0,
+                       u: 0.5, v: 0.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0 });
+    wall.push(Vertex { x: 501.0, y: 69.0, z: 497.0, nx: 0.0, ny: 0.0, nz: 1.0,
+                       u: 0.5, v: 1.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0 });
+    var eye2: f32[3] = [500.0, 70.0, 500.0];
+    var target2: f32[3] = [500.0, 70.0, 497.0];
+    var up2: f32[3] = [0.0, 1.0, 0.0];
+    // `rst_clear` sets the fog's colour as well as the background, so this is the phone's
+    // clear colour, and "fully fogged" and "nothing drawn" are then the same pixel -- which
+    // is exactly why a blank gallery screenshot could not be told from a wrong one.
+    rst_clear(0.55, 0.70, 0.92);
+    rst_camera(eye2, target2, up2, 60.0, 0.05, 320.0);
+    rst_set_fog(24.0, 96.0);   // what the phone uses while walking
+    rst_draw(0, 6, wall, idx, atlas[..], 4, 4, false, false);
+    let close = rst_color_at(32, 32);
+    check(((close >> 16) & 0xFF) > 150, "a wall 3 blocks away keeps its texture, not the sky");
+
+    // And the far end: the same wall pushed out past the fog's far plane, and still
+    // inside the camera's, so this measures the fog and not the clip.
+    var far_wall: Vertex[>..] = [];
+    far_wall.push(Vertex { x: 499.0, y: 69.0, z: 350.0, nx: 0.0, ny: 0.0, nz: 1.0,
+                           u: 0.0, v: 1.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0 });
+    far_wall.push(Vertex { x: 499.0, y: 71.0, z: 350.0, nx: 0.0, ny: 0.0, nz: 1.0,
+                           u: 0.0, v: 0.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0 });
+    far_wall.push(Vertex { x: 501.0, y: 71.0, z: 350.0, nx: 0.0, ny: 0.0, nz: 1.0,
+                           u: 0.5, v: 0.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0 });
+    far_wall.push(Vertex { x: 501.0, y: 69.0, z: 350.0, nx: 0.0, ny: 0.0, nz: 1.0,
+                           u: 0.5, v: 1.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0 });
+    rst_clear(0.55, 0.70, 0.92);
+    rst_draw(0, 6, far_wall, idx, atlas[..], 4, 4, false, false);
+    let distant = rst_color_at(32, 32);
+    check(((distant >> 16) & 0xFF) > 100 && (distant & 0xFF) > 100,
+          "and one 150 blocks away is the sky, so the fog still reaches");
+
     test_summary("raster");
 }

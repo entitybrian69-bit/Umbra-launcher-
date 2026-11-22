@@ -103,7 +103,12 @@ struct umbra_app {
     // range now (one per pass and column), so there is no single start per pass.
     int64_t batch_count[3];
     int64_t uploaded_vlen, uploaded_ilen;   // bytes the GPU holds, for sub-uploads
-    float center[3];
+    // There is no `center` here on purpose. It was the mesh's midpoint, and it was
+    // subtracted from every vertex in the shader while the view matrix stayed in world
+    // space -- one origin too many, which put the first-person camera 100 blocks from the
+    // wall in front of it and fogged the frame to the clear colour. The overview only
+    // survived because it aimed at the same point it subtracted. `span` is the extent the
+    // camera is framed from; nothing draws relative to a centre.
     // Extent of the demo mesh, in blocks, used to frame the camera and to set
     // a sane near/far range instead of a guess.
     float span[3];

@@ -187,15 +187,29 @@ static const char *VS_MESH =
     "layout(location=3) in vec3 a_col;\n"
     "layout(location=4) in float a_ao;\n"
     "uniform mat4 u_viewproj;\n"
-    "uniform vec3 u_center;\n"
+    "uniform vec3 u_eye;\n"
     "out vec3 v_col;\n"
     "out vec2 v_uv;\n"
     "out float v_dist;\n"
     "void main() {\n"
-    "    vec3 p = a_pos - u_center;\n"
+    // The vertex is already where it belongs, in the world: the view matrix is the only
+    // thing allowed to subtract the camera, and it does. For a while this shader also
+    // subtracted `u_center` -- the mesh centre for the overview, the *player* for a
+    // walking body -- while the view matrix stayed absolute, so every path drew a world
+    // translated twice. The overview survived it by arithmetic accident (its look-at
+    // point *is* the mesh centre, so the two cancels landed on each other); first person
+    // did not: the eye sits at the body, the world jumped back by the body, and geometry
+    // that had been 3 blocks away was 30 again and past any fog. Fully fogged is exactly
+    // the sky colour, so the whole frame came out the clear colour with 32 ranges drawn
+    // -- runs 44951752864 through 44979840981, reading as a blank picture.
+    //
+    // `v_dist` is measured from the eye, which is what "distance" has to mean to a fog,
+    // and it is the same expression the CPU rasterizer uses (`d = p - eye`), so the
+    // instrument and the phone agree on the number and not just the look.
+    "    vec3 p = a_pos;\n"
     "    v_col = a_col;  // face shade, ambient occlusion and block tint, baked in\n"
     "    v_uv = a_uv;\n"
-    "    v_dist = length(p);\n"
+    "    v_dist = length(p - u_eye);\n"
     "    gl_Position = u_viewproj * vec4(p, 1.0);\n"
     "}\n";
 
@@ -343,26 +357,6 @@ static void mat4_mul(float *out, const float *a, const float *b) {
             out[c * 4 + r] = sum;
         }
     }
-}
-
-static void mat4_look_at(float *m, const float eye[3], const float target[3], const float up[3]) {
-    float f[3] = {target[0] - eye[0], target[1] - eye[1], target[2] - eye[2]};
-    float fl = sqrtf(f[0]*f[0] + f[1]*f[1] + f[2]*f[2]);
-    if (fl < 1e-6f) fl = 1.0f;
-    f[0] /= fl; f[1] /= fl; f[2] /= fl;
-    float s[3] = {f[1]*up[2] - f[2]*up[1], f[2]*up[0] - f[0]*up[2], f[0]*up[1] - f[1]*up[0]};
-    float sl = sqrtf(s[0]*s[0] + s[1]*s[1] + s[2]*s[2]);
-    if (sl < 1e-6f) { s[0] = 1; s[1] = 0; s[2] = 0; sl = 1; }
-    s[0] /= sl; s[1] /= sl; s[2] /= sl;
-    float u[3] = {s[1]*f[2] - s[2]*f[1], s[2]*f[0] - s[0]*f[2], s[0]*f[1] - s[1]*f[0]};
-    memset(m, 0, 16 * sizeof(float));
-    m[0] = s[0]; m[4] = s[1]; m[8] = s[2];
-    m[1] = u[0]; m[5] = u[1]; m[9] = u[2];
-    m[2] = -f[0]; m[6] = -f[1]; m[10] = -f[2];
-    m[12] = -(s[0]*eye[0] + s[1]*eye[1] + s[2]*eye[2]);
-    m[13] = -(u[0]*eye[0] + u[1]*eye[1] + u[2]*eye[2]);
-    m[14] = (f[0]*eye[0] + f[1]*eye[1] + f[2]*eye[2]);
-    m[15] = 1.0f;
 }
 
 // --- HUD ----------------------------------------------------------------
@@ -1015,9 +1009,6 @@ static void finish_scene(umbra_app *app) {
     app->vert_count = (int32_t)umbra_used_vertices();
     app->index_count = (int32_t)umbra_index_count();
     count_ranges(app);
-    app->center[0] = (umbra_mesh_min_x() + umbra_mesh_max_x()) * 0.5f;
-    app->center[1] = (umbra_mesh_min_y() + umbra_mesh_max_y()) * 0.5f;
-    app->center[2] = (umbra_mesh_min_z() + umbra_mesh_max_z()) * 0.5f;
     app->span[0] = umbra_mesh_max_x() - umbra_mesh_min_x();
     app->span[1] = umbra_mesh_max_y() - umbra_mesh_min_y();
     app->span[2] = umbra_mesh_max_z() - umbra_mesh_min_z();
@@ -2428,7 +2419,7 @@ static void selftest_step(umbra_app *app) {
             float eye[3] = {0.0f, 0.0f, 3.0f};
             float target[3] = {0.0f, 0.0f, 0.0f};
             float up[3] = {0.0f, 1.0f, 0.0f};
-            mat4_look_at(view, eye, target, up);
+            umbra_camera_look_at(view, eye, target, up);
             mat4_mul(vp, proj, view);
             glUseProgram(app->prog_cube);
             glUniformMatrix4fv(glGetUniformLocation(app->prog_cube, "u_viewproj"), 1, GL_FALSE, vp);
@@ -2891,7 +2882,7 @@ static void draw_scene(umbra_app *app) {
     app->eye[1] = eye[1];
     app->eye[2] = eye[2];
     float up[3] = {0.0f, 1.0f, 0.0f};
-    mat4_look_at(view, eye, target, up);
+    umbra_camera_look_at(view, eye, target, up);
     mat4_mul(vp, proj, view);
     // The overlay covers the top of the screen, so the scene is centred in what
     // is left of it: shift every clip-space y by k * w.
@@ -2928,16 +2919,16 @@ static void draw_scene(umbra_app *app) {
     }
     glUseProgram(app->prog_mesh);
     glUniformMatrix4fv(glGetUniformLocation(app->prog_mesh, "u_viewproj"), 1, GL_FALSE, vp);
+    // The fog's origin is the eye that was just used, in the same space as the vertices.
+    // It used to be handed one of two *centres* and then subtracted from the position in
+    // the vertex shader; see the note there for what that cost.
+    glUniform3f(glGetUniformLocation(app->prog_mesh, "u_eye"), eye[0], eye[1], eye[2]);
     if (app->player_on) {
         // Two blocks away is clear, 90 is sky: a walking body sees further than the
         // overview camera, which is framed from outside the island.
         glUniform2f(glGetUniformLocation(app->prog_mesh, "u_fog"), 24.0f, 96.0f);
-        glUniform3f(glGetUniformLocation(app->prog_mesh, "u_center"), app->player.x,
-                    app->player.y, app->player.z);
     } else {
         glUniform2f(glGetUniformLocation(app->prog_mesh, "u_fog"), app->fog_near, app->fog_far);
-        glUniform3f(glGetUniformLocation(app->prog_mesh, "u_center"), app->center[0],
-                    app->center[1], app->center[2]);
     }
     glBindVertexArray(app->vao_mesh);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, app->ibo_mesh);

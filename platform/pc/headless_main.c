@@ -2308,6 +2308,69 @@ int main(int argc, char **argv) {
         }
     }
 
+    // The world shader's arithmetic, on the numbers that broke it.
+    //
+    // Six android runs came back with a gallery screenshot that was exactly the clear
+    // colour, each after a plausible fix to the pose, and the pose was never the problem:
+    // the mesh shader subtracted a second origin from every vertex while the view matrix
+    // stayed in world space. The overview hid it -- its look-at point is the mesh centre,
+    // which is the origin it subtracted -- and first person did not: an eye at the body's
+    // position minus a world offset by that same position is a world pushed away by however
+    // far the body had walked, and fog_far while walking is 96 blocks.
+    //
+    // These check the shader's terms the way the GPU computes them, so the failure is a
+    // number in the host suite rather than a flat-coloured PNG on a device.
+    {
+        // A body at the pose run 44979840981 used, and a wall 3 blocks in front of it.
+        float body[3] = {-19.50f, 97.00f, 18.50f};
+        float wall[3] = {-19.50f, 98.00f, 15.50f};
+        float d = umbra_shader_dist(wall, body);
+        printf("shader: a wall at %.2f %.2f %.2f seen from %.2f %.2f %.2f is %.2f blocks away, "
+               "fog %.1f\n", wall[0], wall[1], wall[2], body[0], body[1], body[2], d, 24.0f);
+        check(d > 2.5f && d < 4.0f, "distance to the eye is the distance to the wall, not to the origin");
+        check(umbra_shader_fog(d, 24.0f, 96.0f) == 0.0f,
+              "so a wall 3 blocks away while walking is not fogged at all");
+
+        // The old arithmetic, without the theory: subtract a second origin from the vertex
+        // and leave the eye where it was, which is what the shader and the view matrix did
+        // together. In first person that origin was the *player's own position*, so the
+        // world moved by exactly the distance the body had walked from the corner of the
+        // map -- and this pose is 26 blocks out in x and z and 97 up.
+        float shifted[3] = {wall[0] - body[0], wall[1] - body[1], wall[2] - body[2]};
+        float eye_fp[3] = {body[0], body[1] + 1.62f, body[2]};
+        float bad = umbra_shader_dist(shifted, eye_fp);
+        float bad_fog = umbra_shader_fog(bad, 24.0f, 96.0f);
+        printf("shader: the doubled-origin version of the same wall is %.2f blocks away and "
+               "%.0f%% fogged\n", bad, bad_fog * 100.0f);
+        check(bad > d * 10.0f, "subtracting the player's own position moves the wall 30x further");
+        // And it is the fog that made it invisible: the fog's far colour is bit for bit the
+        // clear colour, so a fully fogged frame and an empty frame are the same pixels. That
+        // is why the run's "32 range(s) drawn" line and its "99.8% of the frame is one
+        // colour" screenshot were both true at once, and why six fixes to the pose changed
+        // nothing about the picture.
+        check(bad_fog > 0.95f,
+              "and that is enough fog to draw the clear colour over the whole frame");
+
+
+        // Fog still does its job in the other direction: past fog_far everything is sky.
+        check(umbra_shader_fog(150.0f, 24.0f, 96.0f) == 1.0f,
+              "while something genuinely distant still fogs out");
+
+        // The projection, on the same wall: in front of the camera means positive w, and
+        // the wall's clip-space y is inside the frustum. If a future change translates the
+        // world again, w goes with it and this is the check that says so.
+        float vp[16];
+        float eye[3] = {body[0], body[1] + 1.62f, body[2]};
+        float target[3] = {body[0], body[1] + 1.62f, body[2] - 1.0f};
+        float up[3] = {0.0f, 1.0f, 0.0f};
+        umbra_camera_look_at(vp, eye, target, up);
+        float cy = 0.0f, cw = 0.0f;
+        umbra_shader_clip(vp, wall, &cy, &cw);
+        printf("shader: the wall is at clip y %.2f w %.2f before the projection\n", cy, cw);
+        check(cw > 0.0f, "a wall in front of a first-person camera has positive w");
+        check(cy > -1.0f && cy < 1.0f, "and lands inside the vertical frustum");
+    }
+
     goose_exit();
 
     printf("%s: %d checks, %d failures\n", failures ? "FAILED" : "PASS", checks, failures);
