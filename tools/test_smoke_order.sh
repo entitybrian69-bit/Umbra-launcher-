@@ -47,14 +47,26 @@ def refuse(phase):
 cull, cull_section = refuse('stream-cull')
 gallery, gallery_section = refuse('gallery')
 where, where_section = refuse('stream-where')
-assert cull is not None, 'stream-cull can run after a deferred failure'
-assert gallery is not None, 'gallery can run after a deferred failure'
-assert where is None, 'stream-where refuses to run, and it is the phase that explains the breach'
-assert 'no `deferred_fail` here' in ''.join(lines[where_section - 3:where_section + 1]), \
-    'stream-where must say why it runs despite a deferred failure'
+
+# The order is the whole rule, so the *positions* are checked before the guards mean
+# anything: the attribution has to come after the two walks that can breach, and before the
+# phases that are fresh measurements of something else.
 assert cull_section < where_section < gallery_section, \
     'the phases are out of order: cull %d, where %d, gallery %d' % (
         cull_section, where_section, gallery_section)
+
+# Both walks before the attribution must be free to run -- run 44987615985 guarded the first
+# of them and so stopped one phase later than the run it was fixing, still before the
+# explanation it was added for.
+assert cull is None, \
+    'stream-cull refuses to run after a deferred failure, and it comes before stream-where'
+assert where is None, 'stream-where refuses to run, and it is the phase that explains the breach'
+assert gallery is not None, \
+    'gallery can run after a deferred failure, so a breached run pays for it and hides it'
+assert 'no `deferred_fail` here' in ''.join(lines[where_section - 3:where_section + 1]), \
+    'stream-where must say why it runs despite a deferred failure'
+assert 'Not guarded' in ''.join(lines[cull_section - 8:cull_section + 1]), \
+    'stream-cull must say why it is not guarded' 
 
 # And the deferred failure must be fatal at the end, or it is not a failure.
 tail = ''.join(lines[-14:])

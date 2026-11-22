@@ -1726,7 +1726,20 @@ fi
 # Both halves walk from the spawn, so the world under the walker is the same distance
 # either way. The comparison is draw calls and frame times; the app measures both.
 if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
-    deferred_fail
+    # Not guarded, deliberately: `stream-where` -- the phase that can attribute a budget
+    # breach -- comes *after* this one, and the first version of the deferral guarded here,
+    # so run 44987615985 stopped one phase later than the run it was fixing and still
+    # arrived at the end without the explanation it was added for. The cull comparison is
+    # itself a budget measurement on the same build and the same save, so it earns its two
+    # walks even when the shipped walk has already breached; the guard belongs on the
+    # phases that come after the attribution, not before it.
+    # Not guarded, deliberately: `stream-where` -- the phase that can attribute a budget
+    # breach -- comes *after* this one, and the first version of the deferral guarded here,
+    # so run 44987615985 stopped one phase later than the run it was fixing and still
+    # arrived at the end without the explanation it was added for. The cull comparison is
+    # itself a budget measurement on the same build and the same save, so it earns its two
+    # walks even when the shipped walk has already breached; the guard belongs on the
+    # phases that come after the attribution, not before it.
     section "stream-cull"
     # The shipped radius, and no leftovers from the previous phases: both halves of this
     # comparison have to be the same window or the numbers are about two worlds.
