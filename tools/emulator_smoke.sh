@@ -1963,7 +1963,12 @@ fi
 # Each file is named for the build that took it, so a picture outlives the log that explains
 # it: gallery-<pose>-<version>-<sha8>.png.
 if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
-    deferred_fail
+    # Not guarded either. Run 44992866119 deferred two budget breaches, ran the attribution
+    # that explained them, and then stopped here -- so a run that had finally got its answer
+    # still produced no pictures, and the gallery is the owner's own request and the only
+    # evidence of the renderer that a person can look at. It also answers a different
+    # question from the budget: "does a posed frame draw the world" is not "is a walking
+    # frame inside 50 ms", and the first one just became true.
     section "gallery"
     GAL_DIR="gallery"
     rm -rf "$GAL_DIR"; mkdir -p "$GAL_DIR"

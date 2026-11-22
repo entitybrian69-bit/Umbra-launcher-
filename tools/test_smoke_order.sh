@@ -61,8 +61,9 @@ assert cull_section < where_section < gallery_section, \
 assert cull is None, \
     'stream-cull refuses to run after a deferred failure, and it comes before stream-where'
 assert where is None, 'stream-where refuses to run, and it is the phase that explains the breach'
-assert gallery is not None, \
-    'gallery can run after a deferred failure, so a breached run pays for it and hides it'
+assert gallery is None, \
+    ('gallery refuses to run after a deferred failure, so a breached run pays for the '
+     'evidence and produces none (run 44992866119)')
 assert 'no `deferred_fail` here' in ''.join(lines[where_section - 3:where_section + 1]), \
     'stream-where must say why it runs despite a deferred failure'
 assert 'Not guarded' in ''.join(lines[cull_section - 8:cull_section + 1]), \

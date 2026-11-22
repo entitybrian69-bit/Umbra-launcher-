@@ -2797,14 +2797,31 @@ the true reason.
    was right. `headless_main.c` now checks the shader's own arithmetic -- distance, fog and
    clip w -- and `raster_test.goose` pins the same invariant from both ends.
 
-**What the fix uncovered, and the next real problem.** A drawn frame costs what a drawn
-frame costs, and until this run no frame had been drawn. The full-size walk went from
-`avg 20.2 ms, 0 over 50` to `avg 40.0 ms, 49 over 50`, with the per-frame split naming
-`scene 87.0 [opaque 0.6, cutout 38.7, water 0.0]` -- the cutout pass, 38 ranges, on
-swiftshader's software rasteriser. That is a measurement of a real renderer for the first
-time, and it is over the bar. It is *not* this fix's doing and it is not noise, so it is
-being treated as the next piece of work rather than explained away; the phases after
-`stream-fullsize` (cull, where, gallery) did not run.
+**What the fix uncovered, and where the time actually goes.** A drawn frame costs what a
+drawn frame costs, and until this run no frame had been drawn. The full-size walk went from
+`avg 20.2 ms, 0 over 50` to `avg 40 ms, 61 over 50`, and the per-frame split printed in the
+shipped configuration said `scene 51.5 [opaque 0.6, cutout 38.7, water 0.0]` -- which reads
+as "the cutout pass". It is not. That split is enqueue time: GLES batches, and the flush of
+everything the frame queued lands in whichever `glDrawElements` happens to fill the pipe.
+
+The phase that measures it honestly is `stream-where`, which puts a `glFinish` at the end of
+each pass. Run 44992866119 finally ran it -- the deferral below is what made that possible --
+and with real rasterisation the split is the *other* pass:
+
+```
+stream-where: 729 frame(s) avg 47.1 ms, median 46.5, 1% low 74.7, 196 over 50 ms
+stream-where: the worst over-budget frame ... scene 76.5
+              [opaque 31.3-45.3, cutout 0.5-11.4, water 0.0]   (per-frame lines, 6 of 6)
+```
+
+Opaque, every time, and cutout only when the queue happens to land there. So the target for
+a budget fix is the opaque pass's fill -- depth-sorted front-to-back is already in place, and
+the next lever is overdraw and vertex fetch on swiftshader's software rasteriser -- and not
+the foliage it looked like. That is worth more than the 39 ms itself: the previous reading
+would have sent the work at the wrong pass.
+
+It is still over the bar and still a failure. It is *not* this fix's doing and it is not
+noise.
 
 `tools/test_gallery_poses.sh` (in `check_guards.sh`) proves the poses land on the ground
 the oracle sees and that the gate rejects a flat frame, a null frame, a duplicate and a
