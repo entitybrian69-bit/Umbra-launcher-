@@ -23,11 +23,17 @@
 # `budget_verdict` prints one of: clean | retry | tail | regression | unparseable.
 NOISE_FRAMES=2
 
-# Every reader of a report goes through these, and a report that says nothing about a count
-# reads as 0 rather than as an unset variable: `set -u` turned "no count here" into a dead
-# script once (run 44948979735), which is a crash dressed as a verdict.
-over_count() { printf '%s' "${1-}" | sed -n 's/.*, \([0-9]*\) over 50 ms.*/\1/p'; }
-worst_ms()   { printf '%s' "${1-}" | sed -n 's/.*worst \([0-9.]*\) at frame.*/\1/p'; }
+# Every reader of a report goes through these. Two things are deliberate:
+#
+#   * `${1-}`, because `set -u` turned "no count here" into a dead script once (run
+#     44948979735) -- a crash dressed as a verdict;
+#   * the *last* match, because a report can arrive with a message in front of it. Run
+#     44975224427: `recount` printed its own "retry -- <report>" line to stdout, the caller
+#     captured message and report together, `over_count` found two matches, `$OVERS` was
+#     "2\n2", `within_noise` was false, and a two-frame tail -- the case the retry exists for
+#     -- was reported as a regression.
+over_count() { printf '%s' "${1-}" | sed -n 's/.*, \([0-9]*\) over 50 ms.*/\1/p' | tail -1; }
+worst_ms()   { printf '%s' "${1-}" | sed -n 's/.*worst \([0-9.]*\) at frame.*/\1/p' | tail -1; }
 
 within_noise() {
     case "${1:-}" in
@@ -78,6 +84,9 @@ recount() {
         > /dev/null 2>&1 || say "$label: the retry hold failed"
     sleep 3
     again="$(app_log "$pid" | grep 'walk: .* frame(s) avg ' | tail -1)"
-    say "$label: retry -- ${again:-no walk report}"
+    # The line goes to the log; the report goes to stdout, and nothing else does. A function
+    # that both prints a message and returns a value has its output captured by the caller's
+    # `$(...)` too, and then the caller measures the message (run 44975224427).
+    say "$label: retry -- ${again:-no walk report}" >&2
     printf '%s' "$again"
 }

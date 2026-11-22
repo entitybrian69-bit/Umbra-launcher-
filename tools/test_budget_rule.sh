@@ -77,6 +77,36 @@ else
     fail=1
 fi
 
+# ---- and the parser fed what `recount` actually returns ------------------------------
+# Run 44975224427: `recount` printed its "retry -- <report>" line to stdout as well as
+# returning the report, so the caller captured both, `over_count` found two matches, `$OVERS`
+# was "2\n2", `within_noise` was false, and a two-frame tail -- the case the retry exists
+# for -- was called a regression. Two guards, one on each side of that:
+#   * `over_count` takes the last match, so a message and a report in one string is fine;
+#   * `recount` writes its message to stderr, so stdout is only ever the report.
+double='retry -- 02:40:16 walk: 866 frame(s) avg 27.7 ms, worst 51.3 at frame 701, 2 over 50 ms -- OVER BUDGET
+02:40:16 walk: 866 frame(s) avg 27.7 ms, worst 51.3 at frame 701, 2 over 50 ms -- OVER BUDGET'
+# One line out, not two: a message and a report in one capture must read as a single count.
+if [ "$(over_count "$double" | wc -l)" -eq 0 ] && [ "$(over_count "$double")" = 2 ] \
+   && within_noise "$(over_count "$double")"; then
+    printf 'ok   %-14s a message and a report in one capture still reads 2\n' "double capture"
+else
+    printf 'FAIL %-14s over_count gave "%s", so a two-frame tail would read as a regression\n' \
+        "double capture" "$(over_count "$double" | tr '\n' ',')"
+    fail=1
+fi
+# And the other side of it: `recount`'s stdout is exactly the report.
+want_report="walk: 866 frame(s) avg 27.7 ms, worst 51.3 at frame 701, 2 over 50 ms -- OVER BUDGET"
+if [ "$(ROOT="$ROOT" WANT="$want_report" bash -c '. "$ROOT/tools/budget_rule.sh"; P_WIDTH=1; P_SCENE_Y=1
+        adb() { :; }; sleep() { :; }
+        app_log() { printf "%s" "$WANT"; }
+        out="$(recount 1 label 2>/dev/null)"; printf "%s" "$out"')" = "$want_report" ]; then
+    printf 'ok   %-14s stdout carries the report and nothing else\n' "recount"
+else
+    printf 'FAIL %-14s recount put its message on stdout, which the caller measures\n' "recount"
+    fail=1
+fi
+
 [ "$fail" = 0 ] && echo "PASS: the budget rule separates this emulator's tail from a regression" \
                 || echo "FAILED: the budget rule misclassifies a reading above"
 exit "$fail"
