@@ -134,6 +134,55 @@ for flavour in "4 compound contiguous" "4 string padded"; do
     fi
 done
 
+# ---- 1b. two layouts with the same file names ------------------------------------------
+# A 26.3 server leaves `world/region/r.0.0.mca` from spawn preparation beside the real
+# terrain at `world/dimensions/minecraft/overworld/region/r.0.0.mca`. They are different
+# worlds with identical names, `zip_world.py` refuses both at once for that reason, and run
+# 44951752864 posed the camera 33 blocks above the ground the renderer had drawn because the
+# pose tool chose the shallow -- stale -- one.
+#
+# So the tool must prefer the dimensions layout even though it is deeper, and it must read
+# the *archive* the phone was given when it is handed one.
+mkdir -p "$TMP/two/world/dimensions/minecraft/overworld"
+cp -r "$TMP/world/region" "$TMP/two/world/dimensions/minecraft/overworld/region"
+# The stale layout: the same file names, from a different generation, at the top level where
+# a 26.3 server leaves spawn-preparation terrain.
+python3 tools/make_test_world.py "$TMP/stale" 4 > /dev/null 2>&1
+mkdir -p "$TMP/two/world/region"
+cp "$TMP/stale/region/r.0.0.mca" "$TMP/two/world/region/r.0.0.mca"
+python3 - "$TMP/two/world" "$TMP/two/world/dimensions/minecraft/overworld/region" "$TMP/two/world/region" <<'PY'
+import sys
+sys.path.insert(0, "tools")
+import gallery_poses as g
+want = sys.argv[2].replace("\\", "/")
+got = g.find_region_dir(sys.argv[1]).replace("\\", "/")
+if got != want:
+    print(f"FAIL: the tool chose {got}, not the dimensions layout {want}")
+    sys.exit(1)
+print(f"ok: two layouts present, and the dimensions one won: {got}")
+PY
+[ $? -eq 0 ] && printf 'ok   %-56s %s\n' "a stale layout with the same names loses" "dimensions/ wins" \
+            || { printf 'FAIL %-56s it chose the stale layout\n' "a stale layout with the same names loses"; fail=1; }
+
+# And the same save, zipped the way the workflow zips it, must read identically -- the
+# archive is what the phone opens, so the archive is what the poses should come from.
+python3 tools/zip_world.py "$TMP/world.zip" "$TMP/world/region/r.0.0.mca" \
+    > "$TMP/zip.log" 2>&1
+if [ -f "$TMP/world.zip" ]; then
+    python3 tools/gallery_poses.py "$TMP/world.zip" --out "$TMP/p-zip.txt" > "$TMP/p-zip.log" 2>&1
+    if [ -s "$TMP/p-zip.txt" ] && diff -q "$TMP/poses.txt" "$TMP/p-zip.txt" > /dev/null 2>&1; then
+        printf 'ok   %-56s the same six poses as the directory\n' "the archive reads like the save"
+    else
+        printf 'FAIL %-56s %s\n' "the archive reads like the save" \
+            "$(tail -2 "$TMP/p-zip.log" | tr '\n' ' ')"
+        fail=1
+    fi
+else
+    printf 'FAIL %-56s zip_world refused it: %s\n' "the archive reads like the save" \
+        "$(tail -1 "$TMP/zip.log")"
+    fail=1
+fi
+
 # ---- 2. the shot gate ------------------------------------------------------------------
 # A sky frame: one flat colour and the nav bar, which is exactly the 14 581-byte file from
 # run 44938399066 (99.8% of that frame was the one sky colour). This must be rejected, and

@@ -36,7 +36,14 @@ Picking a pose from a number that is not where the ground is cannot be fixed by 
 harder, so this reads the palette and the packed indices the way `tools/world_oracle.py`
 does -- a second reader of the same format -- and counts blocks per y. Air is air.
 
-usage: tools/gallery_poses.py <save dir> [--out FILE] [--explain]
+The argument is either a save directory or the world.zip the phone was given. The archive is
+the better one: the phone opens the archive, so reading the same bytes is the only way this
+tool and the renderer can be talking about one world. Run 44951752864 is what the difference
+looks like -- the tool read `world/region` (stale spawn-preparation terrain) while the phone
+was given `world/dimensions/minecraft/overworld/region`, and the two disagreed about the same
+column by 33 blocks: the tool said the ground was at y 107, the renderer said y 73.
+
+usage: tools/gallery_poses.py <save dir | world.zip> [--out FILE] [--explain]
 """
 import os
 import struct
@@ -229,41 +236,76 @@ def find_region_dir(save_dir):
     """Where the terrain regions are, wherever this version of the game puts them.
 
     A 26.3 save keeps the overworld's regions under a dimension path, not directly in
-    `region/`, and the workflow's own step already searches (`find ... -path
-    '*/region/*.mca'`) for exactly that reason. This function only ever looked one level
-    down, so on a save with the newer layout it found nothing and the gallery failed with
-    "no region files" -- which reads like a broken save rather than a broken lookup.
+    `region/`, and the workflow already prefers that layout for the archive it hands the
+    phone (`dimensions/minecraft/overworld/region`). This function has to make the same
+    choice, for the same reason `tools/zip_world.py` refuses two layouts with the same file
+    names: a 26.3 server leaves `world/region/r.0.0.mca` behind from spawn preparation
+    beside the real terrain, and they are *different worlds* with the same names.
+
+    So: the dimensions layout first, then the top-level `region/`, then the shallowest
+    match. "Shallowest" alone was wrong in run 44951752864 -- it picked the stale one -- and
+    the symptom was a camera 33 blocks above the ground the renderer drew.
 
     `entities/r.x.z.mca` files are deliberately not candidates: the same names hold NBT
     that is not a chunk, which is the bug that made a phone open a world of 0 blocks once.
     """
     direct = os.path.join(save_dir, "region")
-    if os.path.isdir(direct) and any(n.endswith(".mca") for n in os.listdir(direct)):
-        return direct
-    best = None
+    candidates = []
     for root, dirs, files in os.walk(save_dir):
-        if os.path.basename(root) != "region" or os.path.basename(os.path.dirname(root)) == "entities":
+        if os.path.basename(root) != "region":
+            continue
+        if os.path.basename(os.path.dirname(root)) == "entities":
             continue
         if any(n.endswith(".mca") for n in files):
-            # Prefer the shallowest match: a save can hold several dimensions, and the
-            # overworld is the one nearest the top.
-            depth = root.count(os.sep)
-            if best is None or depth < best[0]:
-                best = (depth, root)
-    return best[1] if best else None
+            candidates.append(root)
+    if not candidates:
+        return None
+    # Rank: a dimensions path wins whatever its depth; then the top-level `region/`; then
+    # the shallowest, which is the nearest to the save's root.
+    def rank(path):
+        p = path.replace(os.sep, "/")
+        dims = "/dimensions/" in p
+        return (0 if dims else (1 if path == direct else 2), path.count(os.sep))
+    return sorted(candidates, key=rank)[0]
+
+
+def region_entries(source):
+    """(name, bytes reader) for every region file in a save directory or a world archive.
+
+    An archive is the better source: the phone is given the archive, so the bytes read here
+    are the bytes it opens. The names inside are `region/r.x.z.mca` -- what
+    `tools/zip_world.py` writes and what `core/worldload_in.goose` looks for.
+    """
+    if os.path.isfile(source) and source.endswith(".zip"):
+        import zipfile
+        zf = zipfile.ZipFile(source)
+        out = []
+        for info in zf.infolist():
+            if info.is_dir():
+                continue
+            p = info.filename.replace("\\", "/")
+            if not p.endswith(".mca"):
+                continue
+            if p.split("/")[-2:-1] != ["region"]:
+                continue  # entities/, or something else with a region file's name
+            out.append((os.path.basename(p), lambda i=info: zf.read(i)))
+        return out
+    region_dir = find_region_dir(source)
+    if region_dir is None:
+        return []
+    return [(n, (lambda d=region_dir, n=n: open(os.path.join(d, n), "rb").read()))
+            for n in sorted(os.listdir(region_dir)) if n.endswith(".mca")]
 
 
 def load_columns(save_dir):
-    region_dir = find_region_dir(save_dir)
     cols = {}
-    if region_dir is None:
-        return cols
-    for name in sorted(os.listdir(region_dir)):
-        if not name.endswith(".mca"):
+    for name, read in region_entries(save_dir):
+        try:
+            parts = name.split(".")
+            rx, rz = int(parts[1]), int(parts[2])
+            data = read()
+        except (ValueError, IndexError, OSError):
             continue
-        parts = name.split(".")
-        rx, rz = int(parts[1]), int(parts[2])
-        data = open(os.path.join(region_dir, name), "rb").read()
         for slot in range(1024):
             if slot * 4 + 4 > len(data):
                 break
@@ -284,8 +326,7 @@ def load_columns(save_dir):
                 got = read_column(nbt)
             except (zlib.error, ValueError, struct.error, IndexError):
                 # A chunk this tool cannot read is one this tool must not guess at: the
-                # pose it would pick is the wrong picture, silently. Count it, and let the
-                # caller say so if that leaves nothing.
+                # pose it would pick is the wrong picture, silently.
                 continue
             cx = rx * 32 + (slot % 32)
             cz = rz * 32 + (slot // 32)

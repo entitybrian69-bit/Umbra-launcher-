@@ -1911,7 +1911,14 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         || die "gallery: the save could not be put back in the app's directory"
     # The poses come from the save's own terrain, so the pictures land on hills, water and
     # logs wherever this run's world put them.
-    GAL_SAVE="${UMBRA_WORLD_DIR:-build/server/run/world}"
+    #
+    # The *archive*, not the server's directory: the phone opens the archive, and a 26.3
+    # server's directory holds two layouts with the same file names -- the real terrain under
+    # `dimensions/minecraft/overworld/region` and a stale `world/region` left by spawn
+    # preparation. Run 44951752864 read the directory, chose the stale layout, and posed the
+    # camera 33 blocks above the ground the renderer had drawn (tool asked for y 107.01, the
+    # renderer's floor was 73.00). Reading the archive makes the two provably one world.
+    GAL_SAVE="${UMBRA_WORLD_ZIP:-${UMBRA_WORLD_DIR:-build/server/run/world}}"
     if ! python3 tools/gallery_poses.py "$GAL_SAVE" --out gallery-poses.txt \
             2>&1 | tee gallery-poses.log; then
         die "gallery: no poses could be chosen from this save: $(tail -2 gallery-poses.log | tr '\n' '|')"
