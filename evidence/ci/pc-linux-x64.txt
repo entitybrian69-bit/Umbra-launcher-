@@ -465,16 +465,16 @@ demo: the middle of the world is 24,24 and its floor is 66.00
 demo: a body at the corner 24.0,24.0 would overlap 1 solid cell(s) at foot height
 demo: this is the spawn that failed on the device (44241902430)
 demo: spawning at 24.5,24.5 in cell 24,24 (floor 66.00)
-progress: worst 934 permille; units 10369, total 10369
-sliced mesh: 55 calls, worst call 21.08 ms, worst unit 2.20 ms
+progress: worst 900 permille; units 10369, total 10369
+sliced mesh: 21 calls, worst call 20.34 ms, worst unit 0.80 ms
 ranges: 27 slots for 9 columns
 ranges: 247116 + 12690 + 6414 = 266220 indices used of 580000 in the arena
 edit 0: 1 columns, 1153 units of work, is_edit 1
-edit 0: 21 calls, worst call 6.90 ms, worst slice 2.18 ms
+edit 0: 8 calls, worst call 6.30 ms, worst slice 0.79 ms
 edit 1: 1 columns, 1153 units of work, is_edit 1
-edit 1: 20 calls, worst call 7.23 ms, worst slice 2.05 ms
+edit 1: 8 calls, worst call 6.21 ms, worst slice 0.79 ms
 edit 2: 2 columns, 2305 units of work, is_edit 1
-edit 2: 39 calls, worst call 7.60 ms, worst slice 2.06 ms
+edit 2: 16 calls, worst call 6.25 ms, worst slice 0.79 ms
 edit: patched geometry 1409d6e1c0ba34c9 (266220 indices), rebuilt 1409d6e1c0ba34c9 (266220)
 layout: phone scale 2.64, desktop scale 1.00
 layout: button 0 21,1006 737x53; button 2 1528,1006
@@ -514,15 +514,15 @@ hotbar: 7 of 7 entries named, 0 air, 0 unplaceable in the whole list
 hotbar: 49 state(s) before the demo build
 hotbar: a demo build over a loaded table: 49 -> 49 state(s), 7 -> 47 block(s)
 edits: the last line is "26 65 24 minecraft:stone"
-world: opened 4 chunk(s) from 1 region file(s): 24673 non-air blocks, 53 states, 0 errors, 0 not full, 0 left out, in 20.0 ms
+world: opened 4 chunk(s) from 1 region file(s): 24673 non-air blocks, 53 states, 0 errors, 0 not full, 0 left out, in 8.2 ms
 world: bounds x 0.0..32.0 z 0.0..32.0
 world: the topmost block at 1,1 is y 61
 world: the block at 1,61,1 is minecraft:grass_block
 world: the floors at 1,17 and 17,17 are 64.00 and 62.00
-world: meshed 41092 vertices in 6 calls, x 0.0..32.0, 0 outside the save's bounds
+world: meshed 41092 vertices in 3 calls, x 0.0..32.0, 0 outside the save's bounds
 stream: radius 2 -> 16 column(s) resident of 25 asked for, 0 evicted, 9 missing, 0 error(s)
-stream: centre 0.02 ms, fill 0.01 ms over 1 slice(s), worst slice 0.01 ms, 0.1 MB of region files
-stream: meshed 64768 vertex(es) of 16 column(s) in 21 call(s), 424.9 ms
+stream: centre 0.01 ms, fill 0.01 ms over 1 slice(s), worst slice 0.01 ms, 0.1 MB of region files
+stream: meshed 64768 vertex(es) of 16 column(s) in 8 call(s), 159.5 ms
 light: 43 section(s) of the window were read with sky/block light
 light: 25032 of 480000 vertex colour(s) differ when the save's light is ignored (25032 darker, 0 brighter), mean green 0.902 -> 0.905
 stream: 64768 vertex(es) drawn, 0 outside x -32..32 z -32..32
