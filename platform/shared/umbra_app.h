@@ -82,6 +82,8 @@ struct umbra_app {
     int pose_ready;           // `pose.txt` was read
     int pose_applied;
     int gallery_cave;         // `cave.txt` is present: this pose is under the ground
+    int gallery_camera_logged; // the first drawn frame said which camera it used
+    int gallery_draw_logged;  // ... and how many ranges survived the cull
     float pose[5];            // x y z yaw pitch
     int u_hud_screen, u_hud_tex;
     int hud_uniforms_ready;

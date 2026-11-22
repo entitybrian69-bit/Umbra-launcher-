@@ -2909,6 +2909,18 @@ static void draw_scene(umbra_app *app) {
     // pushed off the bottom of the screen is culled and not drawn behind the overlay.
     umbra_frustum_from_vp(&app->frustum, vp);
     app->frustum.enabled = app->cull_on;
+    if (app->gallery && !app->gallery_camera_logged) {
+        // What the gallery actually drew with, once, the first time a posed frame is
+        // drawn. Run 44970905102's screenshot was exactly the clear colour -- not a sky
+        // *behind* terrain, no terrain at all -- so the picture cannot distinguish a camera
+        // inside the ground, a camera looking up, and every range culled. This line can.
+        app->gallery_camera_logged = 1;
+        umbra_log(app, "gallery: drew from eye %.2f %.2f %.2f toward %.2f %.2f %.2f, "
+                       "body at %.2f %.2f %.2f pitch %.2f, fov %.0f, cull %s",
+                  eye[0], eye[1], eye[2], target[0], target[1], target[2],
+                  app->player.x, app->player.y, app->player.z, app->player.pitch, app->fov_y,
+                  app->cull_on ? "on" : "off");
+    }
     glUseProgram(app->prog_mesh);
     glUniformMatrix4fv(glGetUniformLocation(app->prog_mesh, "u_viewproj"), 1, GL_FALSE, vp);
     if (app->player_on) {

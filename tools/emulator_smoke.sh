@@ -331,6 +331,8 @@ wait_for_app_line() {
     case "$pat" in
         *"gallery: posed"*)
             say "app: gallery state -- $(app_log "$pid" | grep -cE 'mesh: .*vertices drawn') mesh line(s), $(app_log "$pid" | grep -c 'player: spawned') spawn(s), $(app_log "$pid" | grep -c 'pose.txt read') pose read line(s), $(app_log "$pid" | grep -c 'gallery: the pose made a body') pose-made-a-body line(s), $(app_log "$pid" | grep -c 'gallery: gallery.txt is present') gallery flag line(s)"
+            say "app: gallery camera -- $(app_log "$pid" | grep -m1 'gallery: drew from eye' || echo 'no drawn-frame line')"
+            say "app: gallery draw -- $(app_log "$pid" | grep -m1 'gallery: drew .* range(s)' || echo 'no draw line')"
             ;;
     esac
     return 1
@@ -1972,6 +1974,20 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         if app_log "$GAL_PID" | grep -q 'hud: button 0 at'; then
             die "gallery: the overlay logged a button layout for $pose, so it was not hidden"
         fi
+        # What the frame was drawn with, said before the picture is judged. Run 44970905102's
+        # screenshot was exactly the clear colour, and a screenshot cannot tell a camera
+        # inside the ground from a camera looking at the sky from every range culled out; the
+        # app's own line can. A drawn frame that drew no ranges is a failure here, not a
+        # picture to be interpreted later.
+        wait_for_app_line "$GAL_PID" 'gallery: drew .* range\(s\)' 30 "the posed frame's draw" \
+            || die "gallery: the posed frame never reported what it drew for $pose: $(app_log "$GAL_PID" | grep -E 'gallery:' | tail -3 | tr '\n' '|')"
+        GAL_CAM="$(app_log "$GAL_PID" | grep -m1 'gallery: drew from eye')"
+        GAL_DREW="$(app_log "$GAL_PID" | grep -m1 'gallery: drew .* range(s)')"
+        say "gallery: $pose ${GAL_CAM:-no camera line}"
+        say "gallery: $pose ${GAL_DREW:-no draw line}"
+        GAL_RANGES="$(printf '%s' "$GAL_DREW" | sed -n 's/.*drew \([0-9]*\) range.*/\1/p')"
+        [ "${GAL_RANGES:-0}" -gt 0 ] \
+            || die "gallery: the posed frame drew ${GAL_RANGES:-no} range(s) for $pose, so the picture would be the clear colour -- $GAL_CAM"
         # Two frames after the pose, so the draw that follows the pose is on screen.
         sleep 4
         adb exec-out screencap -p > "gallery/shot-$pose.png" 2>/dev/null \
