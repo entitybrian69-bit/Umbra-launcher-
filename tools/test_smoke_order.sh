@@ -122,6 +122,36 @@ case "$out" in
     *)  printf 'FAIL %-24s the deferred failures were lost: %s\n' "defer" "$out"; fail=1 ;;
 esac
 
+# And the check that would have caught run 44990751063: a phase-boundary check cannot see a
+# `die` buried inside a `case`, so look at every failure between the two walks that can
+# breach the budget and the phase that attributes it. Anything on that path that is about the
+# budget has to `defer`; the rest may `die`, because a walk that never started is not
+# explained by a pass split.
+python3 - "$SMOKE" <<'PY2'
+import sys
+src = open(sys.argv[1]).read().splitlines(True)
+start = next(i for i, l in enumerate(src) if 'section "stream-fullsize"' in l)
+end = next(i for i, l in enumerate(src) if 'section "stream-where"' in l)
+assert start < end, 'stream-fullsize comes after stream-where'
+
+budget_dies, budget_defers = [], []
+for i in range(start, end):
+    line = src[i].strip()
+    if 'budget' not in line.lower():
+        continue
+    if line.startswith('die '):
+        budget_dies.append(i + 1)
+    elif line.startswith('defer '):
+        budget_defers.append(i + 1)
+
+assert budget_defers, 'nothing on the path defers a budget breach -- the deferral is gone'
+assert not budget_dies, (
+    'line(s) %s die on a budget breach before stream-where can attribute it'
+    % ', '.join(str(n) for n in budget_dies))
+print('ok   %-24s every budget failure before the attribution defers' % 'budget path')
+PY2
+[ $? = 0 ] || fail=1
+
 if bash -n "$SMOKE"; then
     printf 'ok   %-24s the smoke script still parses\n' "syntax"
 else

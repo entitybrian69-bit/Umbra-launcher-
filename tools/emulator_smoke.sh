@@ -1874,7 +1874,23 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
                         say "stream-cull: STILL OVER BUDGET by $ON_OVERS frame(s) with culling on, twice -- recorded as this emulator's tail, not a step-2 regression -- $CULL_ON"
                         note "stream-cull: with culling on the budget was breached by $ON_OVERS frame(s) twice; tail, not regression (worst $(worst_ms "$CULL_ON") ms)"
                     else
-                        die "stream-cull: $ON_OVERS frames broke the 50 ms CPU budget with culling on, which is not noise: $CULL_ON"
+                        # Deferred for the same reason as `stream-fullsize`: this is still a
+                        # budget number with no attribution, and `stream-where` is the next
+                        # phase. Run 44990751063 died here -- the second place the deferral
+                        # had to be applied, and one a phase-boundary check cannot see,
+                        # because the failure is not a `deferred_fail` in front of a
+                        # `section`. `tools/test_smoke_order.sh` now walks every `die` on the
+                        # path between the two walks and the attribution and insists that the
+                        # budget ones defer.
+                        # Deferred for the same reason as `stream-fullsize`: this is still a
+                        # budget number with no attribution, and `stream-where` is the next
+                        # phase. Run 44990751063 died here -- the second place the deferral
+                        # had to be applied, and one a phase-boundary check cannot see,
+                        # because the failure is a `die` inside a `case`, not a
+                        # `deferred_fail` in front of a `section`. `test_smoke_order.sh` now
+                        # walks every budget line between the two walks and the attribution
+                        # and insists that they defer.
+                        defer "stream-cull: $ON_OVERS frames broke the 50 ms CPU budget with culling on, which is not noise: $CULL_ON"
                     fi ;;
                 *) say "stream-cull: one breaching walk and then a clean one with culling on" ;;
             esac ;;
