@@ -2909,17 +2909,22 @@ static void draw_scene(umbra_app *app) {
     // pushed off the bottom of the screen is culled and not drawn behind the overlay.
     umbra_frustum_from_vp(&app->frustum, vp);
     app->frustum.enabled = app->cull_on;
-    if (app->gallery && !app->gallery_camera_logged) {
-        // What the gallery actually drew with, once, the first time a posed frame is
+    if (app->gallery && app->player_on && !app->gallery_camera_logged) {
+        // What the gallery actually drew with, once, the first time a frame with a body is
         // drawn. Run 44970905102's screenshot was exactly the clear colour -- not a sky
         // *behind* terrain, no terrain at all -- so the picture cannot distinguish a camera
         // inside the ground, a camera looking up, and every range culled. This line can.
+        //
+        // `player_on` is part of the condition and not a detail: run 44977583925 logged this
+        // on the first frame after the mesh, which is *before* the pose makes a body, so it
+        // said `body at 0.00 0.00 0.00` and described the orbit camera the pose then
+        // replaced. The number worth having is the first one that has the pose in it.
         app->gallery_camera_logged = 1;
         umbra_log(app, "gallery: drew from eye %.2f %.2f %.2f toward %.2f %.2f %.2f, "
-                       "body at %.2f %.2f %.2f pitch %.2f, fov %.0f, cull %s",
+                       "body at %.2f %.2f %.2f pitch %.2f, fov %.0f, cull %s, first person %s",
                   eye[0], eye[1], eye[2], target[0], target[1], target[2],
                   app->player.x, app->player.y, app->player.z, app->player.pitch, app->fov_y,
-                  app->cull_on ? "on" : "off");
+                  app->cull_on ? "on" : "off", app->player_on ? "yes" : "no");
     }
     glUseProgram(app->prog_mesh);
     glUniformMatrix4fv(glGetUniformLocation(app->prog_mesh, "u_viewproj"), 1, GL_FALSE, vp);
@@ -3062,6 +3067,18 @@ static void draw_scene(umbra_app *app) {
         app->last_pass_us[2] = pass_us[2];
     }
     glDisable(GL_CULL_FACE);
+    if (app->gallery && app->player_on && !app->gallery_draw_logged) {
+        // How much of the world survived the cull, on the first frame that has a body -- run
+        // 44977583925 logged the camera line and then no draw line at all, which is the state
+        // this line exists to rule out. A frame that drew 0 of 132 ranges is the clear colour
+        // and nothing else, which is exactly what the failing screenshots are.
+        app->gallery_draw_logged = 1;
+        umbra_log(app, "gallery: drew %d range(s) of %d with %d draw call(s), body at %.2f "
+                       "%.2f %.2f (%s)",
+                  app->cull.ranges_drawn, app->cull.ranges_total, app->draw_calls,
+                  app->player.x, app->player.y, app->player.z,
+                  app->player.on_ground ? "on the ground" : "in the air");
+    }
 }
 
 // Rows the overlay draws: the title (1.6 rows, it has its own spacing), five
@@ -3997,6 +4014,14 @@ static void gallery_apply_pose(umbra_app *app) {
     // it; a pose that can be put *in* the sky is a picture of the sky, and run 44945083074
     // is what that looks like.
     if (app->gallery_cave) {
+        // The pose is a *place to stand*, so the body is on the ground there with no fall in
+        // progress. Pinning the position alone was not enough: the pose ran after the draw
+        // and physics ran before it, so every frame put the body back and then dropped it
+        // again -- run 44977583925 logged y 95.98, 95.35, 95.22, 93.78 after a pose at
+        // 97.01, all "in the air". The pose runs before `player_update` now *and* clears the
+        // fall, so the picture is of the pose rather than of a body leaving it.
+        app->player.vx = app->player.vy = app->player.vz = 0.0f;
+        app->player.on_ground = 1;
         if (!app->pose_applied) {
             app->pose_applied = 1;
             umbra_log(app, "gallery: posed at %.2f %.2f %.2f, yaw %.2f pitch %.2f (under the "
@@ -4013,6 +4038,12 @@ static void gallery_apply_pose(umbra_app *app) {
     if (lift < 0.0f) lift = 0.0f;
     if (lift > 24.0f) lift = 24.0f;
     app->player.y = floor_y + 0.01f + lift;
+    // No fall, no step, no drift: the pose is where the picture is taken from, and the body
+    // is standing there. `on_ground` is true even for the lifted poses because the alternative
+    // -- a body in the air -- accumulates gravity between the pose and the screenshot, which
+    // is the difference run 44977583925 photographed.
+    app->player.vx = app->player.vy = app->player.vz = 0.0f;
+    app->player.on_ground = 1;
     if (!app->pose_applied) {
         app->pose_applied = 1;
         umbra_log(app, "gallery: posed at %.2f %.2f %.2f, yaw %.2f pitch %.2f (the tool asked "
@@ -4283,6 +4314,20 @@ void umbra_app_frame(umbra_app *app) {
         return;
     }
     if (app->mesh_uploaded && !app->render_fallback) {
+        // The gallery's pose goes in *before* the physics step, not after the draw.
+        //
+        // It used to run just before the HUD, which is after `draw_scene` -- so every frame
+        // posed the body and then physics moved it, and the picture was taken of a body
+        // falling from the pose rather than standing in it. Run 44977583925 is what that
+        // cost: four `player: at` lines at y 95.98, 95.35, 95.22, 93.78 after a pose at
+        // 97.01, in the air, the whole time.
+        //
+        // Pinning the feet does not stop this, because the pin is a position and gravity is
+        // a velocity: the body is put back each frame and then asked to fall again. The one
+        // line that makes a pose a pose is `on_ground` with no fall accumulated, which is a
+        // decision the pose itself makes (`player_on_ground`, mirrored in the ghost flag the
+        // body would set on landing).
+        gallery_apply_pose(app);
         player_update(app);
         gpu_timer_begin(app);
         int64_t first_t0 = umbra_now_us();
@@ -4310,9 +4355,9 @@ void umbra_app_frame(umbra_app *app) {
                       app->vert_count, app->draw_calls);
         }
     }
-    // Before the HUD and outside its condition: the pose is the point of the gallery and the
-    // HUD is the thing the gallery hides.
-    gallery_apply_pose(app);
+    // The pose is applied *before* the physics step at the top of this branch, not here: here
+    // is after the draw, and a pose that runs after the draw is a pose the picture never
+    // sees. See the comment there.
     int64_t hud_t0 = umbra_now_us();
     if (!app->gallery_hide_hud) draw_hud(app);
     int64_t hud_us = umbra_now_us() - hud_t0;

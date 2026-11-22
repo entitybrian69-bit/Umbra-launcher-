@@ -1988,6 +1988,30 @@ if [ -n "${UMBRA_WORLD_ZIP:-}" ] && [ -f "${UMBRA_WORLD_ZIP:-}" ]; then
         GAL_RANGES="$(printf '%s' "$GAL_DREW" | sed -n 's/.*drew \([0-9]*\) range.*/\1/p')"
         [ "${GAL_RANGES:-0}" -gt 0 ] \
             || die "gallery: the posed frame drew ${GAL_RANGES:-no} range(s) for $pose, so the picture would be the clear colour -- $GAL_CAM"
+        # And it has to have drawn that frame *from the pose*. Run 44977583925 logged the
+        # camera line on the frame before the pose made a body -- `body at 0.00 0.00 0.00`,
+        # the orbit camera -- which is a picture of the home view, however many ranges it
+        # drew. So the first body it drew has to be at the pose, to a block.
+        case "$GAL_CAM" in
+            *"first person no"*)
+                die "gallery: the drawn frame was not first person for $pose, so the picture is the overview camera: $GAL_CAM" ;;
+        esac
+        GAL_BODY="$(printf '%s' "$GAL_CAM" | sed -n 's/.*body at \(-\{0,1\}[0-9.]*\) \(-\{0,1\}[0-9.]*\) \(-\{0,1\}[0-9.]*\).*/\1 \2 \3/p')"
+        GAL_POSED="$(app_log "$GAL_PID" | grep -m1 'gallery: posed at' | sed -n 's/.*posed at \(-\{0,1\}[0-9.]*\) \(-\{0,1\}[0-9.]*\) \(-\{0,1\}[0-9.]*\).*/\1 \2 \3/p')"
+        # shellcheck disable=SC2086
+        set -- $GAL_BODY
+        GAL_BX="${1:-}"; GAL_BY="${2:-}"; GAL_BZ="${3:-}"
+        # shellcheck disable=SC2086
+        set -- $GAL_POSED
+        GAL_PX="${1:-}"; GAL_PY="${2:-}"; GAL_PZ="${3:-}"
+        if [ -n "${GAL_BX:-}" ] && [ -n "${GAL_PX:-}" ] && \
+           awk -v ax="$GAL_BX" -v ay="$GAL_BY" -v az="$GAL_BZ" \
+               -v px="$GAL_PX" -v py="$GAL_PY" -v pz="$GAL_PZ" \
+               'BEGIN { exit (ax - px < 1.0 && px - ax < 1.0 && ay - py < 1.0 && py - ay < 1.0 && az - pz < 1.0 && pz - az < 1.0) ? 0 : 1 }'; then
+            say "gallery: $pose the drawn body is at the pose ($GAL_BODY)"
+        else
+            die "gallery: the frame drawn for $pose has its body at '${GAL_BODY:-unknown}', not at the pose '$GAL_POSED' -- the picture is of somewhere else: $GAL_CAM"
+        fi
         # Two frames after the pose, so the draw that follows the pose is on screen.
         sleep 4
         adb exec-out screencap -p > "gallery/shot-$pose.png" 2>/dev/null \
