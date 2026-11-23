@@ -41,6 +41,20 @@ var rst_tris_drawn: i64 = 0;
 var rst_tris_clipped: i64 = 0;
 var rst_pixels: i64 = 0;          // pixels the geometry covered
 var rst_fragments: i64 = 0;       // pixels tested
+// Fragments that passed the depth test, i.e. were actually shaded. Overdraw is this per
+// covered pixel, and it is a *deterministic* number: unlike a frame time it does not
+// depend on the machine, so it can be a gate on a software rasteriser that says nothing
+// about a phone GPU.
+var rst_shaded: i64 = 0;
+// Pixels the geometry reached *at all*, counted once however many times they are written.
+// Overdraw is shaded fragments per covered pixel, so the denominator has to be distinct
+// pixels; `rst_pixels` counts writes and is therefore equal to `rst_shaded` by
+// construction, which makes shaded/rst_pixels always exactly 1000 and means nothing.
+var rst_unique: i64 = 0;
+// One byte per pixel saying whether it has been written at all. A mask rather than a
+// "depth still 1.0" test because blended fragments do not write depth, so they would
+// otherwise be counted as covering the pixel again on every pass.
+var rst_covered: u8[>..] = [];
 var rst_discarded: i64 = 0;       // pixels an alpha test threw away
 var rst_max_depth: f32 = 0.0;
 
@@ -120,6 +134,10 @@ fn rst_begin(w: i64, h: i64) {
     for i in w * h { rst_depth.push(1.0); }
     rst_tris = 0; rst_tris_drawn = 0; rst_tris_clipped = 0;
     rst_pixels = 0; rst_fragments = 0; rst_discarded = 0; rst_max_depth = 0.0;
+    rst_shaded = 0;
+    rst_unique = 0;
+    rst_covered = [];
+    for i in w * h { rst_covered.push(0); }
 }
 
 fn rst_clear(r: f32, g: f32, b: f32) {
@@ -155,6 +173,15 @@ fn rst_color_at(x: i64, y: i64) -> i64 {
 }
 
 fn rst_pixels_covered() -> i64 { return rst_pixels; }
+fn rst_fragments_shaded() -> i64 { return rst_shaded; }
+// Overdraw in permille: shaded fragments per covered pixel, times 1000. Integer arithmetic
+// on purpose -- a ratio printed as a float is a number two builds can disagree about in the
+// last digit, and this is meant to be a gate. 1000 is "every pixel shaded exactly once".
+fn rst_overdraw_permille() -> i64 {
+    if rst_unique <= 0 { return 0; }
+    return (rst_shaded * 1000) / rst_unique;
+}
+fn rst_pixels_covered_once() -> i64 { return rst_unique; }
 fn rst_triangles_drawn() -> i64 { return rst_tris_drawn; }
 fn rst_triangles_clipped() -> i64 { return rst_tris_clipped; }
 fn rst_discarded() -> i64 { return rst_discarded; }
@@ -341,12 +368,16 @@ fn rst_triangle(i0: u32, i1: u32, i2: u32, verts: Vertex[>..]&, atlas: const u8[
                 rst_color[ci + 1] = (((sg * alpha + dg * (1.0 - alpha)) * 255.0) as i64) as u8;
                 rst_color[ci + 2] = (((sb * alpha + db * (1.0 - alpha)) * 255.0) as i64) as u8;
                 rst_pixels += 1;
+                rst_shaded += 1;
+                if rst_covered[di] == 0 { rst_covered[di] = 1; rst_unique += 1; }
             } else {
                 rst_color[ci] = ((sr * 255.0) as i64) as u8;
                 rst_color[ci + 1] = ((sg * 255.0) as i64) as u8;
                 rst_color[ci + 2] = ((sb * 255.0) as i64) as u8;
                 rst_depth[di] = z;
                 rst_pixels += 1;
+                rst_shaded += 1;
+                if rst_covered[di] == 0 { rst_covered[di] = 1; rst_unique += 1; }
                 if z > rst_max_depth { rst_max_depth = z; }
             }
         }

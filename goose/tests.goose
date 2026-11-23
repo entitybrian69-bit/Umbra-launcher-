@@ -14,6 +14,7 @@ import test.modelstore_test;
 import test.raster_test;
 import test.worldzip_test;
 import test.worldstream_test;
+import test.cost_test;
 
 fn main() {
     print("umbra core tests");
@@ -34,6 +35,7 @@ fn main() {
     run_raster();
     run_worldzip();
     run_worldstream();
+    run_cost();
     print("all modules passed");
 }
 

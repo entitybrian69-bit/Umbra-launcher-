@@ -1,26 +1,26 @@
 host: aarch64
 compiler: cc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
-run: 45148090769
-commit: 44b14f8f811c6ea846cfc85275cd625bcc15f72a
+run: 45154120833
+commit: f6ea860da1edeb3a8347e6538da0cabcb6c72998
 note: this is the host test suite on ARM, not the Android arm64 .so
 
-png: 10 images decoded to their expected RGBA, 4 broken refused
-PASS png (164 checks)
-nbt: parsed and rewrote level.dat byte for byte, 4 broken files refused
-PASS nbt (207 checks)
-PASS region (256 checks)
-PASS json (321 checks)
-mesh: real chunk -> 35652 vertices, 53478 indices, fnv1a 4f270675
-PASS mesh (373 checks)
-PASS mesh_borders (379 checks)
-PASS mesh_model_counts (384 checks)
-PASS atlas (433 checks)
-PASS models (455 checks)
-PASS modelstore (505 checks)
-PASS raster (517 checks)
-PASS worldzip (612 checks)
-  ws: 2 slices for 16 chunks, worst 253 us
+fog: wall at arm's length fills 4096 of 4096 pixels, 0 are the clear colour
 
-PASS worldstream (685 checks)
+PASS raster (524 checks)
+PASS worldzip (619 checks)
+  ws: 2 slices for 16 chunks, worst 248 us
+
+PASS worldstream (692 checks)
+cost: world meshes to 1896 quads, 3792 triangles, batches 11376/0/0
+
+cost: floor top quads 225 covering x 0..14 z 0..14
+
+cost: roof faces of the sealed pocket 36
+
+cost: frame pixels opaque 62017, overdraw 2066 permille over 30011 distinct pixels, drawn triangles 3792
+
+cost: overdraw emit order 2066 permille (62017 shaded over 30011 pixels), nearest-first 1002 permille (30088 shaded)
+
+PASS cost (705 checks)
 all modules passed
 c-host: goose_exit returned 0
