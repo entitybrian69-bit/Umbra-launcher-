@@ -68,6 +68,11 @@ guard smoke_order  bash tools/test_smoke_order.sh
 #                   being prepared, so the phone's HUD and the core's own report would have
 #                   disagreed about which build was running. Nothing compared them.
 guard version      bash tools/check_version.sh
+#   gallery_page  - the page is generated from whatever pictures are committed, so it can
+#                   show a picture that is not there or claim a count it does not have --
+#                   the gallery's own README said "7 picture(s)" beside a list of one, and
+#                   the shot gate once passed a flat frame. Tested against both.
+guard gallery_page bash tools/test_gallery_page.sh
 
 #   c_compiles    - platform/shared/umbra_app.c is one file with two platform branches
 #                   behind #ifdef __ANDROID__, and only one of them is compiled by any
