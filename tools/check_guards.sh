@@ -64,6 +64,10 @@ guard budget_phases bash tools/test_budget_phases.sh
 #                    but the phase that explains it runs first. This checks that order, and
 #                    that a deferred failure is still fatal at the end.
 guard smoke_order  bash tools/test_smoke_order.sh
+#   version       - the header said 0.3.10 and the Goose core said 0.3.9 while a release was
+#                   being prepared, so the phone's HUD and the core's own report would have
+#                   disagreed about which build was running. Nothing compared them.
+guard version      bash tools/check_version.sh
 
 #   c_compiles    - platform/shared/umbra_app.c is one file with two platform branches
 #                   behind #ifdef __ANDROID__, and only one of them is compiled by any

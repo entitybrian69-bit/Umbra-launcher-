@@ -31,7 +31,12 @@ import core.sampleworld;
 import core.sha1;
 import core.gamefiles;
 
-let UMBRA_VERSION = "0.3.9";
+// Must equal UMBRA_APP_VERSION in platform/shared/umbra_app.h: the app's top line prints
+// the header's number and the core reports this one, and they were allowed to drift --
+// this said 0.3.9 while the header said 0.3.10, so the release would have shipped two
+// versions of itself. `tools/check_version.sh` is the guard; a version string that
+// disagrees with itself is the sort of thing a release publishes without noticing.
+let UMBRA_VERSION = "0.3.10";
 
 // --- a demo world ------------------------------------------------------
 //

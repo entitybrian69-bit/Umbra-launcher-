@@ -34,6 +34,11 @@ jobs:
         run: GOOSE=build/bin/goose tools/gen_core.sh
       - name: Compile-check the shared C (both branches)
         run: bash tools/check_c.sh
+      - name: One version, or refuse to build a release
+        # The header said 0.3.10 while the core said 0.3.9 on the morning this was
+        # added. A release tag names a version, so a tree that disagrees with itself
+        # must not produce the binaries that carry the name.
+        run: bash tools/check_version.sh --tag "${{ github.event.inputs.tag || github.ref_name }}"
       - name: Report and pick the NDK
         run: |
           NDK=$(ls -d "$ANDROID_HOME"/ndk/* 2>/dev/null | sort -V | tail -1)
@@ -211,6 +216,15 @@ jobs:
             echo '```'
             cat dist/SHA256SUMS
             echo '```'
+            # The known defects go in the release itself, not only in the repository: a
+            # pre-release is a rollback point, and the point of a rollback point is to say
+            # what it was. `KNOWN_ISSUES.md` holds the long version; this is the part a
+            # person deciding whether to install it needs.
+            echo
+            echo "## What is known to be wrong in this build"
+            echo
+            sed -n '/^## Release notes: the block that ships with every pre-release/,/^## /p' \
+                KNOWN_ISSUES.md | sed '1d;$d'
           } > "$NOTES"
           if gh release view "$TAG" > /dev/null 2>&1; then
             # A release that already exists is added to, never replaced: a working

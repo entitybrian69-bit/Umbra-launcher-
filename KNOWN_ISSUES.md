@@ -183,3 +183,38 @@ window manager for the display it has and retries the other orientation.
 not a phone number and it is not a regression: the same run reports `vsync: uncapped
 requested` and no GPU timer query (`check: gpu timer query none (not available)`), so
 on the emulator there is no GPU time to report separately from frame time.
+
+## Release notes: the block that ships with every pre-release
+
+The release workflow copies the section below into the GitHub release body, so
+that what a build is known to get wrong travels with the build. `sed` reads it
+from this file, which is why the heading is exactly that phrase.
+
+### 0.3.10
+
+* **The frame budget is red on the CI emulator, and it is not noise.** The
+  full-size walk (`stream-fullsize`, radius 4, 81 columns resident) reports
+  `61 frames over 50 ms`, `avg 39.9 ms`; the cull comparison reports `49 over`
+  with the cull on. The pass split, measured honestly with a `glFinish` per pass
+  in `stream-where`, is the **opaque** pass every time: `opaque 31.3-45.3 ms,
+  cutout 0.5-11.4`. A previous reading said `cutout 38.7`, which was enqueue
+  time and would have pointed the work at foliage. This is SwiftShader on an
+  x86_64 emulator: it says nothing about a phone GPU, and it is the only
+  renderer this project can measure in CI. It is recorded as red rather than
+  adjusted, and 0.3.9 did not draw a frame at all -- see the gallery note.
+* **The gallery is a real picture for the first time.** Every earlier attempt
+  produced a PNG that was 99.8% the clear colour, because the mesh shader
+  subtracted a second origin (the player's own position in first person) from
+  every vertex while the view matrix stayed in world space. The frame was drawn,
+  fogged to the sky colour, and indistinguishable from an empty one. This build
+  draws 2905 distinct colours with no single colour over 60%. The gallery is at
+  `docs/gallery/` in the repository and on the Pages site.
+* **Meshing is still sliced, not threaded** (see Stage 2 above): start-up shows a
+  `LOADING WORLD nn%` screen instead of freezing, and moving it to a worker
+  thread is Stage 5.
+* **The body walks, swims, edits and falls; it does not have an inventory.** The
+  hotbar and the touch inventory are not in this build.
+* **A world can only be opened from the app's own files directory**; importing
+  the owner's own world through the system file picker is not in this build.
+
+## 
