@@ -34,13 +34,13 @@ import core.sha1;
 // digest into `build/world_digest.txt` and the release step uploads `umbra-sample-world.zip`
 // next to the APK; these two lines are the app's copy of that fact and are updated by the
 // same script, so they cannot drift without a diff that says so.
-let UM_WORLD_TAG = "v0.3.9-pre";
+let UM_WORLD_TAG = "v0.3.10-pre";
 let UM_WORLD_NAME = "umbra-sample-world.zip";
 // 0 means "not pinned yet", and the download is refused rather than done unchecked. That
 // is the state until the first CI run publishes the asset -- a build cannot verify what
 // has not been built, and pretending otherwise is how an unchecked download ships.
-let UM_WORLD_BYTES: i64 = 5907100;
-let UM_WORLD_SHA256 = "ba0183736ddec8e5bcded3396c0c85c25ca11479de7a27f17b56dd7f101e1ffe";
+let UM_WORLD_BYTES: i64 = 5853353;
+let UM_WORLD_SHA256 = "d4b28d51df23145319082947888831dbdd9c1d04a731eaec2ec1692b99620525";
 
 var um_world_url: u8[>..] = [];
 var um_world_err: u8[>..] = [];
