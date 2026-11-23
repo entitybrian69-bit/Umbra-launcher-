@@ -36,6 +36,9 @@ jobs:
     name: Build the gallery page from the committed pictures
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Read by `deploy` through `needs`: whether there is a Pages site to deploy to.
+    outputs:
+      pages_enabled: ${{ steps.pages_ok.outputs.enabled }}
     steps:
       - uses: actions/checkout@v4
       - name: Regenerate the page, so it cannot drift from the pictures
@@ -50,14 +53,41 @@ jobs:
           done
           [ "$MISSING" = 0 ] || exit 1
           echo "::notice title=pages::the page shows $(ls docs/gallery/*.png | wc -l) picture(s)"
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      # Pages is not enabled on this repository yet, and enabling it needs an
+      # owner-level setting (`gh api -X POST .../pages` answers 403 "Resource not
+      # accessible by integration" from this project's token). Until it is enabled,
+      # the deploy half of this job cannot run, and the committed PNGs under
+      # `docs/gallery/` are the path that works -- the page is ordinary static HTML
+      # in the repository, so it opens from the repo's own file view and from any
+      # clone. Failing the whole workflow over a setting an agent cannot change would
+      # put a red mark on every push that touches the pictures, which is how a check
+      # stops being looked at. So configure-pages is probed, and its failure is
+      # reported as a warning with the instruction for the owner.
+      - name: Enable Pages, or say what the owner has to do
+        id: pages_ok
+        run: |
+          if curl -sf -H "Authorization: Bearer ${{ github.token }}" \
+                -H "Accept: application/vnd.github+json" \
+                "${{ github.api_url }}/repos/${{ github.repository }}/pages" > /dev/null; then
+            echo "enabled=1" >> "$GITHUB_OUTPUT"
+            echo "::notice title=pages::Pages is enabled; deploying the gallery page"
+          else
+            echo "enabled=0" >> "$GITHUB_OUTPUT"
+            echo "::warning title=pages::Pages is not enabled on this repository -- the gallery page is committed at docs/index.html and opens from the repository view; to publish it as a site, set Settings -> Pages -> Source: GitHub Actions (or run: gh api -X POST repos/${{ github.repository }}/pages -f build_type=workflow)"
+          fi
+      - if: steps.pages_ok.outputs.enabled == '1'
+        uses: actions/configure-pages@v5
+      - if: steps.pages_ok.outputs.enabled == '1'
+        uses: actions/upload-pages-artifact@v3
         with:
           path: docs
 
   deploy:
     name: Deploy to Pages
     needs: build
+    # Same reason as the probe above: no Pages site, nothing to deploy to, and a
+    # skipped job is honest about that where a failed one is only noisy.
+    if: needs.build.outputs.pages_enabled == '1'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment:
