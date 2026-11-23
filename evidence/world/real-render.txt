@@ -40,46 +40,46 @@ goose/core/nbt.goose:120: warning: redundant `as f64`: an f32 converts to f64 im
 goose/core/nbt.goose:256: warning: redundant `as f64`: an i64 converts to f64 implicitly here
     return nbt_nodes[c].ival as f64;
            ^~~~~~~~~~~~~~~~~~~~~~~~
-goose/core/raster.goose:64: warning: redundant `as f32`: (((f[0] * f[0]) + (f[1] * f[1])) + (f[2] * f[2])) is already f32
+goose/core/raster.goose:78: warning: redundant `as f32`: (((f[0] * f[0]) + (f[1] * f[1])) + (f[2] * f[2])) is already f32
     let fl = (f[0] * f[0] + f[1] * f[1] + f[2] * f[2]) as f32;
               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/core/raster.goose:97: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/raster.goose:111: warning: redundant `as f32`: an i64 converts to f32 implicitly here
         term = -term * x * x / (((i * 2 + 2) * (i * 2 + 3)) as f32);
                                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/core/raster.goose:103: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/raster.goose:117: warning: redundant `as f32`: an i64 converts to f32 implicitly here
         term = -term * x * x / (((i * 2 + 1) * (i * 2 + 2)) as f32);
                                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/core/raster.goose:107: warning: redundant `as f32`: 1.0 is an f32 here
+goose/core/raster.goose:121: warning: redundant `as f32`: 1.0 is an f32 here
     out[0] = (1.0 as f32) / (aspect * t);
               ^~~~~~~~~~
-goose/core/raster.goose:108: warning: redundant `as f32`: 1.0 is an f32 here
+goose/core/raster.goose:122: warning: redundant `as f32`: 1.0 is an f32 here
     out[5] = (1.0 as f32) / t;
               ^~~~~~~~~~
-goose/core/raster.goose:142: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/raster.goose:160: warning: redundant `as f32`: an i64 converts to f32 implicitly here
     let aspect = (rst_w as f32) / (rst_h as f32);
                                    ^~~~~~~~~~~~
-goose/core/raster.goose:154: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+goose/core/raster.goose:172: warning: redundant `as i64`: a u8 converts to i64 implicitly here
     return ((rst_color[i] as i64) << 16) | ((rst_color[i + 1] as i64) << 8) | (rst_color[i + 2] as i64);
                                                                                ^~~~~~~~~~~~~~~~~~~~~~~
-goose/core/raster.goose:251: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/raster.goose:278: warning: redundant `as f32`: an i64 converts to f32 implicitly here
         sx[k] = (cx * iw * 0.5 + 0.5) * (rst_w as f32);
                                          ^~~~~~~~~~~~
-goose/core/raster.goose:252: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/raster.goose:279: warning: redundant `as f32`: an i64 converts to f32 implicitly here
         sy[k] = (0.5 - cy * iw * 0.5) * (rst_h as f32);
                                          ^~~~~~~~~~~~
-goose/core/raster.goose:298: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/raster.goose:325: warning: redundant `as f32`: an i64 converts to f32 implicitly here
             var tx = (u * (aw as f32)) as i64;
                            ^~~~~~~~~
-goose/core/raster.goose:299: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/raster.goose:326: warning: redundant `as f32`: an i64 converts to f32 implicitly here
             var ty = (v * (ah as f32)) as i64;
                            ^~~~~~~~~
-goose/core/raster.goose:325: warning: redundant `as f32`: a u8 converts to f32 implicitly here
+goose/core/raster.goose:352: warning: redundant `as f32`: a u8 converts to f32 implicitly here
             var sr = (tr as f32) * vr / 255.0;
                       ^~~~~~~~~
-goose/core/raster.goose:326: warning: redundant `as f32`: a u8 converts to f32 implicitly here
+goose/core/raster.goose:353: warning: redundant `as f32`: a u8 converts to f32 implicitly here
             var sg = (tg as f32) * vg / 255.0;
                       ^~~~~~~~~
-goose/core/raster.goose:327: warning: redundant `as f32`: a u8 converts to f32 implicitly here
+goose/core/raster.goose:354: warning: redundant `as f32`: a u8 converts to f32 implicitly here
             var sb = (tb as f32) * vb / 255.0;
                       ^~~~~~~~~
 goose/core/demo.goose:184: warning: redundant `as f32`: an i32 converts to f32 implicitly here
@@ -382,26 +382,28 @@ jr: grass tint 146,189,89 from the jar's colormap
 
 save: region dir build/server/run/world/dimensions/minecraft/overworld/region
 
-jr: save 4 region file(s), 169 chunks, 5518555 non-air blocks, 0 read error(s)
+jr: save 4 region file(s), 169 chunks, 5519479 non-air blocks, 0 read error(s)
 
-jr: blocks drawn from a model 250828817, faces 96929032, blocks whose blockstate had no model 0
+jr: blocks drawn from a model 250869667, faces 97023868, blocks whose blockstate had no model 0
 
-jr: vertices 4963424, triangles 2481712, batches 6757134/688002/0
+jr: vertices 4980328, triangles 2490164, batches 6761454/709038/0
 
-jr: bounds x -96..112 y -64..107 z -96..112, camera 162 blocks out, looking at y 29
+jr: bounds x -96..112 y -64..106 z -96..112, camera 162 blocks out, looking at y 28
 
-jr: drawn triangles 2481712 of 2481712, clipped 0
+jr: drawn triangles 2490164 of 2490164, clipped 0
 
-jr: pixels opaque 4167854, cutout 203863, blended 0, discarded by the alpha test 141915
+jr: pixels opaque 4220584, cutout 195500, blended 0, discarded by the alpha test 137556
+
+jr: overdraw 11207 permille per pixel (4416084 shaded fragments over 394027 distinct pixels)
 
 jr: wrote build/real.ppm
 
-jr: coverage 755 permille of the frame (391788 of 518400 px), sky 126612
+jr: coverage 760 permille of the frame (394027 of 518400 px), sky 124373
 
-jr: hues green 34605, blue 5929, brown 114394, pale 36560, other 200300, dark 95540, missing-tile magenta 0
+jr: hues green 35130, blue 5783, brown 115437, pale 36592, other 201085, dark 96737, missing-tile magenta 0
 
 jr: atlas texels compared with the jar's PNGs: 6144 sampled, 0 differ
 
 jr: PASS - a world drawn with the jar's own models and textures
 
-== picture: evidence/world/real.png (385446 bytes)
+== picture: evidence/world/real.png (384448 bytes)
