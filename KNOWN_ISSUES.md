@@ -192,6 +192,14 @@ from this file, which is why the heading is exactly that phrase.
 
 ### 0.3.10
 
+* **The budget is now measured in fragments, and that number passes.** The
+  gate is `cost_test`: a world built block for block, meshed, drawn on the CPU
+  rasteriser, with every number a count rather than a clock. On this build it
+  reports `1896 quads, 3792 triangles`, and the same frame in the mesher's emit
+  order against nearest-first: **62017 shaded fragments over 30011 distinct
+  pixels (2066 permille) becomes 30088 (1002 permille)** -- the same pixels,
+  half the shading work. Frame times remain below as information; they are not
+  what passes or fails.
 * **The frame budget is red on the CI emulator, and it is not noise.** The
   full-size walk (`stream-fullsize`, radius 4, 81 columns resident) reports
   `61 frames over 50 ms`, `avg 39.9 ms`; the cull comparison reports `49 over`
