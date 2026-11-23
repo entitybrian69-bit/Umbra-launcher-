@@ -161,6 +161,42 @@ fn run_raster() {
     check(((distant >> 16) & 0xFF) > 100 && (distant & 0xFF) > 100,
           "and one 150 blocks away is the sky, so the fog still reaches");
 
+    // The same defect at the distance it actually stranded the player: a wall you are
+    // standing against, filling the frame. Read at one pixel it can pass by luck -- a
+    // corner, a hole in the alpha test -- so this counts the whole frame instead, and it
+    // is the check that would have caught the blank screenshots on the first run rather
+    // than the sixth. Nothing in the near half of the frame may be the clear colour.
+    var flat: Vertex[>..] = [];
+    flat.push(Vertex { x: 500.0 - 40.0, y: 70.0 - 40.0, z: 498.5, nx: 0.0, ny: 0.0, nz: 1.0,
+                       u: 0.0, v: 1.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0 });
+    flat.push(Vertex { x: 500.0 - 40.0, y: 70.0 + 40.0, z: 498.5, nx: 0.0, ny: 0.0, nz: 1.0,
+                       u: 0.0, v: 0.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0 });
+    flat.push(Vertex { x: 500.0 + 40.0, y: 70.0 + 40.0, z: 498.5, nx: 0.0, ny: 0.0, nz: 1.0,
+                       u: 1.0, v: 0.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0 });
+    flat.push(Vertex { x: 500.0 + 40.0, y: 70.0 - 40.0, z: 498.5, nx: 0.0, ny: 0.0, nz: 1.0,
+                       u: 1.0, v: 1.0, r: 1.0, g: 1.0, b: 1.0, ao: 1.0 });
+    rst_begin(64, 64);
+    // The clear colour *is* the fog's far colour, so "fogged to the clear colour" and
+    // "nothing was drawn at all" are the same pixels. Counting them is the only way to
+    // tell the two apart, and it is the bug the gallery screenshots had.
+    rst_clear(0.55, 0.70, 0.92);
+    rst_camera(eye2, target2, up2, 60.0, 0.05, 320.0);
+    rst_set_fog(24.0, 96.0);
+    rst_draw(0, 6, flat, idx, atlas[..], 4, 4, false, false);
+    let sky_px: i64 = ((0x55 * 255 / 255) << 16) | ((0x70) << 8) | 0x92;
+    var clear_count: i64 = 0;
+    var wall_count: i64 = 0;
+    for y in 64 {
+        for x in 64 {
+            let px = rst_color_at(x, y);
+            if px == sky_px { clear_count += 1; } else { wall_count += 1; }
+        }
+    }
+    print("fog: wall at arm's length fills ", wall_count, " of 4096 pixels, ",
+          clear_count, " are the clear colour\n");
+    check(clear_count == 0, "a wall 1.5 blocks away leaves no pixel the fog's colour");
+    check(wall_count == 4096, "and it covers the whole frame, so this is not a corner");
+
     // Overdraw is a *count*, not a time, which is why it can be a gate on a machine whose
     // frame times say nothing about a phone. It has to count what it claims: fragments that
     // passed the depth test, i.e. were shaded.
