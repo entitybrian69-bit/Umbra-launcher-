@@ -217,5 +217,15 @@ fn run_cost() {
     check(sorted_order <= emit_order,
           "nearest-first never costs more fragments than the mesher's emit order");
 
+    // The ceilings. These are the gate: if a change makes a frame of this world cost more
+    // fragments than it does now, it fails here with the number, and raising the number is
+    // a decision someone makes on purpose rather than a drift nobody noticed. They are set
+    // just above what the code does today, so they catch a regression immediately and do
+    // not pretend to be a target.
+    check(emit_order <= 2400, "overdraw in the mesher's order stays under 2400 permille");
+    check(sorted_order <= 1200, "and nearest-first stays under 1200 permille");
+    check(quad_count <= 2000, "this world stays under 2000 quads");
+    check(tri_count <= 4000, "and under 4000 triangles");
+
     test_summary("cost");
 }
