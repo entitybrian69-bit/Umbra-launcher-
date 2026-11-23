@@ -1,14 +1,14 @@
 TASK null id=8 userId=0
-  ACTIVITY com.google.android.apps.nexuslauncher/.NexusLauncherActivity ad81c pid=896
-    Local Activity 7a07ac4 State:
+  ACTIVITY com.google.android.apps.nexuslauncher/.NexusLauncherActivity bf88091 pid=912
+    Local Activity 530e65 State:
       mResumed=false mStopped=true mFinished=false
       mIsInMultiWindowMode=false mIsInPictureInPictureMode=false
       mChangingConfigurations=false
       mCurrentConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w411dp h659dp 420dpi nrml port finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1080, 1920) mAppBounds=Rect(0, 0 - 1080, 1794) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=home mAlwaysOnTop=undefined mRotation=ROTATION_0} s.2}
       mLoadersStarted=true
       FragmentManager misc state:
-        mHost=android.app.Activity$HostCallbacks@242d1f8
-        mContainer=android.app.Activity$HostCallbacks@242d1f8
+        mHost=android.app.Activity$HostCallbacks@cf81c62
+        mContainer=android.app.Activity$HostCallbacks@cf81c62
         mCurState=3 mStateSaved=true mDestroyed=false
     ViewRoot:
       mAdded=true mRemoved=false
@@ -22,101 +22,101 @@ TASK null id=8 userId=0
       android.view.ViewRootImpl$NativePostImeInputStage: mQueueLength=0
     Choreographer:
       mFrameScheduled=false
-      mLastFrameTime=631008 (129690 ms ago)
+      mLastFrameTime=425795 (130883 ms ago)
     
 InsetsController:
       InsetsState
-        InsetsSource type=ITYPE_STATUS_BAR frame=[0,0][1080,63] visible=false
-        InsetsSource type=ITYPE_NAVIGATION_BAR frame=[0,1794][1080,1920] visible=true
-        InsetsSource type=ITYPE_TOP_GESTURES frame=[0,0][1080,63] visible=true
-        InsetsSource type=ITYPE_BOTTOM_GESTURES frame=[0,1794][1080,1920] visible=true
-        InsetsSource type=ITYPE_LEFT_GESTURES frame=[0,0][0,1920] visible=true
-        InsetsSource type=ITYPE_RIGHT_GESTURES frame=[1080,0][1080,1920] visible=true
-        InsetsSource type=ITYPE_TOP_TAPPABLE_ELEMENT frame=[0,0][1080,63] visible=true
-        InsetsSource type=ITYPE_BOTTOM_TAPPABLE_ELEMENT frame=[0,1794][1080,1920] visible=true
+        InsetsSource type=ITYPE_STATUS_BAR frame=[0,0][1920,63] visible=false
+        InsetsSource type=ITYPE_NAVIGATION_BAR frame=[1794,0][1920,1080] visible=true
+        InsetsSource type=ITYPE_TOP_GESTURES frame=[0,0][1920,63] visible=true
+        InsetsSource type=ITYPE_BOTTOM_GESTURES frame=[1794,0][1920,1080] visible=true
+        InsetsSource type=ITYPE_LEFT_GESTURES frame=[0,0][0,1080] visible=true
+        InsetsSource type=ITYPE_RIGHT_GESTURES frame=[1920,0][1920,1080] visible=true
+        InsetsSource type=ITYPE_TOP_TAPPABLE_ELEMENT frame=[0,0][1920,63] visible=true
+        InsetsSource type=ITYPE_BOTTOM_TAPPABLE_ELEMENT frame=[1794,0][1920,1080] visible=true
         InsetsSource type=ITYPE_IME frame=[0,0][0,0] visible=false
     View Hierarchy:
-      DecorView@3d26d1[NexusLauncherActivity]
-        android.widget.LinearLayout{2836536 V.E...... .......D 0,0-1080,1920}
-          android.view.ViewStub{88cbc37 G.E...... ......I. 0,0-0,0 #10201af android:id/action_mode_bar_stub}
-          android.widget.FrameLayout{ecf15a4 V.E...... .......D 0,0-1080,1920 #1020002 android:id/content}
-            com.android.launcher3.LauncherRootView{79c5f0d V.E...... .......D 0,0-1080,1920 #7f0900c5 app:id/launcher}
-              com.android.launcher3.dragndrop.DragLayer{3989ec2 V.E...... .......D 0,0-1080,1920 #7f09008b app:id/drag_layer}
-                com.android.launcher3.Workspace{466e4d3 V.E...... .......D 0,0-1080,1920 #7f09016b app:id/workspace}
-                  com.android.launcher3.CellLayout{7b9e810 V.ED..... .......D 21,84-1059,1351}
-                    com.android.launcher3.ShortcutAndWidgetContainer{b3cdf09 V.E...... .......D 14,0-1024,1267}
-                      com.google.android.apps.nexuslauncher.smartspace.SmartspaceViewContainer{ed5e50e V.E...... .......D 0,0-1010,253 #7f090105 app:id/search_container_workspace}
-                        com.google.android.apps.nexuslauncher.smartspace.SmartspaceView{b08dc1d VFE...C.. .......D 0,0-1010,253 #7f090151 app:id/universal_smartspace_container}
-                          android.widget.LinearLayout{8c41829 V.E...... .......D 258,0-752,253 #7f09011d app:id/smartspace_content}
-                            com.google.android.apps.nexuslauncher.graphics.IcuDateTextView{3b0fb2f VFED..CL. ......ID 0,0-494,253 #7f090077 app:id/clock}
-                            com.google.android.apps.nexuslauncher.graphics.DoubleShadowTextView{43d753c G.ED..... ......I. 0,0-0,0 #7f09014a app:id/title_weather_text}
-                com.google.android.apps.nexuslauncher.qsb.HotseatWithQsb{c875590 V.ED..... .......D 0,1382-1080,1920 #7f0900b3 app:id/hotseat}
-                  com.android.launcher3.ShortcutAndWidgetContainer{4b62c5 V.E...... .......D 35,0-1045,210}
-                    com.android.launcher3.views.DoubleShadowBubbleTextView{18f441a VFED..CL. ......ID 202,0-404,210 #1}
-                    com.android.launcher3.views.DoubleShadowBubbleTextView{6dc1b4b VFED..CL. ......ID 606,0-808,210 #2}
-                com.android.launcher3.pageindicators.WorkspacePageIndicator{30aa928 V.ED..... ........ 0,1319-1080,1382 #7f0900e6 app:id/page_indicator}
-                com.android.launcher3.DropTargetBar{8046641 I.E...... ......ID 0,84-1080,210 #7f09008c app:id/drop_target_bar}
-                  com.android.launcher3.DeleteDropTarget{84d87e6 V.ED..... ......ID 106,0-434,126 #7f090085 app:id/delete_target_text}
-                  com.android.launcher3.SecondaryDropTarget{a4f2127 V.ED..... ......ID 641,0-979,126 #7f090150 app:id/uninstall_target_text}
-                com.android.quickstep.views.ShelfScrimView{f117e89 V.ED..... ........ 0,0-1080,1920 #7f0900fc app:id/scrim_view}
-                com.android.launcher3.allapps.LauncherAllAppsContainerView{af52fd4 V.E...... .......D 0,0-1080,1920 #7f09005c app:id/apps_view}
-                  com.android.launcher3.allapps.AllAppsRecyclerView{f0257d IFED..... ......ID 0,157-1080,1920 #7f09005a app:id/apps_list_view}
-                    com.android.launcher3.BubbleTextView{11426d3 VFED..CL. ......I. 35,95-237,348 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{189a8c2 VFED..CL. ......I. 237,95-439,348 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{5e3510d VFED..CL. ......I. 439,95-641,348 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{2f28fa4 VFED..CL. ......I. 641,95-843,348 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{589de37 VFED..CL. ......I. 843,95-1045,348 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{297cf36 VFED..CL. ......I. 35,348-237,601 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{f98f8d1 VFED..CL. ......I. 237,348-439,601 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{d42abf8 VFED..CL. ......I. 439,348-641,601 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{1da275b VFED..CL. ......I. 641,348-843,601 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{46cb66a VFED..CL. ......I. 843,348-1045,601 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{568ec55 VFED..CL. ......I. 35,601-237,854 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{f3beb0c VFED..CL. ......I. 237,601-439,854 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{38b663f VFED..CL. ......I. 439,601-641,854 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{ed9d25e VFED..CL. ......I. 641,601-843,854 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{671ef99 VFED..CL. ......I. 843,601-1045,854 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{1eda0e0 VFED..CL. ......I. 35,854-237,1107 #7f0900b8 app:id/icon}
-                    com.android.launcher3.BubbleTextView{3c5bee3 VFED..CL. ......I. 237,854-439,1107 #7f0900b8 app:id/icon}
-                  com.android.launcher3.allapps.FloatingHeaderView{cd966af V.E...... ........ 0,157-1080,252 #7f090056 app:id/all_apps_header}
-                    com.android.launcher3.appprediction.PredictionRowView{d5a3c72 G.E...... ......I. 0,0-0,0 #7f0900e9 app:id/prediction_row}
-                      com.android.launcher3.BubbleTextView{2a8c3 GFED..CL. ......I. 0,0-0,0 #7f0900b8 app:id/icon}
-                      com.android.launcher3.BubbleTextView{a5f7540 GFED..CL. ......I. 0,0-0,0 #7f0900b8 app:id/icon}
-                      com.android.launcher3.BubbleTextView{fde9c79 GFED..CL. ......I. 0,0-0,0 #7f0900b8 app:id/icon}
-                      com.android.launcher3.BubbleTextView{40badbe GFED..CL. ......I. 0,0-0,0 #7f0900b8 app:id/icon}
-                      com.android.launcher3.BubbleTextView{6dd0e1f GFED..CL. ......I. 0,0-0,0 #7f0900b8 app:id/icon}
-                    com.android.launcher3.appprediction.AppsDividerView{166a56c G.ED..... ......I. 0,0-0,0 #7f090059 app:id/apps_divider_view}
-                    com.android.launcher3.allapps.PersonalWorkSlidingTabStrip{ca38735 G.ED..... ......I. 0,0-0,0 #7f090134 app:id/tabs}
-                      android.widget.Button{cd0e7ca VFED..C.. ......I. 0,0-0,0 #7f090132 app:id/tab_personal}
-                      android.widget.Button{bce6d3b VFED..C.. ......I. 0,0-0,0 #7f090133 app:id/tab_work}
-                  com.google.android.apps.nexuslauncher.qsb.AllAppsQsbLayout{795ec9e VFE...CL. ......ID 52,89-1027,236 #7f090104 app:id/search_container_all_apps}
-                    android.widget.ImageView{2ceac58 V.ED..... ......ID 52,42-115,105 #7f0900a2 app:id/g_icon}
-                    com.google.android.apps.nexuslauncher.qsb.AssistantIconView{922137f V.ED..C.. ......ID 818,0-965,147 #7f0900d5 app:id/mic_icon}
-                    android.widget.TextView{e9261b1 V.ED..... ........ 487,53-487,93 #7f0900f2 app:id/qsb_hint}
-                  android.widget.TextView{dfdb696 V.ED..... ......ID 833,157-1030,320 #7f090094 app:id/fast_scroller_popup}
-                  com.android.launcher3.views.RecyclerViewFastScroller{aca217 I.ED..... ......I. 996,157-1148,1920 #7f090093 app:id/fast_scroller}
-                com.android.quickstep.views.LauncherRecentsView{7ae3604 G.ED..... ......I. 0,0-0,0 #7f0900e5 app:id/overview_panel}
-                com.google.android.apps.nexuslauncher.overview.NexusOverviewActionsView{4ba67ed I.E...... ......ID 42,1600-1038,1773 #7f0900e4 app:id/overview_actions_view}
-                  android.widget.LinearLayout{d56a622 V.E...... ......ID 0,23-996,149 #7f090031 app:id/action_buttons}
-                    android.widget.Space{4cf48b3 I.ED..... ......I. 0,0-63,3}
-                    android.widget.FrameLayout{1daae70 V.E...... ......ID 63,0-487,126}
-                      android.widget.Button{5e295e9 VFED..C.. ......ID 46,0-378,126 #7f090047 app:id/action_screenshot}
-                    android.widget.Space{65d026e I.ED..... ......I. 487,0-508,3}
-                    android.widget.FrameLayout{b6bbd0f V.E...... ......ID 508,0-933,126}
-                      android.widget.Button{914419c VFED..C.. ......ID 88,0-336,126 #7f090048 app:id/action_select}
-                    android.widget.Space{445a7a5 I.ED..... ......I. 933,0-996,3}
-                    android.widget.Button{95ad77a GFED..C.. ......I. 0,0-0,0 #7f090049 app:id/action_share}
-                    android.widget.Space{bb11b2b G.ED..... ......I. 0,0-0,0 #7f090116 app:id/share_space}
-                  android.widget.FrameLayout{ef1db88 G.E...... ......I. 0,0-0,0 #7f090111 app:id/select_mode_buttons}
-                    android.widget.ImageButton{10e1921 VFED..C.. ......I. 0,0-0,0 #7f090078 app:id/close}
-                    android.widget.Button{f2ef146 GFED..C.. ......I. 0,0-0,0 #7f090095 app:id/feedback}
-    Looper (main, tid 2) {6a43f07}
+      DecorView@41621f3[NexusLauncherActivity]
+        android.widget.LinearLayout{b6aeb0 V.E...... ......ID 0,0-1080,1920}
+          android.view.ViewStub{3223129 G.E...... ......I. 0,0-0,0 #10201af android:id/action_mode_bar_stub}
+          android.widget.FrameLayout{f3f9cae V.E...... ......ID 0,0-1080,1920 #1020002 android:id/content}
+            com.android.launcher3.LauncherRootView{c66ea4f V.E...... ......ID 0,0-1080,1920 #7f0900c5 app:id/launcher}
+              com.android.launcher3.dragndrop.DragLayer{b5005dc V.E...... ......ID 0,0-1080,1920 #7f09008b app:id/drag_layer}
+                com.android.launcher3.Workspace{703b6e5 V.E...... ......ID 0,0-1080,1920 #7f09016b app:id/workspace}
+                  com.android.launcher3.CellLayout{86cd5ba V.ED..... ......ID 21,84-1059,1477}
+                    com.android.launcher3.ShortcutAndWidgetContainer{751dc6b V.E...... ......ID 14,0-1024,1393}
+                      com.google.android.apps.nexuslauncher.smartspace.SmartspaceViewContainer{4c5a3c8 V.E...... ......ID 0,0-1010,278 #7f090105 app:id/search_container_workspace}
+                        com.google.android.apps.nexuslauncher.smartspace.SmartspaceView{fa7f5fd VFE...C.. ......ID 0,0-1010,278 #7f090151 app:id/universal_smartspace_container}
+                          android.widget.LinearLayout{4bddc61 V.E...... ......I. 0,0-0,0 #7f09011d app:id/smartspace_content}
+                            com.google.android.apps.nexuslauncher.graphics.IcuDateTextView{2029386 VFED..CL. ......I. 0,0-0,0 #7f090077 app:id/clock}
+                            com.google.android.apps.nexuslauncher.graphics.DoubleShadowTextView{3afd447 G.ED..... ......I. 0,0-0,0 #7f09014a app:id/title_weather_text}
+                com.google.android.apps.nexuslauncher.qsb.HotseatWithQsb{b8e0e69 V.ED..... ......ID 0,1508-1080,1920 #7f0900b3 app:id/hotseat}
+                  com.android.launcher3.ShortcutAndWidgetContainer{a753474 V.E...... .......D 35,0-1045,210}
+                    com.android.launcher3.views.DoubleShadowBubbleTextView{f9add9d VFED..CL. ......ID 202,0-404,210 #1}
+                    com.android.launcher3.views.DoubleShadowBubbleTextView{8e46212 VFED..CL. ......ID 606,0-808,210 #2}
+                com.android.launcher3.pageindicators.WorkspacePageIndicator{b0b6de3 V.ED..... ......ID 0,1445-1080,1508 #7f0900e6 app:id/page_indicator}
+                com.android.launcher3.DropTargetBar{feb23e0 I.E...... ......ID 0,84-1080,210 #7f09008c app:id/drop_target_bar}
+                  com.android.launcher3.DeleteDropTarget{b4cb699 V.ED..... ......ID 106,0-434,126 #7f090085 app:id/delete_target_text}
+                  com.android.launcher3.SecondaryDropTarget{2a28d5e V.ED..... ......ID 641,0-979,126 #7f090150 app:id/uninstall_target_text}
+                com.android.quickstep.views.ShelfScrimView{21650ee V.ED..... ......ID 0,0-1080,1920 #7f0900fc app:id/scrim_view}
+                com.android.launcher3.allapps.LauncherAllAppsContainerView{afd053f V.E...... ......ID 0,0-1080,1920 #7f09005c app:id/apps_view}
+                  com.android.launcher3.allapps.AllAppsRecyclerView{30e9e0c IFED..... ......ID 0,157-1080,1920 #7f09005a app:id/apps_list_view}
+                    com.android.launcher3.BubbleTextView{bd23cbe VFED..CL. ......I. 35,95-237,348 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{d7a0779 VFED..CL. ......I. 237,95-439,348 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{6e9ac40 VFED..CL. ......I. 439,95-641,348 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{2075bc3 VFED..CL. ......I. 641,95-843,348 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{485db72 VFED..CL. ......I. 843,95-1045,348 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{71ae07d VFED..CL. ......I. 35,348-237,601 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{679f6d4 VFED..CL. ......I. 237,348-439,601 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{75ea427 VFED..CL. ......I. 439,348-641,601 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{7ad36e6 VFED..CL. ......I. 641,348-843,601 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{5697141 VFED..CL. ......I. 843,348-1045,601 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{10028 VFED..CL. ......I. 35,601-237,854 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{4e96e4b VFED..CL. ......I. 237,601-439,854 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{302031a VFED..CL. ......I. 439,601-641,854 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{ee5bdc5 VFED..CL. ......I. 641,601-843,854 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{bac5c3c VFED..CL. ......I. 843,601-1045,854 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{f7f1e2f VFED..CL. ......I. 35,854-237,1107 #7f0900b8 app:id/icon}
+                    com.android.launcher3.BubbleTextView{c4ab40e VFED..CL. ......I. 237,854-439,1107 #7f0900b8 app:id/icon}
+                  com.android.launcher3.allapps.FloatingHeaderView{e4e741c V.E...... ........ 0,157-1080,252 #7f090056 app:id/all_apps_header}
+                    com.android.launcher3.appprediction.PredictionRowView{aa92355 G.E...... ......I. 0,0-0,0 #7f0900e9 app:id/prediction_row}
+                      com.android.launcher3.BubbleTextView{b86216a GFED..CL. ......I. 0,0-0,0 #7f0900b8 app:id/icon}
+                      com.android.launcher3.BubbleTextView{846b65b GFED..CL. ......I. 0,0-0,0 #7f0900b8 app:id/icon}
+                      com.android.launcher3.BubbleTextView{70d8ef8 GFED..CL. ......I. 0,0-0,0 #7f0900b8 app:id/icon}
+                      com.android.launcher3.BubbleTextView{e259fd1 GFED..CL. ......I. 0,0-0,0 #7f0900b8 app:id/icon}
+                      com.android.launcher3.BubbleTextView{95cea36 GFED..CL. ......I. 0,0-0,0 #7f0900b8 app:id/icon}
+                    com.android.launcher3.appprediction.AppsDividerView{7b05d37 G.ED..... ......I. 0,0-0,0 #7f090059 app:id/apps_divider_view}
+                    com.android.launcher3.allapps.PersonalWorkSlidingTabStrip{208a2a4 G.ED..... ......I. 0,0-0,0 #7f090134 app:id/tabs}
+                      android.widget.Button{e13680d VFED..C.. ......I. 0,0-0,0 #7f090132 app:id/tab_personal}
+                      android.widget.Button{f0573c2 VFED..C.. ......I. 0,0-0,0 #7f090133 app:id/tab_work}
+                  com.google.android.apps.nexuslauncher.qsb.AllAppsQsbLayout{7e33e5f VFE...CL. ......ID 52,89-1027,236 #7f090104 app:id/search_container_all_apps}
+                    android.widget.ImageView{8a395d3 V.ED..... ......ID 52,42-115,105 #7f0900a2 app:id/g_icon}
+                    com.google.android.apps.nexuslauncher.qsb.AssistantIconView{53cb0ac V.ED..C.. ......ID 818,0-965,147 #7f0900d5 app:id/mic_icon}
+                    android.widget.TextView{97f4510 V.ED..... ........ 487,53-487,93 #7f0900f2 app:id/qsb_hint}
+                  android.widget.TextView{c9b7809 V.ED..... ......ID 833,157-1030,320 #7f090094 app:id/fast_scroller_popup}
+                  com.android.launcher3.views.RecyclerViewFastScroller{cbb0a0e I.ED..... ......I. 996,157-1148,1920 #7f090093 app:id/fast_scroller}
+                com.android.quickstep.views.LauncherRecentsView{d87bc2f G.ED..... ......I. 0,0-0,0 #7f0900e5 app:id/overview_panel}
+                com.google.android.apps.nexuslauncher.overview.NexusOverviewActionsView{97ba23c I.E...... ......ID 42,1726-1038,1899 #7f0900e4 app:id/overview_actions_view}
+                  android.widget.LinearLayout{b7a8bc5 V.E...... ......ID 0,23-996,149 #7f090031 app:id/action_buttons}
+                    android.widget.Space{921b91a I.ED..... ......I. 0,0-63,3}
+                    android.widget.FrameLayout{dddec4b V.E...... ......ID 63,0-487,126}
+                      android.widget.Button{27ea628 VFED..C.. ......ID 46,0-378,126 #7f090047 app:id/action_screenshot}
+                    android.widget.Space{17d1f41 I.ED..... ......I. 487,0-508,3}
+                    android.widget.FrameLayout{f124ce6 V.E...... ......ID 508,0-933,126}
+                      android.widget.Button{e1d0227 VFED..C.. ......ID 88,0-336,126 #7f090048 app:id/action_select}
+                    android.widget.Space{a2bfcd4 I.ED..... ......I. 933,0-996,3}
+                    android.widget.Button{bbb6e7d GFED..C.. ......I. 0,0-0,0 #7f090049 app:id/action_share}
+                    android.widget.Space{c265172 G.ED..... ......I. 0,0-0,0 #7f090116 app:id/share_space}
+                  android.widget.FrameLayout{94d99c3 G.E...... ......I. 0,0-0,0 #7f090111 app:id/select_mode_buttons}
+                    android.widget.ImageButton{ab61240 VFED..C.. ......I. 0,0-0,0 #7f090078 app:id/close}
+                    android.widget.Button{6957579 GFED..C.. ......I. 0,0-0,0 #7f090095 app:id/feedback}
+    Looper (main, tid 2) {c0412be}
       (Total messages: 0, polling=false, quitting=false)
     AutofillManager:
       sessionId: 2147483647
       state: UNKNOWN
-      context: com.google.android.apps.nexuslauncher.NexusLauncherActivity@7a07ac4
-      client: com.google.android.apps.nexuslauncher.NexusLauncherActivity@7a07ac4 (android.os.BinderProxy@803ccdc)
+      context: com.google.android.apps.nexuslauncher.NexusLauncherActivity@530e65
+      client: com.google.android.apps.nexuslauncher.NexusLauncherActivity@530e65 (android.os.BinderProxy@7c19d)
       enabled: false
       enabledAugmentedOnly: false
       hasService: true
@@ -160,8 +160,8 @@ InsetsController:
     PopupDataProvider:
     	mPackageUserToDotInfos:{}
 
---- logfile: log-6 ---
-11/22/26 9:43 AM ModelWriter removing items from db 
+--- logfile: log-7 ---
+11/23/26 10:39 AM ModelWriter removing items from db 
 java.lang.Exception
 	at com.android.launcher3.model.ModelWriter.deleteItemsFromDatabase(SourceFile:4)
 	at com.android.launcher3.model.BaseModelUpdateTask.deleteAndBindComponentsRemoved(SourceFile:2)
@@ -172,7 +172,7 @@ java.lang.Exception
 	at android.os.Looper.loop(Looper.java:223)
 	at android.os.HandlerThread.run(HandlerThread.java:67)
 
-11/22/26 9:44 AM ModelWriter removing items from db 
+11/23/26 10:39 AM ModelWriter removing items from db 
 java.lang.Exception
 	at com.android.launcher3.model.ModelWriter.deleteItemsFromDatabase(SourceFile:4)
 	at com.android.launcher3.model.BaseModelUpdateTask.deleteAndBindComponentsRemoved(SourceFile:2)
@@ -183,7 +183,7 @@ java.lang.Exception
 	at android.os.Looper.loop(Looper.java:223)
 	at android.os.HandlerThread.run(HandlerThread.java:67)
 
-11/22/26 9:44 AM ModelWriter removing items from db 
+11/23/26 10:40 AM ModelWriter removing items from db 
 java.lang.Exception
 	at com.android.launcher3.model.ModelWriter.deleteItemsFromDatabase(SourceFile:4)
 	at com.android.launcher3.model.BaseModelUpdateTask.deleteAndBindComponentsRemoved(SourceFile:2)
@@ -208,42 +208,41 @@ java.lang.Exception
       weather null
       current null
     LauncherClient
-      isConnected: false
+      isConnected: true
       act.isBound: false
-      app.isBound: false
+      app.isBound: true
       serviceVersion: 10
       clientVersion: 14
       mActivityState: 0
-      mServiceStatus: 0
+      mServiceStatus: 27
       mCurrentServiceConnectionOptions: 15
       Client event history:
-        09:53:38.464+0000  stateChanged : 0
-        09:44:00.812+0000  stateChanged : 1 & 40 similar events
-        09:43:42.684+0000  attachedToWindow
-        09:43:42.678+0000  stateChanged : 3
-        09:43:42.677+0000  stateChanged : 1
-        09:43:42.671+0000  setPrivateOptions : background_secondary_color_hint,is_background_dark,system_ui_visibility,background_color_hint
+        10:45:55.292+0000  stateChanged : 0
+        10:39:46.520+0000  stateChanged : 1 & 32 similar events
+        10:39:29.025+0000  attachedToWindow
+        10:39:28.927+0000  stateChanged : 3
+        10:39:28.927+0000  stateChanged : 1
+        10:39:28.898+0000  setPrivateOptions : background_secondary_color_hint,is_background_dark,system_ui_visibility,background_color_hint
       Service event history:
-        09:54:44.202+0000  Connected: false
-        09:53:38.386+0000  onScroll 0, overlay closed
-        09:43:45.609+0000  onScroll 0, overlay closed & 48 similar events
-        09:43:44.016+0000  stateChanged: 27
-        09:43:43.181+0000  Connected: true
+        10:45:55.316+0000  onScroll 0, overlay closed
+        10:39:30.971+0000  onScroll 0, overlay closed & 41 similar events
+        10:39:30.971+0000  stateChanged: 27
+        10:39:30.299+0000  Connected: true
 
 QuickstepLauncher:
-    	mOrientationState: [this=RecentsOrientedState@de4cad1 mOrientationHandler=PortraitPagedViewHandler@edc3936 mDisplayRotation=0 mTouchRotation=0 mRecentsActivityRotation=0 isRecentsActivityRotationAllowed=false mSystemRotation=true mFlags=299]
+    	mOrientationState: [this=RecentsOrientedState@e0a5e0e mOrientationHandler=PortraitPagedViewHandler@fe6802f mDisplayRotation=0 mTouchRotation=0 mRecentsActivityRotation=0 isRecentsActivityRotationAllowed=false mSystemRotation=true mFlags=299]
 
-TASK 10167:org.umbra.client id=19 userId=0
-  ACTIVITY org.umbra.client/.UmbraNet$UmbraActivity 7f73608 pid=7846
-    Local Activity cfcd7bd State:
+TASK 10167:org.umbra.client id=17 userId=0
+  ACTIVITY org.umbra.client/.UmbraNet$UmbraActivity 64c376b pid=7340
+    Local Activity f4a0bb9 State:
       mResumed=true mStopped=false mFinished=false
       mIsInMultiWindowMode=false mIsInPictureInPictureMode=false
       mChangingConfigurations=false
       mCurrentConfig={1.0 310mcc260mnc [en_US] ldltr sw411dp w683dp h387dp 420dpi nrml land finger qwerty/v/v -nav/h winConfig={ mBounds=Rect(0, 0 - 1920, 1080) mAppBounds=Rect(0, 0 - 1794, 1080) mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=standard mAlwaysOnTop=undefined mRotation=ROTATION_90} s.2}
       mLoadersStarted=true
       FragmentManager misc state:
-        mHost=android.app.Activity$HostCallbacks@a91a1b2
-        mContainer=android.app.Activity$HostCallbacks@a91a1b2
+        mHost=android.app.Activity$HostCallbacks@c2f8bfe
+        mContainer=android.app.Activity$HostCallbacks@c2f8bfe
         mCurState=5 mStateSaved=false mDestroyed=false
     ViewRoot:
       mAdded=true mRemoved=false
@@ -257,7 +256,7 @@ TASK 10167:org.umbra.client id=19 userId=0
       android.view.ViewRootImpl$NativePostImeInputStage: mQueueLength=0
     Choreographer:
       mFrameScheduled=false
-      mLastFrameTime=728108 (32603 ms ago)
+      mLastFrameTime=523628 (33063 ms ago)
     
 InsetsController:
       InsetsState
@@ -271,20 +270,20 @@ InsetsController:
         InsetsSource type=ITYPE_BOTTOM_TAPPABLE_ELEMENT frame=[1794,0][1920,1080] visible=true
         InsetsSource type=ITYPE_IME frame=[0,0][0,0] visible=false
     View Hierarchy:
-      DecorView@f24503[UmbraNet$UmbraActivity]
-        android.widget.LinearLayout{b807c80 V.E...... ......ID 0,0-1794,1080}
-          android.view.ViewStub{6a432b9 G.E...... ......I. 0,0-0,0 #10201af android:id/action_mode_bar_stub}
-          android.widget.FrameLayout{f7426fe V.E...... ......ID 0,0-1794,1080 #1020002 android:id/content}
-            android.app.NativeActivity$NativeContentView{eca2e5f V.ED..... ......ID 0,0-1794,1080}
-        android.view.View{2b0e0ac V.ED..... ......ID 1794,0-1920,1080 #1020030 android:id/navigationBarBackground}
-        android.view.View{acc4175 I.ED..... ......ID 0,0-1794,0 #102002f android:id/statusBarBackground}
-    Looper (main, tid 2) {a67b50a}
+      DecorView@15a2f5f[UmbraNet$UmbraActivity]
+        android.widget.LinearLayout{4f4dac V.E...... ......ID 0,0-1794,1080}
+          android.view.ViewStub{a76aa75 G.E...... ......I. 0,0-0,0 #10201af android:id/action_mode_bar_stub}
+          android.widget.FrameLayout{7f46a0a V.E...... ......ID 0,0-1794,1080 #1020002 android:id/content}
+            android.app.NativeActivity$NativeContentView{91c627b V.ED..... ......ID 0,0-1794,1080}
+        android.view.View{d399898 V.ED..... ......ID 1794,0-1920,1080 #1020030 android:id/navigationBarBackground}
+        android.view.View{b9478f1 I.ED..... ......ID 0,0-1794,0 #102002f android:id/statusBarBackground}
+    Looper (main, tid 2) {6771cd6}
       (Total messages: 0, polling=false, quitting=false)
     AutofillManager:
       sessionId: 2147483647
       state: UNKNOWN
-      context: org.umbra.client.UmbraNet$UmbraActivity@cfcd7bd
-      client: org.umbra.client.UmbraNet$UmbraActivity@cfcd7bd (android.os.BinderProxy@a618e4e)
+      context: org.umbra.client.UmbraNet$UmbraActivity@f4a0bb9
+      client: org.umbra.client.UmbraNet$UmbraActivity@f4a0bb9 (android.os.BinderProxy@14f8d7c)
       enabled: false
       enabledAugmentedOnly: false
       hasService: true
