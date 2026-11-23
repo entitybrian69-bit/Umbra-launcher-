@@ -23,6 +23,9 @@ import sys
 # `gallery-<pose>-<version>-<build>.png`, from the harness's own naming.
 NAME = re.compile(r'^gallery-([a-z]+)-([0-9][0-9.]*)-([0-9a-f]{6,12})\.png$')
 
+# The harness's own output directory, and the default for `--dir`.
+DEFAULT_DIR = 'evidence/ci/gallery'
+
 CAPTIONS = {
     'hills': 'grassy hills, from the highest ground in the save',
     'forest': 'under the trees, looking along the trunks',
@@ -72,9 +75,14 @@ def main(argv=None):
 
     # The committed copies live beside the page so a phone can fetch them without
     # reaching into `evidence/`, which is a directory of run output.
-    copies = shots('docs/gallery', 'gallery/')
-    evidence = shots(args.dir, '')
-    found = copies or evidence
+    # The committed copies are the default because that is what a static host serves.
+    # `--dir` is honoured strictly: a fallback turned "this directory has no pictures"
+    # into "here are the ones from somewhere else", which is the same class of mistake
+    # as a gallery gate that passes a blank frame.
+    if args.dir == DEFAULT_DIR:
+        found = shots('docs/gallery', 'gallery/') or shots(args.dir, '')
+    else:
+        found = shots(args.dir, 'gallery/' if args.dir == 'docs/gallery' else '')
     if not found:
         print('gallery_page: no gallery PNGs in %s or docs/gallery' % args.dir,
               file=sys.stderr)
