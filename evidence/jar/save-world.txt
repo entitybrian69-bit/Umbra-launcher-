@@ -41,46 +41,46 @@ goose/core/nbt.goose:120: warning: redundant `as f64`: an f32 converts to f64 im
 goose/core/nbt.goose:256: warning: redundant `as f64`: an i64 converts to f64 implicitly here
     return nbt_nodes[c].ival as f64;
            ^~~~~~~~~~~~~~~~~~~~~~~~
-goose/core/raster.goose:64: warning: redundant `as f32`: (((f[0] * f[0]) + (f[1] * f[1])) + (f[2] * f[2])) is already f32
+goose/core/raster.goose:78: warning: redundant `as f32`: (((f[0] * f[0]) + (f[1] * f[1])) + (f[2] * f[2])) is already f32
     let fl = (f[0] * f[0] + f[1] * f[1] + f[2] * f[2]) as f32;
               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/core/raster.goose:97: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/raster.goose:111: warning: redundant `as f32`: an i64 converts to f32 implicitly here
         term = -term * x * x / (((i * 2 + 2) * (i * 2 + 3)) as f32);
                                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/core/raster.goose:103: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/raster.goose:117: warning: redundant `as f32`: an i64 converts to f32 implicitly here
         term = -term * x * x / (((i * 2 + 1) * (i * 2 + 2)) as f32);
                                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-goose/core/raster.goose:107: warning: redundant `as f32`: 1.0 is an f32 here
+goose/core/raster.goose:121: warning: redundant `as f32`: 1.0 is an f32 here
     out[0] = (1.0 as f32) / (aspect * t);
               ^~~~~~~~~~
-goose/core/raster.goose:108: warning: redundant `as f32`: 1.0 is an f32 here
+goose/core/raster.goose:122: warning: redundant `as f32`: 1.0 is an f32 here
     out[5] = (1.0 as f32) / t;
               ^~~~~~~~~~
-goose/core/raster.goose:142: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/raster.goose:160: warning: redundant `as f32`: an i64 converts to f32 implicitly here
     let aspect = (rst_w as f32) / (rst_h as f32);
                                    ^~~~~~~~~~~~
-goose/core/raster.goose:154: warning: redundant `as i64`: a u8 converts to i64 implicitly here
+goose/core/raster.goose:172: warning: redundant `as i64`: a u8 converts to i64 implicitly here
     return ((rst_color[i] as i64) << 16) | ((rst_color[i + 1] as i64) << 8) | (rst_color[i + 2] as i64);
                                                                                ^~~~~~~~~~~~~~~~~~~~~~~
-goose/core/raster.goose:251: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/raster.goose:278: warning: redundant `as f32`: an i64 converts to f32 implicitly here
         sx[k] = (cx * iw * 0.5 + 0.5) * (rst_w as f32);
                                          ^~~~~~~~~~~~
-goose/core/raster.goose:252: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/raster.goose:279: warning: redundant `as f32`: an i64 converts to f32 implicitly here
         sy[k] = (0.5 - cy * iw * 0.5) * (rst_h as f32);
                                          ^~~~~~~~~~~~
-goose/core/raster.goose:298: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/raster.goose:325: warning: redundant `as f32`: an i64 converts to f32 implicitly here
             var tx = (u * (aw as f32)) as i64;
                            ^~~~~~~~~
-goose/core/raster.goose:299: warning: redundant `as f32`: an i64 converts to f32 implicitly here
+goose/core/raster.goose:326: warning: redundant `as f32`: an i64 converts to f32 implicitly here
             var ty = (v * (ah as f32)) as i64;
                            ^~~~~~~~~
-goose/core/raster.goose:325: warning: redundant `as f32`: a u8 converts to f32 implicitly here
+goose/core/raster.goose:352: warning: redundant `as f32`: a u8 converts to f32 implicitly here
             var sr = (tr as f32) * vr / 255.0;
                       ^~~~~~~~~
-goose/core/raster.goose:326: warning: redundant `as f32`: a u8 converts to f32 implicitly here
+goose/core/raster.goose:353: warning: redundant `as f32`: a u8 converts to f32 implicitly here
             var sg = (tg as f32) * vg / 255.0;
                       ^~~~~~~~~
-goose/core/raster.goose:327: warning: redundant `as f32`: a u8 converts to f32 implicitly here
+goose/core/raster.goose:354: warning: redundant `as f32`: a u8 converts to f32 implicitly here
             var sb = (tb as f32) * vb / 255.0;
                       ^~~~~~~~~
 goose/core/demo.goose:184: warning: redundant `as f32`: an i32 converts to f32 implicitly here
@@ -394,6 +394,8 @@ jr: bounds x 0..32 y 40..71 z 0..32, camera 25 blocks out, looking at y 59
 jr: drawn triangles 31608 of 31608, clipped 0
 
 jr: pixels opaque 3469087, cutout 75497, blended 0, discarded by the alpha test 36846
+
+jr: overdraw 8534 permille per pixel (3544584 shaded fragments over 415331 distinct pixels)
 
 jr: wrote build/save.ppm
 

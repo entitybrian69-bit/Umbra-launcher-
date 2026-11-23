@@ -2700,6 +2700,42 @@ few dozen quads of overlay.
 This is recorded as a known flake with the numbers above, not as met. A run that shows
 `0 over 50 ms` with these numbers is the same code.
 
+### The budget, moved off the clock (this build)
+
+A frame time on a CI emulator is a statement about SwiftShader. Two rules kept getting
+bent around it: the 50 ms number could not say whether *our* code or the machine had
+changed, and it could not be a gate without the machine drifting under it. So the gate
+moved to counts, and the clock was demoted to information.
+
+`goose/test/cost_test.goose` builds a world block for block -- a floor, a cliff, a sealed
+pocket under the floor -- meshes it, and draws it three ways on the CPU rasteriser. Every
+number it reports is a count, so two builds on two machines can be compared:
+
+| number | this build | ceiling in the test |
+|---|---|---|
+| quads | 1896 | 2000 |
+| triangles | 3792 | 4000 |
+| distinct pixels | 30011 | -- |
+| shaded fragments, mesher's emit order | 62017 (2066 permille) | -- |
+| shaded fragments, nearest-first | **30088 (1002 permille)** | 1200 permille |
+| overdraw, mesher's emit order | 2066 permille | 2400 permille |
+
+The before and the after are the same frame in the same run: same geometry, same camera,
+same 30011 pixels, 62k shaded fragments against 30k. That is what opaque draw order is
+worth, and the phone already does it per range -- so this is the measurement of a shipped
+decision, not a proposal.
+
+Two of the numbers in that table were wrong first, and both mistakes are recorded in the
+test because a metric that cannot fail the way you did not expect is not a metric:
+
+1. Overdraw divided shaded work by *writes*. Both counters went up in the same two places,
+   so the ratio was exactly 1000 whatever was drawn. It now divides by distinct pixels,
+   through a one-byte mask -- a mask and not a depth test, because blended fragments do not
+   write depth.
+2. The sort was written far-first. Overdraw went **up**, 2066 to 2119, on identical
+   geometry. The assertion caught it, which is the point of asserting a direction rather
+   than printing a number.
+
 ### The frame budget: a rule, not a judgement call (run 44945083115)
 
 The one remaining red above was closed by writing the rule down instead of re-reading the
