@@ -161,5 +161,50 @@ fn run_raster() {
     check(((distant >> 16) & 0xFF) > 100 && (distant & 0xFF) > 100,
           "and one 150 blocks away is the sky, so the fog still reaches");
 
+    // Overdraw is a *count*, not a time, which is why it can be a gate on a machine whose
+    // frame times say nothing about a phone. It has to count what it claims: fragments that
+    // passed the depth test, i.e. were shaded.
+    // rst_begin, not just rst_clear: the depth buffer has to go back to 1.0 or every one of
+    // these quads is rejected against the leftovers of the tests above and nothing is
+    // counted at all -- which is how this test first "failed".
+    rst_begin(64, 64);
+    rst_clear(0.0, 0.0, 0.0);
+    rst_camera(eye, target, up, 60.0, 0.1, 100.0);
+    rst_set_fog(1000.0, 2000.0);
+    var behind: Vertex[>..] = [];
+    quad_verts(0.0, 0.5, -3.0, behind);    // further from the eye at z = 5
+    var infront: Vertex[>..] = [];
+    quad_verts(0.5, 1.0, 1.0, infront);    // nearer
+    rst_begin(64, 64);
+    rst_clear(0.0, 0.0, 0.0);
+    rst_draw(0, 6, behind, idx, atlas[..], 4, 4, false, false);
+    let once = rst_overdraw_permille();
+    rst_draw(0, 6, infront, idx, atlas[..], 4, 4, false, false);
+    let twice = rst_overdraw_permille();
+    // The nearer quad is drawn over the further one, so the pixels it covers are shaded a
+    // second time and overdraw goes above one per pixel. That is real overdraw and shows.
+    // A single draw is exactly 1000: every pixel it covers is shaded once. The ratio is
+    // against *distinct* pixels -- dividing shading work by the write count would be
+    // dividing a number by itself and would sit at 1000 no matter how much was drawn.
+    check(once == 1000, "one quad over nothing is one shade per pixel");
+    check(twice > once, "drawing over a pixel raises the overdraw count");
+    check(rst_fragments_shaded() > rst_pixels_covered_once(),
+          "and shaded fragments exceed the pixels, which is what overdraw means");
+    // 784 distinct pixels, 980 writes: the nearer quad overwrote 196 of them. Two numbers
+    // that differ is exactly why the ratio needs the distinct count.
+    check(rst_pixels_covered_once() < rst_pixels_covered(),
+          "an overwritten pixel is counted as covered once, not once per write");
+
+    // And the other direction: a quad *behind* one already drawn must add no shading at
+    // all, because every one of its fragments fails the depth test. A counter that rose
+    // here would be counting triangles rather than work.
+    rst_begin(64, 64);
+    rst_clear(0.0, 0.0, 0.0);
+    rst_draw(0, 6, infront, idx, atlas[..], 4, 4, false, false);
+    let before_hidden = rst_fragments_shaded();
+    rst_draw(0, 6, behind, idx, atlas[..], 4, 4, false, false);
+    check(rst_fragments_shaded() == before_hidden,
+          "a face hidden behind another adds no shading, so the count is work and not geometry");
+
     test_summary("raster");
 }

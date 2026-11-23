@@ -290,6 +290,11 @@ fn main() {
           ", clipped ", rst_triangles_clipped(), "\n");
     print("jr: pixels opaque ", opaque_px, ", cutout ", cutout_px, ", blended ", blend_px,
           ", discarded by the alpha test ", discarded, "\n");
+    // Overdraw: shading work per distinct pixel, in permille. A count, not a clock, so two
+    // builds on two machines can compare it -- which is what makes it usable as a gate.
+    print("jr: overdraw ", rst_overdraw_permille(), " permille per pixel (",
+          rst_fragments_shaded(), " shaded fragments over ",
+          rst_pixels_covered_once(), " distinct pixels)\n");
 
     if !rst_write_ppm(out_path[..]) {
         jr_fail("the picture could not be written");
